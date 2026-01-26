@@ -1,0 +1,226 @@
+{
+  "TIER_1": [
+    {
+      "name": "计算机科学与技术",
+      "iq_buff": 15,
+      "stress_base": 25,
+      "desc": "头发与薪资成反比，紫金港卷王聚集地"
+    },
+    {
+      "name": "人工智能",
+      "iq_buff": 15,
+      "stress_base": 30,
+      "desc": "炼丹师，GPU永远不够用"
+    },
+    {
+      "name": "软件工程",
+      "iq_buff": 12,
+      "stress_base": 25,
+      "desc": "35岁优化警告，但现在是码农的春天"
+    },
+    {
+      "name": "临床医学（5+3）",
+      "iq_buff": 15,
+      "stress_base": 35,
+      "desc": "蓝色生死恋，期末书本厚度防弹"
+    },
+    {
+      "name": "口腔医学",
+      "iq_buff": 14,
+      "stress_base": 30,
+      "desc": "劝人学医，天打雷劈；劝人学牙，金玉满堂"
+    },
+    {
+      "name": "信息安全",
+      "iq_buff": 12,
+      "stress_base": 22,
+      "desc": "黑客帝国，保护网络世界的和平"
+    }
+  ],
+  "TIER_2": [
+    {
+      "name": "电气工程",
+      "iq_buff": 10,
+      "stress_base": 20,
+      "desc": "国家电网预备役"
+    },
+    {
+      "name": "光电信息科学与工程",
+      "iq_buff": 10,
+      "stress_base": 20,
+      "desc": "光学仪器太贵赔不起，中国光学的摇篮"
+    },
+    {
+      "name": "自动化（控制）",
+      "iq_buff": 9,
+      "stress_base": 18,
+      "desc": "万金油专业，什么都会一点"
+    },
+    {
+      "name": "数学与应用数学",
+      "iq_buff": 12,
+      "stress_base": 25,
+      "desc": "发际线杀手，智商的试金石"
+    },
+    {
+      "name": "物理学",
+      "iq_buff": 12,
+      "stress_base": 25,
+      "desc": "探索宇宙真理，量子力学警告"
+    },
+    {
+      "name": "建筑学",
+      "iq_buff": 8,
+      "stress_base": 35,
+      "desc": "熬夜画图是常态，只有通宵没有睡眠"
+    },
+    {
+      "name": "机器人工程",
+      "iq_buff": 10,
+      "stress_base": 20,
+      "desc": "高达制造者，未来的主宰"
+    },
+    {
+      "name": "电子科学与技术",
+      "iq_buff": 9,
+      "stress_base": 18,
+      "desc": "芯片强国，虽然很难学"
+    }
+  ],
+  "TIER_3": [
+    {
+      "name": "机械工程",
+      "iq_buff": 5,
+      "stress_base": 15,
+      "desc": "大国重器，车间牛马"
+    },
+    {
+      "name": "能源与环境系统工程",
+      "iq_buff": 5,
+      "stress_base": 15,
+      "desc": "烧锅炉还是搞新能源，这是个问题"
+    },
+    {
+      "name": "土木工程",
+      "iq_buff": 4,
+      "stress_base": 15,
+      "desc": "曾经的王者，现在的提桶跑路"
+    },
+    {
+      "name": "化学工程与工艺",
+      "iq_buff": 5,
+      "stress_base": 18,
+      "desc": "四大天坑之首？不，是工业血液"
+    },
+    {
+      "name": "材料科学与工程",
+      "iq_buff": 5,
+      "stress_base": 15,
+      "desc": "炒菜大师，新材料改变世界"
+    },
+    {
+      "name": "经济学",
+      "iq_buff": 6,
+      "stress_base": 12,
+      "desc": "经世济民，虽然可能只是在算模型"
+    },
+    {
+      "name": "法学",
+      "iq_buff": 6,
+      "stress_base": 15,
+      "desc": "背法条背到头秃，每一句话都是考点"
+    },
+    {
+      "name": "药学",
+      "iq_buff": 6,
+      "stress_base": 18,
+      "desc": "神农尝百草，实验室里泡"
+    },
+    {
+      "name": "生物医学工程",
+      "iq_buff": 8,
+      "stress_base": 18,
+      "desc": "医学与工程的交叉，听起来很高大上"
+    },
+    {
+      "name": "工商管理",
+      "iq_buff": 5,
+      "stress_base": 10,
+      "desc": "未来的CEO，现在的PPT纺织工"
+    }
+  ],
+  "TIER_4": [
+    {
+      "name": "汉语言文学",
+      "iq_buff": 2,
+      "stress_base": 5,
+      "desc": "诗词歌赋，文采飞扬"
+    },
+    {
+      "name": "历史学",
+      "iq_buff": 2,
+      "stress_base": 5,
+      "desc": "以史为鉴，坐看云卷云舒"
+    },
+    {
+      "name": "哲学",
+      "iq_buff": 4,
+      "stress_base": 8,
+      "desc": "思考人生的意义，容易陷入虚无"
+    },
+    {
+      "name": "新闻学",
+      "iq_buff": 3,
+      "stress_base": 10,
+      "desc": "铁肩担道义，妙手著文章"
+    },
+    {
+      "name": "英语",
+      "iq_buff": 2,
+      "stress_base": 5,
+      "desc": "专八警告，语言的桥梁"
+    },
+    {
+      "name": "农学",
+      "iq_buff": 0,
+      "stress_base": 5,
+      "desc": "袁隆平的继承人，脚踏实地"
+    },
+    {
+      "name": "茶学",
+      "iq_buff": 0,
+      "stress_base": 2,
+      "desc": "品茶论道，全校最优雅的专业"
+    },
+    {
+      "name": "动物科学",
+      "iq_buff": 0,
+      "stress_base": 5,
+      "desc": "撸猫撸狗撸猪，很有爱心"
+    },
+    {
+      "name": "环境科学",
+      "iq_buff": 2,
+      "stress_base": 8,
+      "desc": "绿水青山就是金山银山"
+    },
+    {
+      "name": "心理学",
+      "iq_buff": 4,
+      "stress_base": 5,
+      "desc": "洞察人心，在此刻看见你"
+    },
+    {
+      "name": "社会学",
+      "iq_buff": 3,
+      "stress_base": 5,
+      "desc": "理解社会运行的逻辑"
+    },
+    {
+      "name": "地球科学",
+      "iq_buff": 3,
+      "stress_base": 8,
+      "desc": "我们要去这星球最美的地方"
+    }
+  ]
+}

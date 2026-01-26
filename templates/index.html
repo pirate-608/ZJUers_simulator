@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ZJUers 模拟器 - 入学考试</title>
+    <!-- 引入 Bootstrap 5 -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="/static/css/style.css" rel="stylesheet">
+</head>
+<body class="bg-light">
+
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8 col-lg-6">
+            <div class="card shadow-lg border-0 rounded-3">
+                <div class="card-header bg-primary text-white text-center py-4">
+                    <h2 class="mb-0">🎓 ZJUers 模拟器</h2>
+                    <p class="mb-0 opacity-75">入学资格审查</p>
+                </div>
+                
+                <div class="card-body p-5">
+                    <!-- 步骤1: 输入昵称 -->
+                    <div id="step-login">
+                        <div class="mb-3">
+                            <label for="username" class="form-label">请输入你的姓名/昵称</label>
+                            <input type="text" class="form-control form-control-lg" id="username" placeholder="未来的浙大人">
+                        </div>
+                        <button class="btn btn-primary w-100 btn-lg" onclick="startExam()">开始考试</button>
+                    </div>
+
+                    <!-- 步骤2: 考试题目 (动态加载) -->
+                    <div id="step-exam" style="display: none;">
+                        <h5 class="text-center mb-4 text-danger">请回答以下问题 (及格分: 60)</h5>
+                        <form id="exam-form">
+                            <!-- 题目将通过 JS 插入这里 -->
+                            <div id="questions-container"></div>
+                        </form>
+                        <button class="btn btn-success w-100 btn-lg mt-4" onclick="submitExam()">提交试卷</button>
+                    </div>
+
+                    <!-- 步骤3: 加载中 -->
+                    <div id="step-loading" class="text-center py-5" style="display: none;">
+                        <div class="spinner-border text-primary" role="status"></div>
+                        <p class="mt-2">正在由 C 语言判卷系统阅卷中...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 结果模态框 -->
+<div class="modal fade" id="resultModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">判卷结果</h5>
+            </div>
+            <div class="modal-body" id="result-body"></div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-primary" onclick="goToGame()">办理入学手续</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script src="/static/js/config.js"></script>
+<script src="/static/js/exam.js"></script>
+</body>
+</html>

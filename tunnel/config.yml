@@ -1,0 +1,28 @@
+# Cloudflared Tunnel 配置优化，分流 WebSocket 路径，提升超时与兼容性
+tunnel: eb890b0f-9acb-4a12-9a06-47eacf65050d
+credentials-file: eb890b0f-9acb-4a12-9a06-47eacf65050d.json
+logfile: /app/cloudflared.log  # 如需日志请确保为文件路径
+loglevel: info
+
+originRequest:
+  connectTimeout: 60s
+  tlsTimeout: 30s
+  tcpKeepAlive: 30s
+  noTLSVerify: false
+  http2Origin: true
+  disableChunkedEncoding: false
+  proxyConnectTimeout: 30s
+  proxyReadTimeout: 300s
+  keepAliveConnections: 50
+  keepAliveTimeout: 60s
+
+ingress:
+  - hostname: 67656.fun
+    service: https://nginx:443
+    originRequest:
+      noTLSVerify: true
+      connectTimeout: 60s
+      tlsTimeout: 60s
+      proxyReadTimeout: 300s
+
+  - service: http_status:404

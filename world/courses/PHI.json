@@ -1,0 +1,82 @@
+{
+  "major": "哲学",
+  "abbr": "PHI",
+  "plan": [
+    {
+      "semester": "大一秋冬",
+      "courses": [
+        { "id": "ADMN1001G", "name": "思想道德与法治", "credits": 3.0, "difficulty": 2 },
+        { "id": "MARX1002G", "name": "中国近现代史纲要", "credits": 3.0, "difficulty": 2 },
+        { "id": "MATH1101G", "name": "高等数学", "credits": 5.0, "difficulty": 4 },
+        { "id": "PHIL1101M", "name": "哲学问题", "credits": 3.0, "difficulty": 4 },
+        { "id": "SIS1001G", "name": "大学英语III", "credits": 3.0, "difficulty": 3 },
+        { "id": "ADMN1001G", "name": "军训", "credits": 2.0, "difficulty": 2 },
+        { "id": "PHIL1001M", "name": "专业导学", "credits": 0.5, "difficulty": 1 }
+      ]
+    },
+    {
+      "semester": "大一春夏",
+      "courses": [
+        { "id": "ADMN1002G", "name": "形势与政策I", "credits": 1.0, "difficulty": 1 },
+        { "id": "CS1241G", "name": "人工智能基础（C）", "credits": 2.0, "difficulty": 3 },
+        { "id": "SIS100RG", "name": "大学英语IV", "credits": 3.0, "difficulty": 3 },
+        { "id": "PHIL2008M", "name": "中国哲学史I", "credits": 3.0, "difficulty": 5 },
+        { "id": "PHIL1004M", "name": "逻辑学导论", "credits": 3.0, "difficulty": 5 },
+        { "id": "PHIL1034M", "name": "学术训练计划 I", "credits": 1.5, "difficulty": 4 }
+      ]
+    },
+    {
+      "semester": "大二秋冬",
+      "courses": [
+        { "id": "MARX2001G", "name": "马克思主义基本原理", "credits": 3.0, "difficulty": 3 },
+        { "id": "PHIL2010M", "name": "中国哲学史II", "credits": 3.0, "difficulty": 5 },
+        { "id": "PHIL2009M", "name": "西方哲学史I：西方古代哲学", "credits": 3.0, "difficulty": 5 },
+        { "id": "PHIL2012M", "name": "科技哲学导论", "credits": 2.0, "difficulty": 4 },
+        { "id": "PHIL2035M", "name": "学术训练计划 II", "credits": 1.5, "difficulty": 4 },
+        { "id": "PHIL2036M", "name": "读书报告", "credits": 1.0, "difficulty": 3 },
+        { "id": "EDU2001G", "name": "军事理论", "credits": 2.0, "difficulty": 1 }
+      ]
+    },
+    {
+      "semester": "大二春夏",
+      "courses": [
+        { "id": "PHIL2011M", "name": "西方哲学史II：西方近代哲学", "credits": 3.0, "difficulty": 5 },
+        { "id": "PHIL2013M", "name": "伦理学导论", "credits": 2.0, "difficulty": 4 },
+        { "id": "MARX1001M", "name": "马克思主义理论导论", "credits": 2.0, "difficulty": 3 },
+        { "id": "PHIL2015M", "name": "美学导论", "credits": 2.0, "difficulty": 3 }
+      ]
+    },
+    {
+      "semester": "大三秋冬",
+      "courses": [
+        { "id": "MARX3001G", "name": "毛泽东思想概论", "credits": 3.0, "difficulty": 2 },
+        { "id": "PHIL3060M", "name": "学年论文", "credits": 4.0, "difficulty": 5 },
+        { "id": "PHIL3040M", "name": "现象学导论", "credits": 2.0, "difficulty": 5 },
+        { "id": "PHIL3041M", "name": "当代知识论", "credits": 2.0, "difficulty": 5 }
+      ]
+    },
+    {
+      "semester": "大三春夏",
+      "courses": [
+        { "id": "MARX3002G", "name": "习近平新时代思想概论", "credits": 3.0, "difficulty": 2 },
+        { "id": "PHIL3043M", "name": "哲学方法", "credits": 2.0, "difficulty": 4 },
+        { "id": "PHIL3046M", "name": "政治哲学", "credits": 2.0, "difficulty": 4 }
+      ]
+    },
+    {
+      "semester": "大四秋冬",
+      "courses": [
+        { "id": "PPAE4001G", "name": "体测与锻炼I", "credits": 0.5, "difficulty": 2 },
+        { "id": "PHIL4065M", "name": "毕业实习", "credits": 2.0, "difficulty": 3 },
+        { "id": "PHIL4061M", "name": "德国古典哲学专题", "credits": 2.0, "difficulty": 5 }
+      ]
+    },
+    {
+      "semester": "大四春夏",
+      "courses": [
+        { "id": "ADMN2001G", "name": "形势与政策II", "credits": 1.0, "difficulty": 1 },
+        { "id": "PHIL4066M", "name": "毕业论文", "credits": 6.0, "difficulty": 5 }
+      ]
+    }
+  ]
+}

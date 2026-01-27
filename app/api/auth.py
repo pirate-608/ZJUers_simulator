@@ -1,9 +1,33 @@
+# 允许已注册用户直接登录，无需重复考试
+class QuickLoginRequest(BaseModel):
+    username: str
+
+# POST /exam/quick_login
+@router.post("/exam/quick_login")
+async def quick_login(data: QuickLoginRequest, db: AsyncSession = Depends(get_db)):
+    stmt = select(User).where(User.username == data.username)
+    result = await db.execute(stmt)
+    user = result.scalars().first()
+    if not user:
+        return {"status": "not_found", "message": "用户未注册，请先完成入学考试"}
+    # 生成token
+    access_token = create_access_token(
+        data={"sub": str(user.id), "username": user.username, "tier": user.tier}
+    )
+    return {
+        "status": "success",
+        "token": access_token,
+        "username": user.username,
+        "assigned_major": user.tier or "未分配专业"
+    }
+from fastapi import Request
+from jose import JWTError, jwt
+from app.core.config import settings
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from pydantic import BaseModel
 from typing import Dict
-
 from app.game.access import grade_entrance_exam, get_questions_for_frontend
 from app.core.database import get_db
 from app.models.user import User
@@ -77,4 +101,33 @@ async def submit_exam(submission: ExamSubmission, db: AsyncSession = Depends(get
         "score": result["total_score"],
         "tier": result["tier"],
         "token": access_token
+    }
+
+# 获取当前用户 admission 信息
+@router.get("/admission_info")
+async def get_admission_info(request: Request, db: AsyncSession = Depends(get_db)):
+    """
+    获取当前用户的用户名和分配专业（tier）。需前端携带 Authorization: Bearer <token>
+    """
+    auth_header = request.headers.get("authorization")
+    if not auth_header or not auth_header.lower().startswith("bearer "):
+        raise HTTPException(status_code=401, detail="Missing or invalid token")
+    token = auth_header.split(" ", 1)[1]
+    try:
+        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+        username = payload.get("username")
+        user_id = payload.get("sub")
+    except JWTError:
+        raise HTTPException(status_code=401, detail="Invalid token")
+    if not user_id:
+        raise HTTPException(status_code=401, detail="Invalid token payload")
+    # 查库获取专业
+    stmt = select(User).where(User.id == int(user_id))
+    result = await db.execute(stmt)
+    user = result.scalars().first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    return {
+        "username": username or user.username,
+        "assigned_major": user.tier or "未分配专业"
     }

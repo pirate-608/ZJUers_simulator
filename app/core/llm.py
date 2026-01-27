@@ -1,7 +1,9 @@
+
 import json
 import os
 from openai import AsyncOpenAI
 from app.core.config import settings
+from app.api.cache import RedisCache
 
 # 初始化客户端 (适配 OpenAI 或 兼容接口如 DeepSeek/Moonshot)
 # 如果是其他模型，请修改 base_url
@@ -10,24 +12,52 @@ client = AsyncOpenAI(
     base_url=os.getenv("LLM_BASE_URL") 
 )
 
-async def generate_cc98_post(player_stats: dict) -> str:
-    """生成 CC98 帖子内容"""
+async def generate_cc98_post(player_stats: dict, effect: str, trigger: str):
+    """生成 CC98 帖子内容和反馈"""
+    feedback_map = {
+        "positive": [
+            "你刷到了一个{trigger}，心态+5",
+            "你看到{trigger}，忍不住笑出声，心态+5"
+        ],
+        "neutral": [
+            "你觉得有点无聊，停止了水贴。",
+            "你刷到{trigger}，但没什么感觉，继续划水。"
+        ],
+        "negative": [
+            "你点进了一个{trigger}的帖子，太不求是，你被暴击，心态-5",
+            "你刷到了一个烂坑，人与人的悲欢并不相通，你只觉得吵闹，心态-5",
+            "你看的快抑郁了，心态-5"
+        ]
+    }
+    import random as _random
+    feedback = _random.choice(feedback_map[effect]).format(trigger=trigger)
+    # 1. 优先从 Redis 队列获取
+    cc98_key = "cc98:posts"
+    post_content = await RedisCache.lpop(cc98_key)
+    if post_content:
+        return post_content, feedback
+    # 2. 队列为空，实时生成
     prompt = f"""
     玩家当前状态：{player_stats}
-    请模拟浙江大学CC98论坛的语气，生成一个简短的帖子标题和内容。
-    风格可以是：吐槽食堂、凡尔赛GPA、询问选课、郁闷小屋、二手交易、情侣秀恩爱、渣男渣女分享感情经历等。
-    要求：简短、有趣、符合大学生网络用语。返回格式纯文本即可。
+    你正在模拟浙江大学CC98论坛的帖子。
+    主题类型：{trigger}
+    效果类型：{effect}
+    请生成一个简短、有趣、符合大学生网络用语的帖子标题和内容。
+    只返回内容本身，不要带任何解释。
     """
     try:
         response = await client.chat.completions.create(
-            model="LLM", 
+            model=os.getenv("LLM"),
             messages=[{"role": "user", "content": prompt}],
             max_tokens=100
         )
-        return response.choices[0].message.content
+        post_content = response.choices[0].message.content.strip()
+        # 实时生成的内容补充回队列，便于后续复用
+        await RedisCache.rpush(cc98_key, post_content)
+        return post_content, feedback
     except Exception as e:
         print(f"[LLM Error] {e}")
-        return "CC98 服务器维护中..."
+        return "CC98 服务器维护中...", feedback
 
 async def generate_random_event(player_stats: dict):
     """
@@ -36,7 +66,8 @@ async def generate_random_event(player_stats: dict):
     prompt = f"""
     你是一个文字模拟游戏的上帝系统。玩家是浙大学生，当前状态：{player_stats}。
     请生成一个突发的校园随机事件。
-    
+    内容可以是有趣的、挑战性的，或者是日常生活中的小插曲。关键词可以是：考试、早八、天气相关（下雨等）、社团活动、恋爱、兼职、校内八卦、突发状况等。
+    事件应包含两个选项，每个选项会对玩家的状态产生不同的影响（如心态、精力、风评等）。
     请严格输出 JSON 格式，不包含 markdown 标记，结构如下：
     {{
         "title": "事件标题",
@@ -50,7 +81,7 @@ async def generate_random_event(player_stats: dict):
     """
     try:
         response = await client.chat.completions.create(
-            model="gpt-3.5-turbo",
+            model=os.getenv("LLM"),
             messages=[{"role": "user", "content": prompt}],
             response_format={"type": "json_object"}, # 强制 JSON 模式
             max_tokens=300

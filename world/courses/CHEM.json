@@ -1,0 +1,93 @@
+{
+  "major": "化学",
+  "abbr": "CHEM",
+  "plan": [
+    {
+      "semester": "大一秋冬",
+      "courses": [
+        { "id": "ADMN1001G", "name": "军训", "credits": 2.0, "difficulty": 1 },
+        { "id": "ADMN1002G", "name": "形势与政策I", "credits": 1.0, "difficulty": 1 },
+        { "id": "CHEM1001G", "name": "大学化学", "credits": 4.0, "difficulty": 3 },
+        { "id": "CHEM1005G", "name": "普通化学实验（甲）", "credits": 2.0, "difficulty": 3 },
+        { "id": "CS1006G", "name": "Python程序设计", "credits": 3.0, "difficulty": 3 },
+        { "id": "MARX1001G", "name": "思想道德与法治", "credits": 3.0, "difficulty": 2 },
+        { "id": "MATH1133G", "name": "微积分（乙）I", "credits": 5.0, "difficulty": 5 },
+        { "id": "SIS1001G", "name": "大学英语III", "credits": 3.0, "difficulty": 2 }
+      ]
+    },
+    {
+      "semester": "大一春夏",
+      "courses": [
+        { "id": "CHEM1101MZ", "name": "无机化学", "credits": 3.0, "difficulty": 4 },
+        { "id": "MARX1002G", "name": "中国近现代史纲要", "credits": 3.0, "difficulty": 2 },
+        { "id": "MATH1134G", "name": "微积分（乙）II", "credits": 4.0, "difficulty": 5 },
+        { "id": "MATH1233G", "name": "线性代数（乙）", "credits": 3.0, "difficulty": 5 },
+        { "id": "PHY1002G", "name": "大学物理（乙）I", "credits": 3.0, "difficulty": 5 },
+        { "id": "SIS1002G", "name": "大学英语IV", "credits": 3.0, "difficulty": 2 },
+        { "id": "PHIL0701G", "name": "大学写作", "credits": 1.5, "difficulty": 2 }
+      ]
+    },
+    {
+      "semester": "大二秋冬",
+      "courses": [
+        { "id": "CHEM2107MZ", "name": "有机化学I", "credits": 2.0, "difficulty": 5 },
+        { "id": "CHEM1103M", "name": "合成化学实验（上）", "credits": 3.0, "difficulty": 4 },
+        { "id": "CHEM2101MZ", "name": "分析化学I", "credits": 2.0, "difficulty": 4 },
+        { "id": "CHEM2301M", "name": "科研认知", "credits": 1.0, "difficulty": 2 },
+        { "id": "CHEM2103M", "name": "结构化学I", "credits": 2.0, "difficulty": 5 },
+        { "id": "CHEM2108MZ", "name": "有机化学II", "credits": 2.0, "difficulty": 5 },
+        { "id": "EDU2001G", "name": "军事理论", "credits": 2.0, "difficulty": 1 },
+        { "id": "MARX2001G", "name": "马克思主义基本原理", "credits": 3.0, "difficulty": 3 },
+        { "id": "PHY2002G", "name": "大学物理（乙）II", "credits": 3.0, "difficulty": 5 },
+        { "id": "PHY2005G", "name": "大学物理实验", "credits": 1.5, "difficulty": 3 }
+      ]
+    },
+    {
+      "semester": "大二春夏",
+      "courses": [
+        { "id": "CHEM2104M", "name": "结构化学II", "credits": 2.0, "difficulty": 5 },
+        { "id": "CHEM2109MZ", "name": "有机化学III", "credits": 2.0, "difficulty": 5 },
+        { "id": "CHEM2102MZ", "name": "分析化学II", "credits": 3.0, "difficulty": 4 },
+        { "id": "CHEM2110M", "name": "合成化学实验（下）", "credits": 3.0, "difficulty": 4 },
+        { "id": "CHEM2111M", "name": "化学测量学实验（上）", "credits": 2.0, "difficulty": 4 },
+        { "id": "CHEM2105M", "name": "结构化学III", "credits": 2.0, "difficulty": 5 },
+        { "id": "CHEM2106MZ", "name": "物理化学I", "credits": 2.0, "difficulty": 5 },
+        { "id": "CHEM2302M", "name": "下厂实践", "credits": 1.0, "difficulty": 2 }
+      ]
+    },
+    {
+      "semester": "大三秋冬",
+      "courses": [
+        { "id": "CHEM3101MZ", "name": "物理化学II", "credits": 2.0, "difficulty": 5 },
+        { "id": "CHEM3103M", "name": "化学测量学实验（下）", "credits": 3.0, "difficulty": 4 },
+        { "id": "CHEM3102MZ", "name": "物理化学III", "credits": 2.0, "difficulty": 5 },
+        { "id": "MARX3001G", "name": "毛泽东思想概论", "credits": 3.0, "difficulty": 3 },
+        { "id": "MARX3002G", "name": "习近平新时代思想概论", "credits": 3.0, "difficulty": 3 },
+        { "id": "CHEM3302M", "name": "化学导论", "credits": 1.0, "difficulty": 2 }
+      ]
+    },
+    {
+      "semester": "大三春夏",
+      "courses": [
+        { "id": "CBE3004F", "name": "化工原理及实验", "credits": 3.5, "difficulty": 4 },
+        { "id": "CHEM3220M", "name": "综合化学实验", "credits": 3.0, "difficulty": 4 },
+        { "id": "CHEM3216M", "name": "有机波谱分析", "credits": 3.0, "difficulty": 4 }
+      ]
+    },
+    {
+      "semester": "大四秋冬",
+      "courses": [
+        { "id": "PPAE4001G", "name": "体测与锻炼", "credits": 0.5, "difficulty": 2 },
+        { "id": "CHEM4202M", "name": "量子化学", "credits": 3.5, "difficulty": 5 },
+        { "id": "CHEM4201M", "name": "超分子化学", "credits": 3.0, "difficulty": 4 }
+      ]
+    },
+    {
+      "semester": "大四春夏",
+      "courses": [
+        { "id": "ADMN2001G", "name": "形势与政策II", "credits": 1.0, "difficulty": 1 },
+        { "id": "CHEM4301M", "name": "毕业论文", "credits": 8.0, "difficulty": 5 }
+      ]
+    }
+  ]
+}

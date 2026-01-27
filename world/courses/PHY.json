@@ -1,0 +1,84 @@
+{
+  "major": "物理学",
+  "abbr": "PHY",
+  "plan": [
+    {
+      "semester": "大一秋冬",
+      "courses": [
+        { "id": "ADMN1001G", "name": "思想道德与法治", "credits": 2.0, "difficulty": 2 },
+        { "id": "MARX100IG", "name": "中国近现代史纲要", "credits": 3.0, "difficulty": 2 },
+        { "id": "MATH1135G", "name": "数学分析（甲）I", "credits": 5.0, "difficulty": 5 },
+        { "id": "MATH1232G", "name": "线性代数（甲）", "credits": 3.5, "difficulty": 4 },
+        { "id": "CS1001G", "name": "C程序设计基础及实验", "credits": 4.0, "difficulty": 4 },
+        { "id": "SIS1001G", "name": "大学英语III", "credits": 3.0, "difficulty": 3 },
+        { "id": "PHY1088M", "name": "物理学导论", "credits": 1.0, "difficulty": 2 }
+      ]
+    },
+    {
+      "semester": "大一春夏",
+      "courses": [
+        { "id": "MATH1136G", "name": "数学分析（甲）II", "credits": 5.0, "difficulty": 5 },
+        { "id": "MARX100RG", "name": "思想道德与法治实践", "credits": 3.0, "difficulty": 2 },
+        { "id": "PHY1001G", "name": "大学物理（甲）I", "credits": 4.0, "difficulty": 4 },
+        { "id": "SIS100RG", "name": "大学英语IV", "credits": 3.0, "difficulty": 3 },
+        { "id": "CS1241G", "name": "人工智能基础（A）", "credits": 2.0, "difficulty": 3 }
+      ]
+    },
+    {
+      "semester": "大二秋冬",
+      "courses": [
+        { "id": "MATH2101M", "name": "数学分析（甲）III", "credits": 4.0, "difficulty": 5 },
+        { "id": "PHY2001G", "name": "大学物理（甲）II", "credits": 4.0, "difficulty": 4 },
+        { "id": "PHY2005G", "name": "大学物理实验", "credits": 1.5, "difficulty": 3 },
+        { "id": "MARX2001G", "name": "马克思主义基本原理", "credits": 3.0, "difficulty": 3 },
+        { "id": "MATH2131F", "name": "复变函数与积分变换", "credits": 1.5, "difficulty": 4 },
+        { "id": "MATH2432F", "name": "概率论与数理统计", "credits": 2.5, "difficulty": 4 },
+        { "id": "EDU2001G", "name": "军事理论", "credits": 2.0, "difficulty": 2 }
+      ]
+    },
+    {
+      "semester": "大二春夏",
+      "courses": [
+        { "id": "PHY2012M", "name": "力学", "credits": 4.0, "difficulty": 4 },
+        { "id": "PHY2015M", "name": "热学", "credits": 3.0, "difficulty": 4 },
+        { "id": "PHY2016M", "name": "电磁学", "credits": 4.0, "difficulty": 4 },
+        { "id": "HIST2001G", "name": "新中国史", "credits": 1.5, "difficulty": 2 },
+        { "id": "ECON2001G", "name": "中国改革开放史", "credits": 1.5, "difficulty": 2 }
+      ]
+    },
+    {
+      "semester": "大三秋冬",
+      "courses": [
+        { "id": "PHY3011M", "name": "理论力学", "credits": 4.0, "difficulty": 5 },
+        { "id": "PHY3021M", "name": "量子力学I", "credits": 4.0, "difficulty": 5 },
+        { "id": "PHY3031M", "name": "原子物理学", "credits": 3.0, "difficulty": 4 },
+        { "id": "MARX3001G", "name": "毛泽东思想概论", "credits": 3.0, "difficulty": 3 },
+        { "id": "MARX300RG", "name": "习近平新时代思想概论", "credits": 3.0, "difficulty": 3 }
+      ]
+    },
+    {
+      "semester": "大三春夏",
+      "courses": [
+        { "id": "PHY3041M", "name": "电动力学", "credits": 4.0, "difficulty": 5 },
+        { "id": "PHY3051M", "name": "热力学与统计物理", "credits": 4.0, "difficulty": 5 },
+        { "id": "PHY3015M", "name": "近代物理实验", "credits": 3.0, "difficulty": 4 },
+        { "id": "PHY3032M", "name": "固体物理学I", "credits": 3.0, "difficulty": 5 }
+      ]
+    },
+    {
+      "semester": "大四秋冬",
+      "courses": [
+        { "id": "PPAE4001G", "name": "体测与锻炼", "credits": 0.5, "difficulty": 2 },
+        { "id": "PHY4003M1", "name": "计算物理", "credits": 3.0, "difficulty": 4 },
+        { "id": "PHY3030M", "name": "激光技术基础", "credits": 1.0, "difficulty": 3 }
+      ]
+    },
+    {
+      "semester": "大四春夏",
+      "courses": [
+        { "id": "ADMN2001G", "name": "形势与政策II", "credits": 1.0, "difficulty": 1 },
+        { "id": "PHY4902M", "name": "毕业论文", "credits": 8.0, "difficulty": 5 }
+      ]
+    }
+  ]
+}

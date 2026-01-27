@@ -1,0 +1,74 @@
+{
+  "major": "社会学",
+  "abbr": "SOC",
+  "plan": [
+    {
+      "semester": "大一秋冬",
+      "courses": [
+        { "id": "ADMN1001G", "name": "军训", "credits": 2.0, "difficulty": 1 },
+        { "id": "ADMN1002G", "name": "形势与政策I", "credits": 1.0, "difficulty": 1 },
+        { "id": "CS1004G", "name": "计算机科学基础（B）", "credits": 2.0, "difficulty": 3 },
+        { "id": "MARX1001G", "name": "思想道德与法治", "credits": 3.0, "difficulty": 2 },
+        { "id": "MATH1034G", "name": "文科高等数学", "credits": 3.0, "difficulty": 3 },
+        { "id": "SIS1001G", "name": "大学英语III", "credits": 3.0, "difficulty": 2 }
+      ]
+    },
+    {
+      "semester": "大一春夏",
+      "courses": [
+        { "id": "CS1243G", "name": "人工智能基础（C）", "credits": 2.0, "difficulty": 3 },
+        { "id": "MARX1002G", "name": "中国近现代史纲要", "credits": 3.0, "difficulty": 2 },
+        { "id": "PA1001M", "name": "社会调查与研究方法", "credits": 3.0, "difficulty": 4 },
+        { "id": "PA1002M", "name": "社会统计", "credits": 3.0, "difficulty": 5 },
+        { "id": "PA1003M", "name": "社会学概论", "credits": 3.0, "difficulty": 3 },
+        { "id": "PA1005M", "name": "人类学概论", "credits": 3.0, "difficulty": 3 },
+        { "id": "SIS1002G", "name": "大学英语IV", "credits": 3.0, "difficulty": 2 }
+      ]
+    },
+    {
+      "semester": "大二秋冬",
+      "courses": [
+        { "id": "EDU2001G", "name": "军事理论", "credits": 2.0, "difficulty": 1 },
+        { "id": "MARX2001G", "name": "马克思主义基本原理", "credits": 3.0, "difficulty": 3 },
+        { "id": "PA2059M", "name": "经典社会学理论", "credits": 3.0, "difficulty": 5 },
+        { "id": "PA2078M", "name": "人口学概论", "credits": 3.0, "difficulty": 4 },
+        { "id": "PA2088M", "name": "方法论", "credits": 1.5, "difficulty": 4 }
+      ]
+    },
+    {
+      "semester": "大二春夏",
+      "courses": [
+        { "id": "PA2060M", "name": "现代社会学理论", "credits": 3.0, "difficulty": 5 },
+        { "id": "PA2082M", "name": "田野调查实践", "credits": 4.0, "difficulty": 4 }
+      ]
+    },
+    {
+      "semester": "大三秋冬",
+      "courses": [
+        { "id": "MARX3001G", "name": "毛泽东思想概论", "credits": 3.0, "difficulty": 3 },
+        { "id": "MARX3002G", "name": "习近平新时代思想概论", "credits": 3.0, "difficulty": 3 }
+      ]
+    },
+    {
+      "semester": "大三春夏",
+      "courses": [
+        { "id": "PA3102M", "name": "专业写作", "credits": 3.0, "difficulty": 3 },
+        { "id": "PA3117M", "name": "社会工作", "credits": 3.0, "difficulty": 3 }
+      ]
+    },
+    {
+      "semester": "大四秋冬",
+      "courses": [
+        { "id": "PPAE4001G", "name": "体测与锻炼", "credits": 0.5, "difficulty": 2 }
+      ]
+    },
+    {
+      "semester": "大四春夏",
+      "courses": [
+        { "id": "ADMN2001G", "name": "形势与政策II", "credits": 1.0, "difficulty": 1 },
+        { "id": "PA4010M", "name": "毕业论文（设计）", "credits": 8.0, "difficulty": 5 },
+        { "id": "PA4018M", "name": "专业实习", "credits": 3.0, "difficulty": 3 }
+      ]
+    }
+  ]
+}

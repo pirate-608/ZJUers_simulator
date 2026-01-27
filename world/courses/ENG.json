@@ -1,0 +1,85 @@
+{
+  "major": "英语",
+  "abbr": "ENG",
+  "plan": [
+    {
+      "semester": "大一秋冬",
+      "courses": [
+        { "id": "ADMN1001G", "name": "思想道德与法治", "credits": 3.0, "difficulty": 2 },
+        { "id": "MARX1002G", "name": "中国近现代史纲要", "credits": 3.0, "difficulty": 2 },
+        { "id": "MATH1101G", "name": "微积分", "credits": 3.0, "difficulty": 4 },
+        { "id": "CS1001G", "name": "计算机科学基础", "credits": 2.0, "difficulty": 2 },
+        { "id": "ENG1001M", "name": "综合英语I", "credits": 4.0, "difficulty": 3 },
+        { "id": "ENG1002M", "name": "英语听力I", "credits": 2.0, "difficulty": 3 },
+        { "id": "ENG1003M", "name": "英语口语I", "credits": 2.0, "difficulty": 3 }
+      ]
+    },
+    {
+      "semester": "大一春夏",
+      "courses": [
+        { "id": "ADMN1002G", "name": "形势与政策I", "credits": 1.0, "difficulty": 1 },
+        { "id": "ENG1101M", "name": "综合英语II", "credits": 4.0, "difficulty": 3 },
+        { "id": "ENG1102M", "name": "英语听力II", "credits": 2.0, "difficulty": 3 },
+        { "id": "ENG1103M", "name": "英语口语II", "credits": 2.0, "difficulty": 3 },
+        { "id": "ENG1104M", "name": "英语写作I", "credits": 2.0, "difficulty": 4 },
+        { "id": "CS1241G", "name": "人工智能基础", "credits": 2.0, "difficulty": 3 }
+      ]
+    },
+    {
+      "semester": "大二秋冬",
+      "courses": [
+        { "id": "MARX2001G", "name": "马克思主义基本原理", "credits": 3.0, "difficulty": 3 },
+        { "id": "ENG2001M", "name": "综合英语III", "credits": 4.0, "difficulty": 4 },
+        { "id": "ENG2002M", "name": "英语写作II", "credits": 2.0, "difficulty": 4 },
+        { "id": "ENG2003M", "name": "英语语法研究", "credits": 2.0, "difficulty": 3 },
+        { "id": "ENG2004M", "name": "英国文学史", "credits": 3.0, "difficulty": 5 },
+        { "id": "EDU2001G", "name": "军事理论", "credits": 2.0, "difficulty": 1 }
+      ]
+    },
+    {
+      "semester": "大二春夏",
+      "courses": [
+        { "id": "ENG2101M", "name": "综合英语IV", "credits": 4.0, "difficulty": 4 },
+        { "id": "ENG2102M", "name": "英语口译基础", "credits": 2.0, "difficulty": 4 },
+        { "id": "ENG2103M", "name": "美国文学史", "credits": 3.0, "difficulty": 5 },
+        { "id": "ENG2104M", "name": "英语词汇学", "credits": 2.0, "difficulty": 3 },
+        { "id": "ECON2001G", "name": "中国改革开放史", "credits": 1.5, "difficulty": 2 }
+      ]
+    },
+    {
+      "semester": "大三秋冬",
+      "courses": [
+        { "id": "MARX3001G", "name": "毛泽东思想概论", "credits": 3.0, "difficulty": 2 },
+        { "id": "MARX300RG", "name": "习近平新时代思想概论", "credits": 3.0, "difficulty": 2 },
+        { "id": "ENG3001M", "name": "高级英语I", "credits": 4.0, "difficulty": 5 },
+        { "id": "ENG3002M", "name": "英汉笔译", "credits": 2.0, "difficulty": 4 },
+        { "id": "ENG3003M", "name": "语言学概论", "credits": 3.0, "difficulty": 4 }
+      ]
+    },
+    {
+      "semester": "大三春夏",
+      "courses": [
+        { "id": "ENG3101M", "name": "高级英语II", "credits": 4.0, "difficulty": 5 },
+        { "id": "ENG3102M", "name": "汉英笔译", "credits": 2.0, "difficulty": 4 },
+        { "id": "ENG3103M", "name": "学术论文写作", "credits": 2.0, "difficulty": 4 },
+        { "id": "ENG3022M", "name": "专业实习", "credits": 4.0, "difficulty": 3 }
+      ]
+    },
+    {
+      "semester": "大四秋冬",
+      "courses": [
+        { "id": "PPAE4001G", "name": "体测与锻炼", "credits": 0.5, "difficulty": 2 },
+        { "id": "ENG4001M", "name": "英语专业水平考试", "credits": 1.0, "difficulty": 5 },
+        { "id": "ENG4002M", "name": "同声传译入门", "credits": 2.0, "difficulty": 5 },
+        { "id": "ENG4101M", "name": "欧洲文化史", "credits": 2.0, "difficulty": 3 }
+      ]
+    },
+    {
+      "semester": "大四春夏",
+      "courses": [
+        { "id": "ADMN2001G", "name": "形势与政策II", "credits": 1.0, "difficulty": 1 },
+        { "id": "ENG4105M", "name": "毕业论文", "credits": 8.0, "difficulty": 5 }
+      ]
+    }
+  ]
+}

@@ -1,73 +1,93 @@
 import json
+import asyncio
+import logging
 import random
+from typing import Optional, Dict, Any, Set, List
+from pathlib import Path
 from redis import asyncio as aioredis
 from app.core.config import settings
-from pathlib import Path
+
+logger = logging.getLogger(__name__)
 
 # ==========================================
-# 1. 静态资源路径配置
+# 静态资源加载 (保持不变)
 # ==========================================
-COURSES_DATA_PATH = Path("/app/world/courses.json")
-if not COURSES_DATA_PATH.exists():
-    COURSES_DATA_PATH = Path(__file__).resolve().parent.parent.parent / "world" / "courses.json"
-MAP_PATH = Path("/app/world/map.json")
-if not MAP_PATH.exists():
-    MAP_PATH = Path(__file__).resolve().parent.parent.parent / "world" / "map.json"
-MAJORS_DATA_PATH = Path("/app/world/majors.json")
-if not MAJORS_DATA_PATH.exists():
-    MAJORS_DATA_PATH = Path(__file__).resolve().parent.parent.parent / "world" / "majors.json"
+BASE_DIR = Path(__file__).resolve().parent.parent.parent
+MAJORS_DATA_PATH = Path("/app/world/majors.json") if Path("/app/world/majors.json").exists() else BASE_DIR / "world" / "majors.json"
+COURSES_DIR = Path("/app/world/courses") if Path("/app/world/courses").exists() else BASE_DIR / "world" / "courses"
+
+_STATIC_CACHE: Dict[str, Any] = {}
+_CACHE_LOCK = asyncio.Lock()
+
+async def _load_json_async(path: Path) -> Any:
+    """异步非阻塞加载 JSON 文件，带内存缓存和并发锁"""
+    path_str = str(path)
+    async with _CACHE_LOCK:
+        if path_str in _STATIC_CACHE:
+            return _STATIC_CACHE[path_str]
+        
+        if not path.exists():
+            logger.warning(f"File not found: {path}")
+            return {}
+
+        loop = asyncio.get_running_loop()
+        try:
+            content = await loop.run_in_executor(None, path.read_text, "utf-8")
+            data = json.loads(content)
+            _STATIC_CACHE[path_str] = data
+            return data
+        except Exception as e:
+            logger.error(f"Error loading {path}: {e}")
+            return {}
 
 class RedisState:
+    _connection_pool: Optional[aioredis.ConnectionPool] = None
+
     def __init__(self, user_id: str):
         self.user_id = user_id
-        self.redis = aioredis.from_url(settings.REDIS_URL, decode_responses=True)
+        
+        if RedisState._connection_pool is None:
+            RedisState._connection_pool = aioredis.ConnectionPool.from_url(
+                settings.REDIS_URL, 
+                decode_responses=True,
+                max_connections=100
+            )
+        
+        self.redis = aioredis.Redis(connection_pool=RedisState._connection_pool)
         self.key = f"player:{user_id}:stats"
         self.course_key = f"player:{user_id}:courses"
+        self.course_state_key = f"player:{user_id}:course_states"  # [新增] 存储课程状态
+        self.action_key = f"player:{user_id}:actions"
+        self.achievement_key = f"player:{user_id}:achievements"
+
+    async def clear_all(self):
+        """清空玩家所有存档数据"""
+        await self.redis.delete(self.key, self.course_key, self.course_state_key, self.action_key, self.achievement_key)
 
     async def close(self):
-        await self.redis.close()
+        await self.redis.aclose()
 
     async def exists(self) -> bool:
-        return await self.redis.exists(self.key)
-
-    # ==========================================
-    # 内部辅助逻辑：课程筛选算法
-    # ==========================================
-    def _pick_semester_courses(self, all_courses, academy, grade, term, n_req=3, n_gen=2, n_ele=2):
-        """核心选课逻辑：安全、随机、解耦"""
-        # 预筛选三个池子
-        required = [c for c in all_courses if academy in c['majors'] and c.get('required') and c['grade'] == grade and term in c['semester']]
-        general = [c for c in all_courses if ('全校通用' in c['majors'] or 'ALL' in c['majors']) and c.get('type') == '通识' and c['grade'] == grade and term in c['semester']]
-        elective = [c for c in all_courses if academy in c['majors'] and not c.get('required') and c.get('type') != '通识' and c['grade'] == grade and term in c['semester']]
-
-        # 打乱顺序
-        random.shuffle(required)
-        random.shuffle(general)
-        random.shuffle(elective)
-
-        # 安全取样：切片操作不会像 random.sample 那样因为样本不足而报错
-        return (required[:n_req] + general[:n_gen] + elective[:n_ele])
+        return await self.redis.exists(self.key) > 0
 
     # ==========================================
     # 2. 游戏初始化逻辑
     # ==========================================
-    async def init_game(self, username: str, tier: str):
-        # 1. 随机专业分配
-        with open(MAJORS_DATA_PATH, "r", encoding="utf-8") as f:
-            majors_config = json.load(f)
-        available_majors = majors_config.get(tier, majors_config.get("TIER_4"))
+    async def init_game(self, username: str, tier: str) -> Dict[str, Any]:
+        majors_config = await _load_json_async(MAJORS_DATA_PATH)
+
+        available_majors = majors_config.get(tier, majors_config.get("TIER_4", []))
+        if not available_majors:
+            available_majors = [{"name": "未知专业", "abbr": "UNK", "stress_base": 0, "iq_buff": 0}]
+            
         major_info = random.choice(available_majors)
-        major_name = major_info["name"]
+        major_abbr = major_info["abbr"]
+        course_plan = await _load_json_async(COURSES_DIR / f"{major_abbr}.json")
 
-        # 2. 获取学院映射
-        with open(MAP_PATH, "r", encoding="utf-8") as f:
-            major2school = json.load(f)
-        academy = major2school.get(major_name, "全校通用")
-
-        # 3. 初始数值
         initial_stats = {
             "username": username,
-            "major": major_name,
+            "major": major_info["name"],
+            "major_abbr": major_abbr,
             "semester": "大一秋冬",
             "semester_idx": 1,
             "energy": 100,
@@ -76,112 +96,134 @@ class RedisState:
             "iq": random.randint(80, 100) + major_info.get("iq_buff", 0),
             "eq": random.randint(60, 90),
             "luck": random.randint(0, 100),
-            "reputation": 0,
-            "status": "idle",
             "gpa": "0.0",
-            "failed_count": 0
+            "course_plan_json": json.dumps(course_plan, ensure_ascii=False)
         }
 
-        # 4. 课程库初始化
-        with open(COURSES_DATA_PATH, "r", encoding="utf-8") as f:
-            all_courses = json.load(f)
-        
-        my_courses = self._pick_semester_courses(all_courses, academy, grade=1, term="秋")
+        # 初始课程解析
+        semester_idx = 1
+        plan_data = course_plan.get("semesters") or course_plan.get("plan", [])
+        my_courses = []
+        if plan_data and len(plan_data) >= semester_idx:
+            my_courses = plan_data[semester_idx - 1].get("courses", [])
+            
         initial_stats["course_info_json"] = json.dumps(my_courses, ensure_ascii=False)
 
-        # 5. 写入 Redis
-        await self.redis.hset(self.key, mapping=initial_stats)
-        
-        # 6. 课程擅长度初始化
-        if my_courses:
-            course_mastery = {c["id"]: 0 for c in my_courses}
-            await self.redis.hset(self.course_key, mapping=course_mastery)
-        
+        async with self.redis.pipeline() as pipe:
+            pipe.delete(self.key, self.course_key, self.course_state_key, self.action_key, self.achievement_key)
+            pipe.hset(self.key, mapping=initial_stats)
+            if my_courses:
+                course_mastery = {str(c["id"]): 0 for c in my_courses}
+                pipe.hset(self.course_key, mapping=course_mastery)
+                # [新增] 默认所有课程初始化为 "摸" (状态 1)
+                course_states = {str(c["id"]): 1 for c in my_courses}
+                pipe.hset(self.course_state_key, mapping=course_states)
+            await pipe.execute()
+
         return initial_stats
 
     # ==========================================
-    # 3. 基础数值操作 (带安全保护)
+    # 3. 数值操作
     # ==========================================
-    async def get_stats(self):
+    async def get_stats(self) -> Dict[str, str]:
         return await self.redis.hgetall(self.key)
 
-    async def update_stat_safe(self, field: str, delta: int, min_val: int = 0, max_val: int = 200):
-        """优化后的数值更新：增加边界检查"""
-        current = await self.redis.hget(self.key, field)
-        val = int(current or 0) + delta
-        final_val = max(min_val, min(max_val, val))
-        await self.redis.hset(self.key, field, final_val)
-        return final_val
+    async def update_stat_safe(self, field: str, delta: int, min_val: int = 0, max_val: int = 200) -> int:
+        script = """
+        local current = tonumber(redis.call('HGET', KEYS[1], ARGV[1]) or 0)
+        local delta = tonumber(ARGV[2])
+        local new_val = current + delta
+        if new_val < tonumber(ARGV[3]) then new_val = tonumber(ARGV[3]) end
+        if new_val > tonumber(ARGV[4]) then new_val = tonumber(ARGV[4]) end
+        redis.call('HSET', KEYS[1], ARGV[1], new_val)
+        return new_val
+        """
+        result = await self.redis.eval(script, 1, self.key, field, delta, min_val, max_val)
+        return int(result)
 
-    async def update_stat(self, field: str, delta: int):
-        """兼容原有调用方式"""
+    async def update_stat(self, field: str, delta: int) -> int:
         return await self.redis.hincrby(self.key, field, delta)
 
     # ==========================================
-    # 4. 课程操作
+    # 4. 课程状态与进度管理 (核心改动)
     # ==========================================
-    async def get_courses_mastery(self):
+    async def get_courses_mastery(self) -> Dict[str, str]:
         return await self.redis.hgetall(self.course_key)
 
-    async def update_course_mastery(self, course_id: str, delta: float):
-        current = await self.redis.hget(self.course_key, course_id)
-        current_val = float(current) if current else 0.0
-        new_val = max(0.0, min(100.0, current_val + delta))
-        await self.redis.hset(self.course_key, course_id, new_val)
-        return new_val
+    async def update_course_mastery(self, course_id: str, delta: float) -> float:
+        """单门课程更新 (保留用于特殊事件)"""
+        return await self.redis.hincrbyfloat(self.course_key, course_id, delta)
+    
+    async def batch_update_course_mastery(self, updates: Dict[str, float]):
+        """[新增] 批量更新课程擅长度 (Pipeline 优化)"""
+        if not updates:
+            return
+        async with self.redis.pipeline() as pipe:
+            for c_id, delta in updates.items():
+                # 注意：hincrbyfloat 不支持边界检查，若需严格封顶100需用Lua
+                # 但考虑到性能和engine循环频率，这里直接用原生命令，前端显示限制即可
+                pipe.hincrbyfloat(self.course_key, c_id, delta)
+            await pipe.execute()
+
+    async def set_course_state(self, course_id: str, state_val: int):
+        """[新增] 设置课程状态: 0=摆, 1=摸, 2=卷"""
+        await self.redis.hset(self.course_state_key, course_id, state_val)
+
+    async def get_all_course_states(self) -> Dict[str, str]:
+        """[新增] 获取所有课程当前状态"""
+        return await self.redis.hgetall(self.course_state_key)
 
     # ==========================================
     # 5. 动作与成就
     # ==========================================
-    async def increment_action_count(self, action_type: str):
-        key = f"player:{self.user_id}:actions"
-        await self.redis.hincrby(key, action_type, 1)
+    async def increment_action_count(self, action_type: str) -> int:
+        return await self.redis.hincrby(self.action_key, action_type, 1)
 
-    async def get_action_counts(self):
-        key = f"player:{self.user_id}:actions"
-        return await self.redis.hgetall(key)
+    async def get_action_counts(self) -> Dict[str, str]:
+        return await self.redis.hgetall(self.action_key)
 
-    async def get_unlocked_achievements(self):
-        key = f"player:{self.user_id}:achievements"
-        return await self.redis.smembers(key)
+    async def get_unlocked_achievements(self) -> Set[str]:
+        res = await self.redis.smembers(self.achievement_key)
+        return set(res) if res else set()
 
-    async def unlock_achievement(self, code: str):
-        key = f"player:{self.user_id}:achievements"
-        await self.redis.sadd(key, code)
+    async def unlock_achievement(self, code: str) -> int:
+        return await self.redis.sadd(self.achievement_key, code)
 
     # ==========================================
-    # 6. 学期循环逻辑
+    # 6. 学期循环
     # ==========================================
-    async def increment_semester(self):
+    async def increment_semester(self) -> int:
         return await self.redis.hincrby(self.key, "semester_idx", 1)
 
     async def reset_courses_for_new_semester(self, semester_idx: int):
-        """重置学期课程池"""
-        await self.redis.delete(self.course_key)
+        raw_plan = await self.redis.hget(self.key, "course_plan_json")
+        try:
+            course_plan = json.loads(raw_plan) if raw_plan else {}
+        except:
+            course_plan = {}
         
-        # 计算学年年级和学期
-        grade = (semester_idx + 1) // 2
-        term = "秋" if semester_idx % 2 == 1 else "春"
-        
-        stats = await self.redis.hgetall(self.key)
-        major_name = stats.get("major", "")
+        plan_data = course_plan.get("semesters") or course_plan.get("plan", [])
+        my_courses = []
+        if plan_data and 0 < semester_idx <= len(plan_data):
+            my_courses = plan_data[semester_idx - 1].get("courses", [])
 
-        with open(MAP_PATH, "r", encoding="utf-8") as f:
-            major2school = json.load(f)
-        academy = major2school.get(major_name, "全校通用")
-
-        with open(COURSES_DATA_PATH, "r", encoding="utf-8") as f:
-            all_courses = json.load(f)
-
-        my_courses = self._pick_semester_courses(all_courses, academy, grade, term)
-        
-        # 更新擅长度与课程详情
-        if my_courses:
-            course_mastery = {c["id"]: 0 for c in my_courses}
-            await self.redis.hset(self.course_key, mapping=course_mastery)
-            await self.redis.hset(self.key, "course_info_json", json.dumps(my_courses, ensure_ascii=False))
-
-        # 学期显示名称
         sem_names = ["大一秋冬", "大一春夏", "大二秋冬", "大二春夏", "大三秋冬", "大三春夏", "大四秋冬", "大四春夏"]
-        name = sem_names[semester_idx - 1] if semester_idx <= 8 else "延毕"
-        await self.redis.hset(self.key, "semester", name)
+        term_name = sem_names[semester_idx - 1] if 1 <= semester_idx <= 8 else f"延毕学期 {semester_idx}"
+
+        async with self.redis.pipeline() as pipe:
+            pipe.delete(self.course_key)
+            pipe.delete(self.course_state_key) # [新增] 清空旧状态
+            
+            pipe.hset(self.key, "semester", term_name)
+            if my_courses:
+                # 初始化进度为0
+                course_mastery = {str(c["id"]): 0 for c in my_courses}
+                pipe.hset(self.course_key, mapping=course_mastery)
+                # [新增] 初始化状态为1 (摸)
+                course_states = {str(c["id"]): 1 for c in my_courses}
+                pipe.hset(self.course_state_key, mapping=course_states)
+                
+                pipe.hset(self.key, "course_info_json", json.dumps(my_courses, ensure_ascii=False))
+            else:
+                pipe.hset(self.key, "course_info_json", "[]")
+            await pipe.execute()

@@ -1,0 +1,90 @@
+{
+  "major": "工商管理",
+  "abbr": "BA",
+  "plan": [
+    {
+      "semester": "大一秋冬",
+      "courses": [
+        { "id": "ADMN1001G", "name": "思想道德与法治", "credits": 3.0, "difficulty": 2 },
+        { "id": "MARX1002G", "name": "中国近现代史纲要", "credits": 3.0, "difficulty": 2 },
+        { "id": "MATH1101G", "name": "微积分（乙）I", "credits": 5.0, "difficulty": 5 },
+        { "id": "CS1000G", "name": "计算机科学基础", "credits": 2.0, "difficulty": 2 },
+        { "id": "MGMT1001M", "name": "管理学", "credits": 3.0, "difficulty": 2 },
+        { "id": "SIS1001G", "name": "大学英语III", "credits": 3.0, "difficulty": 3 }
+      ]
+    },
+    {
+      "semester": "大一春夏",
+      "courses": [
+        { "id": "ADMN1002G", "name": "形势与政策I", "credits": 1.0, "difficulty": 1 },
+        { "id": "MATH1102G", "name": "微积分（乙）II", "credits": 5.0, "difficulty": 5 },
+        { "id": "MATH1201G", "name": "线性代数（乙）", "credits": 3.5, "difficulty": 4 },
+        { "id": "ECON2001G", "name": "微观经济学（甲）", "credits": 4.0, "difficulty": 4 },
+        { "id": "CS1008G", "name": "Python程序设计", "credits": 3.0, "difficulty": 3 },
+        { "id": "SIS100RG", "name": "大学英语IV", "credits": 3.0, "difficulty": 3 },
+        { "id": "MGMT2001M", "name": "会计学", "credits": 3.0, "difficulty": 3 }
+      ]
+    },
+    {
+      "semester": "大二秋冬",
+      "courses": [
+        { "id": "MARX2001G", "name": "马克思主义基本原理", "credits": 3.0, "difficulty": 3 },
+        { "id": "MATH2401G", "name": "概率论与数理统计", "credits": 2.5, "difficulty": 4 },
+        { "id": "MGMT2006M", "name": "组织行为学", "credits": 3.0, "difficulty": 3 },
+        { "id": "MGMT2007M", "name": "社会心理学", "credits": 3.0, "difficulty": 3 },
+        { "id": "ECON2002G", "name": "宏观经济学", "credits": 4.0, "difficulty": 4 },
+        { "id": "MGMT2012M", "name": "管理统计", "credits": 3.0, "difficulty": 4 }
+      ]
+    },
+    {
+      "semester": "大二春夏",
+      "courses": [
+        { "id": "EDU2001G", "name": "军事理论", "credits": 2.0, "difficulty": 1 },
+        { "id": "MGMT2003M", "name": "管理沟通", "credits": 2.0, "difficulty": 2 },
+        { "id": "MGMT2018M", "name": "伦理与社会责任", "credits": 2.0, "difficulty": 3 },
+        { "id": "MGMT2022M", "name": "创新管理", "credits": 2.0, "difficulty": 3 },
+        { "id": "MGMT2008M", "name": "市场营销学", "credits": 3.0, "difficulty": 3 },
+        { "id": "MGMT2020M", "name": "领导力开发", "credits": 2.0, "difficulty": 3 },
+        { "id": "MGMT3011M", "name": "财务管理", "credits": 3.0, "difficulty": 4 }
+      ]
+    },
+    {
+      "semester": "大三秋冬",
+      "courses": [
+        { "id": "MARX3001G", "name": "毛泽东思想概论", "credits": 3.0, "difficulty": 2 },
+        { "id": "MGMT2005M", "name": "人力资源管理", "credits": 3.0, "difficulty": 3 },
+        { "id": "MGMT3008M", "name": "国际商务", "credits": 2.0, "difficulty": 3 },
+        { "id": "MGMT2039M", "name": "运营管理", "credits": 3.0, "difficulty": 4 },
+        { "id": "MGMT3016M", "name": "消费者行为", "credits": 2.0, "difficulty": 3 },
+        { "id": "MGMT2028M", "name": "管理研究方法", "credits": 2.0, "difficulty": 4 }
+      ]
+    },
+    {
+      "semester": "大三春夏",
+      "courses": [
+        { "id": "MARX3002G", "name": "习近平新时代思想概论", "credits": 3.0, "difficulty": 2 },
+        { "id": "MGMT3021M", "name": "管理哲学导论", "credits": 2.0, "difficulty": 3 },
+        { "id": "MGMT3034M", "name": "项目管理", "credits": 2.0, "difficulty": 4 },
+        { "id": "MGMT3023M", "name": "创业管理", "credits": 2.0, "difficulty": 4 },
+        { "id": "MGMT2027M", "name": "工商启航大讲堂", "credits": 2.0, "difficulty": 2 },
+        { "id": "MGMT3024M", "name": "商业实践与劳动见习", "credits": 4.0, "difficulty": 5 }
+      ]
+    },
+    {
+      "semester": "大四秋冬",
+      "courses": [
+        { "id": "PPAE4001G", "name": "体测与锻炼I", "credits": 0.5, "difficulty": 2 },
+        { "id": "MGMT3026M", "name": "战略管理", "credits": 3.0, "difficulty": 5 },
+        { "id": "MGMT4016M", "name": "中外管理实践分析", "credits": 2.0, "difficulty": 4 },
+        { "id": "MGMT4002M", "name": "数字营销", "credits": 2.0, "difficulty": 4 }
+      ]
+    },
+    {
+      "semester": "大四春夏",
+      "courses": [
+        { "id": "ADMN2001G", "name": "形势与政策II", "credits": 1.0, "difficulty": 1 },
+        { "id": "MGMT4019M", "name": "毕业论文", "credits": 6.0, "difficulty": 5 }
+      ]
+    }
+  ]
+}

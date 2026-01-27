@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>浙江大学录取通知书</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="/static/css/style.css" rel="stylesheet">
+</head>
+<body class="admission-body bg-light d-flex align-items-center justify-content-center" style="min-height: 100vh;">
+
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-lg-8 col-md-10">
+            <div class="admission-letter shadow-lg p-5 fade-in-up">
+                <div class="text-center mb-5">
+                    <img src="https://via.placeholder.com/150x50?text=Zhejiang+University+Logo" alt="浙江大学" class="mb-3" style="max-height: 60px;">
+                    <h1 class="admission-title mt-2">录取通知书</h1>
+                    <div class="admission-subtitle text-uppercase ls-2">Admission Letter</div>
+                </div>
+
+                <hr class="admission-divider my-4">
+
+                <div class="admission-content my-5">
+                    <h3 class="mb-4 student-greeting">
+                        <span id="student-name" class="fw-bold text-primary border-bottom border-primary border-2">同学</span>：
+                    </h3>
+                    <p class="lead indent-text">
+                        经浙江大学招生委员会批准，你已被我校
+                        <span id="student-major" class="fw-bold text-danger mx-1 border-bottom border-danger border-2">（系统随机专业加载中...）</span>
+                        专业录取。
+                    </p>
+                    <p class="lead indent-text mt-4">
+                        谨向你表示热烈祝贺！ 在过去学习生涯中，你是一位当之无愧的佼佼者。
+                        现在,，你将踏入美丽的求是园，在更广阔的天地里 开启更加卓越、更有梦想的人生。 此后，你将与历史上众多灿若星辰的名字一起， 分享『浙大人』这个光荣的称号，共同承担起服务 民族复兴、促进人类进步的责任。
+                        请持本通知书于规定时间到校报到。
+                    </p>
+                </div>
+
+                <div class="admission-footer mt-5 pt-4 d-flex justify-content-between align-items-end">
+                    <div class="text-center">
+                        <div class="zju-seal-placeholder rounded-circle border border-danger text-danger d-flex align-items-center justify-content-center mb-2" style="width: 100px; height: 100px; transform: rotate(-15deg); opacity: 0.8;">
+                            <small>浙江大学<br>招生专用章</small>
+                        </div>
+                        <div class="fw-bold">浙江大学</div>
+                        <div id="current-date" class="text-muted small">2035年9月1日</div>
+                    </div>
+                    
+                    <div class="text-end">
+                        <div class="mb-3">
+                            <span>校长：</span>
+                            <div class="signature-blurred d-inline-block ms-2">
+                                <img src="https://via.placeholder.com/120x40?text=Signature" alt="校长签名" style="height: 40px;">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+            <div class="text-center mt-5 mb-5 fade-in-up delay-1">
+                <a href="dashboard.html" class="btn btn-primary btn-lg px-5 py-3 rounded-pill shadow-sm fw-bold fs-5 pulse-animation">
+                    🎓 我已确认，前往报到 (进入游戏)
+                </a>
+                <p class="text-muted mt-3 small">点击按钮即将开始你的大学生涯模拟</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // 1. 设置当前日期
+        const now = new Date();
+        const dateStr = `${now.getFullYear()}年${now.getMonth() + 1}月${now.getDate()}日`;
+        document.getElementById('current-date').innerText = dateStr;
+
+        // 2. 对接后端 /api/admission_info 接口，获取用户名和专业
+        fetch('/api/admission_info', {
+            headers: {
+                'Authorization': 'Bearer ' + localStorage.getItem('token')
+            }
+        })
+        .then(response => {
+            if (!response.ok) throw new Error('接口响应异常');
+            return response.json();
+        })
+        .then(data => {
+            document.getElementById('student-name').innerText = data.username || "新同学";
+            document.getElementById('student-major').innerText = data.assigned_major || "未分配专业";
+        })
+        .catch(error => {
+            console.error('无法获取录取信息:', error);
+            document.getElementById('student-name').innerText = "新同学";
+            document.getElementById('student-major').innerText = "数据加载失败";
+        });
+    });
+</script>
+
+</body>
+</html>

@@ -1,3 +1,53 @@
+/* 扁平化课程卡片样式 */
+.flat-course-item {
+    padding-top: 0.4rem !important;
+    padding-bottom: 0.4rem !important;
+    margin-bottom: 0.3rem !important;
+}
+.flat-course-item h6 {
+    font-size: 1rem !important;
+    margin-bottom: 0 !important;
+}
+.flat-course-item .progress {
+    margin-bottom: 0.3rem !important;
+}
+/* 课程状态切换高亮动画 */
+.course-item.state-changed {
+    animation: stateFlash 0.6s;
+    box-shadow: 0 0 8px 2px #ffd70099;
+}
+@keyframes stateFlash {
+    0% { background: #fffbe6; }
+    50% { background: #fff3cd; }
+    100% { background: white; }
+}
+/* 去掉之前的浮动样式，或者保留以备后用 */
+/* #exam-console-float { ... } */
+
+/* 新增：脉冲动画，用于高亮考试按钮 */
+.pulse-animation {
+    animation: pulse-red 2s infinite;
+}
+
+@keyframes pulse-red {
+    0% {
+        box-shadow: 0 0 0 0 rgba(220, 53, 69, 0.7);
+    }
+    70% {
+        box-shadow: 0 0 0 10px rgba(220, 53, 69, 0);
+    }
+    100% {
+        box-shadow: 0 0 0 0 rgba(220, 53, 69, 0);
+    }
+}
+@media (max-width: 600px) {
+    #exam-console-float {
+        right: 8px;
+        bottom: 8px;
+        width: 98vw;
+        max-width: 98vw;
+    }
+}
 body {
     background-color: #f0f2f5;
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
@@ -32,4 +82,111 @@ body {
 }
 .event-log::-webkit-scrollbar-thumb:hover {
     background: #aaa; 
+}
+/* 强制让 active 的按钮颜色更深一点，防止 Bootstrap 默认样式不明显 */
+.btn-check:checked + .btn, .btn.active, .btn.show, .btn:first-child:active, :not(.btn-check) + .btn:active {
+    font-weight: 800 !important;
+    transform: scale(1.05); /* 点击稍微放大一点 */
+    z-index: 10;
+}
+/* =========================================
+   录取通知书页面专用样式
+   ========================================= */
+
+/* 页面背景色调整 */
+.admission-body {
+    background-color: #f0f2f5; /* 浅灰背景衬托 */
+    font-family: 'Noto Serif SC', 'Songti SC', serif; /* 尽量使用宋体或衬线体营造正式感 */
+}
+
+/* 通知书主体卡片 - 模拟纸张 */
+.admission-letter {
+    background-color: #fffcf5; /* 米黄色纸张感 */
+    background-image: url("data:image/svg+xml,%3Csvg width='100' height='100' viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M11 18c3.866 0 7-3.134 7-7s-3.134-7-7-7-7 3.134-7 7 3.134 7 7 7zm48 25c3.866 0 7-3.134 7-7s-3.134-7-7-7-7 3.134-7 7 3.134 7 7 7zm-43-7c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zm63 31c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zM34 90c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zm56-76c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zM12 86c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm28-65c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm23-11c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm-6 60c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm29 22c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zM32 63c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm57-13c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm-9-21c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM60 91c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM35 41c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM12 60c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2z' fill='%23d4a373' fill-opacity='0.05' fill-rule='evenodd'/%3E%3C/svg%3E"); /* 添加轻微的纹理 */
+    border: 8px solid transparent;
+    border-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100' viewBox='0 0 100 100'%3E%3Cg fill='none' stroke='%23C21F30' stroke-width='2'%3E%3Cpath d='M0 0h100v100H0z' stroke-dasharray='10 5'/%3E%3C/g%3E%3C/svg%3E") 20% stretch; /* 模拟中式边框 */
+    border-radius: 4px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+    position: relative;
+    overflow: hidden;
+}
+
+/* 标题样式 */
+.admission-title {
+    font-family: 'Noto Serif SC', serif;
+    font-weight: 900;
+    color: #C21F30; /* 浙大红 */
+    letter-spacing: 0.5rem;
+    margin-bottom: 0;
+}
+
+.admission-subtitle {
+    color: #C21F30;
+    letter-spacing: 0.2rem;
+    font-size: 0.9rem;
+}
+
+.admission-divider {
+    border-top: 2px solid #C21F30;
+    opacity: 0.8;
+    width: 60%;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+/* 正文样式 */
+.admission-content {
+    font-size: 1.25rem;
+    line-height: 2;
+    color: #333;
+}
+
+.indent-text {
+    text-indent: 2em;
+}
+
+.student-greeting {
+    font-size: 1.5rem;
+    color: #000;
+}
+
+/* 底部和签名 */
+.admission-footer {
+    font-family: 'Noto Serif SC', serif;
+}
+
+/* 关键：校长签名模糊处理 */
+.signature-blurred img {
+    filter: blur(6px); /* 模糊滤镜 */
+    opacity: 0.7;
+    user-select: none; /* 防止选中 */
+    pointer-events: none; /* 防止右键保存 */
+    transform: scale(1.1) rotate(-2deg); /* 稍微带点手写的感觉 */
+}
+
+/* 简单的进入动画 */
+.fade-in-up {
+    animation: fadeInUp 0.8s ease-out;
+}
+.delay-1 { animation-delay: 0.3s; }
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* 按钮脉冲动画优化 (复用你已有的，这里确保存在) */
+.pulse-animation {
+    animation: pulse-primary 2s infinite;
+}
+@keyframes pulse-primary {
+    0% { box-shadow: 0 0 0 0 rgba(13, 110, 253, 0.7); }
+    70% { box-shadow: 0 0 0 15px rgba(13, 110, 253, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(13, 110, 253, 0); }
 }

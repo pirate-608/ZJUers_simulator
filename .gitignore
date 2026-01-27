@@ -2,7 +2,7 @@
 .env
 .env.prod
 .env.dev
-_recycle.bin/
+__recycle_bin/
 __pycache__/
 temp/
 *.log

@@ -1,3 +1,29 @@
+// 老玩家快速报到，无需考试
+async function quickLogin() {
+    const username = document.getElementById('username').value.trim();
+    if (!username) return alert("请先填写姓名");
+    currentUser = username;
+    const btns = document.querySelectorAll('#step-login button');
+    btns.forEach(btn => btn.disabled = true);
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/exam/quick_login`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({username})
+        });
+        const result = await response.json();
+        if (result.status === 'success' && result.token) {
+            auth.setToken(result.token);
+            window.location.href = 'dashboard.html';
+        } else {
+            alert(result.message || '未找到该用户，请先完成入学考试');
+            btns.forEach(btn => btn.disabled = false);
+        }
+    } catch (e) {
+        alert('网络异常，请重试');
+        btns.forEach(btn => btn.disabled = false);
+    }
+}
 // static/js/exam.js
 let currentUser = "";
 

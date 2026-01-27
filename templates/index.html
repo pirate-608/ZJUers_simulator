@@ -26,7 +26,10 @@
                             <label for="username" class="form-label">请输入你的姓名/昵称</label>
                             <input type="text" class="form-control form-control-lg" id="username" placeholder="未来的浙大人">
                         </div>
-                        <button class="btn btn-primary w-100 btn-lg" onclick="startExam()">开始考试</button>
+                        <div class="d-grid gap-2">
+                            <button class="btn btn-primary btn-lg" onclick="startExam()">开始考试</button>
+                            <button class="btn btn-outline-success btn-lg" onclick="quickLogin()">直接报到（老玩家免试）</button>
+                        </div>
                     </div>
 
                     <!-- 步骤2: 考试题目 (动态加载) -->

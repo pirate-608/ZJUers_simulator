@@ -29,12 +29,16 @@ async def get_current_user_id(token: str):
 @router.websocket("/ws/game")
 async def websocket_endpoint(websocket: WebSocket, token: str):
     # --- 鉴权 ---
+    print(f"[WS][DEBUG] websocket_endpoint called, token={token}")
     user_id, username, tier = await get_current_user_id(token)
+    print(f"[WS][DEBUG] Decoded user_id={user_id}, username={username}, tier={tier}")
     if not user_id:
+        print(f"[WS][ERROR] Invalid token, closing websocket.")
         await websocket.close(code=1008)
         return
 
     # --- 连接管理 ---
+    print(f"[WS][DEBUG] Calling manager.connect for user_id={user_id}")
     await manager.connect(websocket, user_id)
     state = RedisState(user_id)
     
@@ -85,12 +89,13 @@ async def websocket_endpoint(websocket: WebSocket, token: str):
                 print(f"[WS] Invalid JSON from {username}")
 
     except WebSocketDisconnect:
-        print(f"[WS] Disconnected: {username}")
+        print(f"[WS] Disconnected: {username} (user_id={user_id})")
         # 清理工作
         if 'engine' in locals():
             engine.stop()
         if 'loop_task' in locals():
             loop_task.cancel()
+        print(f"[WS][DEBUG] Calling manager.disconnect for user_id={user_id}")
         manager.disconnect(user_id)
         await state.close()
         
@@ -100,5 +105,6 @@ async def websocket_endpoint(websocket: WebSocket, token: str):
             engine.stop()
         if 'loop_task' in locals():
             loop_task.cancel()
+        print(f"[WS][DEBUG] Exception, calling manager.disconnect for user_id={user_id}")
         manager.disconnect(user_id)
         await state.close()

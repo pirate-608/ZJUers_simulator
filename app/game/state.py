@@ -74,53 +74,66 @@ class RedisState:
     # 2. 游戏初始化逻辑
     # ==========================================
     async def init_game(self, username: str, tier: str) -> Dict[str, Any]:
-        majors_config = await _load_json_async(MAJORS_DATA_PATH)
-
-        available_majors = majors_config.get(tier, majors_config.get("TIER_4", []))
-        if not available_majors:
-            available_majors = [{"name": "未知专业", "abbr": "UNK", "stress_base": 0, "iq_buff": 0}]
-            
-        major_info = random.choice(available_majors)
-        major_abbr = major_info["abbr"]
-        course_plan = await _load_json_async(COURSES_DIR / f"{major_abbr}.json")
-
+        # 只初始化基础信息，不分配专业
         initial_stats = {
             "username": username,
-            "major": major_info["name"],
-            "major_abbr": major_abbr,
+            "major": "",
+            "major_abbr": "",
             "semester": "大一秋冬",
             "semester_idx": 1,
             "energy": 100,
             "sanity": 80,
-            "stress": major_info.get("stress_base", 0),
-            "iq": random.randint(80, 100) + major_info.get("iq_buff", 0),
+            "stress": 0,
+            "iq": 0,
             "eq": random.randint(60, 90),
             "luck": random.randint(0, 100),
             "gpa": "0.0",
+            "course_plan_json": "",
+            "course_info_json": ""
+        }
+        async with self.redis.pipeline() as pipe:
+            pipe.delete(self.key, self.course_key, self.course_state_key, self.action_key, self.achievement_key)
+            pipe.hset(self.key, mapping=initial_stats)
+            await pipe.execute()
+        return initial_stats
+
+    async def assign_major(self, tier: str) -> Dict[str, Any]:
+        majors_config = await _load_json_async(MAJORS_DATA_PATH)
+        available_majors = majors_config.get(tier, majors_config.get("TIER_4", []))
+        if not available_majors:
+            available_majors = [{"name": "未知专业", "abbr": "UNK", "stress_base": 0, "iq_buff": 0}]
+        major_info = random.choice(available_majors)
+        major_abbr = major_info["abbr"]
+        course_plan = await _load_json_async(COURSES_DIR / f"{major_abbr}.json")
+        # 生成专业相关字段
+        update_fields = {
+            "major": major_info["name"],
+            "major_abbr": major_abbr,
+            "stress": major_info.get("stress_base", 0),
+            "iq": random.randint(80, 100) + major_info.get("iq_buff", 0),
             "course_plan_json": json.dumps(course_plan, ensure_ascii=False)
         }
-
-        # 初始课程解析
+        # 初始化首学期课程
         semester_idx = 1
         plan_data = course_plan.get("semesters") or course_plan.get("plan", [])
         my_courses = []
         if plan_data and len(plan_data) >= semester_idx:
             my_courses = plan_data[semester_idx - 1].get("courses", [])
-            
-        initial_stats["course_info_json"] = json.dumps(my_courses, ensure_ascii=False)
-
+        update_fields["course_info_json"] = json.dumps(my_courses, ensure_ascii=False)
         async with self.redis.pipeline() as pipe:
-            pipe.delete(self.key, self.course_key, self.course_state_key, self.action_key, self.achievement_key)
-            pipe.hset(self.key, mapping=initial_stats)
+            pipe.hset(self.key, mapping=update_fields)
             if my_courses:
                 course_mastery = {str(c["id"]): 0 for c in my_courses}
                 pipe.hset(self.course_key, mapping=course_mastery)
-                # [新增] 默认所有课程初始化为 "摸" (状态 1)
                 course_states = {str(c["id"]): 1 for c in my_courses}
                 pipe.hset(self.course_state_key, mapping=course_states)
             await pipe.execute()
-
-        return initial_stats
+        return {
+            "major": major_info["name"],
+            "major_abbr": major_abbr,
+            "course_plan": course_plan,
+            "courses": my_courses
+        }
 
     # ==========================================
     # 3. 数值操作

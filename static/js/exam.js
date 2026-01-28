@@ -14,7 +14,7 @@ async function quickLogin() {
         const result = await response.json();
         if (result.status === 'success' && result.token) {
             auth.setToken(result.token);
-            window.location.href = 'dashboard.html';
+            window.location.href = '/admission';
         } else {
             alert(result.message || '未找到该用户，请先完成入学考试');
             btns.forEach(btn => btn.disabled = false);
@@ -102,14 +102,8 @@ async function submitExam() {
 
         if (result.status === 'success') {
             auth.setToken(result.token); // 保存 Token
-            modalBody.innerHTML = `
-                <div class="text-center text-success">
-                    <h4>🎉 恭喜录取!</h4>
-                    <p>得分: ${result.score}</p>
-                    <p>你的专业档位: <strong>${result.tier}</strong></p>
-                </div>
-            `;
-            modalEl.show();
+            // 1. 调用分配专业API
+            await assignMajorWithAnimation(result.token);
         } else {
             modalBody.innerHTML = `
                 <div class="text-center text-danger">
@@ -123,6 +117,54 @@ async function submitExam() {
             document.querySelector('#resultModal .btn-primary').onclick = () => location.reload();
             modalEl.show();
         }
+// 分配专业并展示抽签动画，动画结束后跳转录取通知书
+async function assignMajorWithAnimation(token) {
+    const modalBody = document.getElementById('result-body');
+    const modalEl = new bootstrap.Modal(document.getElementById('resultModal'), {backdrop: 'static'});
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/assign_major`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ token })
+        });
+        const data = await response.json();
+        if (data.success) {
+            // 展示抽签动画
+            await showLotteryAnimation(data.major);
+            // 跳转录取通知书页面
+            window.location.href = '/admission.html';
+        } else {
+            modalBody.innerHTML = `<div class="text-center text-danger">分配专业失败，请重试</div>`;
+            modalEl.show();
+        }
+    } catch (e) {
+        modalBody.innerHTML = `<div class="text-center text-danger">网络异常，分配专业失败</div>`;
+        modalEl.show();
+    }
+}
+
+// 简单抽签动画实现
+function showLotteryAnimation(major) {
+    return new Promise((resolve) => {
+        const modalBody = document.getElementById('result-body');
+        modalBody.innerHTML = `
+            <div class="text-center">
+                <div class="spinner-border text-primary mb-3" role="status" style="width: 4rem; height: 4rem;"></div>
+                <h4>彩票系统发力中...</h4>
+                <p class="mt-3">请稍候</p>
+            </div>
+        `;
+        setTimeout(() => {
+            modalBody.innerHTML = `
+                <div class="text-center text-success">
+                    <h4>🎉 恭喜录取！</h4>
+                    <p>你被分配到专业：<strong class="text-danger">${major}</strong></p>
+                </div>
+            `;
+            setTimeout(resolve, 1800);
+        }, 1800);
+    });
+}
 
     } catch (error) {
         alert("网络连接失败，请检查后端服务");
@@ -132,5 +174,5 @@ async function submitExam() {
 }
 
 function goToGame() {
-    window.location.href = 'dashboard.html';
+    window.location.href = '/admission';
 }

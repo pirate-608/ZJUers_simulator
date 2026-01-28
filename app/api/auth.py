@@ -12,6 +12,8 @@ from app.models.user import User
 from app.core.security import create_access_token
 from app.game.access import grade_entrance_exam, get_questions_for_frontend
 from pydantic import BaseModel
+from app.game.state import RedisState
+from app.api.game import get_current_user_id
 
 router = APIRouter()
 
@@ -80,6 +82,24 @@ async def submit_exam(submission: ExamSubmission, db: AsyncSession = Depends(get
         "score": result["total_score"],
         "tier": result["tier"],
         "token": access_token
+    }
+    
+# 分配专业API，考试通过后由前端调用
+class AssignMajorRequest(BaseModel):
+    token: str
+
+@router.post("/assign_major")
+async def assign_major(req: AssignMajorRequest):
+    user_id, username, tier = await get_current_user_id(req.token)
+    if not user_id or not tier:
+        raise HTTPException(status_code=401, detail="Invalid token or missing tier")
+    state = RedisState(user_id)
+    result = await state.assign_major(tier)
+    return {
+        "success": True,
+        "major": result["major"],
+        "major_abbr": result["major_abbr"],
+        "courses": result["courses"]
     }
 
 # 获取当前用户 admission 信息

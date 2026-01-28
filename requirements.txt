@@ -40,3 +40,5 @@ pydantic-settings>=2.1.0
 httpx>=0.26.0
 # 简单的 UUID 生成 (虽然标准库有，但有时为了 slugify ID 会用到)
 shortuuid>=1.0.11
+# 模板引擎 (用于渲染 HTML 页面)
+jinja2>=3.1.2

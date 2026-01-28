@@ -416,11 +416,17 @@ class GameEngine:
         # 毕业判定
         if current_semester_idx > 8:
             stats = await self.state.get_stats()
+            achievements = list(await self.state.get_unlocked_achievements())
+            stats["achievements"] = achievements
+            # 调用AI生成文言文结业总结
+            from app.core.llm import generate_wenyan_report
+            wenyan_report = await generate_wenyan_report(stats)
             await self.manager.send_personal_message({
                 "type": "graduation",
                 "data": {
-                    "msg": "恭喜你从浙江大学毕业！",
-                    "final_stats": stats
+                    "msg": "恭喜你从折姜大学毕业！",
+                    "final_stats": stats,
+                    "wenyan_report": wenyan_report
                 }
             }, self.user_id)
             self.stop()

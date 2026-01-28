@@ -11,9 +11,10 @@ const CONFIG = {
 };
 
 // 全局数据缓存
-let courseMetadata = [];       
-let currentStats = {};         
-let currentCourseStates = {};  
+let courseMetadata = [];
+let currentStats = {};
+let currentCourseStates = {};
+let ACHIEVEMENTS = null; // 全局成就表缓存
 
 // 防手滑
 window.onbeforeunload = function(e) {
@@ -35,6 +36,18 @@ if (typeof auth !== 'undefined') {
 // ==========================================
 // 1. 初始化与 WebSocket
 // ==========================================
+
+// 初始化时加载成就表
+fetch('world/achievements.json')
+    .then(res => res.json())
+    .then(data => {
+        ACHIEVEMENTS = data;
+    })
+    .catch(() => {
+        // 兼容旧格式或本地开发
+        ACHIEVEMENTS = {};
+    });
+
 window.onload = initGame;
 
 function initGame() {
@@ -43,7 +56,7 @@ function initGame() {
     ws = new WebSocket(`${baseUrl}/ws/game?token=${token}`);
 
     ws.onopen = () => {
-        logEvent("系统", "已连接教务系统 (状态模式)...", "text-success");
+        logEvent("系统", "已连接教务系统...", "text-success");
     };
 
     ws.onmessage = (event) => {
@@ -100,8 +113,63 @@ function handleServerMessage(msg) {
             break;
             
         case 'graduation':
-            alert(msg.data.msg);
+            showGraduationModal(msg.data);
             break;
+    // 毕业总结弹窗
+    function showGraduationModal(data) {
+        // 移除已存在的弹窗
+        let old = document.getElementById('graduation-modal');
+        if (old) old.remove();
+        const modal = document.createElement('div');
+        modal.id = 'graduation-modal';
+        const stats = data.final_stats || {};
+        // 直接用全局 ACHIEVEMENTS
+        let achievementsHtml = '';
+        if (Array.isArray(stats.achievements) && stats.achievements.length > 0) {
+            achievementsHtml = `<h5 class='mt-4'>成就展示</h5><div class='row'>` +
+                stats.achievements.map(code => {
+                    const ach = (ACHIEVEMENTS && ACHIEVEMENTS[code]) ? ACHIEVEMENTS[code] : {name: code, desc: '', icon: '🏅'};
+                    return `<div class='col-6 mb-2'><div class='border rounded p-2 bg-white d-flex align-items-center'>
+                        <span style='font-size:2rem;margin-right:10px;'>${ach.icon}</span>
+                        <div><b>${ach.name}</b><br><span class='text-muted small'>${ach.desc}</span></div>
+                    </div></div>`;
+                }).join('') + '</div>';
+        }
+        modal.innerHTML = `
+        <div class="modal fade show" style="display:block;background:rgba(0,0,0,0.85);z-index:9999;" tabindex="-1">
+            <div class="modal-dialog modal-lg modal-dialog-centered">
+                <div class="modal-content p-4">
+                    <div class="modal-header border-0">
+                        <h2 class="modal-title w-100 text-center">🎓 毕业总结</h2>
+                    </div>
+                    <div class="modal-body">
+                        <h4 class="text-success text-center mb-3">${data.msg || '恭喜毕业！'}</h4>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <h5>结业数据</h5>
+                                <ul class="list-group">
+                                    <li class="list-group-item">专业：<b>${stats.major || ''}</b></li>
+                                    <li class="list-group-item">GPA：<b>${stats.gpa || ''}</b></li>
+                                    <li class="list-group-item">能力：IQ <span>${stats.iq || ''}</span> / EQ <span>${stats.eq || ''}</span></li>
+                                    <li class="list-group-item">心态：<span>${stats.sanity || ''}</span></li>
+                                    <li class="list-group-item">精力：<span>${stats.energy || ''}</span></li>
+                                </ul>
+                                ${achievementsHtml}
+                            </div>
+                            <div class="col-md-6">
+                                <h5>AI文言文总结</h5>
+                                <div class="border rounded p-3 bg-light" id="wenyan-report" style="min-height: 120px;white-space:pre-line;">${data.wenyan_report || '生成中...'}</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer border-0 justify-content-center">
+                        <button class="btn btn-primary" onclick="location.reload()">重开人生</button>
+                    </div>
+                </div>
+            </div>
+        </div>`;
+        document.body.appendChild(modal);
+    }
     }
 }
 
@@ -193,11 +261,9 @@ function renderCourseList(masteryData, statesData) {
                 </h6>
                 <span class="badge ${badgeClass} rounded-pill" style="font-size:0.9em;">${val.toFixed(1)}%</span>
             </div>
-            
             <div class="progress mb-2" style="height: 6px; background-color: #e9ecef;">
                 <div class="progress-bar ${badgeClass}" role="progressbar" style="width: ${val}%"></div>
             </div>
-            
             <div class="d-flex justify-content-between align-items-center mt-2">
                 <div class="d-flex align-items-center">
                     <small class="text-muted me-2">策略:</small>
@@ -242,6 +308,11 @@ function renderStateButton(courseId, stateValue, currentState) {
 // ==========================================
 
 function changeCourseState(courseId, newState) {
+    // 乐观更新本地状态，立即刷新UI
+    if (!currentCourseStates) currentCourseStates = {};
+    currentCourseStates[courseId] = newState;
+    renderCourseList(currentStats.courses || {}, currentCourseStates);
+    // 发送到后端
     if (ws && ws.readyState === WebSocket.OPEN) {
         ws.send(JSON.stringify({
             action: "change_course_state",

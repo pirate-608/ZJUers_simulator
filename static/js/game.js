@@ -103,13 +103,40 @@ function handleServerMessage(msg) {
             showRandomEventModal(msg.data);
             break;
 
+        case 'dingtalk_message':
+            renderDingtalkMessage(msg.data);
+            break;
+
         case 'achievement_unlocked':
             showToast(`🏆 解锁成就：${msg.data.name}`, msg.data.desc);
             break;
 
         case 'new_semester':
+            // 1. 弹窗提示
             alert(`假期结束，${msg.data.semester_name} 开始了！`);
-            location.reload();
+
+            // 2. 软重置
+            courseMetadata = [];
+            currentCourseStates = {};
+
+            // 3. 清空日志
+            clearLog();
+            logEvent("系统", `=== 欢迎来到 ${msg.data.semester_name} ===`, "text-success fw-bold");
+
+            // 4. 重置倒计时器
+            const timerEl = document.getElementById('semester-timer');
+            if (timerEl) timerEl.innerText = "--:--";
+            // 停止旧的计时器循环（如有）
+            if (window.semesterTimerInterval) {
+                clearInterval(window.semesterTimerInterval);
+                window.semesterTimerInterval = null;
+                window.timerRunning = false;
+            }
+
+            // 5. 假期事件弹窗（如有）
+            if (msg.data.holiday_event) {
+                // showRandomEventModal(msg.data.holiday_event);
+            }
             break;
             
         case 'graduation':
@@ -174,29 +201,48 @@ function handleServerMessage(msg) {
 }
 
 // ==========================================
-// 2. 核心渲染逻辑 (State-Based)
+// 修复后的 updateGameView
 // ==========================================
-
 function updateGameView(stats, courses, states) {
     if (stats) {
         currentStats = stats;
         updateStatsUI(stats);
+
+        // 【关键修复】: 如果当前没有课程元数据（比如用户刷新了页面），
+        // 尝试从 stats.course_info_json 中恢复。
+        // 后端 Redis 的 stats 里一直存着这份数据，tick 消息也会带过来。
+        if (courseMetadata.length === 0 && stats.course_info_json) {
+            try {
+                console.log("正在从心跳包恢复课程数据...");
+                courseMetadata = JSON.parse(stats.course_info_json);
+            } catch (e) {
+                console.error("课程数据解析失败:", e);
+            }
+        }
     }
-    // 【关键】必须把课程进度缓存到全局变量，供乐观更新使用
-    if (courses) {
-        currentStats.courses = courses;
-    }
+    
     if (states) {
         currentCourseStates = states;
     }
 
+    if (courses) {
+        // 缓存最新的课程进度
+        currentStats.courses = courses; 
+    }
+
+    // 只有当元数据获取成功后，才开始渲染
     if (courseMetadata.length > 0) {
         const safeCourses = courses || currentStats.courses || {};
+        
         // 如果后端没传 states，给个默认全“摸”的状态
         if (!currentCourseStates || Object.keys(currentCourseStates).length === 0) {
              courseMetadata.forEach(c => currentCourseStates[c.id] = 1);
         }
+        
+        // 渲染课程列表（这也会触发考试控制台的渲染）
         renderCourseList(safeCourses, currentCourseStates);
+        
+        // 更新精力预估
         updateEnergyProjection(); 
     }
 }
@@ -284,6 +330,80 @@ function renderCourseList(masteryData, statesData) {
     renderExamConsole(avgProgress);
 }
 
+// ==========================================
+// 6. 钉钉/IM 模块渲染
+// ==========================================
+
+function renderDingtalkMessage(msg) {
+    const container = document.getElementById('ding-messages');
+    if (!container) return;
+
+    // 1. 如果是第一条消息，清空“暂无消息”的占位符
+    if (container.querySelector('.text-center.text-muted')) {
+        container.innerHTML = '';
+    }
+
+    // 2. 根据角色决定头像颜色和图标
+    const roleConfig = {
+        "counselor": { bg: "#FF9F43", icon: "导", name: "辅导员" },
+        "teacher":   { bg: "#54a0ff", icon: "师", name: "老师" },
+        "student":   { bg: "#1dd1a1", icon: "生", name: "同学" },
+        "system":    { bg: "#8395a7", icon: "系", name: "系统通知" }
+    };
+    
+    const config = roleConfig[msg.role] || roleConfig["student"];
+    const senderName = msg.sender || config.name;
+    const isUrgent = msg.is_urgent;
+
+    // 3. 构建消息 HTML
+    const msgDiv = document.createElement('div');
+    msgDiv.className = "d-flex align-items-start mb-3 ding-msg-anim";
+    
+    // 紧急消息加个红色边框效果
+    const bubbleStyle = isUrgent ? "border: 1px solid #ff6b6b; background: #fff0f0;" : "background: white; border: 1px solid #eee;";
+    const urgentBadge = isUrgent ? `<span class="badge bg-danger ms-2" style="font-size:0.6rem">紧急</span>` : "";
+
+    msgDiv.innerHTML = `
+        <div class="flex-shrink-0">
+            <div class="rounded-circle d-flex align-items-center justify-content-center text-white fw-bold shadow-sm" 
+                 style="width: 36px; height: 36px; background-color: ${config.bg}; font-size: 0.85rem;">
+                ${config.icon}
+            </div>
+        </div>
+        <div class="flex-grow-1 ms-2">
+            <div class="d-flex align-items-center mb-1">
+                <span class="fw-bold text-dark" style="font-size: 0.85rem;">${senderName}</span>
+                <span class="text-muted ms-2" style="font-size: 0.7rem;">刚刚</span>
+                ${urgentBadge}
+            </div>
+            <div class="p-2 rounded shadow-sm position-relative" style="${bubbleStyle} border-radius: 0 8px 8px 8px;">
+                <p class="mb-0 text-dark" style="font-size: 0.9rem; line-height: 1.4;">
+                    ${msg.content}
+                </p>
+            </div>
+        </div>
+    `;
+
+    // 4. 追加并滚动到底部
+    container.appendChild(msgDiv);
+    
+    // 平滑滚动到底部
+    const cardBody = container.parentElement;
+    cardBody.scrollTo({ top: cardBody.scrollHeight, behavior: 'smooth' });
+
+    // 5. 更新未读红点 (简单视觉反馈)
+    const badge = document.getElementById('ding-unread');
+    if (badge) {
+        let count = parseInt(badge.innerText) || 0;
+        badge.innerText = count + 1;
+        badge.style.display = 'inline-block';
+        
+        // 加上跳动动画
+        badge.classList.add('pulse-animation');
+        setTimeout(() => badge.classList.remove('pulse-animation'), 1000);
+    }
+}
+
 // 辅助：生成状态按钮
 function renderStateButton(courseId, stateValue, currentState) {
     const config = CONFIG.COEFFS[stateValue];
@@ -340,49 +460,74 @@ function sendAction(type, target) {
 // ==========================================
 
 // 考试控制台：嵌入右侧栏版本
+// static/js/game.js
+
+// 【修复】考试控制台渲染：增量更新，防止倒计时被重置
 function renderExamConsole(progress) {
-    const consoleContainer = document.getElementById('exam-console-container');
-    if (!consoleContainer) return;
+    // 1. 获取侧边栏容器 (ID 修正为 exam-console-container)
+    const container = document.getElementById('exam-console-container');
+    if (!container) return; // 如果 HTML 里没写这个容器，就放弃渲染
 
+    // 2. 检查是否已经渲染过框架（通过检查是否存在特定内部ID）
+    const progressEl = document.getElementById('console-progress-val');
+    
+    // 3. 计算按钮状态
     let examBtnClass = progress >= 80 ? 'btn btn-danger w-100 pulse-animation fw-bold py-2' : 'btn btn-secondary w-100 disabled';
-    let examBtnTip = progress >= 80 ? '当前进度已达标，随时可考！' : '（建议总进度 >80% 后考试）';
-    
-    // 每次渲染只需更新内容，避免重复创建计时器
-    // 检查是否已经初始化过，如果不需要每次重绘结构也可以优化，但这里为了简单直接重写innerHTML
-    
-    consoleContainer.innerHTML = `
-        <div class="card border-danger shadow-sm">
-            <div class="card-header bg-danger text-white d-flex justify-content-between align-items-center py-2">
-                <span class="fw-bold">🔥 学期冲刺</span>
-                <span class="badge bg-white text-danger rounded-pill">No.1</span>
-            </div>
-            <div class="card-body text-center p-3 bg-light-danger">
-                <div class="mb-3">
-                    <span class="text-muted small text-uppercase fw-bold" style="letter-spacing:1px;">总平均进度</span>
-                    <h2 class="display-5 fw-bold mb-0 text-dark">${progress.toFixed(1)}%</h2>
-                    <div class="progress mt-2" style="height: 6px;">
-                        <div class="progress-bar bg-danger" role="progressbar" style="width: ${progress}%"></div>
-                    </div>
-                </div>
-                
-                <div class="alert alert-warning py-2 mb-3 d-flex align-items-center justify-content-center">
-                    <span class="fs-5 me-2">⏳</span>
-                    <div>
-                        <div class="small text-muted" style="line-height:1;">距离期末自动交卷</div>
-                        <span id="semester-timer" class="fw-bold fs-5 text-danger" style="font-family:monospace;">--:--</span>
-                    </div>
-                </div>
+    let examBtnTip = progress >= 80 ? '当前进度已达标！' : '（建议进度 >80% 后考试）';
 
-                <button onclick="takeFinalExam()" class="${examBtnClass}">
-                    ✍️ 参加期末考试
-                </button>
-                <small class="d-block mt-2 text-muted" style="font-size: 0.75rem">${examBtnTip}</small>
+    // A. 如果是第一次渲染，生成完整 HTML
+    // 注意：这里移除了 fixed 定位和固定宽度，改为普通的 Card
+    if (!progressEl) {
+        container.innerHTML = `
+            <div class="card border-danger shadow-sm">
+                <div class="card-header bg-danger text-white d-flex justify-content-between align-items-center py-2">
+                    <span class="fw-bold">🔥 学期冲刺</span>
+                    <span class="badge bg-white text-danger rounded-pill">No.1</span>
+                </div>
+                <div class="card-body text-center p-3 bg-light-danger">
+                    <div class="mb-3">
+                        <span class="text-muted small text-uppercase fw-bold" style="letter-spacing:1px;">总平均进度</span>
+                        <h2 class="display-5 fw-bold mb-0 text-dark" id="console-progress-val">${progress.toFixed(1)}%</h2>
+                        <div class="progress mt-2" style="height: 6px;">
+                            <div id="console-progress-bar" class="progress-bar bg-danger" role="progressbar" style="width: ${progress}%"></div>
+                        </div>
+                    </div>
+                    
+                    <div class="alert alert-warning py-2 mb-3 d-flex align-items-center justify-content-center">
+                        <span class="fs-5 me-2">⏳</span>
+                        <div>
+                            <div class="small text-muted" style="line-height:1;">距离期末自动交卷</div>
+                            <span id="semester-timer" class="fw-bold fs-5 text-danger" style="font-family:monospace;">--:--</span>
+                        </div>
+                    </div>
+
+                    <button id="btn-take-exam" onclick="takeFinalExam()" class="${examBtnClass}">
+                        ✍️ 参加期末考试
+                    </button>
+                    <small id="exam-tip" class="d-block mt-2 text-muted" style="font-size: 0.75rem">${examBtnTip}</small>
+                </div>
             </div>
-        </div>
-    `;
-    
-    // 确保计时器运行
-    initSemesterTimer();
+        `;
+        // 只有第一次渲染框架时，才启动计时器
+        initSemesterTimer();
+    } 
+    // B. 如果已经存在，只更新数值和样式 (增量更新)
+    else {
+        // 更新进度文字
+        progressEl.innerText = `${progress.toFixed(1)}%`;
+        
+        // 更新进度条宽度
+        const bar = document.getElementById('console-progress-bar');
+        if (bar) bar.style.width = `${progress}%`;
+        
+        // 更新按钮样式
+        const btn = document.getElementById('btn-take-exam');
+        if (btn) btn.className = examBtnClass;
+        
+        // 更新提示文字
+        const tip = document.getElementById('exam-tip');
+        if (tip) tip.innerText = examBtnTip;
+    }
 }
 
 // 精力消耗预估
@@ -483,10 +628,13 @@ function takeFinalExam() {
 }
 
 function initSemesterTimer() {
-    if (window.timerRunning) return;
+    // 如果已经有计时器在跑，先清除，防止速度加倍
+    if (window.semesterTimerInterval) {
+        clearInterval(window.semesterTimerInterval);
+    }
     window.timerRunning = true;
-    
-    let remain = 600; // 10分钟倒计时
+    let remain = 600; // 10分钟
+
     const updateDisplay = () => {
         const el = document.getElementById('semester-timer');
         if (el) {
@@ -495,14 +643,17 @@ function initSemesterTimer() {
             el.innerText = `${min}:${sec.toString().padStart(2, '0')}`;
         }
     };
-    
-    // 立即执行一次
+
     updateDisplay();
 
-    setInterval(() => {
+    // 把 ID 存到 window 对象上，方便切学期时清除
+    window.semesterTimerInterval = setInterval(() => {
         remain--;
         if (remain >= 0) updateDisplay();
-        if (remain === 0) takeFinalExam(); 
+        if (remain === 0) {
+            clearInterval(window.semesterTimerInterval);
+            takeFinalExam(); 
+        }
     }, 1000);
 }
 
@@ -520,7 +671,7 @@ function showGameOverModal(reason, restartable) {
                 </div>
                 <div class="modal-body text-center py-5">
                     <h3 class="mb-3">${reason || '你倒下了...'}</h3>
-                    <p class="text-muted">大学生活真是充满了变数啊</p>
+                    <p class="text-muted">折姜大学的生活真是充满了变数啊</p>
                 </div>
                 <div class="modal-footer justify-content-center bg-light">
                     ${restartable ? `<button onclick="restartGame()" class="btn btn-primary btn-lg px-5">🔄 重新开始</button>` : ''}

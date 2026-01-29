@@ -59,11 +59,11 @@ class RedisState:
         self.course_state_key = f"player:{user_id}:course_states"  # [新增] 存储课程状态
         self.action_key = f"player:{user_id}:actions"
         self.achievement_key = f"player:{user_id}:achievements"
+        self.history_key = f"player:{user_id}:event_history" # [新增] 历史记录 Key
 
     async def clear_all(self):
         """清空玩家所有存档数据"""
-        await self.redis.delete(self.key, self.course_key, self.course_state_key, self.action_key, self.achievement_key)
-
+        await self.redis.delete(self.key, self.course_key, self.course_state_key, self.action_key, self.achievement_key, self.history_key)
     async def close(self):
         await self.redis.aclose()
 
@@ -88,11 +88,12 @@ class RedisState:
             "eq": random.randint(60, 90),
             "luck": random.randint(0, 100),
             "gpa": "0.0",
+            "reputation": 0,
             "course_plan_json": "",
             "course_info_json": ""
         }
         async with self.redis.pipeline() as pipe:
-            pipe.delete(self.key, self.course_key, self.course_state_key, self.action_key, self.achievement_key)
+            pipe.delete(self.key, self.course_key, self.course_state_key, self.action_key, self.achievement_key, self.history_key)
             pipe.hset(self.key, mapping=initial_stats)
             await pipe.execute()
         return initial_stats
@@ -105,13 +106,20 @@ class RedisState:
         major_info = random.choice(available_majors)
         major_abbr = major_info["abbr"]
         course_plan = await _load_json_async(COURSES_DIR / f"{major_abbr}.json")
-        # 生成专业相关字段
+        # 生成专业相关字段，保留 energy 不被覆盖
+        stats = await self.redis.hgetall(self.key)
         update_fields = {
             "major": major_info["name"],
             "major_abbr": major_abbr,
-            "stress": major_info.get("stress_base", 0),
-            "iq": random.randint(80, 100) + major_info.get("iq_buff", 0),
-            "course_plan_json": json.dumps(course_plan, ensure_ascii=False)
+            "stress": stats.get("stress", major_info.get("stress_base", 0)),
+            "iq": stats.get("iq", random.randint(80, 100) + major_info.get("iq_buff", 0)),
+            "course_plan_json": json.dumps(course_plan, ensure_ascii=False),
+            "energy": stats.get("energy", 100),
+            "sanity": stats.get("sanity", 80),
+            "eq": stats.get("eq", random.randint(60, 90)),
+            "luck": stats.get("luck", random.randint(0, 100)),
+            "gpa": stats.get("gpa", "0.0"),
+            "reputation": stats.get("reputation", 0)
         }
         # 初始化首学期课程
         semester_idx = 1
@@ -201,6 +209,24 @@ class RedisState:
 
     async def unlock_achievement(self, code: str) -> int:
         return await self.redis.sadd(self.achievement_key, code)
+    
+    # ==========================================
+    # 6. 事件历史记录 (新增)
+    # ==========================================
+    
+    async def get_event_history(self) -> List[str]:
+        """获取最近 10 个事件的标题"""
+        # 获取 Redis 列表中所有的标题
+        return await self.redis.lrange(self.history_key, 0, -1)
+
+    async def add_event_to_history(self, title: str):
+        """记录新发生的事件，并保持队列长度为 10"""
+        async with self.redis.pipeline() as pipe:
+            # 1. 将新标题推入列表左侧
+            pipe.lpush(self.history_key, title)
+            # 2. 只保留最近的 10 条记录
+            pipe.ltrim(self.history_key, 0, 9)
+            await pipe.execute()
 
     # ==========================================
     # 6. 学期循环

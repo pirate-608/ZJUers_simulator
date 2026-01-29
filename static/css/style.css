@@ -165,21 +165,20 @@ body {
 }
 
 /* 简单的进入动画 */
-.fade-in-up {
-    animation: fadeInUp 0.8s ease-out;
-}
-.delay-1 { animation-delay: 0.3s; }
-
 @keyframes fadeInUp {
     from {
         opacity: 0;
-        transform: translateY(30px);
+        transform: translateY(30px); /* 保持你要求的 30px */
     }
     to {
         opacity: 1;
         transform: translateY(0);
     }
 }
+.fade-in-up {
+    animation: fadeInUp 0.8s ease-out;
+}
+.delay-1 { animation-delay: 0.3s; }
 
 /* 按钮脉冲动画优化 (复用你已有的，这里确保存在) */
 .pulse-animation {
@@ -189,4 +188,19 @@ body {
     0% { box-shadow: 0 0 0 0 rgba(13, 110, 253, 0.7); }
     70% { box-shadow: 0 0 0 15px rgba(13, 110, 253, 0); }
     100% { box-shadow: 0 0 0 0 rgba(13, 110, 253, 0); }
+}
+
+@keyframes msgPop {
+    from {
+        opacity: 0;
+        transform: translateY(10px); /* 消息只需要微微上浮即可 */
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.ding-msg-anim {
+    animation: msgPop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; /* 加了一点点回弹效果 */
 }

@@ -14,7 +14,7 @@
         <div class="col-lg-8 col-md-10">
             <div class="admission-letter shadow-lg p-5 fade-in-up">
                 <div class="text-center mb-5">
-                    <img src="https://via.placeholder.com/150x50?text=Zhejiang+University+Logo" alt="折姜大学" class="mb-3" style="max-height: 60px;">
+                    <img src="https://via.placeholder.com/150x50?text=ZheJiang+University+Logo" alt="折姜大学" class="mb-3" style="max-height: 60px;">
                     <h1 class="admission-title mt-2">录取通知书</h1>
                     <div class="admission-subtitle text-uppercase ls-2">Admission Letter</div>
                 </div>
@@ -38,11 +38,16 @@
                 </div>
 
                 <div class="admission-footer mt-5 pt-4 d-flex justify-content-between align-items-end">
+                                <div class="alert alert-warning text-center mt-4" id="token-box" style="display:none;">
+                                    <div class="fw-bold">🎫 你的学生凭证（token）：</div>
+                                    <div class="text-break" id="student-token" style="font-family:monospace;font-size:1.1em;"></div>
+                                    <div class="small text-muted mt-2">请妥善保存，凭此可免试登录本账号！</div>
+                                </div>
                     <div class="text-center">
                         <div class="zju-seal-placeholder rounded-circle border border-danger text-danger d-flex align-items-center justify-content-center mb-2" style="width: 100px; height: 100px; transform: rotate(-15deg); opacity: 0.8;">
-                            <small>浙江大学<br>招生专用章</small>
+                            <small>折姜大学<br>招生专用章</small>
                         </div>
-                        <div class="fw-bold">浙江大学</div>
+                        <div class="fw-bold">折姜大学</div>
                         <div id="current-date" class="text-muted small">2035年9月1日</div>
                     </div>
                     
@@ -63,6 +68,14 @@
                     🎓 我已确认，前往报到 (进入游戏)
                 </a>
                 <p class="text-muted mt-3 small">点击按钮即将开始你的大学生涯模拟</p>
+            </div>
+            <div class="text-center mb-4 fade-in-up delay-2">
+                <div class="mb-2 fw-bold">📚 折姜大学资源列表：</div>
+                <a href="/world/rules.html" target="_blank" class="btn btn-outline-secondary btn-sm mx-1">折姜大学校规</a>
+                <a href="/world/keywords.json" target="_blank" class="btn btn-outline-secondary btn-sm mx-1">关键词表</a>
+                <a href="/world/majors.json" target="_blank" class="btn btn-outline-secondary btn-sm mx-1">专业列表</a>
+                <a href="/world/achievements.json" target="_blank" class="btn btn-outline-secondary btn-sm mx-1">成就配置</a>
+                <a href="/world/courses/" target="_blank" class="btn btn-outline-secondary btn-sm mx-1">课程数据</a>
             </div>
         </div>
     </div>
@@ -94,6 +107,10 @@
         .then(data => {
             document.getElementById('student-name').innerText = data.username || "新同学";
             document.getElementById('student-major').innerText = data.assigned_major || "未分配专业";
+            if (data.token) {
+                document.getElementById('student-token').innerText = data.token;
+                document.getElementById('token-box').style.display = '';
+            }
         })
         .catch(error => {
             console.error('无法获取录取信息:', error);

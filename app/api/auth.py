@@ -56,19 +56,32 @@ async def submit_exam(submission: ExamSubmission, db: AsyncSession = Depends(get
     stmt = select(User).where(User.username == submission.username)
     result_db = await db.execute(stmt)
     user = result_db.scalars().first()
-
+    import secrets
+    # 兼容前端未传token
+    token_from_req = getattr(submission, 'token', None)
     if not user:
+        # 新用户，必须没有token
+        if token_from_req:
+            return {"status": "error", "message": "用户名不存在，凭证无效"}
+        # 用户名唯一性校验通过，创建新用户
+        token = secrets.token_urlsafe(16)
         user = User(
             username=submission.username,
             tier=result["tier"],
-            exam_score=result["total_score"]
+            exam_score=result["total_score"],
+            token=token
         )
         db.add(user)
-    else:
-        # 老玩家重开，更新档位和分数
+    elif token_from_req:
+        # 老用户，校验token
+        if user.token != token_from_req:
+            return {"status": "error", "message": "凭证错误或用户名不符"}
+        # token 匹配，允许免试登录，更新分数等
         user.tier = result["tier"]
         user.exam_score = result["total_score"]
-    
+    else:
+        # 用户名已存在但未提供token，拒绝注册
+        return {"status": "error", "message": "用户名已被占用，请更换或填写凭证"}
     await db.commit()
     await db.refresh(user)
 
@@ -120,7 +133,12 @@ async def get_admission_info(request: Request, db: AsyncSession = Depends(get_db
         raise HTTPException(status_code=401, detail="Invalid token")
     if not user_id:
         raise HTTPException(status_code=401, detail="Invalid token payload")
-    # 查库获取专业
+    # 优先查Redis专业
+    from app.game.state import RedisState
+    state = RedisState(user_id)
+    stats = await state.get_stats()
+    major = stats.get("major")
+    # 查库获取用户名和tier和token
     stmt = select(User).where(User.id == int(user_id))
     result = await db.execute(stmt)
     user = result.scalars().first()
@@ -128,7 +146,8 @@ async def get_admission_info(request: Request, db: AsyncSession = Depends(get_db
         raise HTTPException(status_code=404, detail="User not found")
     return {
         "username": username or user.username,
-        "assigned_major": user.tier or "未分配专业"
+        "assigned_major": major or user.tier or "未分配专业",
+        "token": user.token
     }
 
 # 允许已注册用户直接登录，无需重复考试

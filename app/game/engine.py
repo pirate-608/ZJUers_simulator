@@ -5,7 +5,7 @@ import logging
 from pathlib import Path
 from sqlalchemy import update
 
-from app.core.llm import generate_cc98_post, generate_random_event
+from app.core.llm import generate_cc98_post, generate_random_event,generate_dingtalk_message
 from app.models.user import User
 from app.core.database import AsyncSessionLocal
 from app.game.state import RedisState
@@ -15,6 +15,13 @@ from app.websockets.manager import ConnectionManager
 logger = logging.getLogger(__name__)
 
 class GameEngine:
+    def pause(self):
+            self.is_running = False
+            # 可选：通知前端已暂停
+            asyncio.create_task(self.manager.send_personal_message({
+                "type": "paused",
+                "msg": "游戏已暂停，可随时继续。"
+            }, self.user_id))
     def __init__(self, user_id: str, state: RedisState, manager: ConnectionManager):
         self.user_id = user_id
         self.state = state
@@ -64,6 +71,54 @@ class GameEngine:
             pass
         return False
 
+    def _sanity_stress_growth_factor(self, sanity, stress):
+        """
+        心态修正：50为基准，低于50负面影响，极低时最大-30%；高于50略有正面，最多+10%
+        压力修正：40-70为最佳区间，区间内+10%，区间外-10%，极端（<20或>90）-20%
+        """
+        # 心态修正
+        if sanity < 20:
+            sanity_factor = 0.7
+        elif sanity < 50:
+            sanity_factor = 1 - (50 - sanity) * 0.006  # 最多-0.18
+        elif sanity > 80:
+            sanity_factor = 1.1
+        elif sanity > 50:
+            sanity_factor = 1 + (sanity - 50) * 0.002  # 最多+0.06
+        else:
+            sanity_factor = 1.0
+        # 压力修正
+        if 40 <= stress <= 70:
+            stress_factor = 1.1
+        elif 20 <= stress < 40 or 70 < stress <= 90:
+            stress_factor = 0.9
+        else:
+            stress_factor = 0.8
+        return sanity_factor * stress_factor
+
+    def _sanity_stress_exam_factor(self, sanity, stress):
+        """
+        心态修正：50为基准，低于50分数线性下滑，最低-10分，高于50最多+3分
+        压力修正：40-70区间+3分，区间外-3分，极端（<20或>90）-6分
+        """
+        # 心态
+        if sanity < 50:
+            sanity_bonus = (sanity - 50) * 0.2  # 最多-10分
+        elif sanity > 80:
+            sanity_bonus = 3
+        elif sanity > 50:
+            sanity_bonus = (sanity - 50) * 0.06  # 最多+1.8
+        else:
+            sanity_bonus = 0
+        # 压力
+        if 40 <= stress <= 70:
+            stress_bonus = 3
+        elif 20 <= stress < 40 or 70 < stress <= 90:
+            stress_bonus = -3
+        else:
+            stress_bonus = -6
+        return sanity_bonus + stress_bonus
+
     async def run_loop(self):
         """核心循环：基于状态的资源分配计算"""
         if self.is_running: return
@@ -108,22 +163,22 @@ class GameEngine:
                 for course in course_info:
                     c_id = str(course.get("id"))
                     credits = float(course.get("credits", 1.0))
-                    
                     # 获取该课当前状态 (默认1:摸)
-                    state_val = int(course_states_raw.get(c_id, 1)) 
+                    state_val = int(course_states_raw.get(c_id, 1))
                     coeffs = self.COURSE_STATE_COEFFS.get(state_val, self.COURSE_STATE_COEFFS[1])
-                    
                     # A. 计算擅长度增量
-                    # 公式: 基础增速 * 状态系数 * 难度修正(未实现，可扩展)
-                    # 可以在这里加入 IQ 对 growth 的修正
                     iq_buff = (int(stats.get("iq", 100)) - 100) * 0.01
-                    actual_growth = self.BASE_MASTERY_GROWTH * coeffs["growth"] * (1 + iq_buff)
-                    
+                    # 仅在摸/卷状态下引入心态压力修正
+                    if state_val in (1, 2):
+                        sanity = int(stats.get("sanity", 80))
+                        stress = int(stats.get("stress", 40))
+                        factor = self._sanity_stress_growth_factor(sanity, stress)
+                    else:
+                        factor = 1.0
+                    actual_growth = self.BASE_MASTERY_GROWTH * coeffs["growth"] * (1 + iq_buff) * factor
                     if actual_growth > 0:
                         mastery_updates[c_id] = actual_growth
-
                     # B. 计算精力消耗权重
-                    # 公式: 学分占比 * 状态消耗系数
                     weight = credits / total_credits
                     total_drain_factor += weight * coeffs["drain"]
 
@@ -152,6 +207,10 @@ class GameEngine:
                     if random.random() < 0.3:
                         asyncio.create_task(self._trigger_random_event())
                     await self._check_achievements()
+                    
+                # [新增] 6. 钉钉消息 (独立频率，比如每 5 Tick 判定一次，概率 40%)
+                if tick_count % 10 == 0 and random.random() < 0.3:
+                    asyncio.create_task(self._trigger_dingtalk_message())
 
                 await self._push_update()
 
@@ -160,6 +219,9 @@ class GameEngine:
             self.stop()
 
     async def process_action(self, action_data: dict):
+        if action == "pause":
+                self.pause()
+                return
         """处理前端指令"""
         action = action_data.get("action")
         target = action_data.get("target") # 通常是 course_id
@@ -219,19 +281,20 @@ class GameEngine:
             c_id = str(course.get("id"))
             mastery = float(course_mastery.get(c_id, 0))
             credits = course.get("credits", 1)
-            
             # 考试表现计算公式：擅长度占大头，心态和运气波动
-            sanity_bonus = (sanity - 50) / 10
+            # 新增：心态压力修正
+            sanity = int(stats.get("sanity", 50))
+            stress = int(stats.get("stress", 40))
+            exam_bonus = self._sanity_stress_exam_factor(sanity, stress)
             luck_bonus = random.uniform(-2, 5) + (luck - 50) / 20
-            final_score = max(0, min(100, mastery * 0.9 + sanity_bonus + luck_bonus + 10))
-            
-            # 浙江大学标准 GPA 映射近似逻辑
-            if final_score >= 85: gp = 4.0
-            elif final_score >= 60: gp = 1.5 + (final_score - 60) * 0.1
-            else:
-                gp = 0.0
+            final_score = max(0, min(100, mastery * 0.9 + exam_bonus + luck_bonus + 10))
+
+            # 5分制绩点计算：绩点 = 分数 / 10 - 5，最低0分
+            gp = max(0.0, round(final_score / 10 - 5, 2))
+            # 60分以下算挂科
+            if final_score < 60:
                 failed_count += 1
-                
+
             total_credits += credits
             total_gp += gp * credits
             transcript.append({
@@ -348,12 +411,25 @@ class GameEngine:
             msg = f"你在CC98刷到了：\n“{post_content}”\n{feedback}"
         await self._push_update(msg)
 
+    # app/game/engine.py
+
     async def _trigger_random_event(self):
-        """触发 LLM 驱动的随机事件"""
+        """触发 LLM 驱动的随机事件（带去重逻辑）"""
         try:
+            # 1. 从 Redis 获取该玩家的事件历史
+            history = await self.state.get_event_history()
+            
+            # 2. 获取当前状态
             stats = await self.state.get_stats()
-            event_data = await generate_random_event(stats)
+            
+            # 3. 调用 LLM（传入历史记录进行避雷）
+            event_data = await generate_random_event(stats, history)
+            
             if event_data:
+                # 4. 记录本次事件标题到历史中
+                await self.state.add_event_to_history(event_data['title'])
+                
+                # 5. 推送给前端
                 await self.manager.send_personal_message({
                     "type": "random_event",
                     "data": event_data
@@ -372,6 +448,32 @@ class GameEngine:
                     await self.state.update_stat_safe(key, int(val))
                 except: continue
         await self._push_update(f"事件：{desc}")
+        
+    async def _trigger_dingtalk_message(self):
+        """触发钉钉消息推送"""
+        try:
+            stats = await self.state.get_stats()
+            
+            # 简单的上下文判断逻辑
+            context = "random"
+            sanity = int(stats.get("sanity", 50))
+            stress = int(stats.get("stress", 0))
+            gpa = float(stats.get("gpa", 0))
+
+            if sanity < 30: context = "low_sanity"
+            elif stress > 80: context = "high_stress"
+            elif gpa > 0 and gpa < 2.0: context = "low_gpa"
+            
+            msg_data = await generate_dingtalk_message(stats, context)
+            
+            if msg_data:
+                await self.manager.send_personal_message({
+                    "type": "dingtalk_message",  # 新的消息类型
+                    "data": msg_data
+                }, self.user_id)
+                
+        except Exception as e:
+            logger.error(f"DingTalk trigger error: {e}")
 
     async def _check_achievements(self):
         """成就系统判定逻辑"""

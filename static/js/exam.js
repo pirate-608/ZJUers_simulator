@@ -1,6 +1,7 @@
 // 老玩家快速报到，无需考试
 async function quickLogin() {
     const username = document.getElementById('username').value.trim();
+    const token = document.getElementById('token').value.trim();
     if (!username) return alert("请先填写姓名");
     currentUser = username;
     const btns = document.querySelectorAll('#step-login button');
@@ -9,7 +10,7 @@ async function quickLogin() {
         const response = await fetch(`${API_BASE_URL}/api/exam/quick_login`, {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({username})
+            body: JSON.stringify(token ? {username, token} : {username})
         });
         const result = await response.json();
         if (result.status === 'success' && result.token) {
@@ -129,10 +130,10 @@ async function assignMajorWithAnimation(token) {
         });
         const data = await response.json();
         if (data.success) {
-            // 展示抽签动画
+            // 先弹出模态框，再展示抽签动画
+            modalEl.show();
             await showLotteryAnimation(data.major);
-            // 跳转录取通知书页面
-            window.location.href = '/admission.html';
+            window.location.href = '/admission';
         } else {
             modalBody.innerHTML = `<div class="text-center text-danger">分配专业失败，请重试</div>`;
             modalEl.show();

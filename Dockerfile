@@ -1,7 +1,7 @@
 # ==========================================
 # Stage 1: C 语言编译环境 (Builder)
 # ==========================================
-FROM python:3.11-slim-bookworm as builder
+FROM python:3.11-slim-bookworm AS builder
 
 # 1. 更换国内源 (可选，加快构建速度，视网络情况而定)
 # RUN sed -i 's/deb.debian.org/mirrors.aliyun.com/g' /etc/apt/sources.list
@@ -47,7 +47,7 @@ COPY --from=builder /build_c/c_modules/build/libjudge.so /app/lib/libjudge.so
 
 # 4. 设置环境变量，确保 Python 能加载到动态库
 # 这样在 Python 中加载时，ctypes 可以自动搜索到这个目录
-ENV LD_LIBRARY_PATH=/app/lib:$LD_LIBRARY_PATH
+ENV LD_LIBRARY_PATH=/app/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}
 
 # 5. 复制 Python 依赖配置
 COPY requirements.txt .

@@ -7,8 +7,8 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="/static/css/style.css" rel="stylesheet">
     <style>
+        /* 局部样式调整 */
         .event-log {
-            height: 400px;
             overflow-y: auto;
             background: #f8f9fa;
             border: 1px solid #dee2e6;
@@ -17,6 +17,10 @@
         }
         .stat-label { font-size: 0.85rem; color: #666; }
         .bg-light-danger { background-color: #fff5f5; }
+        
+        /* 钉钉消息气泡样式基础 */
+        .ding-msg-item { margin-bottom: 8px; font-size: 0.9rem; }
+        .ding-avatar { width: 24px; height: 24px; border-radius: 4px; background: #0089FF; color: white; display: inline-flex; align-items: center; justify-content: center; font-size: 12px; margin-right: 8px; }
     </style>
 </head>
 <body>
@@ -52,17 +56,42 @@
         </div>
 
         <div class="col-md-6">
-            <div class="card h-100">
+            
+            <div class="card mb-3">
                 <div class="card-header">📅 校园动态</div>
                 <div class="card-body p-0">
-                    <div id="event-log" class="event-log">
+                    <div id="event-log" class="event-log border-0" style="height: 300px;">
                         <div class="text-muted p-2">连接到浙大服务器中...</div>
                     </div>
                 </div>
-                <div class="card-footer">
-                    <div class="d-grid gap-2 d-md-flex justify-content-md-center">
-                        <button class="btn btn-outline-secondary btn-sm" onclick="clearLog()">清屏</button>
+                <div class="card-footer py-1">
+                    <div class="d-flex justify-content-end">
+                        <button class="btn btn-link btn-sm text-decoration-none text-secondary" onclick="clearLog()">清空日志</button>
                     </div>
+                </div>
+            </div>
+
+            <div class="card mb-3" id="ding-panel">
+                <div class="card-header bg-light border-bottom d-flex justify-content-between align-items-center">
+                    <span>💬 钉钉 (DingTalk)</span>
+                    <span class="badge bg-danger rounded-pill" id="ding-unread" style="display:none">0</span>
+                </div>
+                <div class="card-body p-0" style="height: 220px; overflow-y: auto; background: #f7faff;">
+                    <div id="ding-messages" class="p-3">
+                        <div class="text-center text-muted small mt-4">
+                            <p>暂无新消息</p>
+                            <p>班级群通知、辅导员私信将在这里显示</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-footer bg-white border-top p-2">
+                    <form id="ding-form" class="d-flex gap-2" onsubmit="return false;">
+                        <input type="text" id="ding-input" class="form-control form-control-sm" placeholder="回复消息... (功能开发中)" disabled>
+                        <button class="btn btn-primary btn-sm" type="submit" disabled>发送</button>
+                    </form>
+                </div>
+                <div class="d-flex justify-content-center py-3">
+                    <button class="btn btn-outline-danger px-4" onclick="sendAction('pause')">⏸️ 暂停游戏</button>
                 </div>
             </div>
         </div>
@@ -98,11 +127,19 @@
                         </div>
                     </div>
 
-                    <hr>
-                    <p class="mb-1"><small>智商 (IQ): <span id="val-iq" class="fw-bold">--</span></small></p>
-                    <p class="mb-1"><small>情商 (EQ): <span id="val-eq" class="fw-bold">--</span></small></p>
-                    <p class="mb-1"><small>运气 (Luck): <span id="val-luck" class="fw-bold">--</span></small></p>
-                    <p class="mb-0"><small>风评: <span id="val-reputation" class="fw-bold">0</span></small></p>
+                    <hr class="my-2">
+
+            <div class="row g-1 small"> <div class="col-6">
+                    <span class="text-muted">智商（IQ）:</span> <span id="val-iq" class="fw-bold">--</span>
+                </div>
+                <div class="col-6">
+                    <span class="text-muted">情商（EQ）:</span> <span id="val-eq" class="fw-bold">--</span>
+                </div>
+                <div class="col-6">
+                    <span class="text-muted">运气（Luck）:</span> <span id="val-luck" class="fw-bold">--</span>
+                </div>
+                <div class="col-6">
+                    <span class="text-muted">风评（Reputation）:</span> <span id="val-reputation" class="fw-bold">0</span>
                 </div>
             </div>
 

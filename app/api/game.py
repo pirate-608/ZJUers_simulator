@@ -31,80 +31,99 @@ async def websocket_endpoint(websocket: WebSocket, token: str):
     # --- 鉴权 ---
     print(f"[WS][DEBUG] websocket_endpoint called, token={token}")
     user_id, username, tier = await get_current_user_id(token)
-    print(f"[WS][DEBUG] Decoded user_id={user_id}, username={username}, tier={tier}")
+    
     if not user_id:
         print(f"[WS][ERROR] Invalid token, closing websocket.")
         await websocket.close(code=1008)
         return
 
     # --- 连接管理 ---
-    print(f"[WS][DEBUG] Calling manager.connect for user_id={user_id}")
     await manager.connect(websocket, user_id)
     state = RedisState(user_id)
     
-    # --- 状态初始化/加载 ---
+    engine = None
+    loop_task = None
+
     try:
-        if not await state.exists():
-            # 新游戏初始化
+        # --- 状态初始化/加载 ---
+        # 1. 检查是否存在存档
+        exists = await state.exists()
+        
+        # 2. 如果存在，检查存档是否完整（是否包含课程数据）
+        need_repair = False
+        if exists:
+            stats = await state.get_stats()
+            course_json = stats.get("course_info_json")
+            # 如果课程数据为空或为 "[]"，说明是坏档
+            if not course_json or course_json == "[]":
+                need_repair = True
+                print(f"[GAME] Detected corrupted save for {username} (Missing courses). Repairing...")
+
+        if not exists:
+            # === 情况A：全新开局 ===
             print(f"[GAME] Initializing new game for {username} (Tier: {tier})")
-            initial_stats = await state.init_game(username, tier)
+            await state.init_game(username, tier)
+            await state.assign_major(tier) # 必做：分配课程
             
-            await manager.send_personal_message({
-                "type": "init",
-                "data": initial_stats
-            }, user_id)
-            
-            await manager.send_personal_message({
-                "type": "event",
-                "data": {"desc": f"欢迎来到浙江大学！你被分配到了【{initial_stats['major']}】专业。"}
-            }, user_id)
-        else:
-            # 读取旧存档
+            # 发送欢迎语
             stats = await state.get_stats()
             await manager.send_personal_message({
-                "type": "init",
-                "data": stats
-            }, user_id)
-            await manager.send_personal_message({
-                "type": "tick",
-                "stats": stats
+                "type": "event",
+                "data": {"desc": f"欢迎来到浙江大学！你被分配到了【{stats.get('major', '未知专业')}】专业。"}
             }, user_id)
 
-        # --- 启动游戏引擎 ---
-        # 1. 创建引擎实例
-        engine = GameEngine(user_id, state, manager)
+        elif need_repair:
+            # === 情况B：坏档修复 ===
+            # 保留原有属性，但重新分配专业和课程
+            await state.assign_major(tier)
+            stats = await state.get_stats()
+            await manager.send_personal_message({
+                "type": "event",
+                "data": {"desc": "系统检测到你的课表丢失，已自动为你重新安排了课程。"}
+            }, user_id)
+            
+        else:
+            # === 情况C：正常读取旧档 ===
+            print(f"[GAME] Loading existing game for {username}")
+            # stats 已经在上面获取过了
+
+        # 再次获取最新的完整状态（确保包含了修复后的数据）
+        final_stats = await state.get_stats()
         
-        # 2. 启动后台心跳任务 (Fire and Forget，不阻塞主线程)
+        # 发送初始化数据包
+        await manager.send_personal_message({
+            "type": "init",
+            "data": final_stats
+        }, user_id)
+
+        # 立即推送一次 Tick 以激活前端视图
+        await manager.send_personal_message({
+            "type": "tick",
+            "stats": final_stats
+        }, user_id)
+
+        # --- 启动游戏引擎 ---
+        engine = GameEngine(user_id, state, manager)
         loop_task = asyncio.create_task(engine.run_loop())
 
         # --- 消息接收循环 ---
         while True:
-            # 3. 接收前端动作指令 (阻塞等待)
             data_text = await websocket.receive_text()
             try:
                 data_json = json.loads(data_text)
-                # 4. 交给引擎处理动作
                 await engine.process_action(data_json)
             except json.JSONDecodeError:
                 print(f"[WS] Invalid JSON from {username}")
 
     except WebSocketDisconnect:
-        print(f"[WS] Disconnected: {username} (user_id={user_id})")
-        # 清理工作
-        if 'engine' in locals():
-            engine.stop()
-        if 'loop_task' in locals():
-            loop_task.cancel()
-        print(f"[WS][DEBUG] Calling manager.disconnect for user_id={user_id}")
-        manager.disconnect(user_id)
-        await state.close()
-        
+        print(f"[WS] Disconnected: {username}")
     except Exception as e:
         print(f"[WS] Error: {e}")
-        if 'engine' in locals():
+    finally:
+        # --- 资源清理 ---
+        if engine:
             engine.stop()
-        if 'loop_task' in locals():
+        if loop_task:
             loop_task.cancel()
-        print(f"[WS][DEBUG] Exception, calling manager.disconnect for user_id={user_id}")
         manager.disconnect(user_id)
         await state.close()

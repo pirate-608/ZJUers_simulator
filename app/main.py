@@ -16,21 +16,25 @@ app.include_router(game.router)
 
 # 挂载静态资源 (确保 static 目录在根目录下)
 app.mount("/static", StaticFiles(directory="static"), name="static")
+# 新增：公开 world 目录为静态资源
+app.mount("/world", StaticFiles(directory="world"), name="world")
 
-# 页面路由
 # 页面路由
 @app.get("/")
-async def read_index():
-    return FileResponse("templates/index.html")
+async def read_index(request: Request):
+    return templates.TemplateResponse("index.html", {"request": request})
 
 @app.get("/dashboard.html")
-async def read_dashboard():
-    return FileResponse("templates/dashboard.html")
+async def read_dashboard(request: Request):
+    return templates.TemplateResponse("dashboard.html", {"request": request})
 
-# 补充录取通知书路由
 @app.get("/admission")
 async def read_admission(request: Request):
     return templates.TemplateResponse("admission.html", {"request": request})
+
+@app.get("/end")
+async def read_end(request: Request):
+    return templates.TemplateResponse("end.html", {"request": request})
 
 # 启动事件：快速初始化数据库表 (开发用，生产建议用 Alembic)
 @app.on_event("startup")

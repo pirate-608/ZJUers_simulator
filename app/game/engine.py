@@ -15,6 +15,16 @@ from app.websockets.manager import ConnectionManager
 logger = logging.getLogger(__name__)
 
 class GameEngine:
+    def resume(self):
+        if not self.is_running:
+            self.is_running = True
+            # 先推送一次最新状态，确保前端恢复后立即刷新
+            asyncio.create_task(self._push_update())
+            asyncio.create_task(self.manager.send_personal_message({
+                "type": "resumed",
+                "msg": "游戏已继续。"
+            }, self.user_id))
+            asyncio.create_task(self.run_loop())
     def pause(self):
             self.is_running = False
             # 可选：通知前端已暂停
@@ -218,15 +228,17 @@ class GameEngine:
             logger.error(f"Engine Loop Error: {e}")
             self.stop()
 
+
     async def process_action(self, action_data: dict):
-        if action == "pause":
-                self.pause()
-                return
-        """处理前端指令"""
         action = action_data.get("action")
         target = action_data.get("target") # 通常是 course_id
         value = action_data.get("value")   # 新增: 状态值 0/1/2
-
+        if action == "pause":
+            self.pause()
+            return
+        if action == "resume":
+            self.resume()
+            return
         if action == "restart":
             self.stop()
             await self.state.clear_all()

@@ -91,7 +91,8 @@
                     </form>
                 </div>
                 <div class="d-flex justify-content-center py-3">
-                    <button class="btn btn-outline-danger px-4" onclick="sendAction('pause')">⏸️ 暂停游戏</button>
+                    <button id="pause-resume-btn" class="btn btn-outline-danger px-4" onclick="sendAction('pause')">⏸️ 暂停游戏</button>
+                    <script>window.addEventListener('DOMContentLoaded', function(){ if(window.updatePauseButton) updatePauseButton(); });</script>
                 </div>
             </div>
         </div>

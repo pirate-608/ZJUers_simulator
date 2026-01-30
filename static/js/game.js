@@ -28,6 +28,7 @@ window.onbeforeunload = function(e) {
 let isCooldown = false;
 let ws = null;
 const logContainer = document.getElementById('event-log');
+let isPaused = false;
 
 if (typeof auth !== 'undefined') {
     auth.checkLogin();
@@ -75,6 +76,26 @@ function initGame() {
 
 function handleServerMessage(msg) {
     switch (msg.type) {
+        case 'paused':
+            isPaused = true;
+            updatePauseButton();
+            logEvent("系统", msg.msg || "游戏已暂停。", "text-warning");
+            // 停止倒计时
+            if (window.semesterTimerInterval) {
+                clearInterval(window.semesterTimerInterval);
+                window.semesterTimerInterval = null;
+                window.timerRunning = false;
+            }
+            break;
+        case 'resumed':
+            isPaused = false;
+            updatePauseButton();
+            logEvent("系统", msg.msg || "游戏已继续。", "text-success");
+            // 恢复倒计时（如果有数据）
+            if (typeof startSemesterTimer === 'function' && typeof currentStats === 'object' && currentStats.semester_time_left) {
+                startSemesterTimer(currentStats.semester_time_left);
+            }
+            break;
         case 'init':
             updateUserInfo(msg.data);
             if (msg.data.course_info_json) {
@@ -449,10 +470,25 @@ function sendAction(type, target) {
             action: type,
             target: target
         }));
-        
         isCooldown = true;
         setTimeout(() => { isCooldown = false; }, 500);
     }
+function updatePauseButton() {
+    const btn = document.getElementById('pause-resume-btn');
+    if (!btn) return;
+    if (isPaused) {
+        btn.classList.remove('btn-outline-danger');
+        btn.classList.add('btn-outline-success');
+        btn.textContent = '▶️ 继续游戏';
+        btn.onclick = () => sendAction('resume');
+    } else {
+        btn.classList.remove('btn-outline-success');
+        btn.classList.add('btn-outline-danger');
+        btn.textContent = '⏸️ 暂停游戏';
+        btn.onclick = () => sendAction('pause');
+    }
+}
+window.updatePauseButton = updatePauseButton;
 }
 
 // ==========================================

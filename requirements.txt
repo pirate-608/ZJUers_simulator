@@ -19,7 +19,7 @@ alembic>=1.13.1
 redis>=5.0.1
 
 # --- 大模型集成 (LLM) ---
-# OpenAI 官方 SDK (目前国内大部分 LLM 如 DeepSeek, Moonshot 均兼容此 SDK)
+# OpenAI 官方 SDK (目前国内大部分 LLM 如 DeepSeek, Moonshot, Qwen均兼容此 SDK)
 # 用于构建学年随机事件和 NPC 对话
 openai>=1.12.0
 

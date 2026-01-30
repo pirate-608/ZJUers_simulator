@@ -6,6 +6,8 @@ FROM python:3.11-slim-bookworm AS builder
 # 1. 更换国内源 (可选，加快构建速度，视网络情况而定)
 # RUN sed -i 's/deb.debian.org/mirrors.aliyun.com/g' /etc/apt/sources.list
 
+RUN pip install --upgrade pip
+
 # 2. 安装编译依赖 (gcc, cmake, make)
 RUN apt-get update && apt-get install -y \
     gcc \
@@ -53,7 +55,7 @@ ENV LD_LIBRARY_PATH=/app/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}
 COPY requirements.txt .
 
 # 6. 安装 Python 依赖
-RUN pip install --no-cache-dir -r requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple
+RUN pip install --no-cache-dir -r requirements.txt
 
 # 7. 复制项目所有源码
 # 包含 app, static, templates, world 等目录

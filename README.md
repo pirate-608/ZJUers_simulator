@@ -16,8 +16,8 @@
 
 ## 主要功能
 - 多专业/学院分流，课程加载来源于world/courses目录下json格式的简化培养方案（数据来源于[本科教学管理信息服务平台](https://zdbk.zju.edu.cn/)）
-- 学期循环、GPA计算、成就系统
-- 支持 Cloudflare Tunnel 公网访问
+- 学期循环、GPA计算、成就系统，游戏进行时状态全部依赖Redis缓存，为典型IO密集型项目（数据库读写仅用于登录验证，后续可扩展），2核2G服务器可以轻松承载300人活跃在线
+- 支持 Cloudflare Tunnel 内网穿透
 - 支持 HTTPS 反向代理（nginx）
 - 数据结构高度可扩展，支持自定义培养方案(可更改world/courses目录下的表结构和字段)
 

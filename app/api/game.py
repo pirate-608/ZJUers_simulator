@@ -7,6 +7,7 @@ from app.core.config import settings
 from app.websockets.manager import manager
 from app.game.state import RedisState
 from app.game.engine import GameEngine
+from app.game.balance import balance
 
 # 1. 必须先实例化 router
 router = APIRouter()
@@ -24,6 +25,26 @@ async def get_current_user_id(token: str):
         return user_id, username, tier
     except JWTError:
         return None, None, None
+
+# 2.5 游戏配置API
+@router.get("/config")
+async def get_game_config():
+    """获取游戏配置（供前端使用）"""
+    return {
+        "version": balance.version,
+        "semester": {
+            "durations": balance.semester_config.get("duration_by_index", {}),
+            "default_duration": balance.semester_config.get("default_duration_seconds", 360),
+            "speed_modes": balance.speed_modes
+        },
+        "course_states": balance.course_states,
+        "cooldowns": {
+            action: cfg.get("cooldown_seconds", 0)
+            for action, cfg in balance.relax_actions.items()
+        },
+        "tick_interval": balance.tick_interval,
+        "base_drain": balance.base_energy_drain
+    }
 
 # 3. WebSocket 路由主入口
 @router.websocket("/ws/game")

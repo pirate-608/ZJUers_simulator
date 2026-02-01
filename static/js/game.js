@@ -7,7 +7,16 @@ const CONFIG = {
         1: { name: "摸", emoji: "😐", drain: 0.8, class: "btn-outline-primary", activeClass: "btn-primary" },
         2: { name: "卷", emoji: "🔥", drain: 3.0, class: "btn-outline-danger", activeClass: "btn-danger" }
     },
-    BASE_DRAIN: 2.0
+    BASE_DRAIN: 2.0,
+    COOLDOWNS: {
+        gym: 60,   // 健身60秒冷却
+        walk: 45,  // 散步45秒冷却
+        game: 30,  // 游戏30秒冷却
+        cc98: 15   // CC98 15秒冷却
+    },
+    SEMESTER_DURATIONS: {},  // 将从服务器加载
+    SPEED_MODES: {},          // 将从服务器加载
+    currentSpeedMultiplier: 1.0  // 当前速度倍率
 };
 
 // 全局数据缓存
@@ -15,6 +24,7 @@ let courseMetadata = [];
 let currentStats = {};
 let currentCourseStates = {};
 let ACHIEVEMENTS = null; // 全局成就表缓存
+let relaxCooldowns = {}; // 摸鱼按钮冷却时间记录
 
 // 防手滑
 window.onbeforeunload = function(e) {
@@ -38,7 +48,7 @@ if (typeof auth !== 'undefined') {
 // 1. 初始化与 WebSocket
 // ==========================================
 
-// 初始化时加载成就表
+// 初始化时加载成就表和游戏配置
 fetch('world/achievements.json')
     .then(res => res.json())
     .then(data => {
@@ -47,6 +57,34 @@ fetch('world/achievements.json')
     .catch(() => {
         // 兼容旧格式或本地开发
         ACHIEVEMENTS = {};
+    });
+
+// 加载游戏配置
+fetch('/api/game/config')
+    .then(res => res.json())
+    .then(config => {
+        if (config.semester) {
+            CONFIG.SEMESTER_DURATIONS = config.semester.durations || {};
+            CONFIG.SPEED_MODES = config.semester.speed_modes || {};
+            CONFIG.DEFAULT_DURATION = config.semester.default_duration || 360;
+        }
+        if (config.cooldowns) {
+            CONFIG.COOLDOWNS = config.cooldowns;
+        }
+    })
+    .catch(err => {
+        console.warn('加载游戏配置失败，使用默认值', err);
+        // 兜底默认值
+        CONFIG.SEMESTER_DURATIONS = {
+            "1": 420, "2": 420, "3": 420, "4": 420,
+            "5": 300, "6": 300, "7": 300, "8": 300
+        };
+        CONFIG.DEFAULT_DURATION = 360;
+        CONFIG.SPEED_MODES = {
+            "1.0": {"label": "正常速度", "multiplier": 1.0},
+            "1.5": {"label": "1.5x 加速", "multiplier": 1.5},
+            "2.0": {"label": "2x 加速", "multiplier": 2.0}
+        };
     });
 
 window.onload = initGame;
@@ -465,6 +503,15 @@ function changeCourseState(courseId, newState) {
 
 function sendAction(type, target) {
     if (isCooldown) return;
+    
+    // 如果是摸鱼动作，检查冷却
+    if (type === 'relax' && target) {
+        const btn = document.getElementById(`btn-${target}`);
+        if (btn && btn.disabled) {
+            return; // 冷却中，不发送
+        }
+    }
+    
     if (ws && ws.readyState === WebSocket.OPEN) {
         ws.send(JSON.stringify({
             action: type,
@@ -472,7 +519,14 @@ function sendAction(type, target) {
         }));
         isCooldown = true;
         setTimeout(() => { isCooldown = false; }, 500);
+        
+        // 如果是摸鱼动作，记录冷却开始时间
+        if (type === 'relax' && target && CONFIG.COOLDOWNS[target]) {
+            relaxCooldowns[target] = Date.now();
+            updateRelaxButtons();
+        }
     }
+}
 function updatePauseButton() {
     const btn = document.getElementById('pause-resume-btn');
     if (!btn) return;
@@ -489,7 +543,56 @@ function updatePauseButton() {
     }
 }
 window.updatePauseButton = updatePauseButton;
+
+// ==========================================
+// 3.1. 摸鱼按钮冷却管理
+// ==========================================
+
+function updateRelaxButtons() {
+    const buttons = {
+        gym: { id: 'btn-gym', label: '🏋️‍♂️ 健身房' },
+        game: { id: 'btn-game', label: '🎮 打游戏' },
+        cc98: { id: 'btn-cc98', label: '🌊 刷CC98' },
+        walk: { id: 'btn-walk', label: '🚶 散步启真湖' }
+    };
+    
+    const now = Date.now();
+    
+    for (const [action, config] of Object.entries(buttons)) {
+        const btn = document.getElementById(config.id);
+        if (!btn) continue;
+        
+        const cooldownTime = CONFIG.COOLDOWNS[action];
+        const lastUse = relaxCooldowns[action];
+        
+        if (!lastUse || !cooldownTime) {
+            // 无冷却记录或配置，保持可用
+            btn.disabled = false;
+            btn.textContent = config.label + ' (+精力/心态)'.replace('+精力/心态', 
+                action === 'gym' ? '(+精力/心态)' : 
+                action === 'game' ? '(+心态 -精力)' : 
+                action === 'cc98' ? '(随机心态)' : '(-压力)');
+            continue;
+        }
+        
+        const elapsed = (now - lastUse) / 1000;
+        const remaining = Math.max(0, cooldownTime - elapsed);
+        
+        if (remaining > 0) {
+            btn.disabled = true;
+            btn.textContent = `${config.label} (${Math.ceil(remaining)}s)`;
+        } else {
+            btn.disabled = false;
+            btn.textContent = config.label + ' (+精力/心态)'.replace('+精力/心态', 
+                action === 'gym' ? '(+精力/心态)' : 
+                action === 'game' ? '(+心态 -精力)' : 
+                action === 'cc98' ? '(随机心态)' : '(-压力)');
+        }
+    }
 }
+
+// 每秒更新一次按钮状态
+setInterval(updateRelaxButtons, 1000);
 
 // ==========================================
 // 4. 数值计算与展示
@@ -532,7 +635,7 @@ function renderExamConsole(progress) {
                     <div class="alert alert-warning py-2 mb-3 d-flex align-items-center justify-content-center">
                         <span class="fs-5 me-2">⏳</span>
                         <div>
-                            <div class="small text-muted" style="line-height:1;">距离期末自动交卷</div>
+                            <div class="small text-muted" style="line-height:1;">距离期末</div>
                             <span id="semester-timer" class="fw-bold fs-5 text-danger" style="font-family:monospace;">--:--</span>
                         </div>
                     </div>
@@ -633,6 +736,67 @@ function updateStatsUI(stats) {
         const el = document.getElementById(`val-${k}`);
         if(el) el.innerText = stats[k] || 0;
     });
+    
+    // 更新学习效率显示
+    updateEfficiencyDisplay(stats.sanity, stats.stress);
+}
+
+// 计算并更新学习效率显示
+function updateEfficiencyDisplay(sanity, stress) {
+    const efficiencyEl = document.getElementById('efficiency-value');
+    const hintEl = document.getElementById('efficiency-hint');
+    if (!efficiencyEl || !hintEl) return;
+    
+    // 计算心态修正
+    let sanityFactor = 1.0;
+    if (sanity < 20) {
+        sanityFactor = 0.6;
+    } else if (sanity < 50) {
+        sanityFactor = 1 - (50 - sanity) * 0.013;
+    } else if (sanity >= 80) {
+        sanityFactor = 1.2;
+    } else if (sanity > 50) {
+        sanityFactor = 1 + (sanity - 50) * 0.007;
+    }
+    
+    // 计算压力修正
+    let stressFactor = 1.0;
+    if (stress >= 40 && stress <= 70) {
+        stressFactor = 1.3;
+    } else if ((stress >= 20 && stress < 40) || (stress > 70 && stress <= 90)) {
+        stressFactor = 0.85;
+    } else {
+        stressFactor = 0.6;
+    }
+    
+    // 总效率
+    const efficiency = sanityFactor * stressFactor;
+    const percent = Math.round(efficiency * 100);
+    
+    efficiencyEl.textContent = `${percent}%`;
+    
+    // 根据效率调整颜色和提示
+    if (efficiency >= 1.4) {
+        efficiencyEl.className = 'fw-bold text-success';
+        hintEl.textContent = '🔥 状态极佳！学习效率爆表！';
+        hintEl.style.color = '#198754';
+    } else if (efficiency >= 1.2) {
+        efficiencyEl.className = 'fw-bold text-primary';
+        hintEl.textContent = '✨ 状态优秀，保持心态和压力在最佳区间';
+        hintEl.style.color = '#0d6efd';
+    } else if (efficiency >= 0.9) {
+        efficiencyEl.className = 'fw-bold text-info';
+        hintEl.textContent = '😐 状态一般，注意调整心态/压力';
+        hintEl.style.color = '#0dcaf0';
+    } else if (efficiency >= 0.7) {
+        efficiencyEl.className = 'fw-bold text-warning';
+        hintEl.textContent = '⚠️ 学习效率下降，建议摸鱼调整状态';
+        hintEl.style.color = '#ffc107';
+    } else {
+        efficiencyEl.className = 'fw-bold text-danger';
+        hintEl.textContent = '💀 状态崩溃！急需休息恢复';
+        hintEl.style.color = '#dc3545';
+    }
 }
 
 // ==========================================
@@ -669,7 +833,13 @@ function initSemesterTimer() {
         clearInterval(window.semesterTimerInterval);
     }
     window.timerRunning = true;
-    let remain = 600; // 10分钟
+    
+    // 从配置获取当前学期时长
+    const currentSemester = currentStats.semester || 1;
+    let baseDuration = CONFIG.SEMESTER_DURATIONS[currentSemester] || CONFIG.DEFAULT_DURATION || 360;
+    
+    // 应用速度倍率（加速模式）
+    let remain = Math.floor(baseDuration / CONFIG.currentSpeedMultiplier);
 
     const updateDisplay = () => {
         const el = document.getElementById('semester-timer');
@@ -691,6 +861,33 @@ function initSemesterTimer() {
             takeFinalExam(); 
         }
     }, 1000);
+}
+
+// ==========================================
+// 游戏速度控制
+// ==========================================
+
+function setGameSpeed(multiplier) {
+    CONFIG.currentSpeedMultiplier = multiplier;
+    
+    // 更新按钮状态
+    ['1.0', '1.5', '2.0'].forEach(speed => {
+        const btn = document.getElementById(`speed-${speed}`);
+        if (btn) {
+            if (parseFloat(speed) === multiplier) {
+                btn.classList.add('active');
+            } else {
+                btn.classList.remove('active');
+            }
+        }
+    });
+    
+    // 如果有正在运行的计时器，重新启动（应用新速度）
+    if (window.semesterTimerInterval) {
+        initSemesterTimer();
+    }
+    
+    logEvent("系统", `游戏速度已调整为 ${multiplier}x`, "text-info");
 }
 
 function showGameOverModal(reason, restartable) {

@@ -9,6 +9,7 @@ from app.core.llm import generate_cc98_post, generate_random_event,generate_ding
 from app.models.user import User
 from app.core.database import AsyncSessionLocal
 from app.game.state import RedisState
+from app.game.balance import balance  # 游戏数值配置
 from app.websockets.manager import ConnectionManager
 
 # 配置日志记录
@@ -17,14 +18,15 @@ logger = logging.getLogger(__name__)
 class GameEngine:
     def resume(self):
         if not self.is_running:
-            self.is_running = True
-            # 先推送一次最新状态，确保前端恢复后立即刷新
+            # 注意：不要提前设置 is_running = True，让 run_loop() 自己设置
+            # 否则 run_loop() 第一行检查会直接返回
+            asyncio.create_task(self.run_loop())
+            # 推送最新状态和通知消息
             asyncio.create_task(self._push_update())
             asyncio.create_task(self.manager.send_personal_message({
                 "type": "resumed",
                 "msg": "游戏已继续。"
             }, self.user_id))
-            asyncio.create_task(self.run_loop())
     def pause(self):
             self.is_running = False
             # 可选：通知前端已暂停
@@ -43,15 +45,11 @@ class GameEngine:
         if not self.achievement_path.exists():
             self.achievement_path = Path(__file__).resolve().parent.parent.parent / "world" / "achievements.json"
 
-        # ========== 新增：数值平衡参数 ==========
+        # ========== 从配置文件加载数值参数 ==========
         # 状态定义: 0=摆(Lay Flat), 1=摸(Chill), 2=卷(Hardcore)
-        self.COURSE_STATE_COEFFS = {
-            0: {"growth": 0.0, "drain": 0.0},   # 摆: 不学，不累
-            1: {"growth": 0.5, "drain": 0.8},   # 摸: 学得慢，消耗低
-            2: {"growth": 2.5, "drain": 3.0}    # 卷: 学得极快，消耗极大
-        }
-        self.BASE_ENERGY_DRAIN = 2.0  # 基础每Tick精力消耗 (当所有课都处于标准"摸"状态时的基准)
-        self.BASE_MASTERY_GROWTH = 0.5 # 基础每Tick擅长度增长
+        self.COURSE_STATE_COEFFS = balance.get_course_state_coeffs()
+        self.BASE_ENERGY_DRAIN = balance.base_energy_drain
+        self.BASE_MASTERY_GROWTH = balance.base_mastery_growth
 
     async def check_and_trigger_gameover(self) -> bool:
         """检测精力/心态是否归零并触发game over"""
@@ -83,50 +81,84 @@ class GameEngine:
 
     def _sanity_stress_growth_factor(self, sanity, stress):
         """
-        心态修正：50为基准，低于50负面影响，极低时最大-30%；高于50略有正面，最多+10%
-        压力修正：40-70为最佳区间，区间内+10%，区间外-10%，极端（<20或>90）-20%
+        心态修正：50为基准，低于50负面影响，极低(<20)最大-40%；高于50正面提升，最佳(80+)+20%
+        压力修正：40-70为最佳区间，区间内+30%，区间外-15%，极端（<20或>90）-40%
         """
+        # 从配置加载参数
+        growth_mod = balance.get_growth_modifiers()
+        sanity_cfg = growth_mod.get("sanity", {})
+        stress_cfg = growth_mod.get("stress", {})
+        
         # 心态修正
-        if sanity < 20:
-            sanity_factor = 0.7
+        critical_threshold = sanity_cfg.get("critical_low", {}).get("threshold", 20)
+        critical_factor = sanity_cfg.get("critical_low", {}).get("factor", 0.6)
+        low_slope = sanity_cfg.get("low_slope", 0.013)
+        high_slope = sanity_cfg.get("high_slope", 0.007)
+        excellent_threshold = sanity_cfg.get("excellent", {}).get("threshold", 80)
+        excellent_factor = sanity_cfg.get("excellent", {}).get("factor", 1.2)
+        
+        if sanity < critical_threshold:
+            sanity_factor = critical_factor
         elif sanity < 50:
-            sanity_factor = 1 - (50 - sanity) * 0.006  # 最多-0.18
-        elif sanity > 80:
-            sanity_factor = 1.1
+            sanity_factor = 1 - (50 - sanity) * low_slope
+        elif sanity >= excellent_threshold:
+            sanity_factor = excellent_factor
         elif sanity > 50:
-            sanity_factor = 1 + (sanity - 50) * 0.002  # 最多+0.06
+            sanity_factor = 1 + (sanity - 50) * high_slope
         else:
             sanity_factor = 1.0
+        
         # 压力修正
-        if 40 <= stress <= 70:
-            stress_factor = 1.1
-        elif 20 <= stress < 40 or 70 < stress <= 90:
-            stress_factor = 0.9
+        optimal_range = stress_cfg.get("optimal_range", [40, 70])
+        optimal_factor = stress_cfg.get("optimal_factor", 1.3)
+        suboptimal_factor = stress_cfg.get("suboptimal_factor", 0.85)
+        extreme_factor = stress_cfg.get("extreme_factor", 0.6)
+        
+        if optimal_range[0] <= stress <= optimal_range[1]:
+            stress_factor = optimal_factor
+        elif 20 <= stress < optimal_range[0] or optimal_range[1] < stress <= 90:
+            stress_factor = suboptimal_factor
         else:
-            stress_factor = 0.8
+            stress_factor = extreme_factor
+        
         return sanity_factor * stress_factor
 
     def _sanity_stress_exam_factor(self, sanity, stress):
         """
-        心态修正：50为基准，低于50分数线性下滑，最低-10分，高于50最多+3分
-        压力修正：40-70区间+3分，区间外-3分，极端（<20或>90）-6分
+        心态修正：50为基准，低于50分数线性下滑，最低-15分，高于50最多+6分
+        压力修正：40-70区间+6分，区间外-5分，极端（<20或>90）-10分
         """
+        # 从配置加载参数
+        exam_mod = balance.get_exam_modifiers()
+        sanity_cfg = exam_mod.get("sanity", {})
+        stress_cfg = exam_mod.get("stress", {})
+        
         # 心态
+        low_slope = sanity_cfg.get("low_slope", 0.3)
+        high_slope = sanity_cfg.get("high_slope", 0.12)
+        excellent_bonus = sanity_cfg.get("excellent_bonus", 6)
+        
         if sanity < 50:
-            sanity_bonus = (sanity - 50) * 0.2  # 最多-10分
-        elif sanity > 80:
-            sanity_bonus = 3
+            sanity_bonus = (sanity - 50) * low_slope
+        elif sanity >= 80:
+            sanity_bonus = excellent_bonus
         elif sanity > 50:
-            sanity_bonus = (sanity - 50) * 0.06  # 最多+1.8
+            sanity_bonus = (sanity - 50) * high_slope
         else:
             sanity_bonus = 0
+        
         # 压力
+        optimal_bonus = stress_cfg.get("optimal_bonus", 6)
+        suboptimal_penalty = stress_cfg.get("suboptimal_penalty", -5)
+        extreme_penalty = stress_cfg.get("extreme_penalty", -10)
+        
         if 40 <= stress <= 70:
-            stress_bonus = 3
+            stress_bonus = optimal_bonus
         elif 20 <= stress < 40 or 70 < stress <= 90:
-            stress_bonus = -3
+            stress_bonus = suboptimal_penalty
         else:
-            stress_bonus = -6
+            stress_bonus = extreme_penalty
+        
         return sanity_bonus + stress_bonus
 
     async def run_loop(self):
@@ -212,14 +244,22 @@ class GameEngine:
                     if total_drain_factor > 1.5:
                         await self.state.update_stat_safe("stress", 1)
 
-                # 5. 随机事件与成就 (保持原有逻辑)
-                if tick_count % 10 == 0:
-                    if random.random() < 0.3:
+                # 5. 随机事件与成就 (从配置读取频率)
+                event_cfg = balance.get_random_event_config()
+                event_interval = event_cfg.get("check_interval_ticks", 5)
+                event_probability = event_cfg.get("trigger_probability", 0.4)
+                
+                if tick_count % event_interval == 0:
+                    if random.random() < event_probability:
                         asyncio.create_task(self._trigger_random_event())
                     await self._check_achievements()
                     
-                # [新增] 6. 钉钉消息 (独立频率，比如每 5 Tick 判定一次，概率 40%)
-                if tick_count % 10 == 0 and random.random() < 0.3:
+                # [新增] 6. 钉钉消息 (从配置读取频率)
+                dingtalk_cfg = balance.get_dingtalk_config()
+                dingtalk_interval = dingtalk_cfg.get("check_interval_ticks", 10)
+                dingtalk_probability = dingtalk_cfg.get("trigger_probability", 0.3)
+                
+                if tick_count % dingtalk_interval == 0 and random.random() < dingtalk_probability:
                     asyncio.create_task(self._trigger_dingtalk_message())
 
                 await self._push_update()
@@ -303,8 +343,9 @@ class GameEngine:
 
             # 5分制绩点计算：绩点 = 分数 / 10 - 5，最低0分
             gp = max(0.0, round(final_score / 10 - 5, 2))
-            # 60分以下算挂科
-            if final_score < 60:
+            # 挂科阈值从配置读取
+            fail_threshold = balance.fail_threshold
+            if final_score < fail_threshold:
                 failed_count += 1
 
             total_credits += credits
@@ -317,13 +358,15 @@ class GameEngine:
 
         gpa = round(total_gp / total_credits, 2) if total_credits > 0 else 0.0
         
-        # 结果反馈
+        # 结果反馈（从配置读取惩罚/奖励）
         msg = f"期末考试结束！GPA: {gpa}"
         if failed_count > 0:
-            await self.state.update_stat_safe("sanity", -20 * failed_count)
+            penalty = balance.fail_sanity_penalty * failed_count
+            await self.state.update_stat_safe("sanity", penalty)
             msg += f" | 挂了 {failed_count} 门！"
         else:
-            await self.state.update_stat_safe("sanity", 10)
+            bonus = balance.pass_all_bonus
+            await self.state.update_stat_safe("sanity", bonus)
 
         # 异步更新持久化数据库
         asyncio.create_task(self._update_db_highest_gpa(gpa))
@@ -387,40 +430,99 @@ class GameEngine:
         await self._push_update(msg)
 
     async def _handle_relax(self, target: str):
+        # 检查冷却时间
+        remaining_cd = await self.state.check_cooldown(target)
+        if remaining_cd > 0:
+            msg = f"该操作还在冷却中，请等待 {remaining_cd} 秒后再试。"
+            await self._push_update(msg)
+            return
+        
+        # 从配置读取摸鱼动作参数
+        action_cfg = balance.get_relax_action(target)
+        if not action_cfg:
+            msg = f"未知的休闲动作: {target}"
+            await self._push_update(msg)
+            return
+        
         msg = ""
         if target == "gym":
             stats = await self.state.get_stats()
-            if int(stats.get("energy", 0)) < 50:
+            current_energy = int(stats.get("energy", 0))
+            min_energy = action_cfg.get("min_energy_required", 50)
+            
+            if current_energy < min_energy:
                 msg = "你太累了，现在去健身只会晕过去..."
             else:
-                await self.state.update_stat_safe("energy", 10)
-                await self.state.update_stat_safe("sanity", 5)
-                await self.state.update_stat_safe("stress", -5)
+                # 从配置读取数值
+                energy_cost = action_cfg.get("energy_cost", -50)
+                energy_gain = action_cfg.get("energy_gain", 60)
+                sanity_gain = action_cfg.get("sanity_gain", 5)
+                stress_change = action_cfg.get("stress_change", -5)
+                
+                await self.state.update_stat_safe("energy", energy_cost)
+                await self.state.update_stat_safe("energy", energy_gain)
+                await self.state.update_stat_safe("sanity", sanity_gain)
+                await self.state.update_stat_safe("stress", stress_change)
+                await self.state.set_cooldown(target)
                 msg = "在风雨操场挥汗如雨，感觉整个人都升华了！"
         elif target == "game":
-            await self.state.update_stat_safe("energy", -10)
-            await self.state.update_stat_safe("sanity", 15) # 游戏提升心态较多
+            energy_cost = action_cfg.get("energy_cost", -5)
+            sanity_gain = action_cfg.get("sanity_gain", 20)
+            
+            await self.state.update_stat_safe("energy", energy_cost)
+            await self.state.update_stat_safe("sanity", sanity_gain)
+            await self.state.set_cooldown(target)
             msg = "宿舍开黑连胜，这就是电子竞技的魅力吗？"
         elif target == "walk":
-            await self.state.update_stat_safe("stress", -10)
+            stress_change = action_cfg.get("stress_change", -10)
+            
+            await self.state.update_stat_safe("stress", stress_change)
+            await self.state.set_cooldown(target)
             msg = "启真湖畔的黑天鹅还是那么高傲..."
         elif target == "cc98":
-            roll = random.randint(1, 100)
-            if roll > 80:
-                effect = "positive"
-                await self.state.update_stat_safe("sanity", 5)
+            # CC98随机效果从配置读取
+            effects = action_cfg.get("effects", [])
+            if not effects:
+                # 兜底默认值
+                effects = [
+                    {"weight": 0.5, "sanity": 8, "stress": -5},
+                    {"weight": 0.3, "sanity": -10, "stress": 8},
+                    {"weight": 0.2, "sanity": -15, "stress": 15}
+                ]
+            
+            # 根据权重随机选择效果
+            total_weight = sum(e.get("weight", 0) for e in effects)
+            roll = random.uniform(0, total_weight)
+            cumulative = 0
+            selected_effect = effects[0]  # 默认
+            
+            for effect in effects:
+                cumulative += effect.get("weight", 0)
+                if roll <= cumulative:
+                    selected_effect = effect
+                    break
+            
+            # 应用效果
+            if "sanity" in selected_effect:
+                await self.state.update_stat_safe("sanity", selected_effect["sanity"])
+            if "stress" in selected_effect:
+                await self.state.update_stat_safe("stress", selected_effect["stress"])
+            
+            # 生成对应效果描述
+            effect_type = "positive" if selected_effect.get("sanity", 0) > 0 else "negative"
+            roll = random.randint(1, 100)  # 用于触发词
+            
+            if effect_type == "positive":
                 trigger_words = ["校友糗事分享", "今日开怀", "难绷瞬间", "幽默段子", "校园梗", "甜蜜爱情故事"]
-            elif roll < 20:
-                effect = "negative"
-                await self.state.update_stat_safe("sanity", -5)
-                trigger_words = ["凡尔赛GPA", "郁闷小屋", "烂坑", "情侣秀恩爱", "渣男渣女"]
             else:
-                effect = "neutral"
-                trigger_words = ["吐槽食堂", "询问选课", "二手交易", "校园信息"]
+                trigger_words = ["凡尔赛GPA", "郁闷小屋", "烂坑", "情侣秀恩爱", "渣男渣女"]
+            
             trigger = random.choice(trigger_words)
             stats = await self.state.get_stats()
-            post_content, feedback = await generate_cc98_post(stats, effect, trigger)
-            msg = f"你在CC98刷到了：\n“{post_content}”\n{feedback}"
+            post_content, feedback = await generate_cc98_post(stats, effect_type, trigger)
+            await self.state.set_cooldown(target)
+            msg = f"你在CC98刷到了：\n{post_content}\n{feedback}"
+        
         await self._push_update(msg)
 
     # app/game/engine.py

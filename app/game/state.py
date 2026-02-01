@@ -60,10 +60,11 @@ class RedisState:
         self.action_key = f"player:{user_id}:actions"
         self.achievement_key = f"player:{user_id}:achievements"
         self.history_key = f"player:{user_id}:event_history" # [新增] 历史记录 Key
+        self.cooldown_key = f"player:{user_id}:cooldowns"  # [新增] 冷却时间 Key
 
     async def clear_all(self):
         """清空玩家所有存档数据"""
-        await self.redis.delete(self.key, self.course_key, self.course_state_key, self.action_key, self.achievement_key, self.history_key)
+        await self.redis.delete(self.key, self.course_key, self.course_state_key, self.action_key, self.achievement_key, self.history_key, self.cooldown_key)
     async def close(self):
         await self.redis.aclose()
 
@@ -209,6 +210,30 @@ class RedisState:
 
     async def unlock_achievement(self, code: str) -> int:
         return await self.redis.sadd(self.achievement_key, code)
+    
+    # ==========================================
+    # 5.5. 冷却系统 (CD System)
+    # ==========================================
+    
+    async def check_cooldown(self, action_type: str) -> int:
+        """检查冷却时间，返回剩余秒数（0=可用）"""
+        import time
+        from app.game.balance import balance
+        
+        last_use = await self.redis.hget(self.cooldown_key, action_type)
+        if not last_use:
+            return 0
+        
+        elapsed = time.time() - float(last_use)
+        # 从配置文件读取冷却时间
+        cd_time = balance.get_cooldown(action_type)
+        remaining = max(0, cd_time - elapsed)
+        return int(remaining)
+    
+    async def set_cooldown(self, action_type: str):
+        """记录动作使用时间"""
+        import time
+        await self.redis.hset(self.cooldown_key, action_type, time.time())
     
     # ==========================================
     # 6. 事件历史记录 (新增)

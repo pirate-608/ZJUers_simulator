@@ -20,6 +20,7 @@ router = APIRouter()
 class ExamSubmission(BaseModel):
     username: str
     answers: Dict[str, str]
+    token: str = None  # 可选，老用户重新考试时携带
 
 class ExamResponse(BaseModel):
     status: str
@@ -57,8 +58,8 @@ async def submit_exam(submission: ExamSubmission, db: AsyncSession = Depends(get
     result_db = await db.execute(stmt)
     user = result_db.scalars().first()
     import secrets
-    # 兼容前端未传token
-    token_from_req = getattr(submission, 'token', None)
+    # 从提交数据中获取 token
+    token_from_req = submission.token
     if not user:
         # 新用户，必须没有token
         if token_from_req:
@@ -153,6 +154,7 @@ async def get_admission_info(request: Request, db: AsyncSession = Depends(get_db
 # 允许已注册用户直接登录，无需重复考试
 class QuickLoginRequest(BaseModel):
     username: str
+    token: str = None  # 可选，提供则验证凭证
 
 # POST /exam/quick_login
 @router.post("/exam/quick_login")
@@ -162,7 +164,11 @@ async def quick_login(data: QuickLoginRequest, db: AsyncSession = Depends(get_db
     user = result.scalars().first()
     if not user:
         return {"status": "not_found", "message": "用户未注册，请先完成入学考试"}
-    # 生成token
+    # 如果提供了 token，则验证
+    if data.token:
+        if user.token != data.token:
+            return {"status": "error", "message": "凭证错误，请检查后重试"}
+    # 生成 JWT
     access_token = create_access_token(
         data={"sub": str(user.id), "username": user.username, "tier": user.tier}
     )

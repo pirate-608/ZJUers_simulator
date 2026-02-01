@@ -80,18 +80,24 @@ async function submitExam() {
         answers[key] = value;
     });
 
+    // 读取 token（如果有）
+    const token = document.getElementById('token').value.trim();
+
     // UI切换
     document.getElementById('step-exam').style.display = 'none';
     document.getElementById('step-loading').style.display = 'block';
 
     try {
+        const payload = {
+            username: currentUser,
+            answers: answers
+        };
+        if (token) payload.token = token;
+        
         const response = await fetch(`${API_BASE_URL}/api/exam/submit`, {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({
-                username: currentUser,
-                answers: answers
-            })
+            body: JSON.stringify(payload)
         });
 
         const result = await response.json();
@@ -118,10 +124,11 @@ async function submitExam() {
             document.querySelector('#resultModal .btn-primary').onclick = () => location.reload();
             modalEl.show();
         }
-// 分配专业并展示抽签动画，动画结束后跳转录取通知书
+// 分配专业并展示抽签动画，动画结束后显示按钮供用户点击
 async function assignMajorWithAnimation(token) {
     const modalBody = document.getElementById('result-body');
     const modalEl = new bootstrap.Modal(document.getElementById('resultModal'), {backdrop: 'static'});
+    const modalFooter = document.querySelector('#resultModal .modal-footer');
     try {
         const response = await fetch(`${API_BASE_URL}/api/assign_major`, {
             method: 'POST',
@@ -130,10 +137,13 @@ async function assignMajorWithAnimation(token) {
         });
         const data = await response.json();
         if (data.success) {
-            // 先弹出模态框，再展示抽签动画
+            // 先隐藏底部按钮
+            if (modalFooter) modalFooter.style.display = 'none';
+            // 弹出模态框，展示抽签动画
             modalEl.show();
             await showLotteryAnimation(data.major);
-            window.location.href = '/admission';
+            // 动画结束后显示按钮
+            if (modalFooter) modalFooter.style.display = '';
         } else {
             modalBody.innerHTML = `<div class="text-center text-danger">分配专业失败，请重试</div>`;
             modalEl.show();
@@ -160,9 +170,10 @@ function showLotteryAnimation(major) {
                 <div class="text-center text-success">
                     <h4>🎉 恭喜录取！</h4>
                     <p>你被分配到专业：<strong class="text-danger">${major}</strong></p>
+                    <p class="text-muted mt-3">请点击下方按钮前往录取通知书</p>
                 </div>
             `;
-            setTimeout(resolve, 1800);
+            resolve();
         }, 1800);
     });
 }

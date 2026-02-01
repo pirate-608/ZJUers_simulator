@@ -90,8 +90,17 @@
                         <button class="btn btn-primary btn-sm" type="submit" disabled>发送</button>
                     </form>
                 </div>
-                <div class="d-flex justify-content-center py-3">
-                    <button id="pause-resume-btn" class="btn btn-outline-danger px-4" onclick="sendAction('pause')">⏸️ 暂停游戏</button>
+                <div class="d-flex flex-column gap-2 py-3 px-3">
+                    <button id="pause-resume-btn" class="btn btn-outline-danger" onclick="sendAction('pause')">⏸️ 暂停游戏</button>
+                    
+                    <!-- 速度控制 -->
+                    <div class="btn-group" role="group" aria-label="游戏速度">
+                        <button type="button" class="btn btn-sm btn-outline-secondary active" onclick="setGameSpeed(1.0)" id="speed-1.0">1x</button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="setGameSpeed(1.5)" id="speed-1.5">1.5x</button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="setGameSpeed(2.0)" id="speed-2.0">2x</button>
+                    </div>
+                    <small class="text-muted text-center">⚡ 游戏速度</small>
+                    
                     <script>window.addEventListener('DOMContentLoaded', function(){ if(window.updatePauseButton) updatePauseButton(); });</script>
                 </div>
             </div>
@@ -128,6 +137,17 @@
                         </div>
                     </div>
 
+                    <!-- 学习效率指示器 -->
+                    <div class="mb-2 p-2 rounded" style="background-color: rgba(13, 110, 253, 0.1); border: 1px solid rgba(13, 110, 253, 0.3);">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span class="text-muted small">📊 学习效率</span>
+                            <span id="efficiency-value" class="fw-bold text-primary">100%</span>
+                        </div>
+                        <div class="small text-muted" id="efficiency-hint" style="font-size: 0.75rem; margin-top: 2px;">
+                            保持心态和压力在良好状态
+                        </div>
+                    </div>
+
                     <hr class="my-2">
 
             <div class="row g-1 small"> <div class="col-6">
@@ -147,10 +167,10 @@
             <div class="card mb-3">
                 <div class="card-header bg-warning text-dark">☕ 摸鱼休闲</div>
                 <div class="card-body d-grid gap-2">
-                    <button class="btn btn-outline-primary" onclick="sendAction('relax', 'gym')">🏋️‍♂️ 健身房 (+精力/心态)</button>
-                    <button class="btn btn-outline-success" onclick="sendAction('relax', 'game')">🎮 打游戏 (+心态 -精力)</button>
-                    <button class="btn btn-outline-info" onclick="sendAction('relax', 'cc98')">🌊 刷CC98 (随机心态)</button>
-                    <button class="btn btn-outline-secondary" onclick="sendAction('relax', 'walk')">🚶 散步启真湖 (-压力)</button>
+                    <button id="btn-gym" class="btn btn-outline-primary" onclick="sendAction('relax', 'gym')">🏋️‍♂️ 健身房 (+精力/心态)</button>
+                    <button id="btn-game" class="btn btn-outline-success" onclick="sendAction('relax', 'game')">🎮 打游戏 (+心态 -精力)</button>
+                    <button id="btn-cc98" class="btn btn-outline-info" onclick="sendAction('relax', 'cc98')">🌊 刷CC98 (随机心态)</button>
+                    <button id="btn-walk" class="btn btn-outline-secondary" onclick="sendAction('relax', 'walk')">🚶 散步启真湖 (-压力)</button>
                 </div>
             </div>
 

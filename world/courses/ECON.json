@@ -1,0 +1,85 @@
+{
+  "major": "经济学",
+  "abbr": "ECON",
+  "plan": [
+    {
+      "semester": "大一秋冬",
+      "courses": [
+        { "id": "ADMN1001G", "name": "思想道德与法治", "credits": 2.0, "difficulty": 2 },
+        { "id": "MARX100IG", "name": "中国近现代史纲要", "credits": 3.0, "difficulty": 2 },
+        { "id": "MATH1101G", "name": "微积分I", "credits": 5.0, "difficulty": 5 },
+        { "id": "MATH1201G", "name": "线性代数", "credits": 3.5, "difficulty": 4 },
+        { "id": "CS1001G", "name": "C程序设计基础及实验", "credits": 4.0, "difficulty": 3 },
+        { "id": "SIS1001G", "name": "大学英语III", "credits": 3.0, "difficulty": 3 }
+      ]
+    },
+    {
+      "semester": "大一春夏",
+      "courses": [
+        { "id": "ADMN1002G", "name": "形势与政策I", "credits": 1.0, "difficulty": 1 },
+        { "id": "MATH1102G", "name": "微积分II", "credits": 5.0, "difficulty": 5 },
+        { "id": "ECON2001G", "name": "微观经济学（甲）", "credits": 4.0, "difficulty": 4 },
+        { "id": "MARX100RG", "name": "思想道德与法治实践", "credits": 3.0, "difficulty": 2 },
+        { "id": "SIS100RG", "name": "大学英语IV", "credits": 3.0, "difficulty": 3 },
+        { "id": "CS1241G", "name": "人工智能基础（A）", "credits": 2.0, "difficulty": 3 }
+      ]
+    },
+    {
+      "semester": "大二秋冬",
+      "courses": [
+        { "id": "ECON2002G", "name": "宏观经济学（甲）", "credits": 4.0, "difficulty": 4 },
+        { "id": "MATH2401G", "name": "概率论与数理统计", "credits": 2.5, "difficulty": 4 },
+        { "id": "MARX2001G", "name": "马克思主义基本原理", "credits": 3.0, "difficulty": 3 },
+        { "id": "EDU2001G", "name": "军事理论", "credits": 2.0, "difficulty": 2 },
+        { "id": "ECON2014M", "name": "政治经济学（甲）", "credits": 3.0, "difficulty": 3 },
+        { "id": "ECON2015M", "name": "统计学", "credits": 3.0, "difficulty": 4 }
+      ]
+    },
+    {
+      "semester": "大二春夏",
+      "courses": [
+        { "id": "ECON3001M", "name": "计量经济学", "credits": 3.0, "difficulty": 5 },
+        { "id": "ECON3002M", "name": "中级微观经济学", "credits": 3.0, "difficulty": 5 },
+        { "id": "ECON2022M", "name": "金融学", "credits": 3.0, "difficulty": 4 },
+        { "id": "ECON2005M", "name": "财政学", "credits": 3.0, "difficulty": 3 },
+        { "id": "ECON2023M", "name": "会计学", "credits": 3.0, "difficulty": 3 }
+      ]
+    },
+    {
+      "semester": "大三秋冬",
+      "courses": [
+        { "id": "ECON3003M", "name": "中级宏观经济学", "credits": 3.0, "difficulty": 5 },
+        { "id": "ECON3004M", "name": "发展经济学", "credits": 3.0, "difficulty": 3 },
+        { "id": "ECON3005M", "name": "国际贸易", "credits": 3.0, "difficulty": 4 },
+        { "id": "MARX3001G", "name": "毛泽东思想概论", "credits": 3.0, "difficulty": 2 },
+        { "id": "MARX300RG", "name": "习近平新时代思想概论", "credits": 3.0, "difficulty": 2 }
+      ]
+    },
+    {
+      "semester": "大三春夏",
+      "courses": [
+        { "id": "ECON3006M", "name": "国际金融", "credits": 3.0, "difficulty": 4 },
+        { "id": "ECON3007M", "name": "产业经济学", "credits": 3.0, "difficulty": 4 },
+        { "id": "ECON3008M", "name": "投资学", "credits": 3.0, "difficulty": 4 },
+        { "id": "ECON3391M", "name": "经济学综合实验", "credits": 2.5, "difficulty": 4 },
+        { "id": "ECON3025M", "name": "公司金融", "credits": 3.0, "difficulty": 4 }
+      ]
+    },
+    {
+      "semester": "大四秋冬",
+      "courses": [
+        { "id": "PPAE4001G", "name": "体测与锻炼", "credits": 0.5, "difficulty": 2 },
+        { "id": "ECON4001M", "name": "博弈论", "credits": 3.0, "difficulty": 5 },
+        { "id": "ECON4101M", "name": "数字经济导论", "credits": 2.0, "difficulty": 3 },
+        { "id": "ECON4002M", "name": "经济史", "credits": 3.0, "difficulty": 3 }
+      ]
+    },
+    {
+      "semester": "大四春夏",
+      "courses": [
+        { "id": "ADMN2001G", "name": "形势与政策II", "credits": 1.0, "difficulty": 1 },
+        { "id": "ECON4902M", "name": "毕业论文", "credits": 8.0, "difficulty": 5 }
+      ]
+    }
+  ]
+}

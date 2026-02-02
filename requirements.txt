@@ -1,0 +1,44 @@
+# --- Web 框架与服务器 ---
+# 核心框架，支持原生异步和依赖注入
+fastapi>=0.109.0
+# ASGI 服务器，[standard] 包含 uvloop (高性能异步循环) 和 httptools
+uvicorn[standard]>=0.27.0
+# 用于解析 Form Data（登录接口通常需要）
+python-multipart>=0.0.7
+
+# --- 数据库 (PostgreSQL + Async) ---
+# 此时业界标准的 ORM 框架，支持异步操作
+sqlalchemy>=2.0.25
+# 最快的 Python 异步 PostgreSQL 驱动
+asyncpg>=0.29.0
+# 数据库版本迁移工具 (管理表结构变更，如增加新的成就字段)
+alembic>=1.13.1
+
+# --- 缓存与状态管理 (Redis) ---
+# 官方 Redis 客户端，4.2.0+ 版本内置了 redis.asyncio 支持
+redis>=5.0.1
+
+# --- 大模型集成 (LLM) ---
+# OpenAI 官方 SDK (目前国内大部分 LLM 如 DeepSeek, Moonshot, Qwen均兼容此 SDK)
+# 用于构建学年随机事件和 NPC 对话
+openai>=1.12.0
+
+# --- 身份认证与安全 ---
+# 用于生成和校验 JWT Token (Access Token)
+python-jose[cryptography]>=3.3.0
+# 用于密码哈希加密 (存储用户密码时不能存明文)
+passlib[bcrypt]>=1.7.4
+
+# --- 配置管理 ---
+# 强大的数据验证库 (FastAPI 核心依赖)
+pydantic>=2.6.1
+# 专门用于从 .env 文件加载环境变量 (如数据库 URL, API KEY)
+pydantic-settings>=2.1.0
+
+# --- 工具类 ---
+# 异步 HTTP 客户端 (虽然 OpenAI SDK 内置了，但如果需要请求其他外部 API 很有用)
+httpx>=0.26.0
+# 简单的 UUID 生成 (虽然标准库有，但有时为了 slugify ID 会用到)
+shortuuid>=1.0.11
+# 模板引擎 (用于渲染 HTML 页面)
+jinja2>=3.1.2

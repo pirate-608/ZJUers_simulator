@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="zh-cn">
+<head>
+    <meta charset="UTF-8">
+    <title>折姜大学校规 - 游戏规则</title>
+    <style>
+        body { font-family: '微软雅黑', Arial, sans-serif; background: #f8f9fa; color: #222; margin: 0; padding: 0; }
+        .container { max-width: 800px; margin: 40px auto; background: #fff; border-radius: 8px; box-shadow: 0 2px 8px #0001; padding: 32px; }
+        h1, h2 { color: #005bac; }
+        ul, ol { margin-left: 1.5em; }
+        code { background: #f3f3f3; padding: 2px 6px; border-radius: 4px; }
+        .tip { color: #888; font-size: 0.95em; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>折姜大学校规</h1>
+    <h2>1. 基本目标</h2>
+    <ul>
+        <li>体验折大学生的完整大学生活，合理分配精力、心态、压力，顺利毕业。</li>
+        <li>每学期精准选课，提升各门课程擅长度，争取高GPA和丰富成就。</li>
+    </ul>
+    <h2>2. 主要玩法</h2>
+    <ol>
+        <li>每学期自动分配课程，玩家可为每门课选择“摆”、“摸”、“卷”三种学习策略。</li>
+        <li>每个Tick（回合）自动结算课程进度、精力消耗、心态与压力变化。</li>
+        <li>期末考试根据擅长度、心态、压力、运气等综合计算成绩，GPA采用5分制。</li>
+        <li>心态过低或精力归零会导致Game Over，压力过高/过低会影响成长与考试。</li>
+        <li>可通过休息、娱乐、社交等方式调节心态和压力，合理安排生活节奏。</li>
+        <li>达成特定条件可解锁成就，毕业时生成AI文言文总结。</li>
+    </ol>
+    <h2>3. 数值说明</h2>
+    <ul>
+        <li><b>精力</b>：每回合消耗，归零即Game Over，可通过休息等恢复。</li>
+        <li><b>心态</b>：影响成长与考试，过低会负面修正，归零即Game Over。</li>
+        <li><b>压力</b>：40-70为最佳区间，区间内成长/考试有加成，极端时有负面影响。</li>
+        <li><b>GPA</b>：5分制，=∑(学分×绩点)/总学分，绩点=分数/10-5，60分以下为0。</li>
+        <li><b>成就</b>：达成特定条件自动解锁，毕业时展示。</li>
+    </ul>
+    <h2>4. 结局与重开</h2>
+    <ul>
+        <li>顺利完成8学期即毕业，结业时展示AI生成的文言文总结与成就。</li>
+        <li>可随时重开人生，体验不同专业、成长路线和结局。</li>
+    </ul>
+    <h2>5. 其他说明</h2>
+    <ul>
+        <li>支持自定义专业、课程、成就、关键词等内容，详见 world 目录。</li>
+        <li>如遇Bug或有建议，欢迎在GitHub提交Issue。</li>
+    </ul>
+    <p class="tip">版本：2026.01 | 规则如有调整以最新游戏内为准。</p>
+</div>
+</body>
+</html>

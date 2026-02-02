@@ -1,0 +1,81 @@
+{
+  "major": "建筑学",
+  "abbr": "ARCH",
+  "plan": [
+    {
+      "semester": "大一秋冬",
+      "courses": [
+        { "id": "ADMN1001G", "name": "思想道德修养与法律基础", "credits": 2.0, "difficulty": 2 },
+        { "id": "ADMN1002G", "name": "形势与政策I", "credits": 1.0, "difficulty": 1 },
+        { "id": "MARX100IG", "name": "中国近现代史纲要", "credits": 3.0, "difficulty": 2 },
+        { "id": "MATH1101G", "name": "高等数学", "credits": 5.0, "difficulty": 4 },
+        { "id": "CCEA1106M", "name": "建筑设计初步", "credits": 5.0, "difficulty": 5 },
+        { "id": "CCEA1107M", "name": "美术与美学I", "credits": 2.0, "difficulty": 3 },
+        { "id": "CCEA110SM", "name": "建筑设计概论", "credits": 2.0, "difficulty": 2 }
+      ]
+    },
+    {
+      "semester": "大一春夏",
+      "courses": [
+        { "id": "SIS100RG", "name": "大学英语IV", "credits": 3.0, "difficulty": 3 },
+        { "id": "CS1241G", "name": "人工智能基础(A)", "credits": 2.0, "difficulty": 3 },
+        { "id": "CCEA1112M", "name": "建筑设计基础", "credits": 6.0, "difficulty": 5 },
+        { "id": "CCEA1108M", "name": "美术与美学II", "credits": 2.0, "difficulty": 3 },
+        { "id": "CCEA110AM", "name": "建筑史I", "credits": 2.0, "difficulty": 4 },
+        { "id": "CCEA1113M", "name": "渲染周", "credits": 1.0, "difficulty": 3 }
+      ]
+    },
+    {
+      "semester": "大二秋冬",
+      "courses": [
+        { "id": "MARX2001G", "name": "马克思主义基本原理概论", "credits": 3.0, "difficulty": 3 },
+        { "id": "EDU2001G", "name": "军事理论", "credits": 2.0, "difficulty": 1 },
+        { "id": "CCEA2120M", "name": "建筑设计I(甲)", "credits": 5.0, "difficulty": 5 },
+        { "id": "CCEA2124M", "name": "美术与美学III", "credits": 2.0, "difficulty": 3 },
+        { "id": "CCEA1109M", "name": "建筑力学与结构I", "credits": 2.0, "difficulty": 4 },
+        { "id": "CCEA2117M", "name": "建筑设计原理I", "credits": 2.0, "difficulty": 3 }
+      ]
+    },
+    {
+      "semester": "大二春夏",
+      "courses": [
+        { "id": "CCEA2121M", "name": "建筑设计II(甲)", "credits": 6.0, "difficulty": 5 },
+        { "id": "CCEA2122M", "name": "建筑设计III(甲)", "credits": 5.0, "difficulty": 5 },
+        { "id": "CCEA2119M", "name": "建筑材料与构造I", "credits": 2.0, "difficulty": 4 },
+        { "id": "CCEA2105M", "name": "建筑力学与结构II", "credits": 2.0, "difficulty": 4 },
+        { "id": "CLEA2114M", "name": "美术实习", "credits": 2.0, "difficulty": 3 }
+      ]
+    },
+    {
+      "semester": "大三秋冬",
+      "courses": [
+        { "id": "CCEA3128M", "name": "建筑设计IV(甲)", "credits": 5.0, "difficulty": 5 },
+        { "id": "CCEA3114M", "name": "建筑物理I", "credits": 2.0, "difficulty": 4 },
+        { "id": "CCEA2123M", "name": "建筑设计V(甲)", "credits": 6.0, "difficulty": 5 },
+        { "id": "CCEA312201", "name": "数字建筑技术I", "credits": 2.0, "difficulty": 4 }
+      ]
+    },
+    {
+      "semester": "大三春夏",
+      "courses": [
+        { "id": "CCEA3129M", "name": "建筑设计VI(甲)", "credits": 6.0, "difficulty": 5 },
+        { "id": "CCEA3136M", "name": "设计周", "credits": 1.0, "difficulty": 4 },
+        { "id": "PPAE4001G", "name": "体测与锻炼", "credits": 0.5, "difficulty": 2 }
+      ]
+    },
+    {
+      "semester": "大四秋冬",
+      "courses": [
+        { "id": "CCEA4101M", "name": "城市设计原理", "credits": 2.0, "difficulty": 3 },
+        { "id": "CCEA4102M", "name": "专业实习", "credits": 8.0, "difficulty": 4 },
+        { "id": "ADMN2001G", "name": "形势与政策II", "credits": 1.0, "difficulty": 1 }
+      ]
+    },
+    {
+      "semester": "大五春夏",
+      "courses": [
+        { "id": "CCEA5101M", "name": "毕业设计", "credits": 8.0, "difficulty": 5 }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,79 @@
+{
+  "major": "汉语言文学",
+  "abbr": "CL",
+  "plan": [
+    {
+      "semester": "大一秋冬",
+      "courses": [
+        { "id": "ADMN1001G", "name": "思想道德与法治", "credits": 2.0, "difficulty": 2 },
+        { "id": "MARX100IG", "name": "中国近现代史纲要", "credits": 3.0, "difficulty": 2 },
+        { "id": "LIT1001M", "name": "文学概论", "credits": 3.0, "difficulty": 3 },
+        { "id": "LIT1002M", "name": "现代汉语", "credits": 4.0, "difficulty": 3 },
+        { "id": "SIS1001G", "name": "大学英语III", "credits": 3.0, "difficulty": 3 }
+      ]
+    },
+    {
+      "semester": "大一春夏",
+      "courses": [
+        { "id": "ADMN1002G", "name": "形势与政策I", "credits": 1.0, "difficulty": 1 },
+        { "id": "LIT1101M", "name": "古代汉语I", "credits": 3.0, "difficulty": 4 },
+        { "id": "LIT1102M", "name": "中国现当代文学I", "credits": 3.0, "difficulty": 3 },
+        { "id": "SIS100RG", "name": "大学英语IV", "credits": 3.0, "difficulty": 3 },
+        { "id": "CS1241G", "name": "人工智能基础（A）", "credits": 2.0, "difficulty": 3 }
+      ]
+    },
+    {
+      "semester": "大二秋冬",
+      "courses": [
+        { "id": "MARX2001G", "name": "马克思主义基本原理", "credits": 3.0, "difficulty": 3 },
+        { "id": "LIT2001M", "name": "中国古代文学I", "credits": 4.0, "difficulty": 5 },
+        { "id": "LIT2101M", "name": "古代汉语II", "credits": 3.0, "difficulty": 4 },
+        { "id": "LIT2102M", "name": "中国现当代文学II", "credits": 3.0, "difficulty": 3 },
+        { "id": "EDU2001G", "name": "军事理论", "credits": 2.0, "difficulty": 1 }
+      ]
+    },
+    {
+      "semester": "大二春夏",
+      "courses": [
+        { "id": "LIT2002M", "name": "中国古代文学II", "credits": 4.0, "difficulty": 5 },
+        { "id": "LIT2201M", "name": "外国文学I", "credits": 3.0, "difficulty": 4 },
+        { "id": "LIT2202M", "name": "语言学概论", "credits": 3.0, "difficulty": 4 },
+        { "id": "ECON2001G", "name": "中国改革开放史", "credits": 1.5, "difficulty": 2 }
+      ]
+    },
+    {
+      "semester": "大三秋冬",
+      "courses": [
+        { "id": "MARX3001G", "name": "毛泽东思想概论", "credits": 3.0, "difficulty": 2 },
+        { "id": "MARX300RG", "name": "习近平新时代思想概论", "credits": 3.0, "difficulty": 2 },
+        { "id": "LIT3001M", "name": "中国古代文学III", "credits": 4.0, "difficulty": 5 },
+        { "id": "LIT3201M", "name": "外国文学II", "credits": 3.0, "difficulty": 4 },
+        { "id": "LIT3301M", "name": "中外文学比较研究", "credits": 2.0, "difficulty": 4 }
+      ]
+    },
+    {
+      "semester": "大三春夏",
+      "courses": [
+        { "id": "LIT3002M", "name": "中国古代文学IV", "credits": 4.0, "difficulty": 5 },
+        { "id": "LIT3401M", "name": "中国文学批评史", "credits": 3.0, "difficulty": 5 },
+        { "id": "LIT3501M", "name": "美学概论", "credits": 3.0, "difficulty": 4 },
+        { "id": "LIT3022M", "name": "汉语言文学综合实习", "credits": 4.5, "difficulty": 3 }
+      ]
+    },
+    {
+      "semester": "大四秋冬",
+      "courses": [
+        { "id": "PPAE4001G", "name": "体测与锻炼", "credits": 0.5, "difficulty": 2 },
+        { "id": "LIT4101M", "name": "学术论文写作", "credits": 2.0, "difficulty": 4 },
+        { "id": "LIT4104M", "name": "中国文化概论", "credits": 2.0, "difficulty": 3 }
+      ]
+    },
+    {
+      "semester": "大四春夏",
+      "courses": [
+        { "id": "ADMN2001G", "name": "形势与政策II", "credits": 1.0, "difficulty": 1 },
+        { "id": "LIT4105M", "name": "毕业论文", "credits": 10.0, "difficulty": 5 }
+      ]
+    }
+  ]
+}

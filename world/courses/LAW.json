@@ -1,0 +1,83 @@
+{
+  "major": "法学",
+  "abbr": "LAW",
+  "plan": [
+    {
+      "semester": "大一秋冬",
+      "courses": [
+        { "id": "ADMN1001G", "name": "思想道德与法治", "credits": 2.0, "difficulty": 2 },
+        { "id": "MARX100IG", "name": "中国近现代史纲要", "credits": 3.0, "difficulty": 2 },
+        { "id": "MATH1101G", "name": "微积分I", "credits": 4.0, "difficulty": 4 },
+        { "id": "LAW1001M", "name": "法理学", "credits": 3.0, "difficulty": 4 },
+        { "id": "LAW1002M", "name": "宪法学", "credits": 3.0, "difficulty": 4 },
+        { "id": "SIS1001G", "name": "大学英语III", "credits": 3.0, "difficulty": 3 }
+      ]
+    },
+    {
+      "semester": "大一春夏",
+      "courses": [
+        { "id": "ADMN1002G", "name": "形势与政策I", "credits": 1.0, "difficulty": 1 },
+        { "id": "LAW1101M", "name": "中国法律史", "credits": 3.0, "difficulty": 4 },
+        { "id": "LAW1102M", "name": "法律职业伦理", "credits": 2.0, "difficulty": 2 },
+        { "id": "SIS100RG", "name": "大学英语IV", "credits": 3.0, "difficulty": 3 },
+        { "id": "CS1241G", "name": "人工智能基础（A）", "credits": 2.0, "difficulty": 3 },
+        { "id": "LAW1003M", "name": "刑法总论", "credits": 3.0, "difficulty": 5 }
+      ]
+    },
+    {
+      "semester": "大二秋冬",
+      "courses": [
+        { "id": "MARX2001G", "name": "马克思主义基本原理", "credits": 3.0, "difficulty": 3 },
+        { "id": "LAW2001M", "name": "民法总论", "credits": 3.0, "difficulty": 5 },
+        { "id": "LAW2002M", "name": "刑法分论", "credits": 3.0, "difficulty": 5 },
+        { "id": "LAW2003M", "name": "行政法与行政诉讼法", "credits": 3.0, "difficulty": 4 },
+        { "id": "EDU2001G", "name": "军事理论", "credits": 2.0, "difficulty": 1 }
+      ]
+    },
+    {
+      "semester": "大二春夏",
+      "courses": [
+        { "id": "LAW2101M", "name": "物权法", "credits": 3.0, "difficulty": 4 },
+        { "id": "LAW2102M", "name": "债法", "credits": 3.0, "difficulty": 5 },
+        { "id": "LAW2103M", "name": "刑事诉讼法", "credits": 3.0, "difficulty": 4 },
+        { "id": "LAW2104M", "name": "国际公法", "credits": 3.0, "difficulty": 4 },
+        { "id": "ECON2001G", "name": "中国改革开放史", "credits": 1.5, "difficulty": 2 }
+      ]
+    },
+    {
+      "semester": "大三秋冬",
+      "courses": [
+        { "id": "MARX3001G", "name": "毛泽东思想概论", "credits": 3.0, "difficulty": 2 },
+        { "id": "MARX300RG", "name": "习近平新时代思想概论", "credits": 3.0, "difficulty": 2 },
+        { "id": "LAW3001M", "name": "民事诉讼法", "credits": 3.0, "difficulty": 5 },
+        { "id": "LAW3002M", "name": "商法总论", "credits": 3.0, "difficulty": 4 },
+        { "id": "LAW3003M", "name": "经济法", "credits": 3.0, "difficulty": 4 }
+      ]
+    },
+    {
+      "semester": "大三春夏",
+      "courses": [
+        { "id": "LAW3101M", "name": "知识产权法", "credits": 3.0, "difficulty": 4 },
+        { "id": "LAW3102M", "name": "国际私法", "credits": 3.0, "difficulty": 4 },
+        { "id": "LAW3103M", "name": "国际经济法", "credits": 3.0, "difficulty": 4 },
+        { "id": "LAW3022M", "name": "环境资源法", "credits": 2.0, "difficulty": 3 },
+        { "id": "LAW3002M", "name": "法律综合实习", "credits": 4.0, "difficulty": 4 }
+      ]
+    },
+    {
+      "semester": "大四秋冬",
+      "courses": [
+        { "id": "PPAE4001G", "name": "体测与锻炼", "credits": 0.5, "difficulty": 2 },
+        { "id": "LAW4003M", "name": "劳动与社会保障法", "credits": 2.0, "difficulty": 3 },
+        { "id": "LAW4005M", "name": "法律诊所", "credits": 2.5, "difficulty": 4 }
+      ]
+    },
+    {
+      "semester": "大四春夏",
+      "courses": [
+        { "id": "ADMN2001G", "name": "形势与政策II", "credits": 1.0, "difficulty": 1 },
+        { "id": "LAW4001M", "name": "毕业论文", "credits": 6.0, "difficulty": 5 }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,99 @@
+{
+  "major": "农学",
+  "abbr": "AGR",
+  "plan": [
+    {
+      "semester": "大一秋冬",
+      "courses": [
+        { "id": "ADMN1002G", "name": "形势与政策I", "credits": 1.0, "difficulty": 1 },
+        { "id": "CHEM1003G", "name": "普通化学（乙）", "credits": 2.0, "difficulty": 4 },
+        { "id": "CHEM1006G", "name": "普通化学实验（乙）", "credits": 1.5, "difficulty": 3 },
+        { "id": "CS1006G", "name": "Python程序设计", "credits": 3.0, "difficulty": 3 },
+        { "id": "MARX1001G", "name": "思想道德与法治", "credits": 3.0, "difficulty": 2 },
+        { "id": "MATH1133G", "name": "微积分（乙）I", "credits": 5.0, "difficulty": 5 },
+        { "id": "SIS1001G", "name": "大学英语III", "credits": 3.0, "difficulty": 2 }
+      ]
+    },
+    {
+      "semester": "大一春夏",
+      "courses": [
+        { "id": "CHEM1004F", "name": "有机化学", "credits": 4.0, "difficulty": 5 },
+        { "id": "CHEM1007F", "name": "大学化学实验（O）", "credits": 1.5, "difficulty": 3 },
+        { "id": "CS1241G", "name": "人工智能基础（A）", "credits": 2.0, "difficulty": 3 },
+        { "id": "MARX1002G", "name": "中国近现代史纲要", "credits": 3.0, "difficulty": 2 },
+        { "id": "MATH1134G", "name": "微积分（乙）II", "credits": 4.0, "difficulty": 5 },
+        { "id": "MATH1233G", "name": "线性代数（乙）", "credits": 3.0, "difficulty": 5 },
+        { "id": "CAB1031M", "name": "新农科认知与耕读实践", "credits": 1.0, "difficulty": 2 },
+        { "id": "SIS1002G", "name": "大学英语IV", "credits": 3.0, "difficulty": 2 },
+        { "id": "PHIL0701G", "name": "大学写作", "credits": 1.5, "difficulty": 2 }
+      ]
+    },
+    {
+      "semester": "大二秋冬",
+      "courses": [
+        { "id": "BIO2011F", "name": "生物化学（甲）", "credits": 4.0, "difficulty": 5 },
+        { "id": "BIO2012F", "name": "生物化学实验（甲）", "credits": 2.0, "difficulty": 3 },
+        { "id": "BIO2019F", "name": "植物学及实验（甲）", "credits": 4.0, "difficulty": 4 },
+        { "id": "CAB2015M", "name": "遗传学", "credits": 4.0, "difficulty": 5 },
+        { "id": "EDU2001G", "name": "军事理论", "credits": 2.0, "difficulty": 1 },
+        { "id": "MARX2001G", "name": "马克思主义基本原理", "credits": 3.0, "difficulty": 3 },
+        { "id": "MATH2432F", "name": "概率论与数理统计", "credits": 2.5, "difficulty": 4 }
+      ]
+    },
+    {
+      "semester": "大二春夏",
+      "courses": [
+        { "id": "CAB2112M", "name": "植物基因组学", "credits": 1.5, "difficulty": 4 },
+        { "id": "ENVR2316M", "name": "土壤与植物营养", "credits": 2.0, "difficulty": 4 },
+        { "id": "BIO2017F", "name": "植物生理学及实验（甲）", "credits": 4.0, "difficulty": 5 },
+        { "id": "BIO2110F", "name": "微生物学（甲）", "credits": 3.0, "difficulty": 4 },
+        { "id": "BIO2113F", "name": "微生物学实验", "credits": 1.0, "difficulty": 3 },
+        { "id": "CAB2001F", "name": "生物统计学与试验设计（甲）", "credits": 3.0, "difficulty": 5 },
+        { "id": "CAB2225M", "name": "农艺实践", "credits": 1.0, "difficulty": 2 },
+        { "id": "CAB2018M", "name": "分子生物学概论", "credits": 2.0, "difficulty": 3 },
+        { "id": "CAB2126M", "name": "种子生物学", "credits": 2.0, "difficulty": 3 }
+      ]
+    },
+    {
+      "semester": "大三秋冬",
+      "courses": [
+        { "id": "CAB3026M", "name": "生物信息学", "credits": 2.0, "difficulty": 4 },
+        { "id": "CAB3104M", "name": "植物生物技术", "credits": 2.5, "difficulty": 4 },
+        { "id": "CAB3107M", "name": "作物生长发育与调控", "credits": 3.0, "difficulty": 4 },
+        { "id": "CAB3309M", "name": "植物保护学", "credits": 3.0, "difficulty": 4 },
+        { "id": "MARX3001G", "name": "毛泽东思想概论", "credits": 3.0, "difficulty": 3 },
+        { "id": "MARX3002G", "name": "习近平新时代思想概论", "credits": 3.0, "difficulty": 3 },
+        { "id": "CAB3320M", "name": "种子病理与检疫", "credits": 2.0, "difficulty": 3 }
+      ]
+    },
+    {
+      "semester": "大三春夏",
+      "courses": [
+        { "id": "CAB3101M", "name": "作物育种学", "credits": 3.0, "difficulty": 5 },
+        { "id": "CAB3102M", "name": "作物栽培学", "credits": 4.0, "difficulty": 5 },
+        { "id": "CAB3106M", "name": "种子学", "credits": 3.0, "difficulty": 4 },
+        { "id": "CAB3128M", "name": "种子生产学", "credits": 2.5, "difficulty": 4 },
+        { "id": "CAB3123M", "name": "作物栽培耕作综合实习", "credits": 2.0, "difficulty": 3 },
+        { "id": "CAB3124M", "name": "作物遗传育种综合实习", "credits": 2.0, "difficulty": 3 },
+        { "id": "CAB3125M", "name": "种子科学与工程综合实习", "credits": 2.0, "difficulty": 3 },
+        { "id": "CAB3115M", "name": "农作设计", "credits": 1.5, "difficulty": 3 }
+      ]
+    },
+    {
+      "semester": "大四秋冬",
+      "courses": [
+        { "id": "CAB4114M", "name": "作物育种学各论", "credits": 2.0, "difficulty": 3 },
+        { "id": "PPAE4001G", "name": "体测与锻炼", "credits": 0.5, "difficulty": 2 },
+        { "id": "CAB4017M", "name": "分子遗传育种", "credits": 1.5, "difficulty": 4 },
+        { "id": "CAB4023M", "name": "农业创业概论", "credits": 1.5, "difficulty": 3 }
+      ]
+    },
+    {
+      "semester": "大四春夏",
+      "courses": [
+        { "id": "ADMN2001G", "name": "形势与政策II", "credits": 1.0, "difficulty": 1 },
+        { "id": "CAB4035M", "name": "毕业论文（设计）", "credits": 8.0, "difficulty": 5 }
+      ]
+    }
+  ]
+}

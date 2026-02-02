@@ -1,0 +1,103 @@
+{
+  "major": "茶学",
+  "abbr": "TEA",
+  "plan": [
+    {
+      "semester": "大一秋冬",
+      "courses": [
+        { "id": "ADMN1002G", "name": "形势与政策I", "credits": 1.0, "difficulty": 1 },
+        { "id": "MARX1001G", "name": "思想道德与法治", "credits": 3.0, "difficulty": 2 },
+        { "id": "CHEM1003G", "name": "普通化学（乙）", "credits": 2.0, "difficulty": 4 },
+        { "id": "CHEM1002F", "name": "分析化学（乙）", "credits": 2.0, "difficulty": 4 },
+        { "id": "CS1006G", "name": "Python程序设计", "credits": 3.0, "difficulty": 3 },
+        { "id": "MATH1133G", "name": "微积分（乙）I", "credits": 5.0, "difficulty": 5 },
+        { "id": "SIS1001G", "name": "大学英语III", "credits": 3.0, "difficulty": 2 }
+      ]
+    },
+    {
+      "semester": "大一春夏",
+      "courses": [
+        { "id": "MARX1002G", "name": "中国近现代史纲要", "credits": 3.0, "difficulty": 2 },
+        { "id": "CS1241G", "name": "人工智能基础（A）", "credits": 2.0, "difficulty": 3 },
+        { "id": "CHEM1006G", "name": "普通化学实验（乙）", "credits": 1.5, "difficulty": 3 },
+        { "id": "CHEM1004F", "name": "有机化学", "credits": 4.0, "difficulty": 5 },
+        { "id": "CHEM1007F", "name": "大学化学实验（O）", "credits": 1.5, "difficulty": 3 },
+        { "id": "MATH1134G", "name": "微积分（乙）II", "credits": 4.0, "difficulty": 5 },
+        { "id": "MATH1233G", "name": "线性代数（乙）", "credits": 3.0, "difficulty": 5 },
+        { "id": "SIS1002G", "name": "大学英语IV", "credits": 3.0, "difficulty": 2 },
+        { "id": "CAB1031M", "name": "新农科认知与耕读实践", "credits": 1.0, "difficulty": 2 },
+        { "id": "PHIL0701G", "name": "大学写作", "credits": 1.5, "difficulty": 2 }
+      ]
+    },
+    {
+      "semester": "大二秋冬",
+      "courses": [
+        { "id": "CAB2416M", "name": "茶学导论", "credits": 2.0, "difficulty": 2 },
+        { "id": "BIO2011F", "name": "生物化学（甲）", "credits": 4.0, "difficulty": 5 },
+        { "id": "BIO2012F", "name": "生物化学实验（甲）", "credits": 2.0, "difficulty": 3 },
+        { "id": "BIO2020F", "name": "植物学及实验（乙）", "credits": 3.0, "difficulty": 4 },
+        { "id": "CAB2020M", "name": "分子生物学及实验", "credits": 3.0, "difficulty": 5 },
+        { "id": "EDU2001G", "name": "军事理论", "credits": 2.0, "difficulty": 1 },
+        { "id": "MARX2001G", "name": "马克思主义基本原理", "credits": 3.0, "difficulty": 3 },
+        { "id": "MATH2432F", "name": "概率论与数理统计", "credits": 2.5, "difficulty": 4 },
+        { "id": "CAB1009M", "name": "学术英文写作", "credits": 2.0, "difficulty": 3 }
+      ]
+    },
+    {
+      "semester": "大二春夏",
+      "courses": [
+        { "id": "ENVR2316M", "name": "土壤与植物营养", "credits": 2.0, "difficulty": 4 },
+        { "id": "BIO2018F", "name": "植物生理学及实验（乙）", "credits": 3.0, "difficulty": 4 },
+        { "id": "CAB2015M", "name": "遗传学", "credits": 4.0, "difficulty": 5 },
+        { "id": "CAB2225M", "name": "农艺实践", "credits": 1.0, "difficulty": 2 },
+        { "id": "CAB2405M", "name": "茶叶化学与综合利用", "credits": 4.5, "difficulty": 5 },
+        { "id": "CAB2406M", "name": "茶叶化学与综合利用实验", "credits": 1.0, "difficulty": 3 },
+        { "id": "PA2016M", "name": "社会调查与统计分析", "credits": 2.0, "difficulty": 3 },
+        { "id": "CAB2426M", "name": "茶科技与茶道原理实践", "credits": 2.0, "difficulty": 3 }
+      ]
+    },
+    {
+      "semester": "大三秋冬",
+      "courses": [
+        { "id": "CAB3419M", "name": "茶树生物技术及实验", "credits": 2.0, "difficulty": 4 },
+        { "id": "CAB3428M", "name": "茶树栽培与育种学及实验I", "credits": 2.0, "difficulty": 4 },
+        { "id": "CAB2002F", "name": "生物统计学与试验设计（乙）", "credits": 3.0, "difficulty": 4 },
+        { "id": "CAB3309M", "name": "植物保护学", "credits": 3.0, "difficulty": 4 },
+        { "id": "CAB3407M", "name": "茶叶加工与品质管理学I", "credits": 2.5, "difficulty": 4 },
+        { "id": "MARX3001G", "name": "毛泽东思想概论", "credits": 3.0, "difficulty": 3 },
+        { "id": "MARX3002G", "name": "习近平新时代思想概论", "credits": 3.0, "difficulty": 3 },
+        { "id": "CAB3011M", "name": "基因操作原理", "credits": 2.0, "difficulty": 4 }
+      ]
+    },
+    {
+      "semester": "大三春夏",
+      "courses": [
+        { "id": "CAB3408M", "name": "茶叶加工与品质管理学II", "credits": 2.5, "difficulty": 4 },
+        { "id": "CAB3429M", "name": "茶树栽培与育种学及实验II", "credits": 3.0, "difficulty": 4 },
+        { "id": "CAB3430M", "name": "茶叶加工综合实习", "credits": 2.0, "difficulty": 3 },
+        { "id": "BEFS2072M", "name": "农业机械与设备", "credits": 2.0, "difficulty": 3 },
+        { "id": "CAB3119M", "name": "饮品加工原理", "credits": 2.0, "difficulty": 3 },
+        { "id": "CAB3417M", "name": "茶叶机械与自动化", "credits": 1.5, "difficulty": 3 },
+        { "id": "GEOS3016M", "name": "旅游规划与大数据", "credits": 2.0, "difficulty": 3 }
+      ]
+    },
+    {
+      "semester": "大四秋冬",
+      "courses": [
+        { "id": "CAB4401M", "name": "茶业经营管理学", "credits": 2.0, "difficulty": 3 },
+        { "id": "PPAE4001G", "name": "体测与锻炼", "credits": 0.5, "difficulty": 2 },
+        { "id": "CAB4402M", "name": "茶叶贸易学", "credits": 2.0, "difficulty": 3 },
+        { "id": "CAB4404M", "name": "茶学专业英语", "credits": 2.0, "difficulty": 3 }
+      ]
+    },
+    {
+      "semester": "大四春夏",
+      "courses": [
+        { "id": "ADMN2001G", "name": "形势与政策II", "credits": 1.0, "difficulty": 1 },
+        { "id": "CAB4035M", "name": "毕业论文（设计）", "credits": 8.0, "difficulty": 5 },
+        { "id": "CAB4034M", "name": "毕业实习", "credits": 2.0, "difficulty": 4 },
+        { "id": "CAB4014M", "name": "现代农业科学进展", "credits": 1.0, "difficulty": 2 }
+      ]
+    }
+  ]
+}

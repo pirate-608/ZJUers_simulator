@@ -1,0 +1,84 @@
+{
+  "major": "机械工程",
+  "abbr": "ME",
+  "plan": [
+    {
+      "semester": "大一秋冬",
+      "courses": [
+        { "id": "ADMN1001G", "name": "思想道德与法治", "credits": 2.0, "difficulty": 2 },
+        { "id": "MATH1135G", "name": "微积分（甲）I", "credits": 5.0, "difficulty": 5 },
+        { "id": "MATH1232G", "name": "线性代数（甲）", "credits": 3.5, "difficulty": 4 },
+        { "id": "CS1001G", "name": "C语言设计基础", "credits": 3.0, "difficulty": 3 },
+        { "id": "ME1001F", "name": "工程图学", "credits": 2.5, "difficulty": 3 }
+      ]
+    },
+    {
+      "semester": "大一春夏",
+      "courses": [
+        { "id": "ADMN100RG", "name": "形势与政策I", "credits": 1.0, "difficulty": 1 },
+        { "id": "MATH1136G", "name": "微积分（甲）II", "credits": 5.0, "difficulty": 5 },
+        { "id": "MARX100IG", "name": "中国近现代史纲要", "credits": 3.0, "difficulty": 2 },
+        { "id": "PHY1001G", "name": "大学物理（甲）I", "credits": 4.0, "difficulty": 4 },
+        { "id": "CS1241G", "name": "人工智能基础（A）", "credits": 2.0, "difficulty": 3 },
+        { "id": "ME1002F", "name": "工程训练", "credits": 1.5, "difficulty": 3 }
+      ]
+    },
+    {
+      "semester": "大二秋冬",
+      "courses": [
+        { "id": "PHY2001G", "name": "大学物理（甲）II", "credits": 4.0, "difficulty": 4 },
+        { "id": "PHY2005G", "name": "大学物理实验", "credits": 1.5, "difficulty": 3 },
+        { "id": "MATH2432F", "name": "概率论与数理统计", "credits": 2.5, "difficulty": 4 },
+        { "id": "ME2001F", "name": "理论力学（甲）", "credits": 4.0, "difficulty": 5 },
+        { "id": "EEA2011F", "name": "工程流体力学", "credits": 4.0, "difficulty": 5 },
+        { "id": "ME2101F", "name": "工程材料", "credits": 2.0, "difficulty": 3 }
+      ]
+    },
+    {
+      "semester": "大二春夏",
+      "courses": [
+        { "id": "MARX2001G", "name": "马克思主义基本原理", "credits": 3.0, "difficulty": 3 },
+        { "id": "EE2001F", "name": "电工电子学", "credits": 4.5, "difficulty": 5 },
+        { "id": "ME2103F", "name": "材料力学（乙）", "credits": 3.5, "difficulty": 5 },
+        { "id": "ME2012M", "name": "设计与制造I", "credits": 3.0, "difficulty": 4 },
+        { "id": "ME2107M", "name": "热工基础", "credits": 2.5, "difficulty": 4 }
+      ]
+    },
+    {
+      "semester": "大三秋冬",
+      "courses": [
+        { "id": "MARX3001G", "name": "毛泽东思想概论", "credits": 3.0, "difficulty": 2 },
+        { "id": "ME2016M", "name": "设计与制造II", "credits": 3.0, "difficulty": 4 },
+        { "id": "ME3021M", "name": "控制工程基础", "credits": 2.5, "difficulty": 5 },
+        { "id": "ME3101M", "name": "机械原理", "credits": 3.5, "difficulty": 5 },
+        { "id": "ME3247M", "name": "电机拖动与控制", "credits": 1.5, "difficulty": 4 }
+      ]
+    },
+    {
+      "semester": "大三春夏",
+      "courses": [
+        { "id": "MARX3002G", "name": "习近平新时代思想概论", "credits": 3.0, "difficulty": 2 },
+        { "id": "ME3013M", "name": "机械工程测试技术", "credits": 2.0, "difficulty": 4 },
+        { "id": "ME3017M", "name": "设计与制造III", "credits": 3.0, "difficulty": 5 },
+        { "id": "ME3022M", "name": "液压传动及控制I", "credits": 2.0, "difficulty": 4 },
+        { "id": "ME3315M", "name": "测控技术实验", "credits": 1.0, "difficulty": 3 }
+      ]
+    },
+    {
+      "semester": "大四秋冬",
+      "courses": [
+        { "id": "PPAE4001G", "name": "体测与锻炼", "credits": 0.5, "difficulty": 2 },
+        { "id": "ME3348M", "name": "机械工程综合课程设计", "credits": 3.0, "difficulty": 5 },
+        { "id": "ME3231M", "name": "机械制造技术", "credits": 2.0, "difficulty": 4 },
+        { "id": "ME3233M", "name": "数字控制系统", "credits": 1.5, "difficulty": 4 }
+      ]
+    },
+    {
+      "semester": "大四春夏",
+      "courses": [
+        { "id": "ADMN2001G", "name": "形势与政策II", "credits": 1.0, "difficulty": 1 },
+        { "id": "ME4399M", "name": "毕业设计（论文）", "credits": 7.5, "difficulty": 5 }
+      ]
+    }
+  ]
+}

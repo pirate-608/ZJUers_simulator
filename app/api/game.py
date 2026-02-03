@@ -2,12 +2,16 @@ from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from jose import JWTError, jwt
 import asyncio
 import json
+import logging
 
 from app.core.config import settings
 from app.websockets.manager import manager
 from app.game.state import RedisState
 from app.game.engine import GameEngine
 from app.game.balance import balance
+
+# 配置日志
+logger = logging.getLogger(__name__)
 
 # 1. 必须先实例化 router
 router = APIRouter()
@@ -50,11 +54,11 @@ async def get_game_config():
 @router.websocket("/ws/game")
 async def websocket_endpoint(websocket: WebSocket, token: str):
     # --- 鉴权 ---
-    print(f"[WS][DEBUG] websocket_endpoint called, token={token}")
+    logger.debug(f"WebSocket connection attempt with token: {token[:20]}...")
     user_id, username, tier = await get_current_user_id(token)
     
     if not user_id:
-        print(f"[WS][ERROR] Invalid token, closing websocket.")
+        logger.warning("Invalid token, closing WebSocket connection")
         await websocket.close(code=1008)
         return
 
@@ -64,6 +68,14 @@ async def websocket_endpoint(websocket: WebSocket, token: str):
     
     engine = None
     loop_task = None
+    heartbeat_task = None
+
+    # 心跳检测任务
+    async def heartbeat_checker():
+        """定期检查僵尸连接"""
+        while True:
+            await asyncio.sleep(30)  # 每30秒检查一次
+            await manager.check_dead_connections()
 
     try:
         # --- 状态初始化/加载 ---
@@ -78,11 +90,11 @@ async def websocket_endpoint(websocket: WebSocket, token: str):
             # 如果课程数据为空或为 "[]"，说明是坏档
             if not course_json or course_json == "[]":
                 need_repair = True
-                print(f"[GAME] Detected corrupted save for {username} (Missing courses). Repairing...")
+                logger.warning(f"Corrupted save detected for {username}, repairing...")
 
         if not exists:
             # === 情况A：全新开局 ===
-            print(f"[GAME] Initializing new game for {username} (Tier: {tier})")
+            logger.info(f"Initializing new game for {username} (Tier: {tier})")
             await state.init_game(username, tier)
             await state.assign_major(tier) # 必做：分配课程
             
@@ -90,7 +102,7 @@ async def websocket_endpoint(websocket: WebSocket, token: str):
             stats = await state.get_stats()
             await manager.send_personal_message({
                 "type": "event",
-                "data": {"desc": f"欢迎来到浙江大学！你被分配到了【{stats.get('major', '未知专业')}】专业。"}
+                "data": {"desc": f"欢迎来到折姜大学！你被分配到了【{stats.get('major', '未知专业')}】专业。"}
             }, user_id)
 
         elif need_repair:
@@ -105,7 +117,7 @@ async def websocket_endpoint(websocket: WebSocket, token: str):
             
         else:
             # === 情况C：正常读取旧档 ===
-            print(f"[GAME] Loading existing game for {username}")
+            logger.info(f"Loading existing game for {username}")
             # stats 已经在上面获取过了
 
         # 再次获取最新的完整状态（确保包含了修复后的数据）
@@ -126,25 +138,37 @@ async def websocket_endpoint(websocket: WebSocket, token: str):
         # --- 启动游戏引擎 ---
         engine = GameEngine(user_id, state, manager)
         loop_task = asyncio.create_task(engine.run_loop())
+        
+        # --- 启动心跳检测任务 ---
+        heartbeat_task = asyncio.create_task(heartbeat_checker())
 
         # --- 消息接收循环 ---
         while True:
             data_text = await websocket.receive_text()
             try:
                 data_json = json.loads(data_text)
-                await engine.process_action(data_json)
+                
+                # 处理心跳消息
+                if data_json.get("action") == "ping":
+                    manager.update_heartbeat(user_id)
+                    await manager.send_personal_message({"type": "pong"}, user_id)
+                else:
+                    await engine.process_action(data_json)
+                    
             except json.JSONDecodeError:
-                print(f"[WS] Invalid JSON from {username}")
+                logger.warning(f"Invalid JSON received from {username}")
 
     except WebSocketDisconnect:
-        print(f"[WS] Disconnected: {username}")
+        logger.info(f"WebSocket disconnected: {username}")
     except Exception as e:
-        print(f"[WS] Error: {e}")
+        logger.error(f"WebSocket error for {username}: {e}", exc_info=True)
     finally:
         # --- 资源清理 ---
         if engine:
             engine.stop()
         if loop_task:
             loop_task.cancel()
+        if heartbeat_task:
+            heartbeat_task.cancel()
         manager.disconnect(user_id)
         await state.close()

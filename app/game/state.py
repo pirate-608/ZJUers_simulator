@@ -260,6 +260,7 @@ class RedisState:
         return await self.redis.hincrby(self.key, "semester_idx", 1)
 
     async def reset_courses_for_new_semester(self, semester_idx: int):
+        import time
         raw_plan = await self.redis.hget(self.key, "course_plan_json")
         try:
             course_plan = json.loads(raw_plan) if raw_plan else {}
@@ -274,11 +275,15 @@ class RedisState:
         sem_names = ["大一秋冬", "大一春夏", "大二秋冬", "大二春夏", "大三秋冬", "大三春夏", "大四秋冬", "大四春夏"]
         term_name = sem_names[semester_idx - 1] if 1 <= semester_idx <= 8 else f"延毕学期 {semester_idx}"
 
+        # 记录学期开始时间（Unix时间戳）
+        semester_start_time = int(time.time())
+
         async with self.redis.pipeline() as pipe:
             pipe.delete(self.course_key)
             pipe.delete(self.course_state_key) # [新增] 清空旧状态
             
             pipe.hset(self.key, "semester", term_name)
+            pipe.hset(self.key, "semester_start_time", semester_start_time)
             if my_courses:
                 # 初始化进度为0
                 course_mastery = {str(c["id"]): 0 for c in my_courses}
@@ -291,3 +296,15 @@ class RedisState:
             else:
                 pipe.hset(self.key, "course_info_json", "[]")
             await pipe.execute()
+
+    async def get_semester_time_left(self, duration_seconds: int) -> int:
+        """计算学期剩余时间（秒）"""
+        import time
+        start_time_str = await self.redis.hget(self.key, "semester_start_time")
+        if not start_time_str:
+            return duration_seconds  # 如果没有开始时间，返回完整时长
+        
+        start_time = int(start_time_str)
+        elapsed = int(time.time()) - start_time
+        remaining = max(0, duration_seconds - elapsed)
+        return remaining

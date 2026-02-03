@@ -231,14 +231,18 @@ class GameEngine:
                     await self.state.batch_update_course_mastery(mastery_updates)
 
                 # 结算总精力消耗
-                # 最终消耗 = 基础消耗 * 加权系数
-                final_energy_cost = int(self.BASE_ENERGY_DRAIN * total_drain_factor)
+                # 最终消耗 = 基础消耗 * 加权系数（保留浮点数精度）
+                final_energy_cost_float = self.BASE_ENERGY_DRAIN * total_drain_factor
                 
-                # 如果完全摆烂(系数0)，不仅不扣，还可以回一点血
-                if final_energy_cost == 0:
+                # 修复：只有drain系数真正接近0（全摆烂）才回血
+                # 避免"全摸"状态因int截断误判为摆烂
+                if final_energy_cost_float < 0.3:  # 真正的摆烂阈值
                     await self.state.update_stat_safe("energy", 2)
                     await self.state.update_stat_safe("stress", -2) # 摆烂降压
                 else:
+                    # 向上取整，确保至少消耗1点精力
+                    import math
+                    final_energy_cost = max(1, math.ceil(final_energy_cost_float))
                     await self.state.update_stat_safe("energy", -final_energy_cost)
                     # 卷多了压力大：如果消耗系数高，增加压力
                     if total_drain_factor > 1.5:
@@ -648,6 +652,7 @@ class GameEngine:
             self.stop()
             return
             
+        # 重置课程并设置学期开始时间
         await self.state.reset_courses_for_new_semester(current_semester_idx)
         holiday_event = await generate_random_event({"context": "假期", "semester": current_semester_idx})
         
@@ -663,16 +668,25 @@ class GameEngine:
     async def _push_update(self, msg: str = None):
         """统一数据推送接口"""
         try:
-            # 并发获取 stats 和 courses 减少等待
-            new_stats, course_mastery = await asyncio.gather(
+            # 并发获取 stats、courses 和 course_states 减少等待
+            new_stats, course_mastery, course_states = await asyncio.gather(
                 self.state.get_stats(),
-                self.state.get_courses_mastery()
+                self.state.get_courses_mastery(),
+                self.state.get_all_course_states()
             )
+            
+            # 计算学期剩余时间
+            semester_idx = int(new_stats.get("semester_idx", 1))
+            semester_config = balance.semester_config
+            base_duration = semester_config.get("durations", {}).get(str(semester_idx), semester_config.get("default_duration", 360))
+            semester_time_left = await self.state.get_semester_time_left(base_duration)
             
             await self.manager.send_personal_message({
                 "type": "tick",
                 "stats": new_stats,
-                "courses": course_mastery
+                "courses": course_mastery,
+                "course_states": course_states,
+                "semester_time_left": semester_time_left
             }, self.user_id)
 
             if msg:

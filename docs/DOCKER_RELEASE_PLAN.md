@@ -7,8 +7,8 @@
 **用户体验**：
 1. 下载项目压缩包
 2. 解压后运行：
-   - Windows: 双击 `deploy.bat`
-   - Linux/Mac: `chmod +x deploy.sh && ./deploy.sh`
+   - Windows: 双击 `scripts\deploy.bat`
+   - Linux/Mac: `chmod +x scripts/deploy.sh && ./scripts/deploy.sh`
 3. 自动检测Docker、构建镜像、启动服务
 4. 浏览器自动打开游戏
 
@@ -164,9 +164,9 @@ services:
 
 ### 短期（立即可用）
 1. **完善一键部署脚本**（已完成）✅
-   - `deploy.py` - Python智能部署脚本
-   - `deploy.bat` - Windows批处理脚本  
-   - `deploy.sh` - Linux/Mac Shell脚本
+   - `scripts/deploy.py` - Python智能部署脚本
+   - `scripts/deploy.bat` - Windows批处理脚本  
+   - `scripts/deploy.sh` - Linux/Mac Shell脚本
 
 2. **优化Docker配置**
    - 多阶段构建减小镜像体积
@@ -208,10 +208,12 @@ ZJUers_Simulator_Docker_v1.0/
 │   ├── Dockerfile
 │   └── requirements.txt
 ├── 🚀 一键启动/
-│   ├── deploy.py          # Python自动部署
-│   ├── deploy.bat         # Windows一键启动
-│   ├── deploy.sh          # Linux/Mac一键启动
-│   └── stop.bat/stop.sh   # 一键停止
+│   └── scripts/
+│       ├── deploy.py          # Python自动部署
+│       ├── deploy.bat         # Windows一键启动
+│       ├── deploy.sh          # Linux/Mac一键启动
+│       ├── stop.bat           # Windows一键停止
+│       └── stop.sh            # Linux/Mac一键停止
 ├── 📖 说明文档/
 │   ├── README.md          # 快速开始
 │   ├── INSTALL.md         # 详细安装指南
@@ -227,7 +229,7 @@ ZJUers_Simulator_Docker_v1.0/
 
 1. **下载**: 用户下载 `ZJUers_Simulator_Docker_v1.0.zip`
 2. **解压**: 解压到任意目录
-3. **运行**: 双击 `deploy.bat` (Windows) 或运行 `./deploy.sh` (Linux/Mac)
+3. **运行**: 双击 `scripts\deploy.bat` (Windows) 或运行 `./scripts/deploy.sh` (Linux/Mac)
 4. **等待**: 脚本自动检测环境、构建镜像、启动服务
 5. **访问**: 浏览器自动打开 http://localhost:8000
 6. **游戏**: 开始体验！

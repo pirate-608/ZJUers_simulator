@@ -21,7 +21,7 @@
 - 支持 HTTPS 反向代理（nginx）
 - 数据结构高度可扩展，支持自定义培养方案(可更改world/courses目录下的表结构和字段)
 
-## 快速开始
+## 快速开始(此为本地开发部署方案，快速体验请前往[scripts/README.md](scripts/README.md)了解详情)
 
 ### 一键部署（推荐，跨平台）
 
@@ -132,10 +132,10 @@ docker-compose down
 # 下载项目后，一键部署：
 
 # Windows - 双击运行
-deploy.bat
+scripts\deploy.bat
 
 # Linux/macOS - 终端运行
-chmod +x deploy.sh && ./deploy.sh
+chmod +x scripts/deploy.sh && ./scripts/deploy.sh
 ```
 
 #### 自动化功能
@@ -156,8 +156,8 @@ docker compose logs -f
 # 停止服务
 docker compose down
 # 或使用一键停止脚本
-stop.bat        # Windows
-./stop.sh       # Linux/Mac
+scripts\stop.bat        # Windows
+./scripts/stop.sh       # Linux/Mac
 
 # 重启服务
 docker compose restart
@@ -178,8 +178,9 @@ docker run -d -p 8000:8000 ghcr.io/yourusername/zjuers_simulator:latest
 - tunnel/      Cloudflare Tunnel 配置(可选)
 - nginx/       反向代理与证书
 - c_modules/   C模块源码
-- **deploy.py/bat/sh**   **Docker一键部署脚本**
-- **stop.bat/sh**        **服务停止脚本**
+- **scripts/**            **部署和管理脚本目录**
+  - scripts/deploy.py/bat/sh  Docker一键部署脚本
+  - scripts/stop.bat/sh       服务停止脚本
 
 ## 许可证
 本项目采用 MIT License 开源。

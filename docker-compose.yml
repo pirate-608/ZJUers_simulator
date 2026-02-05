@@ -15,11 +15,11 @@ services:
       - SECRET_KEY=${SECRET_KEY}
     depends_on:
       db:
-        condition: service_healthy  # <--- 关键修改：等待 db 健康
+        condition: service_healthy # <--- 关键修改：等待 db 健康
       redis:
         condition: service_started
     # 添加自动重启，防止意外崩溃后不恢复
-    restart: always 
+    restart: always
     volumes:
       - ./world:/app/world
       - ./static:/app/static
@@ -39,7 +39,7 @@ services:
       - "127.0.0.1:5432:5432" # 即使映射到了宿主机的 5433，容器内部依然是 5432
     # 添加健康检查命令
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U zju -d zjuers"]
+      test: [ "CMD-SHELL", "pg_isready -U zju -d zjuers" ]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -50,20 +50,6 @@ services:
     restart: always
     ports:
       - "127.0.0.1:6379:6379"
-
-  nginx:
-    image: nginx:latest
-    container_name: zjuers_nginx
-    ports:
-      - "80:80"
-    volumes:
-      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
-      - ./static:/app/static:ro
-      - ./nginx/ssl:/etc/nginx/ssl:ro
-    depends_on:
-      backend:
-        condition: service_started
-    restart: always
 
 volumes:
   postgres_data:

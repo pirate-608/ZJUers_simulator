@@ -12,11 +12,13 @@ from pathlib import Path
 import platform
 import json
 import time
+import secrets
+import string
 
 
 class DockerDeployer:
     def __init__(self):
-        self.root_dir = Path(__file__).parent
+        self.root_dir = Path(__file__).parent.parent  # 回到项目根目录
         self.platform = platform.system().lower()
 
     def log(self, message):
@@ -89,6 +91,68 @@ class DockerDeployer:
 
         self.log("=" * 60)
 
+    def generate_random_password(self, length=16):
+        """生成随机密码"""
+        alphabet = string.ascii_letters + string.digits + "!@#$%^&*"
+        return "".join(secrets.choice(alphabet) for _ in range(length))
+
+    def generate_secret_key(self, length=50):
+        """生成安全密钥"""
+        return secrets.token_urlsafe(length)
+
+    def get_llm_config(self):
+        """获取用户LLM配置"""
+        print()
+        print("=" * 60)
+        print("🤖 AI功能配置 (可选)")
+        print("=" * 60)
+        print("AI功能需要阿里云百炼平台的API密钥。")
+        print("详细获取步骤请查看 scripts/README.md")
+        print()
+
+        # 询问是否配置AI功能
+        while True:
+            choice = input("是否现在配置AI功能？(y/n) [默认:n]: ").strip().lower()
+            if choice in ["", "n", "no"]:
+                return None, None
+            elif choice in ["y", "yes"]:
+                break
+            else:
+                print("请输入 y 或 n")
+
+        print()
+        print("📋 获取步骤：")
+        print("1. 访问阿里云百炼: https://bailian.console.aliyun.com")
+        print("2. 登录/注册并完成实名认证")
+        print("3. 开通服务后，进入'密钥管理'创建API Key")
+        print("4. 在'模型服务'中选择模型（如 qwen-max, qwen-plus, qwen-turbo）")
+        print()
+
+        # 获取API Key
+        while True:
+            api_key = input("请输入API Key (以sk-开头): ").strip()
+            if not api_key:
+                print("API Key不能为空")
+                continue
+            if not api_key.startswith("sk-"):
+                print("警告：API Key通常以'sk-'开头，请确认输入正确")
+            break
+
+        # 获取模型名称
+        print()
+        print("💡 推荐模型：")
+        print("  - qwen-max (最强能力，适合复杂任务)")
+        print("  - qwen-plus (平衡性能与成本)")
+        print("  - qwen-turbo (快速响应，低成本)")
+
+        while True:
+            model = input("请输入模型名称 [默认: qwen-turbo]: ").strip()
+            if not model:
+                model = "qwen-turbo"
+            break
+
+        return api_key, model
+
     def create_env_file(self):
         """创建环境变量文件"""
         env_file = self.root_dir / ".env"
@@ -99,29 +163,62 @@ class DockerDeployer:
 
         self.log("创建环境变量文件...")
 
-        env_content = """# ZJUers Simulator 环境配置
+        # 生成随机密码和密钥
+        db_password = self.generate_random_password(16)
+        secret_key = self.generate_secret_key()
+
+        # 获取LLM配置
+        api_key, model = self.get_llm_config()
+
+        # 构建环境变量内容
+        env_content = f"""# ZJUers Simulator 环境配置
+# 自动生成于 {time.strftime('%Y-%m-%d %H:%M:%S')}
 
 # 数据库配置
-DATABASE_URL=postgresql+asyncpg://zju:zjuers123456@db/zjuers
-POSTGRES_PASSWORD=zjuers123456
+DATABASE_URL=postgresql+asyncpg://zju:{db_password}@db/zjuers
+POSTGRES_PASSWORD={db_password}
 
 # 应用安全密钥
-SECRET_KEY=zjuers-simulator-docker-secret-key-2026
+SECRET_KEY={secret_key}
 
-# 大模型配置（可选，如不配置AI功能将不可用）
+# 大模型配置 (阿里云百炼)
+LLM_BASE_URL=https://dashscope.aliyuncs.com/compatible-mode/v1"""
+
+        if api_key and model:
+            env_content += f"""
+LLM_API_KEY={api_key}
+LLM={model}
+"""
+        else:
+            env_content += """
 LLM_API_KEY=
-LLM_BASE_URL=https://api.openai.com/v1
-LLM=gpt-3.5-turbo
+LLM=qwen-turbo
+"""
 
+        env_content += """
 # 其他配置
 REDIS_URL=redis://redis:6379/0
 """
 
+        # 保存文件
         with open(env_file, "w", encoding="utf-8") as f:
             f.write(env_content)
 
         self.log(f"✅ 环境文件已创建: {env_file}")
-        self.log("💡 如需配置AI功能，请编辑 .env 文件添加API密钥")
+
+        # 显示配置摘要
+        if api_key:
+            self.log(f"✅ AI功能已配置 (模型: {model})")
+        else:
+            self.log("ℹ️ AI功能未配置，如需使用请编辑 .env 文件")
+
+        # 安全提醒
+        print()
+        print("🔒 安全提醒:")
+        print(f"   .env 文件包含敏感信息，请勿分享给他人")
+        print(f"   数据库密码: {db_password[:4]}****")
+        if api_key:
+            print(f"   API Key: {api_key[:8]}****")
 
     def pull_or_build_images(self):
         """拉取或构建镜像"""

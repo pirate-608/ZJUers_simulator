@@ -10,6 +10,7 @@ echo ============================================
 echo.
 
 echo 正在停止Docker服务...
+cd /d "%~dp0\.."
 docker compose down
 
 if errorlevel 1 (
@@ -22,7 +23,7 @@ echo.
 echo ============================================
 echo   💡 提示
 echo ============================================
-echo   🔄 重新启动: 运行 deploy.bat
+echo   🔄 重新启动: 运行 scripts\deploy.bat
 echo   📊 查看状态: docker compose ps
 echo   🗑️  清理数据: docker compose down -v
 echo ============================================

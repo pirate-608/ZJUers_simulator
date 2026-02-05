@@ -72,7 +72,7 @@ jobs:
           # 复制必要文件
           cp -r app static templates world zjuers-simulator-docker/
           cp docker-compose.yml Dockerfile requirements.txt zjuers-simulator-docker/
-          cp deploy.py deploy.bat deploy.sh stop.bat stop.sh zjuers-simulator-docker/
+          cp -r scripts zjuers-simulator-docker/
           cp .env.example zjuers-simulator-docker/
           cp README.md DOCKER_RELEASE_PLAN.md zjuers-simulator-docker/
           
@@ -95,8 +95,8 @@ jobs:
             1. 下载并解压发布包
             2. 确保已安装 Docker Desktop
             3. 运行一键部署脚本：
-               - **Windows**: 双击 `deploy.bat`
-               - **Linux/Mac**: `chmod +x deploy.sh && ./deploy.sh`
+               - **Windows**: 双击 `scripts\deploy.bat`
+               - **Linux/Mac**: `chmod +x scripts/deploy.sh && ./scripts/deploy.sh`
             4. 浏览器自动打开 http://localhost:8000
             
             ### 📦 预构建镜像

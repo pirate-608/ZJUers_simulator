@@ -15,6 +15,7 @@ echo "============================================"
 echo ""
 
 echo -e "${BLUE}正在停止Docker服务...${NC}"
+cd "$(dirname "$0")/.."
 
 # 检查Docker Compose命令
 if command -v docker-compose &> /dev/null; then
@@ -38,7 +39,7 @@ echo ""
 echo "============================================"
 echo -e "  ${YELLOW}💡 提示${NC}"
 echo "============================================"  
-echo "  🔄 重新启动: ./deploy.sh"
+echo "  🔄 重新启动: ./scripts/deploy.sh"
 echo "  📊 查看状态: $COMPOSE_CMD ps"
 echo "  🗑️  清理数据: $COMPOSE_CMD down -v"
 echo "============================================"

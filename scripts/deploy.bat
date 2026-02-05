@@ -1,0 +1,145 @@
+@echo off
+REM ZJUers Simulator - Windows 一键部署脚本
+chcp 65001 >nul
+title ZJUers Simulator - Docker 一键部署
+
+echo.
+echo ================================================================
+echo   🎓 ZJUers Simulator - Docker 一键部署
+echo   📦 基于Docker的完整部署方案
+echo ================================================================
+echo.
+
+REM 检查Python
+echo [1/3] 检查Python环境...
+python --version >nul 2>&1
+if errorlevel 1 (
+    echo ❌ 未找到Python，正在使用备用方案...
+    
+    REM 备用方案：直接使用docker-compose
+    echo [备用] 检查Docker环境...
+    docker --version >nul 2>&1
+    if errorlevel 1 (
+        echo ❌ Docker未安装，请先安装Docker Desktop
+        echo 📥 下载地址: https://www.docker.com/products/docker-desktop/
+        pause
+        exit /b 1
+    )
+    
+    echo ✅ Docker已安装
+    goto DOCKER_DEPLOY
+) else (
+    echo ✅ Python已安装
+    python --version
+    echo.
+    echo [2/3] 运行自动部署脚本...
+    cd /d "%~dp0\.."
+    python scripts/deploy.py
+    goto END
+)
+
+:DOCKER_DEPLOY
+cd /d "%~dp0\.."
+echo.
+echo [2/3] 配置环境变量...
+if not exist ".env" (
+    echo.
+    echo ================================================================
+    echo   🤖 AI功能配置 (可选)
+    echo ================================================================
+    echo AI功能需要阿里云百炼平台的API密钥
+    echo 详细获取步骤请查看 scripts\README.md
+    echo.
+    
+    set /p configure_ai="是否现在配置AI功能? (y/n) [默认:n]: "
+    if /i "!configure_ai!"=="" set configure_ai=n
+    
+    if /i "!configure_ai!"=="y" (
+        echo.
+        echo 📋 获取步骤：
+        echo 1. 访问阿里云百炼: https://bailian.console.aliyun.com
+        echo 2. 登录/注册并完成实名认证
+        echo 3. 开通服务后，进入'密钥管理'创建API Key
+        echo 4. 在'模型服务'中选择模型 (如 qwen-max, qwen-plus, qwen-turbo)
+        echo.
+        
+        set /p llm_api_key="请输入API Key (以sk-开头): "
+        if "!llm_api_key!"=="" set llm_api_key=
+        
+        echo.
+        echo 💡 推荐模型：
+        echo   - qwen-max (最强能力，适合复杂任务)
+        echo   - qwen-plus (平衡性能与成本)
+        echo   - qwen-turbo (快速响应，低成本)
+        
+        set /p llm_model="请输入模型名称 [默认: qwen-turbo]: "
+        if "!llm_model!"=="" set llm_model=qwen-turbo
+    ) else (
+        set llm_api_key=
+        set llm_model=qwen-turbo
+    )
+    
+    echo.
+    echo 🔒 安全警告：
+    echo   由于未检测到Python环境，此部署使用简单默认密钥
+    echo   数据库密码: zjuers123456
+    echo   安全密钥: zjuers-default-2026
+    echo   🔴 警告: 此配置存在安全风险，仅适用于本地测试
+    echo   如需生产环境部署，请安装Python并使用自动部署脚本
+    echo.
+    pause
+    
+    echo # ZJUers Simulator Docker 部署配置 > .env
+    echo # 警告: 使用默认密钥，存在安全风险 >> .env
+    echo # 生成于 %date% %time% >> .env
+    echo. >> .env
+    echo DATABASE_URL=postgresql+asyncpg://zju:zjuers123456@db/zjuers >> .env
+    echo POSTGRES_PASSWORD=zjuers123456 >> .env
+    echo SECRET_KEY=zjuers-default-2026 >> .env
+    echo LLM_BASE_URL=https://dashscope.aliyuncs.com/compatible-mode/v1 >> .env
+    echo LLM_API_KEY=!llm_api_key! >> .env
+    echo LLM=!llm_model! >> .env
+    echo REDIS_URL=redis://redis:6379/0 >> .env
+    
+    echo ✅ 环境文件已创建
+    if not "!llm_api_key!"=="" (
+        echo ✅ AI功能已配置 (模型: !llm_model!)
+    ) else (
+        echo ℹ️ AI功能未配置，如需使用请编辑 .env 文件
+    )
+) else (
+    echo ✅ 环境文件已存在
+)
+
+echo.
+echo [3/3] 启动Docker服务...
+docker compose up -d --build
+
+if errorlevel 1 (
+    echo ❌ 启动失败，请检查Docker是否正在运行
+    pause
+    exit /b 1
+)
+
+echo.
+echo ================================================================
+echo   🎉 部署完成！
+echo ================================================================
+echo   🌐 访问地址: http://localhost:8000
+echo   📊 管理面板: docker compose ps
+echo   📋 查看日志: docker compose logs -f  
+echo   ⏹  停止服务: docker compose down
+echo ================================================================
+echo.
+
+echo ⏳ 等待服务启动完成...
+timeout /t 5 /nobreak >nul
+
+echo 🌐 正在打开浏览器...
+start http://localhost:8000
+
+:END
+echo.
+echo ℹ️ 提示: 按任意键关闭此窗口（不会停止服务）
+echo    如需停止服务请运行: docker compose down
+pause >nul

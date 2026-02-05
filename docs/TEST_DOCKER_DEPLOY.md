@@ -6,26 +6,26 @@
 
 ### ✅ Windows 用户
 ```powershell
-# 1. 双击运行 deploy.bat
-deploy.bat
+# 1. 双击运行 scripts\deploy.bat
+scripts\deploy.bat
 
 # 或在PowerShell中运行：
-.\deploy.bat
+.\scripts\deploy.bat
 ```
 
 ### ✅ Linux/macOS 用户  
 ```bash
 # 1. 给脚本添加执行权限
-chmod +x deploy.sh stop.sh
+chmod +x scripts/deploy.sh scripts/stop.sh
 
 # 2. 运行部署脚本
-./deploy.sh
+./scripts/deploy.sh
 ```
 
 ### ✅ 跨平台（Python方式）
 ```bash
 # 使用Python脚本（推荐，功能最全）
-python deploy.py
+python scripts/deploy.py
 ```
 
 ---
@@ -94,8 +94,8 @@ docker compose logs -f
 ### 停止服务
 ```bash
 # 使用停止脚本
-stop.bat        # Windows
-./stop.sh       # Linux/Mac
+scripts\stop.bat        # Windows
+./scripts/stop.sh       # Linux/Mac
 
 # 或直接使用Docker命令
 docker compose down

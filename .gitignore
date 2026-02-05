@@ -2,9 +2,11 @@
 .env
 .env.prod
 .env.dev
+.tmp.driveupload/
 __recycle_bin/
 __pycache__/
 temp/
+build/
 *.log
 *.pyc
 instance

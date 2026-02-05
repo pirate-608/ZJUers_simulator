@@ -122,13 +122,64 @@ docker-compose down
 	  ```
 5. （可选）使用 Cloudflare Tunnel 实现公网访问，详见 tunnel/ 目录说明
 
+### 🐳 Docker一键部署（推荐）⭐
+
+**最稳定的部署方案！** 支持所有平台，零配置开箱即用。
+
+#### 快速开始
+
+```bash
+# 下载项目后，一键部署：
+
+# Windows - 双击运行
+deploy.bat
+
+# Linux/macOS - 终端运行
+chmod +x deploy.sh && ./deploy.sh
+```
+
+#### 自动化功能
+- ✅ 自动检测Docker环境
+- ✅ 自动创建配置文件
+- ✅ 自动构建和启动服务
+- ✅ 自动打开浏览器
+- ✅ 完整的错误提示和解决方案
+
+#### 管理命令
+```bash
+# 查看服务状态
+docker compose ps
+
+# 查看运行日志  
+docker compose logs -f
+
+# 停止服务
+docker compose down
+# 或使用一键停止脚本
+stop.bat        # Windows
+./stop.sh       # Linux/Mac
+
+# 重启服务
+docker compose restart
+```
+
+#### 预构建镜像（即将推出）
+```bash
+# 直接使用预构建镜像，几秒内启动
+docker pull ghcr.io/yourusername/zjuers_simulator:latest
+docker run -d -p 8000:8000 ghcr.io/yourusername/zjuers_simulator:latest
+```
+
 ## 目录结构
-- app/        后端核心代码
-- static/     前端静态资源
-- templates/  前端页面模板
-- world/      课程池、专业映射等数据
-- tunnel/     Cloudflare Tunnel 配置(可选)
-- nginx/      反向代理与证书
+- app/         后端核心代码
+- static/      前端静态资源
+- templates/   前端页面模板
+- world/       课程池、专业映射等数据
+- tunnel/      Cloudflare Tunnel 配置(可选)
+- nginx/       反向代理与证书
+- c_modules/   C模块源码
+- **deploy.py/bat/sh**   **Docker一键部署脚本**
+- **stop.bat/sh**        **服务停止脚本**
 
 ## 许可证
 本项目采用 MIT License 开源。

@@ -21,3 +21,6 @@ migrations/
 *.zip
 README.myself.md
 nginx/
+
+# Docker运行时生成的文件
+postgres_data/

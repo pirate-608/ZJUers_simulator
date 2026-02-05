@@ -74,7 +74,13 @@ jobs:
           cp docker-compose.yml Dockerfile requirements.txt zjuers-simulator-docker/
           cp -r scripts zjuers-simulator-docker/
           cp .env.example zjuers-simulator-docker/
-          cp README.md DOCKER_RELEASE_PLAN.md zjuers-simulator-docker/
+          cp README.md LICENSE zjuers-simulator-docker/
+          
+          # 复制文档（可选）
+          mkdir -p zjuers-simulator-docker/docs
+          cp docs/DOCKER_RELEASE_PLAN.md zjuers-simulator-docker/docs/
+          cp docs/RELEASE_NOTES.md zjuers-simulator-docker/docs/
+          cp docs/GITHUB_RELEASE_TEMPLATE.md zjuers-simulator-docker/docs/
           
           # 创建压缩包
           zip -r zjuers-simulator-docker-${{ github.ref_name }}.zip zjuers-simulator-docker/
@@ -114,4 +120,11 @@ jobs:
             
             ### 📖 详细文档
             
-            查看 `DOCKER_RELEASE_PLAN.md` 了解更多部署选项和故障排除。
+            - `README.md` - 项目说明和开发指南
+            - `docs/RELEASE_NOTES.md` - 完整发布说明
+            - `docs/DOCKER_RELEASE_PLAN.md` - Docker部署方案详解
+            - `scripts/README.md` - API配置教程
+            
+            ### 🤝 贡献与反馈
+            
+            欢迎提交 Issue 和 Pull Request！

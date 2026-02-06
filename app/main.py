@@ -13,6 +13,7 @@ from app.models.game_save import GameSave
 from app.models.admin import UserRestriction, UserBlacklist, AdminAuditLog
 from app.game.state import RedisState
 from app.admin import setup_admin
+from app.websockets.manager import manager
 
 templates = Jinja2Templates(directory="templates")
 
@@ -65,6 +66,10 @@ async def startup():
         await RedisState.cleanup_orphan_player_keys(settings.REDIS_PLAYER_TTL_SECONDS)
     except Exception as e:
         logger.warning("Redis startup cleanup skipped: %s", e)
+
+    # 启动全局心跳检测（单例任务）
+    manager.start_heartbeat_checker()
+    logger.info("Global heartbeat checker registered at startup")
 
 
 if __name__ == "__main__":

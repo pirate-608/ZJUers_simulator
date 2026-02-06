@@ -647,17 +647,37 @@ class GameEngine:
         except Exception as e:
             logger.error(f"Random event error: {e}", exc_info=True)
 
+    # 事件效果允许修改的属性白名单及每次最大变化量
+    _ALLOWED_EFFECT_FIELDS = {
+        "energy": 50,
+        "sanity": 30,
+        "stress": 30,
+        "eq": 20,
+        "luck": 20,
+        "reputation": 20,
+    }
+
     async def _handle_event_choice(self, data):
-        """处理随机事件的选择结果"""
+        """处理随机事件的选择结果（带白名单校验）"""
         effects = data.get("effects", {})
         desc = effects.get("desc", "")
         for key, val in effects.items():
-            if key != "desc":
-                try:
-                    # 使用 safe 方法确保数值更新合法
-                    await self.repo.update_stat_safe(key, int(val))
-                except:
-                    continue
+            if key == "desc":
+                continue
+            # 白名单校验：只允许修改预定义字段
+            max_delta = self._ALLOWED_EFFECT_FIELDS.get(key)
+            if max_delta is None:
+                logger.warning(
+                    "Blocked illegal effect field '%s' from user %s", key, self.user_id
+                )
+                continue
+            try:
+                delta = int(val)
+                # 限制单次变化幅度
+                delta = max(-max_delta, min(max_delta, delta))
+                await self.repo.update_stat_safe(key, delta)
+            except (ValueError, TypeError):
+                continue
         await self._push_update(f"事件：{desc}")
 
     async def _trigger_dingtalk_message(self):

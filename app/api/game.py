@@ -4,12 +4,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 import asyncio
 import json
 import logging
+import time
 
 from app.core.config import settings
 from app.core.database import AsyncSessionLocal
 from app.api import deps
 from app.websockets.manager import manager
 from app.game.engine import GameEngine
+from app.game.balance import balance  # 修复: 原缺失导致 get_game_config NameError
 from app.api.cache import RedisCache
 from app.repositories.redis_repo import RedisRepository
 from app.services.save_service import SaveService
@@ -19,6 +21,9 @@ from app.core.events import GameEvent
 
 # 配置日志
 logger = logging.getLogger(__name__)
+
+# WebSocket 消息限流：最小间隔（秒）
+_WS_MIN_MSG_INTERVAL = 0.05
 
 # 1. 必须先实例化 router
 router = APIRouter()
@@ -51,6 +56,24 @@ async def get_current_user_id(token: str):
         return None, None, None
 
 
+def _parse_token(token: str) -> dict:
+    """解析 JWT token，返回用户信息字典，失败返回空字典"""
+    try:
+        payload = jwt.decode(
+            token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM]
+        )
+        user_id = payload.get("sub")
+        if not user_id:
+            return {}
+        return {
+            "user_id": user_id,
+            "username": payload.get("username"),
+            "tier": payload.get("tier"),
+        }
+    except JWTError:
+        return {}
+
+
 # 2.5 游戏配置API
 @router.get("/config")
 async def get_game_config():
@@ -75,52 +98,89 @@ async def get_game_config():
 
 
 # 3. WebSocket 路由主入口
+#    Token 通过首条消息传递（不再放在 URL Query String 中）
+#    DB Session 按需创建（不再在整个连接期间持有）
 @router.websocket("/ws/game")
-async def websocket_endpoint(
-    websocket: WebSocket,
-    token: str = Query(...),
-    db: AsyncSession = Depends(deps.get_db),
-    game_service: GameService = Depends(deps.get_game_service),
-    save_service: SaveService = Depends(deps.get_save_service),
-    user_info: dict = Depends(deps.get_current_user_info),
-):
-    # --- 鉴权 ---
-    logger.debug(f"WebSocket connection attempt with token: {token[:20]}...")
+async def websocket_endpoint(websocket: WebSocket):
+    # ========================================
+    # 阶段 1：接受连接，等待首条消息进行鉴权
+    # ========================================
+    await websocket.accept()
+
+    # 等待客户端发送 auth 消息（10 秒超时）
+    try:
+        auth_text = await asyncio.wait_for(websocket.receive_text(), timeout=10.0)
+        auth_data = json.loads(auth_text)
+        token = auth_data.get("token", "")
+    except (asyncio.TimeoutError, json.JSONDecodeError, Exception):
+        await websocket.close(code=1008, reason="auth_timeout")
+        return
+
+    user_info = _parse_token(token)
     user_id = user_info.get("user_id")
     username = user_info.get("username")
     tier = user_info.get("tier")
 
     if not user_id:
-        logger.warning("Invalid token, closing WebSocket connection")
-        await websocket.close(code=1008)
+        logger.warning("Invalid token in first WS message")
+        await websocket.send_text(
+            json.dumps({"type": "auth_error", "message": "无效凭证"})
+        )
+        await websocket.close(code=1008, reason="invalid_token")
         return
 
-    restriction = await RestrictionService.get_active_restriction(db, int(user_id))
+    # 鉴权通过后检查是否被限制（短生命周期 DB Session）
+    async with AsyncSessionLocal() as db:
+        restriction = await RestrictionService.get_active_restriction(db, int(user_id))
     if restriction:
         logger.warning("Restricted user %s attempted connect", user_id)
-        await websocket.close(code=1008)
+        await websocket.send_text(
+            json.dumps({"type": "auth_error", "message": "账号受限"})
+        )
+        await websocket.close(code=1008, reason="restricted")
         return
 
-    # --- 连接管理 ---
-    await manager.connect(websocket, user_id)
+    # ========================================
+    # 阶段 2：注册连接（会自动踢掉旧连接）
+    # ========================================
+    # 注意：connect 内部会 close 旧 ws，但不会再 accept（因为我们已经 accept 了）
+    # 所以这里要用一个特殊方式：先注册，不重复 accept
+    if user_id in manager.active_connections:
+        old_ws = manager.active_connections[user_id]
+        logger.warning("Kicking old connection for user %s", user_id)
+        try:
+            await old_ws.close(code=4001, reason="duplicate_session")
+        except Exception:
+            pass
+        manager._remove(user_id)
+
+    manager.active_connections[user_id] = websocket
+    manager.heartbeat_timestamps[user_id] = time.time()
+    logger.info(
+        "User %s connected. Total: %d", user_id, len(manager.active_connections)
+    )
+
+    # 告知客户端鉴权成功
+    await manager.send_personal_message({"type": "auth_ok"}, user_id)
+
+    # ========================================
+    # 阶段 3：初始化游戏上下文
+    # ========================================
     redis_client = RedisCache.get_client()
     repo = RedisRepository(user_id, redis_client)
-    state = RedisState(user_id)
+    world_service = deps.get_world_service()
+    game_service = GameService(user_id, repo, world_service)
+    save_service = SaveService()
 
     engine = None
     loop_task = None
-    heartbeat_task = None
     forwarder_task = None
 
-    # 心跳检测任务
-    async def heartbeat_checker():
-        """定期检查僵尸连接"""
-        while True:
-            await asyncio.sleep(30)  # 每30秒检查一次
-            await manager.check_dead_connections()
-
     try:
-        game_context = await game_service.prepare_game_context(username, tier, db)
+        # 初始化游戏（使用短生命周期 DB Session）
+        async with AsyncSessionLocal() as db:
+            game_context = await game_service.prepare_game_context(username, tier, db)
+
         snapshot = await repo.get_snapshot()
         final_stats = snapshot.stats.model_dump()
 
@@ -185,12 +245,20 @@ async def websocket_endpoint(
         await engine._push_update()
         loop_task = asyncio.create_task(engine.run_loop())
 
-        # --- 启动心跳检测任务 ---
-        heartbeat_task = asyncio.create_task(heartbeat_checker())
+        # ========================================
+        # 阶段 4：消息接收循环（带限流）
+        # ========================================
+        last_msg_time = 0.0
 
-        # --- 消息接收循环 ---
         while True:
             data_text = await websocket.receive_text()
+
+            # 消息限流
+            now = time.time()
+            if now - last_msg_time < _WS_MIN_MSG_INTERVAL:
+                continue
+            last_msg_time = now
+
             try:
                 data_json = json.loads(data_text)
                 action = data_json.get("action")
@@ -201,10 +269,11 @@ async def websocket_endpoint(
                     await repo.touch_ttl()
                     await manager.send_personal_message({"type": "pong"}, user_id)
 
-                # 处理保存并退出
+                # 处理保存并退出（按需获取 DB Session）
                 elif action == "save_and_exit":
-                    logger.info(f"User {username} requested save_and_exit")
-                    success = await save_service.persist_to_db(repo, db)
+                    logger.info("User %s requested save_and_exit", username)
+                    async with AsyncSessionLocal() as db:
+                        success = await save_service.persist_to_db(repo, db)
                     await manager.send_personal_message(
                         {
                             "type": "save_result",
@@ -213,14 +282,14 @@ async def websocket_endpoint(
                         },
                         user_id,
                     )
-                    # 无论是否保存成功，都清理 Redis 并断开连接
                     await cleanup_redis_data(repo)
                     break
 
                 # 处理仅保存（不退出）
                 elif action == "save_game":
-                    logger.info(f"User {username} requested save_game")
-                    success = await save_service.persist_to_db(repo, db)
+                    logger.info("User %s requested save_game", username)
+                    async with AsyncSessionLocal() as db:
+                        success = await save_service.persist_to_db(repo, db)
                     await manager.send_personal_message(
                         {
                             "type": "save_result",
@@ -232,7 +301,7 @@ async def websocket_endpoint(
 
                 # 处理不保存直接退出
                 elif action == "exit_without_save":
-                    logger.info(f"User {username} exiting without save")
+                    logger.info("User %s exiting without save", username)
                     await cleanup_redis_data(repo)
                     await manager.send_personal_message(
                         {"type": "exit_confirmed"}, user_id
@@ -243,21 +312,18 @@ async def websocket_endpoint(
                     await engine.process_action(data_json)
 
             except json.JSONDecodeError:
-                logger.warning(f"Invalid JSON received from {username}")
+                logger.warning("Invalid JSON received from %s", username)
 
     except WebSocketDisconnect:
-        logger.info(f"WebSocket disconnected: {username}")
+        logger.info("WebSocket disconnected: %s", username)
     except Exception as e:
-        logger.error(f"WebSocket error for {username}: {e}", exc_info=True)
+        logger.error("WebSocket error for %s: %s", username, e, exc_info=True)
     finally:
         # --- 资源清理 ---
         if engine:
             engine.stop()
         if loop_task:
             loop_task.cancel()
-        if heartbeat_task:
-            heartbeat_task.cancel()
         if forwarder_task:
             forwarder_task.cancel()
         manager.disconnect(user_id)
-        await state.close()

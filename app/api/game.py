@@ -6,6 +6,7 @@ import json
 import logging
 
 from app.core.config import settings
+from app.core.database import AsyncSessionLocal
 from app.api import deps
 from app.websockets.manager import manager
 from app.game.state import RedisState
@@ -151,48 +152,39 @@ async def websocket_endpoint(
             {"type": "init", "data": final_stats}, user_id
         )
 
-        # 立即推送一次完整的 Tick 以激活前端视图（包含courses和course_states）
-        course_mastery = snapshot.courses
-        course_states = snapshot.course_states
-
-        # 计算学期剩余时间
-        from app.game.balance import balance
-
-        semester_idx = int(final_stats.get("semester_idx", 1))
-        semester_config = balance.semester_config
-        base_duration = semester_config.get("durations", {}).get(
-            str(semester_idx), semester_config.get("default_duration", 360)
-        )
-        semester_time_left = await state.get_semester_time_left(base_duration)
-
-        await manager.send_personal_message(
-            {
-                "type": "tick",
-                "stats": final_stats,
-                "courses": course_mastery,
-                "course_states": course_states,
-                "semester_time_left": semester_time_left,
-            },
-            user_id,
-        )
-
         # --- 启动游戏引擎 ---
-        engine = GameEngine(user_id, state)
+        engine = GameEngine(
+            user_id,
+            repo=repo,
+            save_service=save_service,
+            game_service=game_service,
+            db_factory=AsyncSessionLocal,
+        )
 
         async def event_forwarder():
             try:
                 while True:
                     event = await engine.event_queue.get()
-                    if isinstance(event, GameEvent):
-                        payload = event.to_payload()
-                    else:
-                        payload = event
-                    await manager.send_personal_message(payload, user_id)
-                    engine.event_queue.task_done()
+                    try:
+                        if isinstance(event, GameEvent):
+                            payload = event.to_payload()
+                        else:
+                            payload = event
+                        await manager.send_personal_message(payload, user_id)
+                    except Exception as send_error:
+                        logger.warning(
+                            "Event forward failed for user %s: %s",
+                            user_id,
+                            send_error,
+                            exc_info=True,
+                        )
+                    finally:
+                        engine.event_queue.task_done()
             except asyncio.CancelledError:
                 pass
 
         forwarder_task = asyncio.create_task(event_forwarder())
+        await engine._push_update()
         loop_task = asyncio.create_task(engine.run_loop())
 
         # --- 启动心跳检测任务 ---

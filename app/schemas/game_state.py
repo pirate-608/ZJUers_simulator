@@ -36,6 +36,7 @@ class PlayerStats(BaseModel):
     eq: int = 0
     luck: int = 0
     gpa: str = "0.0"
+    highest_gpa: str = "0.0"
     reputation: int = 0
     course_plan_json: str = ""
     course_info_json: str = ""
@@ -57,6 +58,7 @@ class PlayerStats(BaseModel):
             eq=_to_int(raw.get("eq"), 0),
             luck=_to_int(raw.get("luck"), 0),
             gpa=_to_str(raw.get("gpa"), "0.0"),
+            highest_gpa=_to_str(raw.get("highest_gpa"), "0.0"),
             reputation=_to_int(raw.get("reputation"), 0),
             course_plan_json=_to_str(raw.get("course_plan_json"), ""),
             course_info_json=_to_str(raw.get("course_info_json"), ""),

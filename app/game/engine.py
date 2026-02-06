@@ -4,9 +4,11 @@ import json
 import logging
 from pathlib import Path
 from sqlalchemy import update
+from typing import Callable
+
+import time
 
 from app.core.llm import (
-    generate_cc98_post,
     generate_random_event,
     generate_dingtalk_message,
 )
@@ -14,15 +16,11 @@ from app.models.user import User
 from app.core.database import AsyncSessionLocal
 from app.game.state import RedisState
 from app.game.balance import balance  # 游戏数值配置
-from app.api.cache import RedisCache
+from app.services.save_service import SaveService
+from app.core.events import GameEvent
 from app.repositories.redis_repo import RedisRepository
 from app.services.save_service import SaveService
 from app.services.game_service import GameService
-from app.services.world_service import WorldService
-from app.core.events import GameEvent
-
-# 配置日志记录
-logger = logging.getLogger(__name__)
 
 
 class GameEngine:
@@ -53,9 +51,19 @@ class GameEngine:
         # 可选：通知前端已暂停
         asyncio.create_task(self.emit("paused", {"msg": "游戏已暂停，可随时继续。"}))
 
-    def __init__(self, user_id: str, state: RedisState):
+    def __init__(
+        self,
+        user_id: str,
+        repo: RedisRepository,
+        save_service: SaveService,
+        game_service: GameService,
+        db_factory: Callable = AsyncSessionLocal,
+    ):
         self.user_id = user_id
-        self.state = state
+        self.repo = repo
+        self.save_service = save_service
+        self.game_service = game_service
+        self.db_factory = db_factory
         self.event_queue: asyncio.Queue[GameEvent] = asyncio.Queue()
         self.is_running = False
         self._ttl_refresh_interval_seconds = 600
@@ -78,7 +86,8 @@ class GameEngine:
 
     async def check_and_trigger_gameover(self) -> bool:
         """检测精力/心态是否归零并触发game over"""
-        stats = await self.state.get_stats_typed()
+        snapshot = await self.repo.get_snapshot()
+        stats = snapshot.stats.model_dump()
         if not stats:
             return False
         try:
@@ -204,7 +213,7 @@ class GameEngine:
                     now_ts - self._last_ttl_refresh
                     >= self._ttl_refresh_interval_seconds
                 ):
-                    await self.state.repo.touch_ttl()
+                    await self.repo.touch_ttl()
                     self._last_ttl_refresh = now_ts
 
                 # 1. 基础检查
@@ -212,10 +221,9 @@ class GameEngine:
                     break
 
                 # 2. 获取计算所需数据 (并行获取以提升性能)
-                stats, course_states_raw = await asyncio.gather(
-                    self.state.get_stats_typed(),
-                    self.state.get_all_course_states_typed(),
-                )
+                snapshot = await self.repo.get_snapshot()
+                stats = snapshot.stats.model_dump()
+                course_states_raw = snapshot.course_states
 
                 # 解析课程信息
                 try:
@@ -225,7 +233,7 @@ class GameEngine:
 
                 # 如果没有课程（如假期），只自然恢复或轻微消耗
                 if not course_info:
-                    await self.state.update_stat_safe("energy", 1)  # 假期回血
+                    await self.repo.update_stat_safe("energy", 1)  # 假期回血
                     await self._push_update()
                     continue
 
@@ -272,7 +280,7 @@ class GameEngine:
                 # -------------------------------------------------
                 # 批量更新课程进度
                 if mastery_updates:
-                    await self.state.batch_update_course_mastery(mastery_updates)
+                    await self.repo.batch_update_course_mastery(mastery_updates)
 
                 # 结算总精力消耗
                 # 最终消耗 = 基础消耗 * 加权系数（保留浮点数精度）
@@ -281,17 +289,17 @@ class GameEngine:
                 # 修复：只有drain系数真正接近0（全摆烂）才回血
                 # 避免"全摸"状态因int截断误判为摆烂
                 if final_energy_cost_float < 0.3:  # 真正的摆烂阈值
-                    await self.state.update_stat_safe("energy", 2)
-                    await self.state.update_stat_safe("stress", -2)  # 摆烂降压
+                    await self.repo.update_stat_safe("energy", 2)
+                    await self.repo.update_stat_safe("stress", -2)  # 摆烂降压
                 else:
                     # 向上取整，确保至少消耗1点精力
                     import math
 
                     final_energy_cost = max(1, math.ceil(final_energy_cost_float))
-                    await self.state.update_stat_safe("energy", -final_energy_cost)
+                    await self.repo.update_stat_safe("energy", -final_energy_cost)
                     # 卷多了压力大：如果消耗系数高，增加压力
                     if total_drain_factor > 1.5:
-                        await self.state.update_stat_safe("stress", 1)
+                        await self.repo.update_stat_safe("stress", 1)
 
                 # 5. 随机事件与成就 (从配置读取频率) - 仅在游戏运行时触发
                 if self.is_running:
@@ -333,10 +341,8 @@ class GameEngine:
             return
         if action == "restart":
             self.stop()
-            await self.state.clear_all()
-            stats = await self.state.get_stats_typed()  # 获取旧数据还是需要先取一下
-            # 这里简化逻辑，实际可能需要前端传参或默认
-            initial_stats = await self.state.init_game("ZJUer", "TIER_1")
+            initial_stats = self._build_initial_stats("ZJUer")
+            await self.repo.set_game_data(initial_stats)
             await self.emit("init", {"data": initial_stats})
             asyncio.create_task(self.run_loop())
             return
@@ -345,7 +351,7 @@ class GameEngine:
         if action == "change_course_state":
             if target and value is not None:
                 # 更新 Redis 状态
-                await self.state.set_course_state(target, int(value))
+                await self.repo.set_course_state(target, int(value))
                 # 立即推送一次更新，让前端看到精力预估变化(可选，run_loop也会推)
                 await self._push_update()
             return
@@ -367,8 +373,9 @@ class GameEngine:
 
     async def _handle_final_exam(self):
         """期末考试结算逻辑"""
-        stats = await self.state.get_stats_typed()
-        course_mastery = await self.state.get_courses_mastery_typed()
+        snapshot = await self.repo.get_snapshot()
+        stats = snapshot.stats.model_dump()
+        course_mastery = snapshot.courses
 
         try:
             course_info = json.loads(stats.get("course_info_json", "[]"))
@@ -416,11 +423,11 @@ class GameEngine:
         msg = f"期末考试结束！GPA: {gpa}"
         if failed_count > 0:
             penalty = balance.fail_sanity_penalty * failed_count
-            await self.state.update_stat_safe("sanity", penalty)
+            await self.repo.update_stat_safe("sanity", penalty)
             msg += f" | 挂了 {failed_count} 门！"
         else:
             bonus = balance.pass_all_bonus
-            await self.state.update_stat_safe("sanity", bonus)
+            await self.repo.update_stat_safe("sanity", bonus)
 
         # 异步更新持久化数据库
         asyncio.create_task(self._update_db_highest_gpa(gpa))
@@ -450,11 +457,13 @@ class GameEngine:
                 )
                 await db.execute(stmt)
                 await db.commit()
+            await self.repo.update_stats({"highest_gpa": str(gpa)})
         except Exception as e:
             logger.error(f"DB Update Failed: {e}")
 
     async def _handle_study_action(self, action_type: str, course_id: str):
-        stats = await self.state.get_stats_typed()
+        snapshot = await self.repo.get_snapshot()
+        stats = snapshot.stats.model_dump()
         iq = int(stats.get("iq", 90))
 
         try:
@@ -473,30 +482,30 @@ class GameEngine:
             # 提升了学习收益率
             efficiency = 4.0 + (iq - 100) * 0.1
             mastery_delta = max(1.0, efficiency / (1 + difficulty))
-            await self.state.update_stat_safe("energy", -5)
-            await self.state.update_stat_safe("stress", 2)
-            await self.state.update_stat_safe("sanity", -1)
+            await self.repo.update_stat_safe("energy", -5)
+            await self.repo.update_stat_safe("stress", 2)
+            await self.repo.update_stat_safe("sanity", -1)
             msg = f"你埋头苦读，感觉知识暴涨！(擅长度 +{mastery_delta:.1f}%)"
         elif action_type == "fish":
             mastery_delta = 0.2
-            await self.state.update_stat_safe("energy", -1)
-            await self.state.update_stat_safe("stress", -1)
-            await self.state.update_stat_safe("sanity", 1)
+            await self.repo.update_stat_safe("energy", -1)
+            await self.repo.update_stat_safe("stress", -1)
+            await self.repo.update_stat_safe("sanity", 1)
             msg = "你在课上摸鱼，虽然学得慢，但心情不错。"
         elif action_type == "skip":
-            await self.state.update_stat_safe("energy", 2)
-            await self.state.update_stat_safe("stress", -3)
-            await self.state.update_stat_safe("sanity", 2)
+            await self.repo.update_stat_safe("energy", 2)
+            await self.repo.update_stat_safe("stress", -3)
+            await self.repo.update_stat_safe("sanity", 2)
             msg = "逃课一时爽，一直逃课一直爽！"
 
         if mastery_delta > 0:
-            await self.state.update_course_mastery(course_id, mastery_delta)
+            await self.repo.update_course_mastery(course_id, mastery_delta)
 
         await self._push_update(msg)
 
     async def _handle_relax(self, target: str):
         # 检查冷却时间
-        remaining_cd = await self.state.check_cooldown(target)
+        remaining_cd = await self._check_cooldown(target)
         if remaining_cd > 0:
             msg = f"该操作还在冷却中，请等待 {remaining_cd} 秒后再试。"
             await self._push_update(msg)
@@ -511,7 +520,8 @@ class GameEngine:
 
         msg = ""
         if target == "gym":
-            stats = await self.state.get_stats_typed()
+            snapshot = await self.repo.get_snapshot()
+            stats = snapshot.stats.model_dump()
             current_energy = int(stats.get("energy", 0))
             min_energy = action_cfg.get("min_energy_required", 50)
 
@@ -524,25 +534,25 @@ class GameEngine:
                 sanity_gain = action_cfg.get("sanity_gain", 5)
                 stress_change = action_cfg.get("stress_change", -5)
 
-                await self.state.update_stat_safe("energy", energy_cost)
-                await self.state.update_stat_safe("energy", energy_gain)
-                await self.state.update_stat_safe("sanity", sanity_gain)
-                await self.state.update_stat_safe("stress", stress_change)
-                await self.state.set_cooldown(target)
+                await self.repo.update_stat_safe("energy", energy_cost)
+                await self.repo.update_stat_safe("energy", energy_gain)
+                await self.repo.update_stat_safe("sanity", sanity_gain)
+                await self.repo.update_stat_safe("stress", stress_change)
+                await self.repo.set_cooldown(target, time.time())
                 msg = "在风雨操场挥汗如雨，感觉整个人都升华了！"
         elif target == "game":
             energy_cost = action_cfg.get("energy_cost", -5)
             sanity_gain = action_cfg.get("sanity_gain", 20)
 
-            await self.state.update_stat_safe("energy", energy_cost)
-            await self.state.update_stat_safe("sanity", sanity_gain)
-            await self.state.set_cooldown(target)
+            await self.repo.update_stat_safe("energy", energy_cost)
+            await self.repo.update_stat_safe("sanity", sanity_gain)
+            await self.repo.set_cooldown(target, time.time())
             msg = "宿舍开黑连胜，这就是电子竞技的魅力吗？"
         elif target == "walk":
             stress_change = action_cfg.get("stress_change", -10)
 
-            await self.state.update_stat_safe("stress", stress_change)
-            await self.state.set_cooldown(target)
+            await self.repo.update_stat_safe("stress", stress_change)
+            await self.repo.set_cooldown(target, time.time())
             msg = "启真湖畔的黑天鹅还是那么高傲..."
         elif target == "cc98":
             # CC98随机效果从配置读取
@@ -569,9 +579,9 @@ class GameEngine:
 
             # 应用效果
             if "sanity" in selected_effect:
-                await self.state.update_stat_safe("sanity", selected_effect["sanity"])
+                await self.repo.update_stat_safe("sanity", selected_effect["sanity"])
             if "stress" in selected_effect:
-                await self.state.update_stat_safe("stress", selected_effect["stress"])
+                await self.repo.update_stat_safe("stress", selected_effect["stress"])
 
             # 生成对应效果描述
             effect_type = (
@@ -598,11 +608,12 @@ class GameEngine:
                 ]
 
             trigger = random.choice(trigger_words)
-            stats = await self.state.get_stats_typed()
+            snapshot = await self.repo.get_snapshot()
+            stats = snapshot.stats.model_dump()
             post_content, feedback = await generate_cc98_post(
                 stats, effect_type, trigger
             )
-            await self.state.set_cooldown(target)
+            await self.repo.set_cooldown(target, time.time())
             msg = f"你在CC98刷到了：\n{post_content}\n{feedback}"
 
         await self._push_update(msg)
@@ -617,17 +628,18 @@ class GameEngine:
 
         try:
             # 1. 从 Redis 获取该玩家的事件历史
-            history = await self.state.get_event_history()
+            history = await self.repo.get_event_history()
 
             # 2. 获取当前状态
-            stats = await self.state.get_stats_typed()
+            snapshot = await self.repo.get_snapshot()
+            stats = snapshot.stats.model_dump()
 
             # 3. 调用 LLM（传入历史记录进行避雷）
             event_data = await generate_random_event(stats, history)
 
             if event_data:
                 # 4. 记录本次事件标题到历史中
-                await self.state.add_event_to_history(event_data["title"])
+                await self.repo.add_event_to_history(event_data["title"])
 
                 # 5. 推送给前端
                 await self.emit("random_event", {"data": event_data})
@@ -642,7 +654,7 @@ class GameEngine:
             if key != "desc":
                 try:
                     # 使用 safe 方法确保数值更新合法
-                    await self.state.update_stat_safe(key, int(val))
+                    await self.repo.update_stat_safe(key, int(val))
                 except:
                     continue
         await self._push_update(f"事件：{desc}")
@@ -654,7 +666,8 @@ class GameEngine:
             return
 
         try:
-            stats = await self.state.get_stats_typed()
+            snapshot = await self.repo.get_snapshot()
+            stats = snapshot.stats.model_dump()
 
             # 简单的上下文判断逻辑
             context = "random"
@@ -683,8 +696,9 @@ class GameEngine:
     async def _check_achievements(self):
         """成就系统判定逻辑"""
         try:
-            stats = await self.state.get_stats_typed()
-            action_counts = await self.state.get_action_counts()
+            snapshot = await self.repo.get_snapshot()
+            stats = snapshot.stats.model_dump()
+            action_counts = await self.repo.get_action_counts()
 
             # 防御性转换
             gpa = float(stats.get("highest_gpa") or 0)
@@ -697,7 +711,7 @@ class GameEngine:
             with open(self.achievement_path, "r", encoding="utf-8") as f:
                 ach_config = json.load(f)
 
-            unlocked = await self.state.get_unlocked_achievements()
+            unlocked = await self.repo.get_unlocked_achievements()
 
             for code, item in ach_config.items():
                 if code in unlocked:
@@ -714,7 +728,7 @@ class GameEngine:
                     passed = True
 
                 if passed:
-                    await self.state.unlock_achievement(code)
+                    await self.repo.unlock_achievement(code)
                     await self.emit(
                         "achievement_unlocked",
                         {"data": item},
@@ -724,25 +738,16 @@ class GameEngine:
 
     async def _next_semester(self):
         """进入下一学期逻辑"""
-        current_semester_idx = await self.state.increment_semester()
-
-        # 自动保存：学期结束时保存进度
-        try:
-            redis_client = RedisCache.get_client()
-            repo = RedisRepository(self.user_id, redis_client)
-            async with AsyncSessionLocal() as db:
-                await SaveService.persist_to_db(repo, db)
-            logger.info(
-                f"Auto-save triggered at end of semester for user {self.user_id}"
+        async with self.db_factory() as db:
+            transition = await self.game_service.process_semester_transition(
+                db,
+                holiday_event_factory=generate_random_event,
             )
-        except Exception as e:
-            logger.error(f"Auto-save failed for user {self.user_id}: {e}")
 
-        # 毕业判定
-        if current_semester_idx > 8:
-            stats = await self.state.get_stats_typed()
-            achievements = list(await self.state.get_unlocked_achievements())
-            stats["achievements"] = achievements
+        current_semester_idx = transition.get("semester_idx")
+
+        if transition.get("status") == "graduated":
+            stats = transition.get("stats") or {}
             # 调用AI生成文言文结业总结
             from app.core.llm import generate_wenyan_report
 
@@ -760,22 +765,12 @@ class GameEngine:
             self.stop()
             return
 
-        # 重置课程并设置学期开始时间
-        redis_client = RedisCache.get_client()
-        repo = RedisRepository(self.user_id, redis_client)
-        world = WorldService()
-        game_service = GameService(self.user_id, repo, world)
-        await game_service.reset_courses_for_new_semester(current_semester_idx)
-        holiday_event = await generate_random_event(
-            {"context": "假期", "semester": current_semester_idx}
-        )
-
         await self.emit(
             "new_semester",
             {
                 "data": {
                     "semester_name": f"第 {current_semester_idx} 学期",
-                    "holiday_event": holiday_event,
+                    "holiday_event": transition.get("holiday_event"),
                 }
             },
         )
@@ -784,9 +779,7 @@ class GameEngine:
     async def _push_update(self, msg: str = None):
         """统一数据推送接口"""
         try:
-            redis_client = RedisCache.get_client()
-            repo = RedisRepository(self.user_id, redis_client)
-            snapshot = await repo.get_snapshot()
+            snapshot = await self.repo.get_snapshot()
             new_stats = snapshot.stats.model_dump()
             course_mastery = snapshot.courses
             course_states = snapshot.course_states
@@ -797,7 +790,9 @@ class GameEngine:
             base_duration = semester_config.get("durations", {}).get(
                 str(semester_idx), semester_config.get("default_duration", 360)
             )
-            semester_time_left = await self.state.get_semester_time_left(base_duration)
+            semester_time_left = self._get_semester_time_left(
+                new_stats.get("semester_start_time"), base_duration
+            )
 
             await self.emit(
                 "tick",
@@ -815,3 +810,43 @@ class GameEngine:
     def stop(self):
         """安全停止游戏循环"""
         self.is_running = False
+
+    def _get_semester_time_left(self, start_time: int, duration_seconds: int) -> int:
+        if not start_time:
+            return duration_seconds
+        try:
+            elapsed = int(time.time()) - int(start_time)
+        except (TypeError, ValueError):
+            return duration_seconds
+        return max(0, duration_seconds - elapsed)
+
+    def _build_initial_stats(self, username: str) -> dict:
+        return {
+            "username": username,
+            "major": "",
+            "major_abbr": "",
+            "semester": "大一秋冬",
+            "semester_idx": 1,
+            "semester_start_time": int(time.time()),
+            "energy": 100,
+            "sanity": 80,
+            "stress": 0,
+            "iq": 0,
+            "eq": random.randint(60, 90),
+            "luck": random.randint(0, 100),
+            "gpa": "0.0",
+            "highest_gpa": "0.0",
+            "reputation": 0,
+            "course_plan_json": "",
+            "course_info_json": "",
+        }
+
+    async def _check_cooldown(self, action_type: str) -> int:
+        last_use = await self.repo.get_cooldown_timestamp(action_type)
+        if not last_use:
+            return 0
+
+        elapsed = time.time() - float(last_use)
+        cd_time = balance.get_cooldown(action_type)
+        remaining = max(0, cd_time - elapsed)
+        return int(remaining)

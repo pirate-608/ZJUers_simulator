@@ -3,12 +3,11 @@ import json
 import logging
 import random
 import time
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.repositories.redis_repo import RedisRepository
 from app.services.save_service import SaveService
 from app.services.world_service import WorldService
-from app.game.state import RedisState  # 暂时保留用于复杂内部逻辑
 
 logger = logging.getLogger(__name__)
 
@@ -65,8 +64,8 @@ class GameService:
 
         # 3. 全新初始化
         logger.info(f"Creating new game for {username}")
-        state_util = RedisState(self.user_id)
-        await state_util.init_game(username, tier)
+        initial_stats = self._build_initial_stats(username)
+        await self.repo.set_game_data(initial_stats)
         await self.assign_major_and_init(tier)
         return {
             "data": await self.repo.get_all_game_data(),
@@ -162,6 +161,55 @@ class GameService:
             states=course_states,
         )
 
+    async def process_semester_transition(
+        self,
+        db: AsyncSession,
+        holiday_event_factory=None,
+    ) -> Dict[str, Any]:
+        current_semester_idx = await self.repo.increment_semester()
+
+        autosave_ok = False
+        try:
+            autosave_ok = await SaveService.persist_to_db(self.repo, db)
+            if autosave_ok:
+                logger.info(
+                    "Auto-save triggered at end of semester for user %s",
+                    self.user_id,
+                )
+            else:
+                logger.warning(
+                    "Auto-save skipped at end of semester for user %s",
+                    self.user_id,
+                )
+        except Exception as e:
+            logger.error("Auto-save failed for user %s: %s", self.user_id, e)
+
+        if current_semester_idx > 8:
+            snapshot = await self.repo.get_snapshot()
+            stats = snapshot.stats.model_dump()
+            achievements = list(await self.repo.get_unlocked_achievements())
+            stats["achievements"] = achievements
+            return {
+                "status": "graduated",
+                "semester_idx": current_semester_idx,
+                "stats": stats,
+                "autosave_ok": autosave_ok,
+            }
+
+        await self.reset_courses_for_new_semester(current_semester_idx)
+        holiday_event = None
+        if holiday_event_factory is not None:
+            holiday_event = await holiday_event_factory(
+                {"context": "假期", "semester": current_semester_idx}
+            )
+
+        return {
+            "status": "continued",
+            "semester_idx": current_semester_idx,
+            "holiday_event": holiday_event,
+            "autosave_ok": autosave_ok,
+        }
+
     async def _ensure_base_fields(self, stats: Dict[str, Any], username: str):
         repair_fields = {}
         if not stats.get("username"):
@@ -180,3 +228,24 @@ class GameService:
             repair_fields["iq"] = random.randint(80, 100)
         if repair_fields:
             await self.repo.update_courses_and_states(stats_update=repair_fields)
+
+    def _build_initial_stats(self, username: str) -> Dict[str, Any]:
+        return {
+            "username": username,
+            "major": "",
+            "major_abbr": "",
+            "semester": "大一秋冬",
+            "semester_idx": 1,
+            "semester_start_time": int(time.time()),
+            "energy": 100,
+            "sanity": 80,
+            "stress": 0,
+            "iq": 0,
+            "eq": random.randint(60, 90),
+            "luck": random.randint(0, 100),
+            "gpa": "0.0",
+            "highest_gpa": "0.0",
+            "reputation": 0,
+            "course_plan_json": "",
+            "course_info_json": "",
+        }

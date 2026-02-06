@@ -1,5 +1,5 @@
 import logging
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List, Optional, Set
 from redis import asyncio as aioredis
 from app.core.config import settings
 from app.api.cache import RedisCache
@@ -50,6 +50,7 @@ class RedisRepository:
             "major_abbr",
             "semester",
             "gpa",
+            "highest_gpa",
             "course_plan_json",
             "course_info_json",
         }
@@ -107,6 +108,25 @@ class RedisRepository:
             results[0], results[1], results[2], results[3]
         )
 
+    async def get_action_counts(self) -> Dict[str, str]:
+        return await self.redis.hgetall(self.keys["actions"])
+
+    async def get_unlocked_achievements(self) -> Set[str]:
+        res = await self.redis.smembers(self.keys["achievements"])
+        return set(res) if res else set()
+
+    async def get_event_history(self) -> List[str]:
+        return await self.redis.lrange(self.keys["history"], 0, -1)
+
+    async def get_cooldown_timestamp(self, action_type: str) -> Optional[float]:
+        value = await self.redis.hget(self.keys["cooldowns"], action_type)
+        if value is None:
+            return None
+        try:
+            return float(value)
+        except (TypeError, ValueError):
+            return None
+
     async def set_game_data(
         self,
         stats: Dict,
@@ -157,6 +177,15 @@ class RedisRepository:
                 pipe.hset(self.keys["course_states"], mapping=states)
             for key in self.keys.values():
                 pipe.expire(key, self.ttl)
+            await pipe.execute()
+
+    async def update_stats(self, stats_update: Dict):
+        stats_update = self._normalize_stats_update(stats_update)
+        if not stats_update:
+            return
+        async with self.redis.pipeline() as pipe:
+            pipe.hset(self.keys["stats"], mapping=stats_update)
+            pipe.expire(self.keys["stats"], self.ttl)
             await pipe.execute()
 
     async def update_stat_safe(

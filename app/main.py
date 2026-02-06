@@ -3,23 +3,30 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from fastapi.templating import Jinja2Templates
 from fastapi import Request
-
-templates = Jinja2Templates(directory="templates")
 from app.core.config import settings
 import logging
+from starlette.middleware.sessions import SessionMiddleware
 from app.core.database import engine, Base
 from app.api import auth, game
 from app.models.user import User
 from app.models.game_save import GameSave
+from app.models.admin import UserRestriction, UserBlacklist, AdminAuditLog
 from app.game.state import RedisState
+from app.admin import setup_admin
+
+templates = Jinja2Templates(directory="templates")
 
 logger = logging.getLogger(__name__)
 
 app = FastAPI(title=settings.PROJECT_NAME)
 
+app.add_middleware(SessionMiddleware, secret_key=settings.ADMIN_SESSION_SECRET)
+
 # 挂载 API 路由
 app.include_router(auth.router, prefix="/api")
 app.include_router(game.router)
+
+setup_admin(app)
 
 # 挂载静态资源 (确保 static 目录在根目录下)
 app.mount("/static", StaticFiles(directory="static"), name="static")

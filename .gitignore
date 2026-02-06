@@ -22,4 +22,5 @@ migrations/
 *.tar.gz
 *.zip
 README.myself.md
+ChangeLog.md
 nginx/

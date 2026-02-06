@@ -14,14 +14,31 @@ from app.models.user import User
 from app.core.database import AsyncSessionLocal
 from app.game.state import RedisState
 from app.game.balance import balance  # 游戏数值配置
-from app.websockets.manager import ConnectionManager
 from app.api.cache import RedisCache
+from app.repositories.redis_repo import RedisRepository
+from app.services.save_service import SaveService
+from app.services.game_service import GameService
+from app.services.world_service import WorldService
+from app.core.events import GameEvent
 
 # 配置日志记录
 logger = logging.getLogger(__name__)
 
 
 class GameEngine:
+    async def emit(self, event_type: str, data: dict, msg: str = None):
+        if msg:
+            await self.event_queue.put(
+                GameEvent(
+                    user_id=self.user_id,
+                    event_type="event",
+                    data={"data": {"desc": msg}},
+                )
+            )
+        await self.event_queue.put(
+            GameEvent(user_id=self.user_id, event_type=event_type, data=data)
+        )
+
     def resume(self):
         if not self.is_running:
             # 注意：不要提前设置 is_running = True，让 run_loop() 自己设置
@@ -29,25 +46,17 @@ class GameEngine:
             asyncio.create_task(self.run_loop())
             # 推送最新状态和通知消息
             asyncio.create_task(self._push_update())
-            asyncio.create_task(
-                self.manager.send_personal_message(
-                    {"type": "resumed", "msg": "游戏已继续。"}, self.user_id
-                )
-            )
+            asyncio.create_task(self.emit("resumed", {"msg": "游戏已继续。"}))
 
     def pause(self):
         self.is_running = False
         # 可选：通知前端已暂停
-        asyncio.create_task(
-            self.manager.send_personal_message(
-                {"type": "paused", "msg": "游戏已暂停，可随时继续。"}, self.user_id
-            )
-        )
+        asyncio.create_task(self.emit("paused", {"msg": "游戏已暂停，可随时继续。"}))
 
-    def __init__(self, user_id: str, state: RedisState, manager: ConnectionManager):
+    def __init__(self, user_id: str, state: RedisState):
         self.user_id = user_id
         self.state = state
-        self.manager = manager
+        self.event_queue: asyncio.Queue[GameEvent] = asyncio.Queue()
         self.is_running = False
         self._ttl_refresh_interval_seconds = 600
         self._last_ttl_refresh = 0.0
@@ -69,7 +78,7 @@ class GameEngine:
 
     async def check_and_trigger_gameover(self) -> bool:
         """检测精力/心态是否归零并触发game over"""
-        stats = await self.state.get_stats()
+        stats = await self.state.get_stats_typed()
         if not stats:
             return False
         try:
@@ -84,9 +93,9 @@ class GameEngine:
                 reason = "精力耗尽，远去的救护车..."
 
             if reason:
-                await self.manager.send_personal_message(
-                    {"type": "game_over", "reason": reason, "restartable": True},
-                    self.user_id,
+                await self.emit(
+                    "game_over",
+                    {"reason": reason, "restartable": True},
                 )
                 self.stop()
                 return True
@@ -195,10 +204,7 @@ class GameEngine:
                     now_ts - self._last_ttl_refresh
                     >= self._ttl_refresh_interval_seconds
                 ):
-                    await RedisCache.touch_ttl(
-                        RedisCache.build_player_keys(self.user_id),
-                        self.state.player_ttl_seconds,
-                    )
+                    await self.state.repo.touch_ttl()
                     self._last_ttl_refresh = now_ts
 
                 # 1. 基础检查
@@ -207,7 +213,8 @@ class GameEngine:
 
                 # 2. 获取计算所需数据 (并行获取以提升性能)
                 stats, course_states_raw = await asyncio.gather(
-                    self.state.get_stats(), self.state.get_all_course_states()
+                    self.state.get_stats_typed(),
+                    self.state.get_all_course_states_typed(),
                 )
 
                 # 解析课程信息
@@ -327,12 +334,10 @@ class GameEngine:
         if action == "restart":
             self.stop()
             await self.state.clear_all()
-            stats = await self.state.get_stats()  # 获取旧数据还是需要先取一下
+            stats = await self.state.get_stats_typed()  # 获取旧数据还是需要先取一下
             # 这里简化逻辑，实际可能需要前端传参或默认
             initial_stats = await self.state.init_game("ZJUer", "TIER_1")
-            await self.manager.send_personal_message(
-                {"type": "init", "data": initial_stats}, self.user_id
-            )
+            await self.emit("init", {"data": initial_stats})
             asyncio.create_task(self.run_loop())
             return
 
@@ -362,8 +367,8 @@ class GameEngine:
 
     async def _handle_final_exam(self):
         """期末考试结算逻辑"""
-        stats = await self.state.get_stats()
-        course_mastery = await self.state.get_courses_mastery()
+        stats = await self.state.get_stats_typed()
+        course_mastery = await self.state.get_courses_mastery_typed()
 
         try:
             course_info = json.loads(stats.get("course_info_json", "[]"))
@@ -421,16 +426,15 @@ class GameEngine:
         asyncio.create_task(self._update_db_highest_gpa(gpa))
 
         # 发送结算弹窗和通知
-        await self.manager.send_personal_message(
+        await self.emit(
+            "semester_summary",
             {
-                "type": "semester_summary",
                 "data": {
                     "gpa": str(gpa),
                     "failed_count": failed_count,
                     "details": transcript,
-                },
+                }
             },
-            self.user_id,
         )
 
         await self._push_update(msg)
@@ -450,7 +454,7 @@ class GameEngine:
             logger.error(f"DB Update Failed: {e}")
 
     async def _handle_study_action(self, action_type: str, course_id: str):
-        stats = await self.state.get_stats()
+        stats = await self.state.get_stats_typed()
         iq = int(stats.get("iq", 90))
 
         try:
@@ -507,7 +511,7 @@ class GameEngine:
 
         msg = ""
         if target == "gym":
-            stats = await self.state.get_stats()
+            stats = await self.state.get_stats_typed()
             current_energy = int(stats.get("energy", 0))
             min_energy = action_cfg.get("min_energy_required", 50)
 
@@ -594,7 +598,7 @@ class GameEngine:
                 ]
 
             trigger = random.choice(trigger_words)
-            stats = await self.state.get_stats()
+            stats = await self.state.get_stats_typed()
             post_content, feedback = await generate_cc98_post(
                 stats, effect_type, trigger
             )
@@ -616,7 +620,7 @@ class GameEngine:
             history = await self.state.get_event_history()
 
             # 2. 获取当前状态
-            stats = await self.state.get_stats()
+            stats = await self.state.get_stats_typed()
 
             # 3. 调用 LLM（传入历史记录进行避雷）
             event_data = await generate_random_event(stats, history)
@@ -626,9 +630,7 @@ class GameEngine:
                 await self.state.add_event_to_history(event_data["title"])
 
                 # 5. 推送给前端
-                await self.manager.send_personal_message(
-                    {"type": "random_event", "data": event_data}, self.user_id
-                )
+                await self.emit("random_event", {"data": event_data})
         except Exception as e:
             logger.error(f"Random event error: {e}", exc_info=True)
 
@@ -652,7 +654,7 @@ class GameEngine:
             return
 
         try:
-            stats = await self.state.get_stats()
+            stats = await self.state.get_stats_typed()
 
             # 简单的上下文判断逻辑
             context = "random"
@@ -670,9 +672,9 @@ class GameEngine:
             msg_data = await generate_dingtalk_message(stats, context)
 
             if msg_data:
-                await self.manager.send_personal_message(
-                    {"type": "dingtalk_message", "data": msg_data},  # 新的消息类型
-                    self.user_id,
+                await self.emit(
+                    "dingtalk_message",
+                    {"data": msg_data},
                 )
 
         except Exception as e:
@@ -681,7 +683,7 @@ class GameEngine:
     async def _check_achievements(self):
         """成就系统判定逻辑"""
         try:
-            stats = await self.state.get_stats()
+            stats = await self.state.get_stats_typed()
             action_counts = await self.state.get_action_counts()
 
             # 防御性转换
@@ -713,8 +715,9 @@ class GameEngine:
 
                 if passed:
                     await self.state.unlock_achievement(code)
-                    await self.manager.send_personal_message(
-                        {"type": "achievement_unlocked", "data": item}, self.user_id
+                    await self.emit(
+                        "achievement_unlocked",
+                        {"data": item},
                     )
         except Exception as e:
             logger.error(f"Achievement check error: {e}")
@@ -725,9 +728,10 @@ class GameEngine:
 
         # 自动保存：学期结束时保存进度
         try:
-            from app.api.game import save_game_to_db
-
-            await save_game_to_db(self.user_id, self.state)
+            redis_client = RedisCache.get_client()
+            repo = RedisRepository(self.user_id, redis_client)
+            async with AsyncSessionLocal() as db:
+                await SaveService.persist_to_db(repo, db)
             logger.info(
                 f"Auto-save triggered at end of semester for user {self.user_id}"
             )
@@ -736,54 +740,56 @@ class GameEngine:
 
         # 毕业判定
         if current_semester_idx > 8:
-            stats = await self.state.get_stats()
+            stats = await self.state.get_stats_typed()
             achievements = list(await self.state.get_unlocked_achievements())
             stats["achievements"] = achievements
             # 调用AI生成文言文结业总结
             from app.core.llm import generate_wenyan_report
 
             wenyan_report = await generate_wenyan_report(stats)
-            await self.manager.send_personal_message(
+            await self.emit(
+                "graduation",
                 {
-                    "type": "graduation",
                     "data": {
                         "msg": "恭喜你从折姜大学毕业！",
                         "final_stats": stats,
                         "wenyan_report": wenyan_report,
-                    },
+                    }
                 },
-                self.user_id,
             )
             self.stop()
             return
 
         # 重置课程并设置学期开始时间
-        await self.state.reset_courses_for_new_semester(current_semester_idx)
+        redis_client = RedisCache.get_client()
+        repo = RedisRepository(self.user_id, redis_client)
+        world = WorldService()
+        game_service = GameService(self.user_id, repo, world)
+        await game_service.reset_courses_for_new_semester(current_semester_idx)
         holiday_event = await generate_random_event(
             {"context": "假期", "semester": current_semester_idx}
         )
 
-        await self.manager.send_personal_message(
+        await self.emit(
+            "new_semester",
             {
-                "type": "new_semester",
                 "data": {
                     "semester_name": f"第 {current_semester_idx} 学期",
                     "holiday_event": holiday_event,
-                },
+                }
             },
-            self.user_id,
         )
         await self._push_update("新学期开始了，加油！")
 
     async def _push_update(self, msg: str = None):
         """统一数据推送接口"""
         try:
-            # 并发获取 stats、courses 和 course_states 减少等待
-            new_stats, course_mastery, course_states = await asyncio.gather(
-                self.state.get_stats(),
-                self.state.get_courses_mastery(),
-                self.state.get_all_course_states(),
-            )
+            redis_client = RedisCache.get_client()
+            repo = RedisRepository(self.user_id, redis_client)
+            snapshot = await repo.get_snapshot()
+            new_stats = snapshot.stats.model_dump()
+            course_mastery = snapshot.courses
+            course_states = snapshot.course_states
 
             # 计算学期剩余时间
             semester_idx = int(new_stats.get("semester_idx", 1))
@@ -793,21 +799,16 @@ class GameEngine:
             )
             semester_time_left = await self.state.get_semester_time_left(base_duration)
 
-            await self.manager.send_personal_message(
+            await self.emit(
+                "tick",
                 {
-                    "type": "tick",
                     "stats": new_stats,
                     "courses": course_mastery,
                     "course_states": course_states,
                     "semester_time_left": semester_time_left,
                 },
-                self.user_id,
+                msg,
             )
-
-            if msg:
-                await self.manager.send_personal_message(
-                    {"type": "event", "data": {"desc": msg}}, self.user_id
-                )
         except Exception as e:
             logger.error(f"Push failed: {e}")
 

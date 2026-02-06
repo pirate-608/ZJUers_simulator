@@ -7,13 +7,18 @@ from sqlalchemy import select
 from pydantic import BaseModel
 from typing import Dict
 from app.game.access import grade_entrance_exam, get_questions_for_frontend
-from app.core.database import get_db
+from app.api import deps
 from app.models.user import User
 from app.core.security import create_access_token
 from app.game.access import grade_entrance_exam, get_questions_for_frontend
 from pydantic import BaseModel
 from app.game.state import RedisState
 from app.api.game import get_current_user_id
+from app.api.cache import RedisCache
+from app.repositories.redis_repo import RedisRepository
+from app.services.game_service import GameService
+from app.services.world_service import WorldService
+from app.services.restriction_service import RestrictionService
 
 router = APIRouter()
 
@@ -45,7 +50,16 @@ async def get_exam_questions():
 
 
 @router.post("/exam/submit", response_model=ExamResponse)
-async def submit_exam(submission: ExamSubmission, db: AsyncSession = Depends(get_db)):
+async def submit_exam(
+    submission: ExamSubmission, db: AsyncSession = Depends(deps.get_db)
+):
+    if await RestrictionService.is_blacklisted(db, submission.username, "username"):
+        return {"status": "error", "message": "该用户名已被拉黑"}
+    if submission.token and await RestrictionService.is_blacklisted(
+        db, submission.token, "token"
+    ):
+        return {"status": "error", "message": "该凭证已被拉黑"}
+
     # 1. 调用 access.py 进行判卷 (底层调用 C 动态库)
     result = grade_entrance_exam(submission.answers)
 
@@ -82,6 +96,12 @@ async def submit_exam(submission: ExamSubmission, db: AsyncSession = Depends(get
         # 老用户，校验token
         if user.token != token_from_req:
             return {"status": "error", "message": "凭证错误或用户名不符"}
+        restriction = await RestrictionService.get_active_restriction(db, user.id)
+        if restriction:
+            return {
+                "status": "error",
+                "message": f"账号受限：{restriction.restriction_type}",
+            }
         # token 匹配，允许免试登录，更新分数等
         user.tier = result["tier"]
         user.exam_score = result["total_score"]
@@ -110,12 +130,27 @@ class AssignMajorRequest(BaseModel):
 
 
 @router.post("/assign_major")
-async def assign_major(req: AssignMajorRequest):
+async def assign_major(
+    req: AssignMajorRequest, db: AsyncSession = Depends(deps.get_db)
+):
     user_id, username, tier = await get_current_user_id(req.token)
     if not user_id or not tier:
         raise HTTPException(status_code=401, detail="Invalid token or missing tier")
-    state = RedisState(user_id)
-    result = await state.assign_major(tier)
+    restriction = await RestrictionService.get_active_restriction(db, int(user_id))
+    if restriction:
+        raise HTTPException(
+            status_code=403, detail=f"账号受限：{restriction.restriction_type}"
+        )
+    redis_client = RedisCache.get_client()
+    repo = RedisRepository(user_id, redis_client)
+    world = WorldService()
+    game_service = GameService(user_id, repo, world)
+
+    if not await repo.exists():
+        state = RedisState(user_id)
+        await state.init_game(username or "新同学", tier)
+
+    result = await game_service.assign_major_and_init(tier)
     return {
         "success": True,
         "major": result["major"],
@@ -126,7 +161,7 @@ async def assign_major(req: AssignMajorRequest):
 
 # 获取当前用户 admission 信息
 @router.get("/admission_info")
-async def get_admission_info(request: Request, db: AsyncSession = Depends(get_db)):
+async def get_admission_info(request: Request, db: AsyncSession = Depends(deps.get_db)):
     """
     获取当前用户的用户名和分配专业（tier）。需前端携带 Authorization: Bearer <token>
     """
@@ -171,12 +206,22 @@ class QuickLoginRequest(BaseModel):
 
 # POST /exam/quick_login
 @router.post("/exam/quick_login")
-async def quick_login(data: QuickLoginRequest, db: AsyncSession = Depends(get_db)):
+async def quick_login(data: QuickLoginRequest, db: AsyncSession = Depends(deps.get_db)):
     stmt = select(User).where(User.username == data.username)
     result = await db.execute(stmt)
     user = result.scalars().first()
     if not user:
         return {"status": "not_found", "message": "用户未注册，请先完成入学考试"}
+    if await RestrictionService.is_blacklisted(db, data.username, "username"):
+        return {"status": "error", "message": "该用户名已被拉黑"}
+    if data.token and await RestrictionService.is_blacklisted(db, data.token, "token"):
+        return {"status": "error", "message": "该凭证已被拉黑"}
+    restriction = await RestrictionService.get_active_restriction(db, user.id)
+    if restriction:
+        return {
+            "status": "error",
+            "message": f"账号受限：{restriction.restriction_type}",
+        }
     # 如果提供了 token，则验证
     if data.token:
         if user.token != data.token:

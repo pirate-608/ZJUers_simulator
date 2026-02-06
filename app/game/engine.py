@@ -9,18 +9,19 @@ from typing import Callable
 import time
 
 from app.core.llm import (
+    generate_cc98_post,
     generate_random_event,
     generate_dingtalk_message,
 )
 from app.models.user import User
 from app.core.database import AsyncSessionLocal
-from app.game.state import RedisState
 from app.game.balance import balance  # 游戏数值配置
-from app.services.save_service import SaveService
 from app.core.events import GameEvent
 from app.repositories.redis_repo import RedisRepository
 from app.services.save_service import SaveService
 from app.services.game_service import GameService
+
+logger = logging.getLogger(__name__)
 
 
 class GameEngine:

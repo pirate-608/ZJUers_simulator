@@ -9,9 +9,7 @@ from app.core.config import settings
 from app.core.database import AsyncSessionLocal
 from app.api import deps
 from app.websockets.manager import manager
-from app.game.state import RedisState
 from app.game.engine import GameEngine
-from app.game.balance import balance
 from app.api.cache import RedisCache
 from app.repositories.redis_repo import RedisRepository
 from app.services.save_service import SaveService

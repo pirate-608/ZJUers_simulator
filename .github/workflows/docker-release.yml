@@ -1,0 +1,130 @@
+name: Build and Release Docker Images
+
+on:
+  push:
+    tags:
+      - 'v*'
+  release:
+    types: [published]
+  workflow_dispatch:
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+        
+      - name: Log in to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+          
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=raw,value=latest,enable={{is_default_branch}}
+            
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          
+  create-release-package:
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        
+      - name: Create release package
+        run: |
+          # 创建发布包目录
+          mkdir -p zjuers-simulator-docker
+          
+          # 复制必要文件
+          cp -r app static templates world zjuers-simulator-docker/
+          cp docker-compose.yml Dockerfile requirements.txt zjuers-simulator-docker/
+          cp -r scripts zjuers-simulator-docker/
+          cp .env.example zjuers-simulator-docker/
+          cp README.md LICENSE zjuers-simulator-docker/
+          
+          # 复制文档（可选）
+          mkdir -p zjuers-simulator-docker/docs
+          cp docs/DOCKER_RELEASE_PLAN.md zjuers-simulator-docker/docs/
+          cp docs/RELEASE_NOTES.md zjuers-simulator-docker/docs/
+          cp docs/GITHUB_RELEASE_TEMPLATE.md zjuers-simulator-docker/docs/
+          
+          # 创建压缩包
+          zip -r zjuers-simulator-docker-${{ github.ref_name }}.zip zjuers-simulator-docker/
+          tar -czf zjuers-simulator-docker-${{ github.ref_name }}.tar.gz zjuers-simulator-docker/
+          
+      - name: Upload Release Assets
+        uses: softprops/action-gh-release@v1
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          files: |
+            zjuers-simulator-docker-*.zip
+            zjuers-simulator-docker-*.tar.gz
+          body: |
+            ## ZJUers Simulator Docker版本 ${{ github.ref_name }}
+            
+            ### 🚀 快速开始
+            
+            1. 下载并解压发布包
+            2. 确保已安装 Docker Desktop
+            3. 运行一键部署脚本：
+               - **Windows**: 双击 `scripts\deploy.bat`
+               - **Linux/Mac**: `chmod +x scripts/deploy.sh && ./scripts/deploy.sh`
+            4. 浏览器自动打开 http://localhost:8000
+            
+            ### 📦 预构建镜像
+            
+            如果不想本地构建，可以直接拉取预构建镜像：
+            ```bash
+            docker pull ghcr.io/${{ github.repository }}:${{ github.ref_name }}
+            ```
+            
+            ### 🔧 系统要求
+            
+            - Docker Desktop 20.10+
+            - 可用内存 2GB+
+            - 可用磁盘空间 1GB+
+            
+            ### 📖 详细文档
+            
+            - `README.md` - 项目说明和开发指南
+            - `docs/RELEASE_NOTES.md` - 完整发布说明
+            - `docs/DOCKER_RELEASE_PLAN.md` - Docker部署方案详解
+            - `scripts/README.md` - API配置教程
+            
+            ### 🤝 贡献与反馈
+            
+            欢迎提交 Issue 和 Pull Request！

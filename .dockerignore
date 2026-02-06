@@ -10,6 +10,7 @@ venv/
 .env.key
 .env.dev
 .env.prod
+.conda
 c_modules/build/
 *.so
 *.dll

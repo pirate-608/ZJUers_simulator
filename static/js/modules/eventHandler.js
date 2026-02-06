@@ -8,10 +8,11 @@ import { logEvent, updateUserInfo, clearLog, showToast } from './utils.js';
 import { dingTalkManager } from './dingTalkManager.js';
 
 export class EventHandler {
-    constructor(wsManager, courseManager, examConsole) {
+    constructor(wsManager, courseManager, examConsole, saveManager) {
         this.wsManager = wsManager;
         this.courseManager = courseManager;
         this.examConsole = examConsole;
+        this.saveManager = saveManager;
     }
 
     handleServerMessage(msg) {
@@ -20,6 +21,7 @@ export class EventHandler {
                 break;
 
             case 'paused':
+                console.log('[EventHandler] Received paused message');
                 gameState.setPaused(true);
                 uiManager.updatePauseButton();
                 logEvent("系统", msg.msg || "游戏已暂停。", "text-warning");
@@ -27,6 +29,7 @@ export class EventHandler {
                 break;
 
             case 'resumed':
+                console.log('[EventHandler] Received resumed message');
                 gameState.setPaused(false);
                 uiManager.updatePauseButton();
                 logEvent("系统", msg.msg || "游戏已继续。", "text-success");
@@ -42,6 +45,11 @@ export class EventHandler {
                 break;
 
             case 'tick':
+                console.log('[EventHandler] Tick received:', {
+                    courses: msg.courses,
+                    course_states: msg.course_states,
+                    semester_time_left: msg.semester_time_left
+                });
                 this.updateGameView(msg.stats, msg.courses, msg.course_states, msg.semester_time_left);
                 break;
 
@@ -84,10 +92,29 @@ export class EventHandler {
             case 'graduation':
                 this.showGraduationModal(msg.data);
                 break;
+
+            case 'save_result':
+                if (this.saveManager) {
+                    this.saveManager.handleSaveResult(msg.success, msg.message);
+                }
+                break;
+
+            case 'exit_confirmed':
+                if (this.saveManager) {
+                    this.saveManager.handleExitConfirmed();
+                }
+                break;
         }
     }
 
     updateGameView(stats, courses, states, serverTimeLeft = null) {
+        console.log('[EventHandler] updateGameView called:', {
+            hasCourses: !!courses,
+            coursesKeys: courses ? Object.keys(courses).length : 0,
+            hasStates: !!states,
+            serverTimeLeft
+        });
+
         if (stats) {
             gameState.updateStats(stats);
             uiManager.updateStatsUI(stats);
@@ -104,18 +131,19 @@ export class EventHandler {
 
         const courseMetadata = gameState.getCourseMetadata();
         if (courseMetadata.length > 0) {
-            const safeCourses = courses || stats.courses || {};
             const currentStates = gameState.getCourseStates();
 
             if (!currentStates || Object.keys(currentStates).length === 0) {
                 courseMetadata.forEach(c => gameState.setCourseState(c.id, 1));
             }
 
+            // 确保使用正确的课程进度数据
+            const safeCourses = courses || stats?.courses || {};
             const avgProgress = this.courseManager.renderCourseList(safeCourses, gameState.getCourseStates());
             this.examConsole.renderExamConsole(avgProgress);
             this.courseManager.updateEnergyProjection();
 
-            // 使用服务器推送的倒计时更新计时器
+            // 只在定时器未运行或暂停恢复时启动，运行中只同步时间
             if (serverTimeLeft !== null && serverTimeLeft !== undefined && !gameState.isPaused()) {
                 this.examConsole.initSemesterTimer(serverTimeLeft);
             }

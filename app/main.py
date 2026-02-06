@@ -3,10 +3,17 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from fastapi.templating import Jinja2Templates
 from fastapi import Request
+
 templates = Jinja2Templates(directory="templates")
 from app.core.config import settings
+import logging
 from app.core.database import engine, Base
 from app.api import auth, game
+from app.models.user import User
+from app.models.game_save import GameSave
+from app.game.state import RedisState
+
+logger = logging.getLogger(__name__)
 
 app = FastAPI(title=settings.PROJECT_NAME)
 
@@ -19,22 +26,27 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 # 新增：公开 world 目录为静态资源
 app.mount("/world", StaticFiles(directory="world"), name="world")
 
+
 # 页面路由
 @app.get("/")
 async def read_index(request: Request):
     return templates.TemplateResponse("index.html", {"request": request})
 
+
 @app.get("/dashboard.html")
 async def read_dashboard(request: Request):
     return templates.TemplateResponse("dashboard.html", {"request": request})
+
 
 @app.get("/admission")
 async def read_admission(request: Request):
     return templates.TemplateResponse("admission.html", {"request": request})
 
+
 @app.get("/end")
 async def read_end(request: Request):
     return templates.TemplateResponse("end.html", {"request": request})
+
 
 # 启动事件：快速初始化数据库表 (开发用，生产建议用 Alembic)
 @app.on_event("startup")
@@ -42,6 +54,13 @@ async def startup():
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
 
+    try:
+        await RedisState.cleanup_orphan_player_keys(settings.REDIS_PLAYER_TTL_SECONDS)
+    except Exception as e:
+        logger.warning("Redis startup cleanup skipped: %s", e)
+
+
 if __name__ == "__main__":
     import uvicorn
+
     uvicorn.run("app.main:app", host="0.0.0.0", port=8000, reload=True)

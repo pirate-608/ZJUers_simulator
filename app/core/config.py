@@ -13,6 +13,7 @@ class Settings(BaseSettings):
 
     # Redis配置
     REDIS_URL: str = "redis://redis:6379/0"
+    REDIS_PLAYER_TTL_SECONDS: int = 60 * 60 * 24
 
     class Config:
         env_file = ".env"

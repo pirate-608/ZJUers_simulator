@@ -17,18 +17,21 @@ from app.api.game import get_current_user_id
 
 router = APIRouter()
 
+
 class ExamSubmission(BaseModel):
     username: str
     answers: Dict[str, str]
     token: str = None  # 可选，老用户重新考试时携带
 
+
 class ExamResponse(BaseModel):
     status: str
-    score: int
+    score: int = None  # 可选，错误响应时不需要分数
     tier: str = None
     token: str = None
     message: str = None
-    
+
+
 @router.get("/exam/questions")
 async def get_exam_questions():
     """
@@ -40,16 +43,17 @@ async def get_exam_questions():
         return [{"id": "0", "content": "系统题库连接失败，请联系管理员", "score": 0}]
     return questions
 
+
 @router.post("/exam/submit", response_model=ExamResponse)
 async def submit_exam(submission: ExamSubmission, db: AsyncSession = Depends(get_db)):
     # 1. 调用 access.py 进行判卷 (底层调用 C 动态库)
     result = grade_entrance_exam(submission.answers)
-    
+
     if not result["passed"]:
         return {
             "status": "failed",
             "score": result["total_score"],
-            "message": "分数未达标，遗憾离场。"
+            "message": "分数未达标，遗憾离场。",
         }
 
     # 2. 判卷通过，检查用户是否已存在
@@ -58,6 +62,7 @@ async def submit_exam(submission: ExamSubmission, db: AsyncSession = Depends(get
     result_db = await db.execute(stmt)
     user = result_db.scalars().first()
     import secrets
+
     # 从提交数据中获取 token
     token_from_req = submission.token
     if not user:
@@ -70,7 +75,7 @@ async def submit_exam(submission: ExamSubmission, db: AsyncSession = Depends(get
             username=submission.username,
             tier=result["tier"],
             exam_score=result["total_score"],
-            token=token
+            token=token,
         )
         db.add(user)
     elif token_from_req:
@@ -95,12 +100,14 @@ async def submit_exam(submission: ExamSubmission, db: AsyncSession = Depends(get
         "status": "success",
         "score": result["total_score"],
         "tier": result["tier"],
-        "token": access_token
+        "token": access_token,
     }
-    
+
+
 # 分配专业API，考试通过后由前端调用
 class AssignMajorRequest(BaseModel):
     token: str
+
 
 @router.post("/assign_major")
 async def assign_major(req: AssignMajorRequest):
@@ -113,8 +120,9 @@ async def assign_major(req: AssignMajorRequest):
         "success": True,
         "major": result["major"],
         "major_abbr": result["major_abbr"],
-        "courses": result["courses"]
+        "courses": result["courses"],
     }
+
 
 # 获取当前用户 admission 信息
 @router.get("/admission_info")
@@ -127,7 +135,9 @@ async def get_admission_info(request: Request, db: AsyncSession = Depends(get_db
         raise HTTPException(status_code=401, detail="Missing or invalid token")
     token = auth_header.split(" ", 1)[1]
     try:
-        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+        payload = jwt.decode(
+            token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM]
+        )
         username = payload.get("username")
         user_id = payload.get("sub")
     except JWTError:
@@ -136,6 +146,7 @@ async def get_admission_info(request: Request, db: AsyncSession = Depends(get_db
         raise HTTPException(status_code=401, detail="Invalid token payload")
     # 优先查Redis专业
     from app.game.state import RedisState
+
     state = RedisState(user_id)
     stats = await state.get_stats()
     major = stats.get("major")
@@ -148,13 +159,15 @@ async def get_admission_info(request: Request, db: AsyncSession = Depends(get_db
     return {
         "username": username or user.username,
         "assigned_major": major or user.tier or "未分配专业",
-        "token": user.token
+        "token": user.token,
     }
+
 
 # 允许已注册用户直接登录，无需重复考试
 class QuickLoginRequest(BaseModel):
     username: str
     token: str = None  # 可选，提供则验证凭证
+
 
 # POST /exam/quick_login
 @router.post("/exam/quick_login")
@@ -176,5 +189,5 @@ async def quick_login(data: QuickLoginRequest, db: AsyncSession = Depends(get_db
         "status": "success",
         "token": access_token,
         "username": user.username,
-        "assigned_major": user.tier or "未分配专业"
+        "assigned_major": user.tier or "未分配专业",
     }

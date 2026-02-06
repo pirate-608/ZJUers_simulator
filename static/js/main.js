@@ -10,6 +10,7 @@ import { uiManager } from './modules/uiManager.js';
 import { CourseManager } from './modules/courseManager.js';
 import { ExamConsole } from './modules/examConsole.js';
 import { EventHandler } from './modules/eventHandler.js';
+import { SaveManager } from './modules/saveManager.js';
 
 // ==========================================
 // 全局变量（供HTML内联事件使用）
@@ -18,6 +19,7 @@ let wsManager;
 let courseManager;
 let examConsole;
 let eventHandler;
+let saveManager;
 let actionCooldown = false;
 
 // ==========================================
@@ -30,13 +32,21 @@ window.addEventListener('DOMContentLoaded', async () => {
         loadAchievements()
     ]);
 
-    // 初始化WebSocket
+    // 初始化各个管理器
+    courseManager = new CourseManager(null); // 先创建，稍后设置 wsManager
+    examConsole = new ExamConsole(null);
+    saveManager = new SaveManager(null);
+
+    // 初始化 WebSocket（传入消息处理回调）
     wsManager = new WebSocketManager((msg) => eventHandler.handleServerMessage(msg));
 
-    // 初始化各个管理器
-    courseManager = new CourseManager(wsManager);
-    examConsole = new ExamConsole(wsManager);
-    eventHandler = new EventHandler(wsManager, courseManager, examConsole);
+    // 设置管理器之间的引用
+    courseManager.wsManager = wsManager;
+    examConsole.wsManager = wsManager;
+    saveManager.wsManager = wsManager;
+
+    // 初始化事件处理器
+    eventHandler = new EventHandler(wsManager, courseManager, examConsole, saveManager);
 
     // 连接WebSocket
     wsManager.connect();
@@ -53,7 +63,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]');
     [...tooltipTriggerList].map(tooltipTriggerEl => new bootstrap.Tooltip(tooltipTriggerEl));
 
-    console.log('[Main] Game initialized');
+    console.log('[Main] Game initialized with SaveManager');
 });
 
 // ==========================================
@@ -67,13 +77,8 @@ window.sendAction = function (type, target) {
         if (btn && btn.disabled) return;
     }
 
-    if (type === 'pause') {
-        gameState.setPaused(true);
-        uiManager.updatePauseButton();
-    } else if (type === 'resume') {
-        gameState.setPaused(false);
-        uiManager.updatePauseButton();
-    }
+    // 不再在本地立即更新暂停状态，等待服务器返回消息后再更新
+    console.log('[Main] Sending action:', type, target);
 
     wsManager.send({ action: type, target: target });
     actionCooldown = true;
@@ -112,4 +117,17 @@ window.clearLog = clearLog;
 // 暴露 updatePauseButton 给外部调用
 window.updatePauseButton = function () {
     uiManager.updatePauseButton();
+};
+
+// 暴露存档管理功能
+window.showExitConfirm = function () {
+    if (saveManager) {
+        saveManager.showExitConfirmModal();
+    }
+};
+
+window.saveGame = function () {
+    if (saveManager) {
+        saveManager.saveGame();
+    }
 };

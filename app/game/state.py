@@ -6,6 +6,7 @@ from typing import Optional, Dict, Any, Set, List
 from pathlib import Path
 from redis import asyncio as aioredis
 from app.core.config import settings
+from app.api.cache import RedisCache
 
 logger = logging.getLogger(__name__)
 
@@ -69,6 +70,39 @@ class RedisState:
         self.achievement_key = f"player:{user_id}:achievements"
         self.history_key = f"player:{user_id}:event_history"  # [新增] 历史记录 Key
         self.cooldown_key = f"player:{user_id}:cooldowns"  # [新增] 冷却时间 Key
+        self.player_ttl_seconds = RedisCache.normalize_ttl(
+            getattr(settings, "REDIS_PLAYER_TTL_SECONDS", 86400)
+        )
+
+    @classmethod
+    async def cleanup_orphan_player_keys(cls, ttl_seconds: int, delete: bool = False):
+        """Ensure legacy player keys have TTL; optionally delete them."""
+        redis = RedisCache.get_client()
+        ttl_seconds = RedisCache.normalize_ttl(ttl_seconds)
+
+        cursor = 0
+        scanned = 0
+        fixed = 0
+
+        while True:
+            cursor, keys = await redis.scan(cursor=cursor, match="player:*", count=200)
+            if keys:
+                scanned += len(keys)
+                for key in keys:
+                    ttl = await redis.ttl(key)
+                    if ttl == -1:
+                        if delete:
+                            await redis.delete(key)
+                        else:
+                            await redis.expire(key, ttl_seconds)
+                        fixed += 1
+            if cursor == 0:
+                break
+
+        if fixed > 0:
+            logger.info(
+                "Redis cleanup updated %s/%s legacy keys with no TTL", fixed, scanned
+            )
 
     async def clear_all(self):
         """清空玩家所有存档数据"""
@@ -92,6 +126,8 @@ class RedisState:
     # 2. 游戏初始化逻辑
     # ==========================================
     async def init_game(self, username: str, tier: str) -> Dict[str, Any]:
+        import time
+
         # 只初始化基础信息，不分配专业
         initial_stats = {
             "username": username,
@@ -99,6 +135,7 @@ class RedisState:
             "major_abbr": "",
             "semester": "大一秋冬",
             "semester_idx": 1,
+            "semester_start_time": int(time.time()),  # 记录学期开始时间
             "energy": 100,
             "sanity": 80,
             "stress": 0,
@@ -118,9 +155,13 @@ class RedisState:
                 self.action_key,
                 self.achievement_key,
                 self.history_key,
+                self.cooldown_key,
             )
             pipe.hset(self.key, mapping=initial_stats)
             await pipe.execute()
+        await RedisCache.touch_ttl(
+            RedisCache.build_player_keys(self.user_id), self.player_ttl_seconds
+        )
         return initial_stats
 
     async def assign_major(self, tier: str) -> Dict[str, Any]:
@@ -165,6 +206,9 @@ class RedisState:
                 course_states = {str(c["id"]): 1 for c in my_courses}
                 pipe.hset(self.course_state_key, mapping=course_states)
             await pipe.execute()
+        await RedisCache.touch_ttl(
+            RedisCache.build_player_keys(self.user_id), self.player_ttl_seconds
+        )
         return {
             "major": major_info["name"],
             "major_abbr": major_abbr,
@@ -347,6 +391,9 @@ class RedisState:
             else:
                 pipe.hset(self.key, "course_info_json", "[]")
             await pipe.execute()
+        await RedisCache.touch_ttl(
+            RedisCache.build_player_keys(self.user_id), self.player_ttl_seconds
+        )
 
     async def get_semester_time_left(self, duration_seconds: int) -> int:
         """计算学期剩余时间（秒）"""

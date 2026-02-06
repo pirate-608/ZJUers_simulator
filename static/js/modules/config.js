@@ -24,7 +24,7 @@ export const CONFIG = {
 // 加载服务器配置
 export async function loadServerConfig() {
     try {
-        const response = await fetch('/api/game/config');
+        const response = await fetch('/config');
         const config = await response.json();
 
         if (config.semester) {

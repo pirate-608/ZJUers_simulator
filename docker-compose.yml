@@ -6,6 +6,9 @@ services:
     container_name: zjuers_backend
     ports:
       - "8000:8000"
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000
+    env_file:
+      - .env
     environment:
       - DATABASE_URL=${DATABASE_URL}
       - REDIS_URL=redis://redis:6379/0
@@ -13,9 +16,14 @@ services:
       - LLM_BASE_URL=${LLM_BASE_URL}
       - LLM=${LLM}
       - SECRET_KEY=${SECRET_KEY}
+      - ADMIN_USERNAME=${ADMIN_USERNAME}
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD}
+      - ADMIN_SESSION_SECRET=${ADMIN_SESSION_SECRET}
     depends_on:
+      migrate:
+        condition: service_completed_successfully
       db:
-        condition: service_healthy # <--- 关键修改：等待 db 健康
+        condition: service_healthy
       redis:
         condition: service_started
     # 添加自动重启，防止意外崩溃后不恢复
@@ -50,6 +58,37 @@ services:
     restart: always
     ports:
       - "127.0.0.1:6379:6379"
+
+  migrate:
+    build: .
+    container_name: zjuers_migrate
+    command: alembic upgrade head
+    env_file:
+      - .env
+    environment:
+      - DATABASE_URL=${DATABASE_URL}
+      - SECRET_KEY=${SECRET_KEY}
+      - ADMIN_USERNAME=${ADMIN_USERNAME}
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD}
+      - ADMIN_SESSION_SECRET=${ADMIN_SESSION_SECRET}
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: "no"
+
+  nginx:
+    image: nginx:latest
+    container_name: zjuers_nginx
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./static:/app/static:ro
+      - ./nginx/ssl:/etc/nginx/ssl:ro
+    depends_on:
+      backend:
+        condition: service_started
+    restart: always
 
 volumes:
   postgres_data:

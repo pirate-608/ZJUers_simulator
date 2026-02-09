@@ -1,11 +1,13 @@
 .venv
+.conda
 .env
-.env.backup
 .env.prod
 .env.dev
+.env.backup
 .tmp.driveupload/
 __recycle_bin/
 __pycache__/
+env/
 temp/
 build/
 *.log
@@ -21,7 +23,6 @@ migrations/
 *.tar.gz
 *.zip
 README.myself.md
+ChangeLog.md
+Dockerfile.tunnel
 nginx/
-
-# Docker运行时生成的文件
-postgres_data/

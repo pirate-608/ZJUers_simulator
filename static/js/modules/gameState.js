@@ -9,7 +9,7 @@ export class GameState {
         this.currentCourseStates = {};
         this.achievements = null;
         this.relaxCooldowns = {};
-        this.isPaused = false;
+        this._paused = false;
     }
 
     setCourseMetadata(data) {
@@ -57,11 +57,11 @@ export class GameState {
     }
 
     setPaused(paused) {
-        this.isPaused = paused;
+        this._paused = paused;
     }
 
     isPaused() {
-        return this.isPaused;
+        return this._paused;
     }
 
     // 从stats中恢复课程元数据

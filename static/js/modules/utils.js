@@ -42,9 +42,19 @@ export function setupBeforeUnload(wsGetter) {
     window.onbeforeunload = function (e) {
         const ws = wsGetter();
         if (ws && ws.readyState === WebSocket.OPEN) {
+            // 提示用户有未保存的游戏
             e.preventDefault();
-            e.returnValue = '游戏正在进行中，进度可能丢失，确定退出吗？';
+            e.returnValue = '游戏正在进行中，建议先保存进度再离开。';
             return e.returnValue;
         }
     };
+
+    // 监听页面可见性变化（用户切换标签页时不需要提示）
+    document.addEventListener('visibilitychange', function () {
+        if (document.hidden) {
+            console.log('[Utils] Page hidden, game continues in background');
+        } else {
+            console.log('[Utils] Page visible again');
+        }
+    });
 }

@@ -11,6 +11,7 @@ export class ExamConsole {
         this.wsManager = wsManager;
         this.semesterTimerInterval = null;
         this.timerRunning = false;
+        this.remainingSeconds = 0;
     }
 
     renderExamConsole(progress) {
@@ -63,42 +64,49 @@ export class ExamConsole {
     }
 
     initSemesterTimer(serverTimeLeft = null) {
+        // 如果定时器已经在运行，只更新剩余时间显示，不重启定时器
+        if (this.timerRunning && serverTimeLeft !== null && serverTimeLeft !== undefined) {
+            this.remainingSeconds = parseInt(serverTimeLeft);
+            this.updateTimerDisplay();
+            return;
+        }
+
         if (this.semesterTimerInterval) {
             clearInterval(this.semesterTimerInterval);
         }
         this.timerRunning = true;
 
         // 优先使用服务器推送的剩余时间，保证刷新页面后同步
-        let remain;
         if (serverTimeLeft !== null && serverTimeLeft !== undefined) {
-            remain = parseInt(serverTimeLeft);
+            this.remainingSeconds = parseInt(serverTimeLeft);
         } else {
             // 兜底：使用本地配置计算（仅用于没有服务器数据时）
             const currentStats = gameState.getStats();
             const currentSemester = currentStats.semester_idx || 1;
             let baseDuration = CONFIG.SEMESTER_DURATIONS[currentSemester] || CONFIG.DEFAULT_DURATION || 360;
-            remain = Math.floor(baseDuration / CONFIG.currentSpeedMultiplier);
+            this.remainingSeconds = Math.floor(baseDuration / CONFIG.currentSpeedMultiplier);
         }
 
-        const updateDisplay = () => {
-            const el = document.getElementById('semester-timer');
-            if (el) {
-                let min = Math.floor(remain / 60);
-                let sec = remain % 60;
-                el.innerText = `${min}:${sec.toString().padStart(2, '0')}`;
-            }
-        };
-
-        updateDisplay();
+        this.updateTimerDisplay();
 
         this.semesterTimerInterval = setInterval(() => {
-            remain--;
-            if (remain >= 0) updateDisplay();
-            if (remain === 0) {
+            this.remainingSeconds--;
+            if (this.remainingSeconds >= 0) this.updateTimerDisplay();
+            if (this.remainingSeconds === 0) {
                 clearInterval(this.semesterTimerInterval);
+                this.timerRunning = false;
                 this.takeFinalExam();
             }
         }, 1000);
+    }
+
+    updateTimerDisplay() {
+        const el = document.getElementById('semester-timer');
+        if (el && this.remainingSeconds !== undefined) {
+            let min = Math.floor(this.remainingSeconds / 60);
+            let sec = this.remainingSeconds % 60;
+            el.innerText = `${min}:${sec.toString().padStart(2, '0')}`;
+        }
     }
 
     takeFinalExam() {

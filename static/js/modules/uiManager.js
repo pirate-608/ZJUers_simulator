@@ -137,14 +137,16 @@ export class UIManager {
         const btn = document.getElementById('pause-resume-btn');
         if (!btn) return;
 
-        if (gameState.isPaused) {
+        if (gameState.isPaused()) {
             btn.classList.remove('btn-outline-danger');
             btn.classList.add('btn-outline-success');
-            btn.textContent = '▶️ 继续游戏';
+            btn.innerHTML = '▶️ 继续游戏';
+            btn.setAttribute('onclick', "sendAction('resume')");
         } else {
             btn.classList.remove('btn-outline-success');
             btn.classList.add('btn-outline-danger');
-            btn.textContent = '⏸️ 暂停游戏';
+            btn.innerHTML = '⏸️ 暂停游戏';
+            btn.setAttribute('onclick', "sendAction('pause')");
         }
     }
 }

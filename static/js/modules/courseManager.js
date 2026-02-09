@@ -12,7 +12,13 @@ export class CourseManager {
 
     renderCourseList(masteryData, statesData) {
         const listContainer = document.getElementById('course-list');
-        if (!listContainer) return;
+        if (!listContainer) return 0;
+
+        console.log('[CourseManager] renderCourseList called:', {
+            masteryData,
+            statesData,
+            metadata: gameState.getCourseMetadata()
+        });
 
         listContainer.innerHTML = '';
 
@@ -23,6 +29,7 @@ export class CourseManager {
         courseMetadata.forEach(course => {
             const cId = String(course.id);
             const val = parseFloat(masteryData[cId] || 0);
+            console.log(`[CourseManager] Rendering ${course.name}: id=${cId}, val=${val}`);
             total += val;
             count++;
 

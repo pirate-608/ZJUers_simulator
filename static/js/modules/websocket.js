@@ -19,16 +19,34 @@ export class WebSocketManager {
         const baseUrl = typeof WS_BASE_URL !== 'undefined' ? WS_BASE_URL : 'ws://localhost:8000';
 
         try {
-            this.ws = new WebSocket(`${baseUrl}/ws/game?token=${token}`);
+            // Token 不再放在 URL 中，改为连接后首条消息发送
+            this.ws = new WebSocket(`${baseUrl}/ws/game`);
 
             this.ws.onopen = () => {
-                logEvent("系统", "已连接zdbk...", "text-success");
-                this.reconnectAttempts = 0;
-                this.startHeartbeat();
+                // 连接建立后，立即发送 auth 消息
+                const llm = auth.getCustomLLM ? auth.getCustomLLM() : { model: '', apiKey: '' };
+                this.ws.send(JSON.stringify({
+                    token: token,
+                    custom_llm_model: llm.model || undefined,
+                    custom_llm_api_key: llm.apiKey || undefined
+                }));
             };
 
             this.ws.onmessage = (event) => {
                 const msg = JSON.parse(event.data);
+
+                // 处理认证结果
+                if (msg.type === 'auth_ok') {
+                    logEvent("系统", "已连接zdbk...", "text-success");
+                    this.reconnectAttempts = 0;
+                    this.startHeartbeat();
+                    return;
+                }
+                if (msg.type === 'auth_error') {
+                    logEvent("系统", msg.message || "认证失败", "text-danger");
+                    return;
+                }
+
                 this.messageHandler(msg);
             };
 

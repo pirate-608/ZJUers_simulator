@@ -9,8 +9,17 @@ async function quickLogin() {
     try {
         const payload = token ? { username, token } : { username };
         const llm = collectCustomLlm();
-        Object.assign(payload, llm);
-        auth.setCustomLLM(llm.custom_llm_model, llm.custom_llm_api_key);
+        const consent = await ensureLlmConsent(llm);
+        if (consent.action === 'cancel') {
+            btns.forEach(btn => btn.disabled = false);
+            return;
+        }
+        if (consent.action === 'accept') {
+            Object.assign(payload, llm);
+            auth.setCustomLLM(llm.custom_llm_model, llm.custom_llm_api_key);
+        } else {
+            auth.clearCustomLLM();
+        }
         const response = await fetch(`${API_BASE_URL}/api/exam/quick_login`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -41,6 +50,33 @@ function collectCustomLlm() {
     if (model) result.custom_llm_model = model;
     if (apiKey) result.custom_llm_api_key = apiKey;
     return result;
+}
+
+function ensureLlmConsent(llm) {
+    if (!llm.custom_llm_model && !llm.custom_llm_api_key) return Promise.resolve({ action: 'accept', llm });
+
+    const modalEl = document.getElementById('llmConsentModal');
+    const acceptBtn = document.getElementById('llm-consent-accept');
+    const cancelBtn = document.getElementById('llm-consent-cancel');
+    const defaultBtn = document.getElementById('llm-consent-default');
+    if (!modalEl || !acceptBtn || !cancelBtn || !defaultBtn) return Promise.resolve({ action: 'accept', llm });
+
+    const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+    return new Promise(resolve => {
+        let settled = false;
+        const finalize = (action) => {
+            if (settled) return;
+            settled = true;
+            modalEl.removeEventListener('hidden.bs.modal', onHidden);
+            resolve(action === 'accept' ? { action, llm } : { action });
+        };
+        const onHidden = () => finalize('cancel');
+        acceptBtn.addEventListener('click', () => finalize('accept'), { once: true });
+        cancelBtn.addEventListener('click', () => finalize('cancel'), { once: true });
+        defaultBtn.addEventListener('click', () => finalize('default'), { once: true });
+        modalEl.addEventListener('hidden.bs.modal', onHidden, { once: true });
+        modal.show();
+    });
 }
 
 // startExam 修改为 async 函数，因为要请求网络
@@ -97,6 +133,9 @@ async function submitExam() {
 
     // 读取 token（如果有）
     const token = document.getElementById('token').value.trim();
+    const llm = collectCustomLlm();
+    const consent = await ensureLlmConsent(llm);
+    if (consent.action === 'cancel') return;
 
     // UI切换
     document.getElementById('step-exam').style.display = 'none';
@@ -108,9 +147,12 @@ async function submitExam() {
             answers: answers
         };
         if (token) payload.token = token;
-        const llm = collectCustomLlm();
-        Object.assign(payload, llm);
-        auth.setCustomLLM(llm.custom_llm_model, llm.custom_llm_api_key);
+        if (consent.action === 'accept') {
+            Object.assign(payload, llm);
+            auth.setCustomLLM(llm.custom_llm_model, llm.custom_llm_api_key);
+        } else {
+            auth.clearCustomLLM();
+        }
 
         const response = await fetch(`${API_BASE_URL}/api/exam/submit`, {
             method: 'POST',

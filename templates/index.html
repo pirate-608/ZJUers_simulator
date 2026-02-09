@@ -101,6 +101,29 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="/static/js/config.js"></script>
     <script src="/static/js/exam.js"></script>
+    <!-- 自定义 LLM 授权提示 Modal -->
+    <div class="modal fade" id="llmConsentModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">使用自定义模型提示</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    您将提供第三方平台的 API Key。我们承诺：此密钥仅用于您当前游戏会话的模型调用，不会永久存储，且不会用于其他用途。请确认您知悉并同意，详情可查看
+                    <a href="https://docs.67656.fun/notice#security-notice" target="_blank" rel="noopener">安全须知</a>。
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal"
+                        id="llm-consent-cancel">取消</button>
+                    <button type="button" class="btn btn-outline-primary" data-bs-dismiss="modal"
+                        id="llm-consent-default">使用默认模型</button>
+                    <button type="button" class="btn btn-primary" data-bs-dismiss="modal"
+                        id="llm-consent-accept">同意并授权</button>
+                </div>
+            </div>
+        </div>
+    </div>
     <div class="container text-center my-4">
         <div class="d-flex flex-column flex-md-row justify-content-center gap-3 align-items-center">
             <a href="/world/notice.md" target="_blank" class="text-secondary small">折姜大学招生减章</a>

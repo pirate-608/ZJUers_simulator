@@ -18,6 +18,7 @@ instance
 .idea/
 coverage/
 migrations/
+world/entrance_exam.json
 *.tar
 *.tar.gz
 *.zip

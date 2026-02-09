@@ -1,15 +1,15 @@
 [
   {
-    "keyword": "GPA",
-    "category": "学业",
-    "desc": "平均学分绩点，衡量学业成绩的重要指标。",
-    "examples": ["GPA 4.0", "绩点计算"]
-  },
-  {
     "keyword": "CC98",
     "category": "校园生活",
     "desc": "浙江大学知名校园论坛。",
     "examples": ["CC98 刷帖", "98大水怪"]
+  },
+  {
+    "keyword": "GPA",
+    "category": "学业",
+    "desc": "平均学分绩点，衡量学业成绩的重要指标。",
+    "examples": ["GPA 4.0", "绩点计算"]
   },
   {
     "keyword": "ac0x",

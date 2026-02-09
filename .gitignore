@@ -23,4 +23,5 @@ migrations/
 *.zip
 README.myself.md
 ChangeLog.md
+Dockerfile.tunnel
 nginx/

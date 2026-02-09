@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from pydantic import BaseModel
-from typing import Dict
+from typing import Dict, Optional
 from app.game.access import grade_entrance_exam, get_questions_for_frontend
 from app.api import deps
 from app.models.user import User
@@ -27,6 +27,8 @@ class ExamSubmission(BaseModel):
     username: str
     answers: Dict[str, str]
     token: str = None  # 可选，老用户重新考试时携带
+    custom_llm_model: Optional[str] = None
+    custom_llm_api_key: Optional[str] = None
 
 
 class ExamResponse(BaseModel):
@@ -202,6 +204,8 @@ async def get_admission_info(request: Request, db: AsyncSession = Depends(deps.g
 class QuickLoginRequest(BaseModel):
     username: str
     token: str = None  # 可选，提供则验证凭证
+    custom_llm_model: Optional[str] = None
+    custom_llm_api_key: Optional[str] = None
 
 
 # POST /exam/quick_login

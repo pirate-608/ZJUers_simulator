@@ -30,8 +30,8 @@
   
   "course_states": {
     "0": {"name": "摆", "emoji": "💤", "growth": 0.0, "drain": 0.0},
-    "1": {"name": "摸", "emoji": "😐", "growth": 0.5, "drain": 0.8},
-    "2": {"name": "卷", "emoji": "🔥", "growth": 2.5, "drain": 3.0}
+    "1": {"name": "摸", "emoji": "😐", "growth": 1.0, "drain": 0.8},
+    "2": {"name": "卷", "emoji": "🔥", "growth": 4.0, "drain": 3.0}
   },
   
   "sanity_stress_modifiers": {

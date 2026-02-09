@@ -18,6 +18,7 @@ from app.services.save_service import SaveService
 from app.services.game_service import GameService
 from app.services.restriction_service import RestrictionService
 from app.core.events import GameEvent
+from app.models.user import User
 
 # 配置日志
 logger = logging.getLogger(__name__)
@@ -129,9 +130,20 @@ async def websocket_endpoint(websocket: WebSocket):
         await websocket.close(code=1008, reason="invalid_token")
         return
 
-    # 鉴权通过后检查是否被限制（短生命周期 DB Session）
-    async with AsyncSessionLocal() as db:
-        restriction = await RestrictionService.get_active_restriction(db, int(user_id))
+        # 鉴权通过后检查是否被限制（短生命周期 DB Session）
+        llm_override = None
+        custom_model = (auth_data.get("custom_llm_model") or "").strip()
+        custom_key = (auth_data.get("custom_llm_api_key") or "").strip()
+        if custom_model or custom_key:
+            llm_override = {
+                "model": custom_model or None,
+                "api_key": custom_key or None,
+            }
+
+        async with AsyncSessionLocal() as db:
+            restriction = await RestrictionService.get_active_restriction(
+                db, int(user_id)
+            )
     if restriction:
         logger.warning("Restricted user %s attempted connect", user_id)
         await websocket.send_text(
@@ -217,6 +229,7 @@ async def websocket_endpoint(websocket: WebSocket):
             save_service=save_service,
             game_service=game_service,
             db_factory=AsyncSessionLocal,
+            llm_override=llm_override,
         )
 
         async def event_forwarder():

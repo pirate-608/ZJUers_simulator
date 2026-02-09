@@ -24,7 +24,12 @@ export class WebSocketManager {
 
             this.ws.onopen = () => {
                 // 连接建立后，立即发送 auth 消息
-                this.ws.send(JSON.stringify({ token: token }));
+                const llm = auth.getCustomLLM ? auth.getCustomLLM() : { model: '', apiKey: '' };
+                this.ws.send(JSON.stringify({
+                    token: token,
+                    custom_llm_model: llm.model || undefined,
+                    custom_llm_api_key: llm.apiKey || undefined
+                }));
             };
 
             this.ws.onmessage = (event) => {

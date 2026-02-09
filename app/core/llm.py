@@ -1,14 +1,21 @@
 import json
 import os
+from typing import Optional, Dict
 from openai import AsyncOpenAI
-from app.core.config import settings
 from app.api.cache import RedisCache
 
-# 初始化客户端 (适配 OpenAI 或 兼容接口如 DeepSeek/Moonshot)
-# 如果是其他模型，请修改 base_url
-client = AsyncOpenAI(
-    api_key=os.getenv("LLM_API_KEY"), base_url=os.getenv("LLM_BASE_URL")
-)
+
+def _resolve_llm_config(llm_override: Optional[Dict] = None):
+    """根据用户配置或环境变量确定 LLM 配置"""
+    model = (llm_override or {}).get("model") or os.getenv("LLM")
+    api_key = (llm_override or {}).get("api_key") or os.getenv("LLM_API_KEY")
+    base_url = os.getenv("LLM_BASE_URL")
+    return api_key, base_url, model
+
+
+def _get_client(api_key: Optional[str], base_url: Optional[str]):
+    return AsyncOpenAI(api_key=api_key, base_url=base_url)
+
 
 CC98_CACHE_MAX_LEN = 200
 CC98_CACHE_TTL_SECONDS = 6 * 60 * 60
@@ -52,7 +59,9 @@ def _load_character_list():
         return []
 
 
-async def generate_cc98_post(player_stats: dict, effect: str, trigger: str):
+async def generate_cc98_post(
+    player_stats: dict, effect: str, trigger: str, llm_override: Optional[Dict] = None
+):
     """生成 CC98 帖子内容和反馈（批量缓存优化版）"""
     feedback_map = {
         "positive": [
@@ -103,8 +112,11 @@ async def generate_cc98_post(player_stats: dict, effect: str, trigger: str):
     """
 
     try:
-        response = await client.chat.completions.create(
-            model=os.getenv("LLM"),
+        api_key, base_url, model = _resolve_llm_config(llm_override)
+        llm_client = _get_client(api_key, base_url)
+
+        response = await llm_client.chat.completions.create(
+            model=model,
             messages=[{"role": "user", "content": prompt}],
             response_format={"type": "json_object"},  # 开启 JSON 模式确保解析稳定
             max_tokens=300,
@@ -135,7 +147,7 @@ async def generate_cc98_post(player_stats: dict, effect: str, trigger: str):
 
 
 async def generate_random_event(
-    player_stats: dict, history: list = None
+    player_stats: dict, history: list = None, llm_override: Optional[Dict] = None
 ):  # [修复] 增加了 history 参数
     """
     生成随机事件（批量缓存版）
@@ -182,8 +194,11 @@ async def generate_random_event(
     }}
     """
     try:
-        response = await client.chat.completions.create(
-            model=os.getenv("LLM"),
+        api_key, base_url, model = _resolve_llm_config(llm_override)
+        llm_client = _get_client(api_key, base_url)
+
+        response = await llm_client.chat.completions.create(
+            model=model,
             messages=[{"role": "user", "content": prompt}],
             response_format={"type": "json_object"},
             max_tokens=800,
@@ -210,7 +225,9 @@ async def generate_random_event(
         return None
 
 
-async def generate_dingtalk_message(player_stats: dict, context: str = "random"):
+async def generate_dingtalk_message(
+    player_stats: dict, context: str = "random", llm_override: Optional[Dict] = None
+):
     """
     生成钉钉消息（批量缓存版）
     """
@@ -245,8 +262,11 @@ async def generate_dingtalk_message(player_stats: dict, context: str = "random")
     }}
     """
     try:
-        response = await client.chat.completions.create(
-            model=os.getenv("LLM"),
+        api_key, base_url, model = _resolve_llm_config(llm_override)
+        llm_client = _get_client(api_key, base_url)
+
+        response = await llm_client.chat.completions.create(
+            model=model,
             messages=[{"role": "user", "content": prompt}],
             response_format={"type": "json_object"},
             max_tokens=500,
@@ -272,7 +292,9 @@ async def generate_dingtalk_message(player_stats: dict, context: str = "random")
         return None
 
 
-async def generate_wenyan_report(final_stats: dict) -> str:
+async def generate_wenyan_report(
+    final_stats: dict, llm_override: Optional[Dict] = None
+) -> str:
     """
     根据玩家final_stats生成一段文言文风格的结业总结。
     """
@@ -287,8 +309,11 @@ async def generate_wenyan_report(final_stats: dict) -> str:
     只需返回文言文内容本身，不要任何解释。
     """
     try:
-        response = await client.chat.completions.create(
-            model=os.getenv("LLM"),
+        api_key, base_url, model = _resolve_llm_config(llm_override)
+        llm_client = _get_client(api_key, base_url)
+
+        response = await llm_client.chat.completions.create(
+            model=model,
             messages=[{"role": "user", "content": prompt}],
             max_tokens=200,
         )

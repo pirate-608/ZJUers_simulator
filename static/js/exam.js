@@ -7,10 +7,14 @@ async function quickLogin() {
     const btns = document.querySelectorAll('#step-login button');
     btns.forEach(btn => btn.disabled = true);
     try {
+        const payload = token ? { username, token } : { username };
+        const llm = collectCustomLlm();
+        Object.assign(payload, llm);
+        auth.setCustomLLM(llm.custom_llm_model, llm.custom_llm_api_key);
         const response = await fetch(`${API_BASE_URL}/api/exam/quick_login`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(token ? { username, token } : { username })
+            body: JSON.stringify(payload)
         });
         const result = await response.json();
         if (result.status === 'success' && result.token) {
@@ -27,6 +31,17 @@ async function quickLogin() {
 }
 // static/js/exam.js
 let currentUser = "";
+
+function collectCustomLlm() {
+    const toggle = document.getElementById('custom-llm-toggle');
+    if (!toggle || !toggle.checked) return {};
+    const model = document.getElementById('custom-llm-model')?.value.trim();
+    const apiKey = document.getElementById('custom-llm-key')?.value.trim();
+    const result = {};
+    if (model) result.custom_llm_model = model;
+    if (apiKey) result.custom_llm_api_key = apiKey;
+    return result;
+}
 
 // startExam 修改为 async 函数，因为要请求网络
 async function startExam() {
@@ -93,6 +108,9 @@ async function submitExam() {
             answers: answers
         };
         if (token) payload.token = token;
+        const llm = collectCustomLlm();
+        Object.assign(payload, llm);
+        auth.setCustomLLM(llm.custom_llm_model, llm.custom_llm_api_key);
 
         const response = await fetch(`${API_BASE_URL}/api/exam/submit`, {
             method: 'POST',

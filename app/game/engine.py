@@ -4,7 +4,7 @@ import json
 import logging
 from pathlib import Path
 from sqlalchemy import update
-from typing import Callable
+from typing import Callable, Optional
 
 import time
 
@@ -59,12 +59,14 @@ class GameEngine:
         save_service: SaveService,
         game_service: GameService,
         db_factory: Callable = AsyncSessionLocal,
+        llm_override: Optional[dict] = None,
     ):
         self.user_id = user_id
         self.repo = repo
         self.save_service = save_service
         self.game_service = game_service
         self.db_factory = db_factory
+        self.llm_override = llm_override
         self.event_queue: asyncio.Queue[GameEvent] = asyncio.Queue()
         self.is_running = False
         self._ttl_refresh_interval_seconds = 600
@@ -612,7 +614,7 @@ class GameEngine:
             snapshot = await self.repo.get_snapshot()
             stats = snapshot.stats.model_dump()
             post_content, feedback = await generate_cc98_post(
-                stats, effect_type, trigger
+                stats, effect_type, trigger, llm_override=self.llm_override
             )
             await self.repo.set_cooldown(target, time.time())
             msg = f"你在CC98刷到了：\n{post_content}\n{feedback}"
@@ -636,7 +638,9 @@ class GameEngine:
             stats = snapshot.stats.model_dump()
 
             # 3. 调用 LLM（传入历史记录进行避雷）
-            event_data = await generate_random_event(stats, history)
+            event_data = await generate_random_event(
+                stats, history, llm_override=self.llm_override
+            )
 
             if event_data:
                 # 4. 记录本次事件标题到历史中
@@ -703,7 +707,9 @@ class GameEngine:
             elif gpa > 0 and gpa < 2.0:
                 context = "low_gpa"
 
-            msg_data = await generate_dingtalk_message(stats, context)
+            msg_data = await generate_dingtalk_message(
+                stats, context, llm_override=self.llm_override
+            )
 
             if msg_data:
                 await self.emit(
@@ -772,7 +778,9 @@ class GameEngine:
             # 调用AI生成文言文结业总结
             from app.core.llm import generate_wenyan_report
 
-            wenyan_report = await generate_wenyan_report(stats)
+            wenyan_report = await generate_wenyan_report(
+                stats, llm_override=self.llm_override
+            )
             await self.emit(
                 "graduation",
                 {

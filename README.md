@@ -1,29 +1,43 @@
 # ZJUers_simulator
 ## **声明**
-
 该项目仅供娱乐，不提供任何教学、考试、行政、管理方面的其他功能，一切有关学校具体信息的内容，由[@浙江大学](https://www.zju.edu.cn) 保留一切权利。
 
-*折姜大学校园生活模拟器* 
+## 游戏网址：[game.67656.fun](game.67656.fun)
+
+	————我在这里放了67656颗星星，希望每个折大人都能找到属于自己的一颗。
+
+![logo](./static/images/logo.png)
+## 开始界面
+![start](./static/images/start.png)
+## 入学考试
+![exam](./static/images/exam.png)
+## 录取通知书
+![admission](./static/images/admission.png)
+## 游戏控制台
+![dashboard](./static/images/dashboard.png)
+![dashboard2](./static/images/dashboard2.png)
+## 随机事件
+![event](./static/images/event.png)
+## 钉钉消息
+![dingtalk](./static/images/dingtalk.png)
+
 ## 邀请：关键词添加和补充
 该游戏是一个基于大模型的文本游戏，world/keywords.json是大模型生成内容的一个重要根据，目前数据较为不全，欢迎有兴趣的uu们在其中补充关键信息（请参照原有json表结构）
 
-## 项目简介
-本项目为折姜大学校园生活模拟器，支持学业、选课、成就、事件、学期循环等玩法，后端基于 FastAPI，前端基于 HTML/JS，支持 Docker 部署和 Cloudflare Tunnel 公网分流（可选，可能不稳定）。
-目前，开发者@pirate-608 发现使用cloudflare tunnel免费版会出现websocket连接不稳定的问题，又由于域名备案的繁琐流程，当前项目的公网服务暂不支持，期待更多爱好者愿意且有能力将该游戏发扬光大并部署到公网。
-其他公网部署方案：
-*	~~[Netlifly](https://www.netlify.com/)~~（该项目后端较重，不可行）
-*	[fly.io](https://fly.io/)（新兴方案，收费，可尝试）
+## 架构简述
+*	服务端：FastAPI/uvicorn。
+*	前端 HTML（jinja2）/JS。
+*	状态机和缓存：Redis
+*	数据持久化与ORM：postgreSQL/sqlalchemy
+*	数据验证与管理：pydantic
+*	大模型集成：OpenAI 官方 SDK
 
 ## 主要功能
 - 多专业/学院分流，课程加载来源于world/courses目录下json格式的简化培养方案（数据来源于[本科教学管理信息服务平台](https://zdbk.zju.edu.cn/)）
 - 学期循环、GPA计算、成就系统，游戏进行时状态全部依赖Redis缓存，为典型IO密集型项目（数据库读写仅用于登录验证，后续可扩展），2核2G服务器可以轻松承载300人活跃在线
-- 支持 Cloudflare Tunnel 内网穿透
-- 支持 HTTPS 反向代理（nginx）
 - 数据结构高度可扩展，支持自定义培养方案(可更改world/courses目录下的表结构和字段)
 
-## 快速开始
-
-### 一键部署（推荐，跨平台）
+# 本地部署
 
 本项目推荐使用 Docker 部署，支持 Windows、Linux、macOS。
 

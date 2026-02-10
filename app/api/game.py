@@ -130,20 +130,19 @@ async def websocket_endpoint(websocket: WebSocket):
         await websocket.close(code=1008, reason="invalid_token")
         return
 
-        # 鉴权通过后检查是否被限制（短生命周期 DB Session）
-        llm_override = None
-        custom_model = (auth_data.get("custom_llm_model") or "").strip()
-        custom_key = (auth_data.get("custom_llm_api_key") or "").strip()
-        if custom_model or custom_key:
-            llm_override = {
-                "model": custom_model or None,
-                "api_key": custom_key or None,
-            }
+    # 鉴权通过后检查是否被限制（短生命周期 DB Session）
+    llm_override = None
+    custom_model = (auth_data.get("custom_llm_model") or "").strip()
+    custom_key = (auth_data.get("custom_llm_api_key") or "").strip()
+    if custom_model or custom_key:
+        llm_override = {
+            "model": custom_model or None,
+            "api_key": custom_key or None,
+        }
 
-        async with AsyncSessionLocal() as db:
-            restriction = await RestrictionService.get_active_restriction(
-                db, int(user_id)
-            )
+    async with AsyncSessionLocal() as db:
+        restriction = await RestrictionService.get_active_restriction(db, int(user_id))
+
     if restriction:
         logger.warning("Restricted user %s attempted connect", user_id)
         await websocket.send_text(

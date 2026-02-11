@@ -1,6 +1,8 @@
 // static/js/config.js
-const API_BASE_URL = "http://localhost:8000";
-const WS_BASE_URL = "ws://localhost:8000";
+// Use current host for API/WS to work behind reverse proxy and custom domains
+const _ORIGIN = window.location.origin;
+const API_BASE_URL = _ORIGIN;
+const WS_BASE_URL = (_ORIGIN.startsWith('https') ? 'wss://' : 'ws://') + window.location.host;
 
 // 简单的 Token 管理
 const auth = {

@@ -98,14 +98,15 @@ export class UIManager {
 
     updateRelaxButtons() {
         const buttons = {
-            gym: { id: 'btn-gym', icon: '🏋️‍♂️', name: '健身房' },
-            game: { id: 'btn-game', icon: '🎮', name: '打游戏' },
-            cc98: { id: 'btn-cc98', icon: '🌊', name: '刷CC98' },
-            walk: { id: 'btn-walk', icon: '🚶', name: '散步启真湖' }
+            gym: { id: 'btn-gym', icon: '🏋️‍♂️', name: '健身房', desc: '+30体力, +5理智, -5压力, 需体力≥20, 冷却30s' },
+            game: { id: 'btn-game', icon: '🎮', name: '打游戏', desc: '+20理智, 体力-5, 冷却15s' },
+            cc98: { id: 'btn-cc98', icon: '🌊', name: '刷CC98', desc: '随机: 理智±8~15, 压力±5~15, 冷却15s' },
+            walk: { id: 'btn-walk', icon: '🚶', name: '散步启真湖', desc: '压力-10, 冷却15s' }
         };
 
         const now = Date.now();
         const cooldowns = gameState.getRelaxCooldowns();
+        const paused = gameState.isPaused();
 
         for (const [action, config] of Object.entries(buttons)) {
             const btn = document.getElementById(config.id);
@@ -115,8 +116,10 @@ export class UIManager {
             const lastUse = cooldowns[action];
 
             if (!lastUse || !cooldownTime) {
-                btn.disabled = false;
-                btn.textContent = `${config.icon} ${config.name}`;
+                btn.disabled = paused ? true : false;
+                btn.textContent = paused
+                    ? `${config.icon} ${config.name} (已暂停)`
+                    : `${config.icon} ${config.name} | ${config.desc}`;
                 continue;
             }
 
@@ -127,8 +130,10 @@ export class UIManager {
                 btn.disabled = true;
                 btn.textContent = `${config.icon} ${config.name} (${Math.ceil(remaining)}s)`;
             } else {
-                btn.disabled = false;
-                btn.textContent = `${config.icon} ${config.name}`;
+                btn.disabled = paused ? true : false;
+                btn.textContent = paused
+                    ? `${config.icon} ${config.name} (已暂停)`
+                    : `${config.icon} ${config.name} | ${config.desc}`;
             }
         }
     }

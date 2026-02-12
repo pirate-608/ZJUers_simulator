@@ -65,23 +65,23 @@
   
   "relax_actions": {
     "gym": {
-      "energy_cost": -50,
-      "energy_gain": 60,
+      "energy_cost": -20,
+      "energy_gain": 30,
       "sanity_gain": 5,
       "stress_change": -5,
-      "cooldown_seconds": 60,
-      "min_energy_required": 50,
+      "cooldown_seconds": 30,
+      "min_energy_required": 20,
       "label": "健身房"
     },
     "game": {
       "energy_cost": -5,
       "sanity_gain": 20,
-      "cooldown_seconds": 30,
+      "cooldown_seconds": 15,
       "label": "打游戏"
     },
     "walk": {
       "stress_change": -10,
-      "cooldown_seconds": 45,
+      "cooldown_seconds": 15,
       "label": "散步启真湖"
     },
     "cc98": {

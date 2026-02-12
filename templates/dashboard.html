@@ -62,6 +62,8 @@
                 <span id="display-name">Loading...</span> |
                 <span id="display-major" class="badge bg-warning text-dark">...</span> |
                 <span id="display-semester">大一秋冬</span>
+                <a class="btn btn-sm btn-outline-light ms-3" href="https://docs.67656.fun/rules/" target="_blank"
+                    rel="noopener">游戏规则</a>
                 <div class="ms-3">
                     <button class="btn btn-sm btn-outline-light me-2" onclick="saveGame()" title="手动保存游戏">
                         <i class="bi bi-save"></i> 保存
@@ -95,46 +97,60 @@
 
             <div class="col-md-6">
 
-                <div class="card mb-3">
-                    <div class="card-header">📅 求是园动态</div>
-                    <div class="card-body p-0">
-                        <div id="event-log" class="event-log border-0" style="height: 255px;">
-                            <div class="text-muted p-2">连接到折大服务器中...</div>
-                        </div>
+                <div class="card mb-3" id="mid-panel">
+                    <div class="card-header pb-0 bg-white border-0">
+                        <ul class="nav nav-tabs card-header-tabs" role="tablist">
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link active" id="tab-events-btn" data-bs-toggle="tab"
+                                    data-bs-target="#tab-events" type="button" role="tab">📅 求是园动态</button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link d-flex align-items-center gap-2" id="tab-ding-btn"
+                                    data-bs-toggle="tab" data-bs-target="#tab-ding" type="button" role="tab">
+                                    💬 钉钉
+                                    <span class="badge bg-danger rounded-pill" id="ding-unread"
+                                        style="display:none">0</span>
+                                </button>
+                            </li>
+                        </ul>
                     </div>
-                    <div class="card-footer py-1">
-                        <div class="d-flex justify-content-end">
-                            <button class="btn btn-link btn-sm text-decoration-none text-secondary"
-                                onclick="clearLog()">清空日志</button>
+                    <div class="card-body p-0">
+                        <div class="tab-content" style="height: 260px;">
+                            <div class="tab-pane fade show active h-100" id="tab-events" role="tabpanel">
+                                <div id="event-log" class="event-log border-0 h-100" style="max-height: 220px;">
+                                    <div class="text-muted p-2">连接到折大服务器中...</div>
+                                </div>
+                                <div class="text-end border-top py-1 px-2 bg-white">
+                                    <button class="btn btn-link btn-sm text-decoration-none text-secondary"
+                                        onclick="clearLog()">清空日志</button>
+                                </div>
+                            </div>
+
+                            <div class="tab-pane fade h-100" id="tab-ding" role="tabpanel">
+                                <div class="p-0 h-100 d-flex flex-column" style="background: #f7faff;">
+                                    <div id="ding-messages" class="p-3" style="height: 200px; overflow-y: auto;">
+                                        <div class="text-center text-muted small mt-4">
+                                            <p>暂无新消息</p>
+                                            <p>班级群通知、辅导员私信将在这里显示</p>
+                                        </div>
+                                    </div>
+                                    <div class="p-2 border-top bg-white">
+                                        <form id="ding-form" class="d-flex gap-2" onsubmit="return false;">
+                                            <input type="text" id="ding-input" class="form-control form-control-sm"
+                                                placeholder="回复消息... (功能开发中)" disabled>
+                                            <button class="btn btn-primary btn-sm" type="submit" disabled>发送</button>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
 
-                <div class="card mb-3" id="ding-panel">
-                    <div class="card-header bg-light border-bottom d-flex justify-content-between align-items-center">
-                        <span>💬 钉钉 (DingTalk)</span>
-                        <span class="badge bg-danger rounded-pill" id="ding-unread" style="display:none">0</span>
-                    </div>
-                    <div class="card-body p-0" style="height: 200px; overflow-y: auto; background: #f7faff;">
-                        <div id="ding-messages" class="p-3">
-                            <div class="text-center text-muted small mt-4">
-                                <p>暂无新消息</p>
-                                <p>班级群通知、辅导员私信将在这里显示</p>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="card-footer bg-white border-top p-2">
-                        <form id="ding-form" class="d-flex gap-2" onsubmit="return false;">
-                            <input type="text" id="ding-input" class="form-control form-control-sm"
-                                placeholder="回复消息... (功能开发中)" disabled>
-                            <button class="btn btn-primary btn-sm" type="submit" disabled>发送</button>
-                        </form>
-                    </div>
-                    <div class="d-flex flex-column gap-2 py-3 px-3">
+                <div class="card mb-3">
+                    <div class="card-body py-3 d-flex flex-column gap-2 align-items-stretch">
                         <button id="pause-resume-btn" class="btn btn-outline-danger" onclick="sendAction('pause')">⏸️
                             暂停游戏</button>
-
-                        <!-- 速度控制 -->
                         <div class="btn-group" role="group" aria-label="游戏速度">
                             <button type="button" class="btn btn-sm btn-outline-secondary active"
                                 onclick="setGameSpeed(1.0)" id="speed-1.0">1x</button>
@@ -144,7 +160,6 @@
                                 id="speed-2.0">2x</button>
                         </div>
                         <small class="text-muted text-center">⚡ 游戏速度</small>
-
                         <script>window.addEventListener('DOMContentLoaded', function () { if (window.updatePauseButton) updatePauseButton(); });</script>
                     </div>
                 </div>
@@ -282,6 +297,18 @@
             <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
             <script src="/static/js/config.js?v=20260211"></script>
             <script type="module" src="/static/js/main.js?v=20260211"></script>
+            <script>
+                document.addEventListener('DOMContentLoaded', function () {
+                    const dingTab = document.getElementById('tab-ding-btn');
+                    const badge = document.getElementById('ding-unread');
+                    if (dingTab && badge) {
+                        dingTab.addEventListener('shown.bs.tab', () => {
+                            badge.innerText = '';
+                            badge.style.display = 'none';
+                        });
+                    }
+                });
+            </script>
 
             <div class="modal fade" id="summaryModal" tabindex="-1" data-bs-backdrop="static">
                 <div class="modal-dialog">

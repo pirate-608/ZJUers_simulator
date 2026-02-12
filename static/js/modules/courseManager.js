@@ -94,15 +94,18 @@ export class CourseManager {
         const isActive = (stateValue === currentState);
         const btnClass = isActive ? config.activeClass : config.class;
         const activeStyle = isActive ? "box-shadow: 0 0 0 2px rgba(0,0,0,0.1) inset;" : "";
+        const paused = gameState.isPaused();
 
         return `<button type="button" class="btn ${btnClass} ${isActive ? 'active fw-bold' : ''}" 
-                style="${activeStyle} min-width: 40px;"
-                onclick="window.changeCourseState('${courseId}', ${stateValue})">
+            style="${activeStyle} min-width: 40px;"
+            ${paused ? 'disabled' : ''}
+            onclick="window.changeCourseState('${courseId}', ${stateValue})">
                 ${config.name}
                 </button>`;
     }
 
     changeCourseState(courseId, newState) {
+        if (gameState.isPaused()) return; // 冻结课程操作
         gameState.setCourseState(courseId, newState);
 
         const stats = gameState.getStats();

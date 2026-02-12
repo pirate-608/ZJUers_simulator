@@ -24,6 +24,13 @@ export class EventHandler {
                 console.log('[EventHandler] Received paused message');
                 gameState.setPaused(true);
                 uiManager.updatePauseButton();
+                uiManager.updateRelaxButtons();
+                {
+                    const stats = gameState.getStats() || {};
+                    const courses = stats.courses || {};
+                    const states = gameState.getCourseStates();
+                    this.courseManager.renderCourseList(courses, states);
+                }
                 logEvent("系统", msg.msg || "游戏已暂停。", "text-warning");
                 this.examConsole.stopTimer();
                 break;
@@ -32,6 +39,13 @@ export class EventHandler {
                 console.log('[EventHandler] Received resumed message');
                 gameState.setPaused(false);
                 uiManager.updatePauseButton();
+                uiManager.updateRelaxButtons();
+                {
+                    const stats = gameState.getStats() || {};
+                    const courses = stats.courses || {};
+                    const states = gameState.getCourseStates();
+                    this.courseManager.renderCourseList(courses, states);
+                }
                 logEvent("系统", msg.msg || "游戏已继续。", "text-success");
                 // 恢复时需要等待下一次tick消息推送最新倒计时
                 break;

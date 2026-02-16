@@ -13,6 +13,7 @@ export class EventHandler {
         this.courseManager = courseManager;
         this.examConsole = examConsole;
         this.saveManager = saveManager;
+        this.tourStarted = false;
     }
 
     handleServerMessage(msg) {
@@ -161,6 +162,12 @@ export class EventHandler {
             if (serverTimeLeft !== null && serverTimeLeft !== undefined && !gameState.isPaused()) {
                 this.examConsole.initSemesterTimer(serverTimeLeft);
             }
+        }
+
+        // 在首屏渲染后尝试启动引导（仅一次）
+        if (!this.tourStarted && typeof window !== 'undefined' && typeof window.startDriverTour === 'function') {
+            const started = window.startDriverTour();
+            this.tourStarted = started || this.tourStarted;
         }
     }
 

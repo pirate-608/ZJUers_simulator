@@ -21,6 +21,9 @@ let examConsole;
 let eventHandler;
 let saveManager;
 let actionCooldown = false;
+let driverInstance = null;
+let driverTourStarted = false;
+let tourLocked = false;
 
 // ==========================================
 // 初始化
@@ -70,7 +73,7 @@ window.addEventListener('DOMContentLoaded', async () => {
 // 全局函数导出（供HTML调用）
 // ==========================================
 window.sendAction = function (type, target) {
-    if (actionCooldown) return;
+    if (actionCooldown || tourLocked) return;
 
     if (type === 'relax' && target) {
         const btn = document.getElementById(`btn-${target}`);
@@ -91,6 +94,7 @@ window.sendAction = function (type, target) {
 };
 
 window.changeCourseState = function (courseId, newState) {
+    if (tourLocked) return;
     courseManager.changeCourseState(courseId, newState);
 };
 
@@ -131,3 +135,104 @@ window.saveGame = function () {
         saveManager.saveGame();
     }
 };
+
+// ========== 引导（driver.js） ==========
+function setTourLock(flag) {
+    tourLocked = flag;
+}
+
+function buildDriverSteps() {
+    const strategyEl = document.querySelector('.course-list-panel .course-item .btn-group');
+    const hudEl = document.getElementById('hud-bars');
+    const relaxEl = document.querySelector('.relax-actions');
+    const timerEl = document.getElementById('semester-timer') || document.getElementById('exam-console-container');
+    const finishEl = document.getElementById('tour-finish-anchor');
+
+    if (!strategyEl || !hudEl || !relaxEl || !timerEl || !finishEl) {
+        return null;
+    }
+
+    return [
+        {
+            element: strategyEl,
+            popover: {
+                title: '选择策略：摆 / 摸 / 卷',
+                description: '消耗与成长不同，点击按钮切换策略，影响精力消耗和擅长度提升。',
+                side: 'right',
+                align: 'start'
+            }
+        },
+        {
+            element: hudEl,
+            popover: {
+                title: '属性与最佳区间',
+                description: '心态>50更稳，压力40-70最佳；精力/心态归零会 Game Over。',
+                side: 'left',
+                align: 'start'
+            }
+        },
+        {
+            element: relaxEl,
+            popover: {
+                title: '休闲与冷却',
+                description: '健身/开黑/散步/CC98；冷却圈转动时不可用。',
+                side: 'top',
+                align: 'center'
+            }
+        },
+        {
+            element: timerEl,
+            popover: {
+                title: '学期计时与考试',
+                description: '倒计时结束参加期末，分数→绩点→GPA；挂科扣心态，全过有奖励。',
+                side: 'bottom',
+                align: 'center'
+            }
+        },
+        {
+            element: finishEl,
+            popover: {
+                title: '开始前的三条提醒',
+                description: '暂停后再操作更安全；心态<50有减益；压力40-70最佳区间。点击“完成”开始游戏。',
+                side: 'center',
+                align: 'center'
+            }
+        }
+    ];
+}
+
+function ensureDriver() {
+    if (driverInstance) return driverInstance;
+    if (typeof Driver === 'undefined') return null;
+    driverInstance = new Driver({
+        animate: true,
+        opacity: 0.45,
+        allowClose: true,
+        showButtons: true,
+        nextBtnText: '确认',
+        prevBtnText: '上一步',
+        doneBtnText: '完成',
+        closeBtnText: '跳过',
+        onHighlightStarted: () => setTourLock(true),
+        onReset: () => setTourLock(false)
+    });
+    return driverInstance;
+}
+
+function startDriverTour(force = false) {
+    if (driverTourStarted && !force) return true;
+    const driver = ensureDriver();
+    if (!driver) return false;
+
+    const steps = buildDriverSteps();
+    if (!steps) return false;
+
+    driver.defineSteps(steps);
+    driver.start();
+    driverTourStarted = true;
+    setTourLock(true);
+    return true;
+}
+
+// 允许事件处理器调用
+window.startDriverTour = startDriverTour;

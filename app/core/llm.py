@@ -91,25 +91,34 @@ async def generate_cc98_post(
 
     # 2. 队列为空，触发批量进货 (Batch Generation)
     keywords = _load_keywords()
-    kw_hint = (
-        "\n关键词表：" + json.dumps(keywords, ensure_ascii=False) if keywords else ""
-    )
-
-    # 修改 Prompt：要求一次生成 5 条
-    # 第一条必须贴合当前 trigger，剩下的可以随机，确保存货的多样性
+    # 显式缓存 keywords，动态部分放 prompt
+    messages = []
+    if keywords:
+        messages.append(
+            {
+                "role": "system",
+                "content": [
+                    {
+                        "type": "text",
+                        "text": json.dumps(keywords, ensure_ascii=False),
+                        "cache_control": {"type": "ephemeral"},
+                    }
+                ],
+            }
+        )
     prompt = f"""
-    玩家当前状态：{player_stats}
+    玩家当前状态：{json.dumps(player_stats, ensure_ascii=False)}
     你正在模拟浙江大学CC98论坛的帖子列表。
     
     请生成 5 条简短、有趣、符合大学生网络用语的帖子标题/内容。
     要求：
     1. 第一条内容必须与主题“{trigger}”相关（效果：{effect}）。
     2. 剩下的 4 条可以是随机的校园日常话题（吐槽、求助、分享等），越丰富越好，避免重复单调的关键词（如在多个帖子里反复提及“GPA”等）。
-    {kw_hint}
     
     请严格输出 JSON 格式，结构如下：
     {{ "posts": ["帖子内容1", "帖子内容2", "帖子内容3", "帖子内容4", "帖子内容5"] }}
     """
+    messages.append({"role": "user", "content": prompt})
 
     try:
         api_key, base_url, model = _resolve_llm_config(llm_override)
@@ -117,7 +126,7 @@ async def generate_cc98_post(
 
         response = await llm_client.chat.completions.create(
             model=model,
-            messages=[{"role": "user", "content": prompt}],
+            messages=messages,
             response_format={"type": "json_object"},  # 开启 JSON 模式确保解析稳定
             max_tokens=300,
         )
@@ -161,45 +170,54 @@ async def generate_random_event(
 
     # 2. 缓存为空，批量进货 (一次生成 3 个)
     keywords = _load_keywords()
-    kw_hint = (
-        "\n关键词表：" + json.dumps(keywords, ensure_ascii=False) if keywords else ""
-    )
-
-    # 构建“避雷针”提示词
-    history_hint = ""
-    if history:
-        history_hint = f"\n近期已发生事件（请务必不要生成与之重复或高度相似的内容）：{', '.join(history)}"
-
-    prompt = f"""
-    你是一个文字模拟游戏的上帝系统。玩家是浙大学生，当前状态：{player_stats}。
-    {kw_hint}
-    {history_hint}
-    请生成 3 个突发的校园随机事件。要求风格迥异：包含学习压力、社团社交、校园传说、校园恋爱、惊险事故、狼狈瞬间或生活小插曲。
-    严禁与上方“近期已发生事件”雷同。
-    每个事件应包含两个选项，会对玩家状态产生合理影响（-10 到 +10）。
+    messages = []
+    if keywords:
+        messages.append(
+            {
+                "role": "system",
+                "content": [
+                    {
+                        "type": "text",
+                        "text": json.dumps(keywords, ensure_ascii=False),
+                        "cache_control": {"type": "ephemeral"},
+                    }
+                ],
+            }
+        )
+        history_hint = ""
+        if history:
+            history_hint = f"\n近期已发生事件（请务必不要生成与之重复或高度相似的内容）：{', '.join(history)}"
+        prompt = f"""
+        玩家当前状态：{json.dumps(player_stats, ensure_ascii=False)}
+        你是一个文字模拟游戏的上帝系统。浙大学生。
+        {history_hint}
+        请生成 3 个突发的校园随机事件。要求风格迥异：包含学习压力、社团社交、校园传说、校园恋爱、惊险事故、狼狈瞬间或生活小插曲。
+        严禁与上方“近期已发生事件”雷同。
+        每个事件应包含两个选项，会对玩家状态产生合理影响（-10 到 +10）。
     
-    请严格输出 JSON 格式，结构如下：
-    {{
-        "events": [
-            {{
-                "title": "事件标题",
-                "desc": "描述...",
-                "options": [
-                    {{"id": "A", "text": "...", "effects": {{"energy": -5, "desc": "..."}}}},
-                    {{"id": "B", "text": "...", "effects": {{"sanity": 5, "desc": "..."}}}}
-                ]
-            }},
-            ... (重复 3 个)
-        ]
-    }}
-    """
+        请严格输出 JSON 格式，结构如下：
+        {{
+            "events": [
+                {{
+                    "title": "事件标题",
+                    "desc": "描述...",
+                    "options": [
+                        {{"id": "A", "text": "...", "effects": {{"energy": -5, "desc": "..."}}}},
+                        {{"id": "B", "text": "...", "effects": {{"sanity": 5, "desc": "..."}}}}
+                    ]
+                }},
+                ... (重复 3 个)
+            ]
+        }}
+        """
+    messages.append({"role": "user", "content": prompt})
     try:
         api_key, base_url, model = _resolve_llm_config(llm_override)
         llm_client = _get_client(api_key, base_url)
 
         response = await llm_client.chat.completions.create(
             model=model,
-            messages=[{"role": "user", "content": prompt}],
+            messages=messages,
             response_format={"type": "json_object"},
             max_tokens=800,
         )
@@ -240,12 +258,24 @@ async def generate_dingtalk_message(
 
     # 2. 批量进货 (一次生成 5 条)
     character_list = _load_character_list()
-
+    messages = []
+    if character_list:
+        messages.append(
+            {
+                "role": "system",
+                "content": [
+                    {
+                        "type": "text",
+                        "text": json.dumps(character_list, ensure_ascii=False),
+                        "cache_control": {"type": "ephemeral"},
+                    }
+                ],
+            }
+        )
     prompt = f"""
-    你正在模拟浙江大学的“钉钉”消息通知。玩家是浙大学生，当前状态：{player_stats}。
+    玩家当前状态：{json.dumps(player_stats, ensure_ascii=False)}
+    你正在模拟浙江大学的“钉钉”消息通知。浙大学生。
     触发场景：{context}。
-    参考角色列表：{character_list}
-    
     请批量生成 5 条不同的钉钉消息。
     要求：内容要真实（包含通知、约饭、求助、催作业等），发送人身份要切换。
     请严格输出 JSON 格式：
@@ -261,13 +291,14 @@ async def generate_dingtalk_message(
         ]
     }}
     """
+    messages.append({"role": "user", "content": prompt})
     try:
         api_key, base_url, model = _resolve_llm_config(llm_override)
         llm_client = _get_client(api_key, base_url)
 
         response = await llm_client.chat.completions.create(
             model=model,
-            messages=[{"role": "user", "content": prompt}],
+            messages=messages,
             response_format={"type": "json_object"},
             max_tokens=500,
         )
@@ -299,22 +330,33 @@ async def generate_wenyan_report(
     根据玩家final_stats生成一段文言文风格的结业总结。
     """
     keywords = _load_keywords()
-    kw_hint = (
-        "\n关键词表：" + json.dumps(keywords, ensure_ascii=False) if keywords else ""
-    )
+    messages = []
+    if keywords:
+        messages.append(
+            {
+                "role": "system",
+                "content": [
+                    {
+                        "type": "text",
+                        "text": json.dumps(keywords, ensure_ascii=False),
+                        "cache_control": {"type": "ephemeral"},
+                    }
+                ],
+            }
+        )
     prompt = f"""
-    你是一位古风文案大师。请根据以下玩家的折姜大学结业数据，为其撰写一段100字左右的文言文结业总结，内容需涵盖其专业、能力、GPA、性格、成就等主要信息，风格典雅、用词考究，严肃中不失诙谐风趣，结尾可有调侃或祝福。
-    {kw_hint}
-    玩家数据：{final_stats}
+    玩家数据：{json.dumps(final_stats, ensure_ascii=False)}
+    你是一位古风文案大师。请根据以上玩家的折姜大学结业数据，为其撰写一段100字左右的文言文结业总结，内容需涵盖其专业、能力、GPA、性格、成就等主要信息，风格典雅、用词考究，严肃中不失诙谐风趣，结尾可有调侃或祝福。
     只需返回文言文内容本身，不要任何解释。
     """
+    messages.append({"role": "user", "content": prompt})
     try:
         api_key, base_url, model = _resolve_llm_config(llm_override)
         llm_client = _get_client(api_key, base_url)
 
         response = await llm_client.chat.completions.create(
             model=model,
-            messages=[{"role": "user", "content": prompt}],
+            messages=messages,
             max_tokens=200,
         )
         return response.choices[0].message.content.strip()

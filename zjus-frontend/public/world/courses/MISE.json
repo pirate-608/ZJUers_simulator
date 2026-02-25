@@ -1,0 +1,100 @@
+{
+  "major": "微电子科学与工程",
+  "abbr": "MISE",
+  "plan": [
+    {
+      "semester": "大一秋冬",
+      "courses": [
+        { "id": "ADMN1001G", "name": "军训", "credits": 2.0, "difficulty": 1 },
+        { "id": "ADMN1002G", "name": "形势与政策I", "credits": 1.0, "difficulty": 1 },
+        { "id": "CS1001G", "name": "C程序设计基础及实验", "credits": 4.0, "difficulty": 4 },
+        { "id": "MARX1001G", "name": "思想道德与法治", "credits": 3.0, "difficulty": 2 },
+        { "id": "MATH1135G", "name": "微积分（甲）I", "credits": 5.0, "difficulty": 5 },
+        { "id": "MATH1232G", "name": "线性代数（甲）", "credits": 3.5, "difficulty": 5 },
+        { "id": "ISEE1011M", "name": "信息与电子工程导论", "credits": 2.0, "difficulty": 2 },
+        { "id": "SIS1001G", "name": "大学英语III", "credits": 3.0, "difficulty": 2 }
+      ]
+    },
+    {
+      "semester": "大一春夏",
+      "courses": [
+        { "id": "MATH1138F", "name": "常微分方程", "credits": 1.0, "difficulty": 4 },
+        { "id": "ISEE1001F", "name": "电子工程训练（甲）", "credits": 1.5, "difficulty": 3 },
+        { "id": "MARX1002G", "name": "中国近现代史纲要", "credits": 3.0, "difficulty": 2 },
+        { "id": "MATH1136G", "name": "微积分（甲）II", "credits": 5.0, "difficulty": 5 },
+        { "id": "ME1001F", "name": "工程图学", "credits": 2.5, "difficulty": 3 },
+        { "id": "PHY1001G", "name": "大学物理（甲）I", "credits": 4.0, "difficulty": 5 },
+        { "id": "ISEE1104M", "name": "集成电路导论", "credits": 2.0, "difficulty": 3 },
+        { "id": "SIS1002G", "name": "大学英语IV", "credits": 3.0, "difficulty": 2 },
+        { "id": "ISEE1010M", "name": "认知实践", "credits": 2.0, "difficulty": 2 }
+      ]
+    },
+    {
+      "semester": "大二秋冬",
+      "courses": [
+        { "id": "MATH2131F", "name": "复变函数与积分变换", "credits": 1.5, "difficulty": 4 },
+        { "id": "EDU2001G", "name": "军事理论", "credits": 2.0, "difficulty": 1 },
+        { "id": "ISEE2003F", "name": "电子电路基础", "credits": 4.0, "difficulty": 5 },
+        { "id": "MARX2001G", "name": "马克思主义基本原理", "credits": 3.0, "difficulty": 3 },
+        { "id": "MATH2432F", "name": "概率论与数理统计", "credits": 2.5, "difficulty": 4 },
+        { "id": "PHY2001G", "name": "大学物理（甲）II", "credits": 4.0, "difficulty": 5 },
+        { "id": "PHY2005G", "name": "大学物理实验", "credits": 1.5, "difficulty": 3 },
+        { "id": "ISEE2004F", "name": "电子电路设计实验I", "credits": 0.5, "difficulty": 3 },
+        { "id": "ISEE2019M", "name": "数值分析方法", "credits": 2.0, "difficulty": 4 },
+        { "id": "ISEE2015M", "name": "固体物理基础", "credits": 3.0, "difficulty": 5 }
+      ]
+    },
+    {
+      "semester": "大二春夏",
+      "courses": [
+        { "id": "ISEE2005F", "name": "电子电路设计实验II", "credits": 1.0, "difficulty": 3 },
+        { "id": "ISEE2006F", "name": "数字系统设计", "credits": 4.0, "difficulty": 5 },
+        { "id": "ISEE2007F", "name": "数字系统设计实验", "credits": 1.0, "difficulty": 3 },
+        { "id": "ISEE2008F", "name": "信号与系统", "credits": 4.0, "difficulty": 5 },
+        { "id": "ISEE2012M", "name": "半导体物理", "credits": 3.0, "difficulty": 5 },
+        { "id": "ISEE2099M", "name": "人工智能", "credits": 3.0, "difficulty": 4 },
+        { "id": "ISEE2014M", "name": "电子电路系统综合实验", "credits": 2.0, "difficulty": 4 },
+        { "id": "ISEE2024M", "name": "智能移动系统设计实验", "credits": 2.0, "difficulty": 4 },
+        { "id": "ISEE2025M", "name": "专业实习", "credits": 2.0, "difficulty": 3 }
+      ]
+    },
+    {
+      "semester": "大三秋冬",
+      "courses": [
+        { "id": "ISEE3051M", "name": "模拟集成电路设计", "credits": 3.0, "difficulty": 5 },
+        { "id": "ISEE3071M", "name": "微电子器件", "credits": 3.0, "difficulty": 5 },
+        { "id": "MARX3001G", "name": "毛泽东思想概论", "credits": 3.0, "difficulty": 3 },
+        { "id": "ISEE3043M", "name": "集成电路制造原理与实践", "credits": 3.0, "difficulty": 4 },
+        { "id": "ISEE3050M", "name": "面向ICCAD的软件基础技术", "credits": 2.5, "difficulty": 4 },
+        { "id": "ISEE3073M", "name": "微控制器原理、接口与应用", "credits": 3.5, "difficulty": 4 }
+      ]
+    },
+    {
+      "semester": "大三春夏",
+      "courses": [
+        { "id": "MARX3002G", "name": "习近平新时代思想概论", "credits": 3.0, "difficulty": 3 },
+        { "id": "ISEE3039M", "name": "集成电路产业技术讲座", "credits": 3.0, "difficulty": 3 },
+        { "id": "ISEE3061M", "name": "数字集成电路设计", "credits": 3.0, "difficulty": 5 },
+        { "id": "ISEE3074M", "name": "先进互连技术", "credits": 2.0, "difficulty": 4 },
+        { "id": "ISEE3042M", "name": "集成电路制造图形化技术", "credits": 2.5, "difficulty": 4 },
+        { "id": "ISEE3038M", "name": "集成电路版图与射频IC实习", "credits": 2.0, "difficulty": 3 },
+        { "id": "ISEE3053M", "name": "片上系统实验", "credits": 2.0, "difficulty": 3 }
+      ]
+    },
+    {
+      "semester": "大四秋冬",
+      "courses": [
+        { "id": "PPAE4001G", "name": "体测与锻炼", "credits": 0.5, "difficulty": 2 },
+        { "id": "ISEE4091M", "name": "集成电路设计与制造一体化", "credits": 2.0, "difficulty": 4 },
+        { "id": "ISEE4093M", "name": "微电子器件建模与仿真", "credits": 2.0, "difficulty": 4 }
+      ]
+    },
+    {
+      "semester": "大四春夏",
+      "courses": [
+        { "id": "ADMN2001G", "name": "形势与政策II", "credits": 1.0, "difficulty": 1 },
+        { "id": "ISEE4088M", "name": "毕业设计（论文）", "credits": 8.0, "difficulty": 5 }
+      ]
+    }
+  ]
+}

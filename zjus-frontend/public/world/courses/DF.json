@@ -1,0 +1,88 @@
+{
+  "major": "数字金融",
+  "abbr": "DF",
+  "plan": [
+    {
+      "semester": "大一秋冬",
+      "courses": [
+        { "id": "ADMN1001G", "name": "思想道德与法治", "credits": 2.0, "difficulty": 2 },
+        { "id": "ADMN1002G", "name": "形势与政策I", "credits": 1.0, "difficulty": 1 },
+        { "id": "MARX100IG", "name": "中国近现代史纲要", "credits": 3.0, "difficulty": 2 },
+        { "id": "MATH1135G", "name": "数学分析（甲）I", "credits": 5.0, "difficulty": 5 },
+        { "id": "MATH1232G", "name": "高等代数I", "credits": 3.5, "difficulty": 5 },
+        { "id": "SIS1001G", "name": "大学英语III", "credits": 3.0, "difficulty": 3 }
+      ]
+    },
+    {
+      "semester": "大一春夏",
+      "courses": [
+        { "id": "MATH1136G", "name": "数学分析（甲）II", "credits": 5.0, "difficulty": 5 },
+        { "id": "MARX100RG", "name": "思想道德与法治实践", "credits": 3.0, "difficulty": 2 },
+        { "id": "CS1001G", "name": "C程序设计基础及实验", "credits": 4.0, "difficulty": 4 },
+        { "id": "SIS100RG", "name": "大学英语IV", "credits": 3.0, "difficulty": 3 },
+        { "id": "MATH2103M", "name": "解析几何", "credits": 3.0, "difficulty": 3 }
+      ]
+    },
+    {
+      "semester": "大二秋冬",
+      "courses": [
+        { "id": "MATH2101M", "name": "数学分析（甲）III", "credits": 4.0, "difficulty": 5 },
+        { "id": "MATH2102M", "name": "高等代数II", "credits": 4.0, "difficulty": 5 },
+        { "id": "ECON2001G", "name": "微观经济学（甲）", "credits": 4.0, "difficulty": 4 },
+        { "id": "MARX2001G", "name": "马克思主义基本原理", "credits": 3.0, "difficulty": 3 },
+        { "id": "MATH2432F", "name": "概率论", "credits": 2.5, "difficulty": 4 },
+        { "id": "PHY1001G", "name": "大学物理（甲）I", "credits": 4.0, "difficulty": 4 }
+      ]
+    },
+    {
+      "semester": "大二春夏",
+      "courses": [
+        { "id": "ECON2002G", "name": "宏观经济学（甲）", "credits": 4.0, "difficulty": 4 },
+        { "id": "MATH2104M", "name": "常微分方程", "credits": 3.0, "difficulty": 4 },
+        { "id": "MATH2105M", "name": "复变函数", "credits": 1.5, "difficulty": 4 },
+        { "id": "PHY1002G", "name": "大学物理（甲）II", "credits": 4.0, "difficulty": 4 },
+        { "id": "PHY2005G", "name": "大学物理实验", "credits": 1.5, "difficulty": 3 },
+        { "id": "EDU2001G", "name": "军事理论", "credits": 2.0, "difficulty": 1 }
+      ]
+    },
+    {
+      "semester": "大三秋冬",
+      "courses": [
+        { "id": "ECON3001M", "name": "计量经济学", "credits": 3.0, "difficulty": 5 },
+        { "id": "ECON3002M", "name": "货币银行学", "credits": 3.0, "difficulty": 4 },
+        { "id": "MATH3101M", "name": "实变函数", "credits": 4.0, "difficulty": 5 },
+        { "id": "MARX3001G", "name": "毛泽东思想概论", "credits": 3.0, "difficulty": 2 },
+        { "id": "MARX300RG", "name": "习近平新时代思想概论", "credits": 3.0, "difficulty": 2 },
+        { "id": "MATH3408M", "name": "随机过程", "credits": 3.0, "difficulty": 5 }
+      ]
+    },
+    {
+      "semester": "大三春夏",
+      "courses": [
+        { "id": "ECON3008M", "name": "投资学", "credits": 3.0, "difficulty": 4 },
+        { "id": "ECON3025M", "name": "公司金融", "credits": 3.0, "difficulty": 4 },
+        { "id": "ECON3029M", "name": "衍生金融工具", "credits": 3.0, "difficulty": 5 },
+        { "id": "MATH3104M", "name": "泛函分析", "credits": 4.0, "difficulty": 5 },
+        { "id": "MATH2403M", "name": "数理统计", "credits": 3.0, "difficulty": 4 },
+        { "id": "MATH2761FH", "name": "数学建模", "credits": 3.0, "difficulty": 4 }
+      ]
+    },
+    {
+      "semester": "大四秋冬",
+      "courses": [
+        { "id": "ECON4101M", "name": "金融科技导论", "credits": 2.0, "difficulty": 3 },
+        { "id": "ECON3049M", "name": "国际金融", "credits": 3.0, "difficulty": 4 },
+        { "id": "ECON3055M", "name": "金融工程学", "credits": 3.0, "difficulty": 5 },
+        { "id": "PPAE4001G", "name": "体测与锻炼", "credits": 0.5, "difficulty": 2 },
+        { "id": "CSE3002M", "name": "机器学习", "credits": 3.5, "difficulty": 4 }
+      ]
+    },
+    {
+      "semester": "大四春夏",
+      "courses": [
+        { "id": "ADMN2001G", "name": "形势与政策II", "credits": 1.0, "difficulty": 1 },
+        { "id": "ECON4902M", "name": "毕业论文", "credits": 8.0, "difficulty": 5 }
+      ]
+    }
+  ]
+}

@@ -166,8 +166,14 @@ export class EventHandler {
 
         // 在首屏渲染后尝试启动引导（仅一次）
         if (!this.tourStarted && typeof window !== 'undefined' && typeof window.startDriverTour === 'function') {
-            const started = window.startDriverTour();
-            this.tourStarted = started || this.tourStarted;
+            // 设置 150ms 的延迟，确保课程面板的 HTML 已经挂载并渲染完毕
+            setTimeout(() => {
+                const started = window.startDriverTour();
+                if (!started) {
+                    console.warn('[EventHandler] 引导未能弹出，可能是元素尚未渲染。');
+                }
+                this.tourStarted = started || this.tourStarted;
+            }, 150);
         }
     }
 

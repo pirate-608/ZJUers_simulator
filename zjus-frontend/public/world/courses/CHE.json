@@ -1,0 +1,90 @@
+{
+  "major": "化学工程与工艺",
+  "abbr": "CHE",
+  "plan": [
+    {
+      "semester": "大一秋冬",
+      "courses": [
+        { "id": "ADMN1001G", "name": "思想道德与法治", "credits": 2.0, "difficulty": 2 },
+        { "id": "MARX100IG", "name": "中国近现代史纲要", "credits": 3.0, "difficulty": 2 },
+        { "id": "MATH1135G", "name": "微积分（甲）I", "credits": 5.0, "difficulty": 5 },
+        { "id": "MATH1232G", "name": "线性代数（甲）", "credits": 3.5, "difficulty": 4 },
+        { "id": "CS1001G", "name": "C程序设计基础及实验", "credits": 4.0, "difficulty": 3 },
+        { "id": "SIS1001G", "name": "大学英语III", "credits": 3.0, "difficulty": 3 },
+        { "id": "ME1001F", "name": "工程图学", "credits": 2.5, "difficulty": 3 }
+      ]
+    },
+    {
+      "semester": "大一春夏",
+      "courses": [
+        { "id": "ADMN1002G", "name": "形势与政策I", "credits": 1.0, "difficulty": 1 },
+        { "id": "MATH1136G", "name": "微积分（甲）II", "credits": 5.0, "difficulty": 5 },
+        { "id": "PHY1001G", "name": "大学物理（乙）I", "credits": 3.0, "difficulty": 4 },
+        { "id": "MATH1137F", "name": "常微分方程", "credits": 1.0, "difficulty": 4 },
+        { "id": "CHEM1002G", "name": "无机化学", "credits": 3.0, "difficulty": 4 },
+        { "id": "SIS100RG", "name": "大学英语IV", "credits": 3.0, "difficulty": 3 },
+        { "id": "CS1241G", "name": "人工智能基础（A）", "credits": 2.0, "difficulty": 3 }
+      ]
+    },
+    {
+      "semester": "大二秋冬",
+      "courses": [
+        { "id": "CHEM1004F", "name": "有机化学", "credits": 4.0, "difficulty": 5 },
+        { "id": "CHEM2001F", "name": "物理化学", "credits": 4.0, "difficulty": 5 },
+        { "id": "PHY2002G", "name": "大学物理（乙）II", "credits": 3.0, "difficulty": 4 },
+        { "id": "MATH2432F", "name": "概率论与数理统计", "credits": 2.5, "difficulty": 4 },
+        { "id": "MARX2001G", "name": "马克思主义基本原理", "credits": 3.0, "difficulty": 3 },
+        { "id": "EDU2001G", "name": "军事理论", "credits": 2.0, "difficulty": 2 }
+      ]
+    },
+    {
+      "semester": "大二春夏",
+      "courses": [
+        { "id": "CBE2001F", "name": "化工原理（甲）I", "credits": 2.0, "difficulty": 4 },
+        { "id": "CBE2002M", "name": "化工热力学", "credits": 2.0, "difficulty": 5 },
+        { "id": "EE2003F", "name": "电工电子学及实验", "credits": 3.5, "difficulty": 4 },
+        { "id": "CBE2001M", "name": "高分子化学（乙）", "credits": 2.0, "difficulty": 4 },
+        { "id": "CHEM2003F", "name": "大学化学实验（P）", "credits": 1.5, "difficulty": 3 },
+        { "id": "CBE2004M", "name": "认识实习", "credits": 1.5, "difficulty": 2 }
+      ]
+    },
+    {
+      "semester": "大三秋冬",
+      "courses": [
+        { "id": "CBE3006M", "name": "化学反应工程", "credits": 3.0, "difficulty": 5 },
+        { "id": "CBE3001F", "name": "化工原理（甲）III", "credits": 2.0, "difficulty": 4 },
+        { "id": "CBE3022M", "name": "化工专业实验I", "credits": 1.5, "difficulty": 4 },
+        { "id": "CBE3002F", "name": "化工原理实验（甲）I", "credits": 1.5, "difficulty": 4 },
+        { "id": "CBE3036M", "name": "化工安全健康与环境", "credits": 2.0, "difficulty": 3 },
+        { "id": "MARX3001G", "name": "毛泽东思想和中国特色社会主义理论体系概论", "credits": 3.0, "difficulty": 2 }
+      ]
+    },
+    {
+      "semester": "大三春夏",
+      "courses": [
+        { "id": "CBE3010M", "name": "化工设计", "credits": 4.0, "difficulty": 5 },
+        { "id": "CBE3003M", "name": "化学工艺学", "credits": 2.0, "difficulty": 4 },
+        { "id": "CBE3056M", "name": "智能化工系统工程", "credits": 2.0, "difficulty": 4 },
+        { "id": "CBE3003F", "name": "化工原理实验（甲）II", "credits": 1.5, "difficulty": 4 },
+        { "id": "CBE3008M", "name": "生产实习", "credits": 2.0, "difficulty": 3 },
+        { "id": "MARX3002G", "name": "习近平新时代中国特色社会主义思想概论", "credits": 3.0, "difficulty": 2 }
+      ]
+    },
+    {
+      "semester": "大四秋冬",
+      "courses": [
+        { "id": "CBE4011M", "name": "化工技术经济学", "credits": 1.0, "difficulty": 3 },
+        { "id": "CBE4006M", "name": "科技论文阅读与写作", "credits": 1.0, "difficulty": 3 },
+        { "id": "CBE4010M", "name": "化工安全与环境评价", "credits": 2.0, "difficulty": 4 },
+        { "id": "PPAE4001G", "name": "体测与锻炼I", "credits": 0.5, "difficulty": 2 },
+        { "id": "CBE4028M", "name": "毕业设计", "credits": 7.0, "difficulty": 5 }
+      ]
+    },
+    {
+      "semester": "大四春夏",
+      "courses": [
+        { "id": "ADMN2001G", "name": "形势与政策II", "credits": 1.0, "difficulty": 1 }
+      ]
+    }
+  ]
+}

@@ -2,6 +2,7 @@
 // 主入口文件 - 模块组装与初始化
 // ==========================================
 
+import { driver } from 'https://cdn.jsdelivr.net/npm/driver.js@1.3.1/+esm';
 import { CONFIG, loadServerConfig } from './modules/config.js';
 import { gameState, loadAchievements } from './modules/gameState.js';
 import { setupBeforeUnload, clearLog } from './modules/utils.js';
@@ -136,7 +137,7 @@ window.saveGame = function () {
     }
 };
 
-// ========== 引导（driver.js） ==========
+// ========== 引导（driver.js v1.x API） ==========
 function setTourLock(flag) {
     tourLocked = flag;
 }
@@ -148,12 +149,11 @@ function buildDriverSteps() {
     const timerEl = document.getElementById('semester-timer') || document.getElementById('exam-console-container');
     const finishEl = document.getElementById('tour-finish-anchor');
 
-    if (!strategyEl || !hudEl || !relaxEl || !timerEl || !finishEl) {
-        return null;
-    }
+    const steps = [];
 
-    return [
-        {
+    // 采用动态推入的方式，提升容错率
+    if (strategyEl) {
+        steps.push({
             element: strategyEl,
             popover: {
                 title: '选择策略：摆 / 摸 / 卷',
@@ -161,8 +161,11 @@ function buildDriverSteps() {
                 side: 'right',
                 align: 'start'
             }
-        },
-        {
+        });
+    }
+
+    if (hudEl) {
+        steps.push({
             element: hudEl,
             popover: {
                 title: '属性与最佳区间',
@@ -170,8 +173,11 @@ function buildDriverSteps() {
                 side: 'left',
                 align: 'start'
             }
-        },
-        {
+        });
+    }
+
+    if (relaxEl) {
+        steps.push({
             element: relaxEl,
             popover: {
                 title: '休闲与冷却',
@@ -179,8 +185,11 @@ function buildDriverSteps() {
                 side: 'top',
                 align: 'center'
             }
-        },
-        {
+        });
+    }
+
+    if (timerEl) {
+        steps.push({
             element: timerEl,
             popover: {
                 title: '学期计时与考试',
@@ -188,47 +197,64 @@ function buildDriverSteps() {
                 side: 'bottom',
                 align: 'center'
             }
-        },
-        {
+        });
+    }
+
+    if (finishEl) {
+        steps.push({
             element: finishEl,
             popover: {
                 title: '开始前的三条提醒',
                 description: '暂停后再操作更安全；心态<50有减益；压力40-70最佳区间。点击“完成”开始游戏。',
-                side: 'center',
-                align: 'center'
+                // v1 中如果没有聚焦特定元素，或希望居中显示，可以省略 element，并在 popover 中使用默认定位
             }
-        }
-    ];
-}
+        });
+    }
 
-function ensureDriver() {
-    if (driverInstance) return driverInstance;
-    if (typeof Driver === 'undefined') return null;
-    driverInstance = new Driver({
-        animate: true,
-        opacity: 0.45,
-        allowClose: true,
-        showButtons: true,
-        nextBtnText: '确认',
-        prevBtnText: '上一步',
-        doneBtnText: '完成',
-        closeBtnText: '跳过',
-        onHighlightStarted: () => setTourLock(true),
-        onReset: () => setTourLock(false)
-    });
-    return driverInstance;
+    return steps.length > 0 ? steps : null;
 }
 
 function startDriverTour(force = false) {
     if (driverTourStarted && !force) return true;
-    const driver = ensureDriver();
-    if (!driver) return false;
 
     const steps = buildDriverSteps();
-    if (!steps) return false;
+    if (!steps) {
+        console.warn('[Driver.js] 无法初始化步骤：DOM元素未加载完成。');
+        return false;
+    }
 
-    driver.defineSteps(steps);
-    driver.start();
+    // 初始化 v1 版本的 Driver
+    driverInstance = driver({
+        showProgress: true,
+        animate: true,
+        steps: steps,
+        nextBtnText: '下一步 ➔',
+        prevBtnText: '⬅ 上一步',
+        doneBtnText: '完成 ✓',
+        // 步骤高亮时，锁定玩家操作
+        onHighlightStarted: () => setTourLock(true),
+        // 引导结束（点击完成、跳过或点击遮罩层外部）时触发
+        onDestroyStarted: () => {
+            setTourLock(false);
+            
+            // 引导结束时，如果游戏处于暂停状态，则通知服务器继续游戏
+            if (wsManager && gameState.isPaused()) {
+                console.log('[Driver.js] 引导结束，恢复游戏');
+                wsManager.send({ action: 'resume' });
+            }
+            
+            if(driverInstance) driverInstance.destroy();
+        }
+    });
+
+    // ✨ 核心新增：在弹出引导前，主动通知服务器暂停游戏
+    if (wsManager && !gameState.isPaused()) {
+        console.log('[Driver.js] 引导开始，暂停游戏');
+        wsManager.send({ action: 'pause' });
+    }
+
+    // 启动引导
+    driverInstance.drive();
     driverTourStarted = true;
     setTourLock(true);
     return true;

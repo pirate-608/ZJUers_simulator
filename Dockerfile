@@ -4,9 +4,9 @@
 FROM python:3.11-slim-bookworm AS builder
 
 # 1. 更换国内源 (可选，加快构建速度，视网络情况而定)
-# RUN sed -i 's/deb.debian.org/mirrors.aliyun.com/g' /etc/apt/sources.list
-# 或
-# RUN sed -i 's/pypi.org/mirrors.tuna.tsinghua.edu.cn/g' /etc/apt/sources.list
+# 对于 Debian 12 的新格式
+RUN sed -i 's/deb.debian.org/mirrors.tuna.tsinghua.edu.cn/g' /etc/apt/sources.list.d/debian.sources \
+    && sed -i 's/security.debian.org/mirrors.tuna.tsinghua.edu.cn\/debian-security/g' /etc/apt/sources.list.d/debian.sources
 
 RUN pip install --upgrade pip
 

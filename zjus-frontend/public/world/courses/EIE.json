@@ -1,0 +1,91 @@
+{
+  "major": "电子信息工程",
+  "abbr": "EIE",
+  "plan": [
+    {
+      "semester": "大一秋冬",
+      "courses": [
+        { "id": "ADMN1001G", "name": "思想道德与法治", "credits": 2.0, "difficulty": 2 },
+        { "id": "MARX100IG", "name": "中国近现代史纲要", "credits": 3.0, "difficulty": 2 },
+        { "id": "MATH1135G", "name": "微积分（甲）I", "credits": 5.0, "difficulty": 5 },
+        { "id": "MATH1232G", "name": "线性代数（甲）", "credits": 3.5, "difficulty": 5 },
+        { "id": "ME1001F", "name": "工程图学", "credits": 2.5, "difficulty": 3 },
+        { "id": "CS100RG", "name": "C程序设计基础", "credits": 3.0, "difficulty": 4 },
+        { "id": "SIS1001G", "name": "大学英语III", "credits": 3.0, "difficulty": 2 }
+      ]
+    },
+    {
+      "semester": "大一春夏",
+      "courses": [
+        { "id": "ADMN100RG", "name": "形势与政策I", "credits": 1.0, "difficulty": 1 },
+        { "id": "MATH1137F", "name": "常微分方程", "credits": 1.5, "difficulty": 4 },
+        { "id": "CS1241G", "name": "人工智能基础（A）", "credits": 2.0, "difficulty": 3 },
+        { "id": "MARX100RG", "name": "思想道德与法治实践", "credits": 3.0, "difficulty": 2 },
+        { "id": "MATH1138G", "name": "微积分（甲）II", "credits": 5.0, "difficulty": 5 },
+        { "id": "ME1002F", "name": "工程训练", "credits": 1.5, "difficulty": 3 },
+        { "id": "PHY1001G", "name": "大学物理（甲）I", "credits": 4.0, "difficulty": 5 },
+        { "id": "SIS100RG", "name": "大学英语IV", "credits": 3.0, "difficulty": 2 }
+      ]
+    },
+    {
+      "semester": "大二秋冬",
+      "courses": [
+        { "id": "MATH2131F", "name": "复变函数与积分变换", "credits": 1.5, "difficulty": 4 },
+        { "id": "EDU2001G", "name": "军事理论", "credits": 2.0, "difficulty": 1 },
+        { "id": "EE2007F", "name": "电路与电子技术I", "credits": 6.0, "difficulty": 5 },
+        { "id": "EE2009F", "name": "电路与电子技术实验I", "credits": 2.0, "difficulty": 4 },
+        { "id": "MARX2001G", "name": "马克思主义基本原理", "credits": 3.0, "difficulty": 3 },
+        { "id": "MATH2433F", "name": "概率论与数理统计", "credits": 2.5, "difficulty": 4 },
+        { "id": "PHY2001G", "name": "大学物理（甲）II", "credits": 4.0, "difficulty": 5 },
+        { "id": "PHY2005G", "name": "大学物理实验", "credits": 1.5, "difficulty": 4 }
+      ]
+    },
+    {
+      "semester": "大二春夏",
+      "courses": [
+        { "id": "EE2502M", "name": "离散数学", "credits": 2.0, "difficulty": 4 },
+        { "id": "EE2001M", "name": "信号分析与处理", "credits": 3.0, "difficulty": 5 },
+        { "id": "EE2003F", "name": "电路与电子技术II", "credits": 3.0, "difficulty": 5 },
+        { "id": "EE2102M", "name": "工程电磁场与波", "credits": 3.0, "difficulty": 5 },
+        { "id": "EE2501M", "name": "微处理器原理及应用", "credits": 3.5, "difficulty": 4 },
+        { "id": "EE2010F", "name": "电路与电子技术实验II", "credits": 1.0, "difficulty": 4 }
+      ]
+    },
+    {
+      "semester": "大三秋冬",
+      "courses": [
+        { "id": "EE3501M", "name": "电力电子技术", "credits": 3.0, "difficulty": 5 },
+        { "id": "EE3502M", "name": "控制理论（乙）", "credits": 2.0, "difficulty": 5 },
+        { "id": "EE350EM", "name": "信息论与编码", "credits": 2.5, "difficulty": 4 },
+        { "id": "EE3601M", "name": "半导体物理", "credits": 3.5, "difficulty": 5 },
+        { "id": "MARX3001G", "name": "毛泽东思想概论", "credits": 3.0, "difficulty": 3 },
+        { "id": "MARX300RG", "name": "习近平新时代思想概论", "credits": 3.0, "difficulty": 3 },
+        { "id": "EE3504M", "name": "计算机网络与通信", "credits": 2.5, "difficulty": 4 }
+      ]
+    },
+    {
+      "semester": "大三春夏",
+      "courses": [
+        { "id": "EE3505M", "name": "电子器件与集成电路", "credits": 3.5, "difficulty": 5 },
+        { "id": "EE3506M", "name": "通信原理", "credits": 2.5, "difficulty": 5 },
+        { "id": "EE3507M", "name": "人工智能与电力电子", "credits": 2.0, "difficulty": 4 },
+        { "id": "EE3391M", "name": "电子系统设计", "credits": 2.5, "difficulty": 4 }
+      ]
+    },
+    {
+      "semester": "大四秋冬",
+      "courses": [
+        { "id": "PPAE4001G", "name": "体测与锻炼", "credits": 0.5, "difficulty": 2 },
+        { "id": "EE4564M", "name": "电子信息新技术讲座", "credits": 1.0, "difficulty": 3 }
+      ]
+    },
+    {
+      "semester": "大四春夏",
+      "courses": [
+        { "id": "ADMN2001G", "name": "形势与政策II", "credits": 1.0, "difficulty": 1 },
+        { "id": "EE4035M", "name": "毕业设计（论文）", "credits": 8.0, "difficulty": 5 },
+        { "id": "EE4086M", "name": "毕业实习与设计", "credits": 8.0, "difficulty": 5 }
+      ]
+    }
+  ]
+}

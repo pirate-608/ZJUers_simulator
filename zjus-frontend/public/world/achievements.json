@@ -1,0 +1,38 @@
+{
+  "gpa_king": {
+    "name": "卷王之王",
+    "desc": "单学期 GPA 达到 4.5",
+    "condition": "gpa >= 4.5",
+    "icon": "👑"
+  },
+  "library_ghost": {
+    "name": "图书馆地缚灵",
+    "desc": "单学期累计【卷】超过 50 次",
+    "condition": "action_counts.get('study', 0) > 50",
+    "icon": "📚"
+  },
+  "social_butterfly": {
+    "name": "紫金港交际花",
+    "desc": "情商达到 95 以上",
+    "condition": "eq >= 95",
+    "icon": "🌸"
+  },
+  "broken_heart": {
+    "name": "破防人",
+    "desc": "心态曾经低于 10 点",
+    "condition": "sanity < 10",
+    "icon": "💔"
+  },
+  "survivor": {
+    "name": "绝地求生",
+    "desc": "挂科 3 门以上但在退学边缘活下来了",
+    "condition": "failed_count >= 3",
+    "icon": "🚑"
+  },
+   "Water_Monster ": {
+    "name": "98大水怪",
+    "desc": "累计水了100次cc98",
+    "condition": "action_counts.get('cc98', 0) >= 100",
+    "icon": "🚑"
+  }
+}

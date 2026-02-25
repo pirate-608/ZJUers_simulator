@@ -1,0 +1,93 @@
+{
+  "major": "自动化（控制）",
+  "abbr": "AUT",
+  "plan": [
+    {
+      "semester": "大一秋冬",
+      "courses": [
+        { "id": "ADMN1001G", "name": "思想道德与法治", "credits": 2.0, "difficulty": 2 },
+        { "id": "ADMN1002G", "name": "形势与政策I", "credits": 1.0, "difficulty": 1 },
+        { "id": "CS1001G", "name": "C程序设计基础及实验", "credits": 4.0, "difficulty": 4 },
+        { "id": "MARX100IG", "name": "中国近现代史纲要", "credits": 3.0, "difficulty": 2 },
+        { "id": "MATH1135G", "name": "微积分（甲）I", "credits": 5.0, "difficulty": 5 },
+        { "id": "MATH1232G", "name": "线性代数（甲）", "credits": 3.5, "difficulty": 4 },
+        { "id": "SIS1001G", "name": "大学英语III", "credits": 3.0, "difficulty": 3 }
+      ]
+    },
+    {
+      "semester": "大一春夏",
+      "courses": [
+        { "id": "CS1241G", "name": "人工智能基础（A）", "credits": 2.0, "difficulty": 3 },
+        { "id": "MARX100RG", "name": "思想道德与法治实践", "credits": 3.0, "difficulty": 2 },
+        { "id": "MATH1136G", "name": "微积分（甲）II", "credits": 5.0, "difficulty": 5 },
+        { "id": "MATH1138G", "name": "常微分方程", "credits": 1.0, "difficulty": 4 },
+        { "id": "PHY1001G", "name": "大学物理（甲）I", "credits": 3.0, "difficulty": 4 },
+        { "id": "AUT1101M", "name": "自动化导论", "credits": 1.0, "difficulty": 2 },
+        { "id": "ME1101F", "name": "机械制图及CAD基础", "credits": 1.5, "difficulty": 3 },
+        { "id": "EE1101F", "name": "电子工程训练（甲）", "credits": 1.5, "difficulty": 3 },
+        { "id": "SIS100RG", "name": "大学英语IV", "credits": 3.0, "difficulty": 3 }
+      ]
+    },
+    {
+      "semester": "大二秋冬",
+      "courses": [
+        { "id": "MATH2131F", "name": "复变函数与积分变换", "credits": 1.5, "difficulty": 4 },
+        { "id": "PHY2001G", "name": "大学物理（甲）II", "credits": 3.0, "difficulty": 4 },
+        { "id": "PHY2005G", "name": "大学物理实验", "credits": 1.5, "difficulty": 3 },
+        { "id": "MARX2001G", "name": "马克思主义基本原理", "credits": 3.0, "difficulty": 3 },
+        { "id": "EE2001F", "name": "电工电子学", "credits": 4.5, "difficulty": 5 },
+        { "id": "MATH2432F", "name": "概率论与数理统计", "credits": 2.5, "difficulty": 4 },
+        { "id": "EDU2001G", "name": "军事理论", "credits": 2.0, "difficulty": 1 }
+      ]
+    },
+    {
+      "semester": "大二春夏",
+      "courses": [
+        { "id": "AUT2101M", "name": "自动控制理论（甲）I", "credits": 3.5, "difficulty": 5 },
+        { "id": "EE2101M", "name": "电子技术基础", "credits": 4.0, "difficulty": 4 },
+        { "id": "EE2110M", "name": "信号处理与分析", "credits": 3.5, "difficulty": 5 },
+        { "id": "CS2017F", "name": "数据结构", "credits": 2.0, "difficulty": 4 },
+        { "id": "EE2002F", "name": "电工电子学实验", "credits": 1.5, "difficulty": 3 },
+        { "id": "ECON2001G", "name": "中国改革开放史", "credits": 1.5, "difficulty": 2 },
+        { "id": "HIST2001G", "name": "新中国史", "credits": 1.5, "difficulty": 2 }
+      ]
+    },
+    {
+      "semester": "大三秋冬",
+      "courses": [
+        { "id": "AUT3101M", "name": "自动控制理论（甲）II", "credits": 3.5, "difficulty": 5 },
+        { "id": "AUT3102M", "name": "电机与拖动", "credits": 3.0, "difficulty": 5 },
+        { "id": "AUT3103M", "name": "微机原理与接口技术", "credits": 3.5, "difficulty": 4 },
+        { "id": "AUT3201M", "name": "自动化仪表及装置", "credits": 2.5, "difficulty": 4 },
+        { "id": "MARX3001G", "name": "毛泽东思想概论", "credits": 3.0, "difficulty": 2 },
+        { "id": "MARX300RG", "name": "习近平新时代思想概论", "credits": 3.0, "difficulty": 2 }
+      ]
+    },
+    {
+      "semester": "大三春夏",
+      "courses": [
+        { "id": "AUT3104M", "name": "过程控制工程", "credits": 3.0, "difficulty": 4 },
+        { "id": "AUT3105M", "name": "运动控制系统", "credits": 3.0, "difficulty": 4 },
+        { "id": "AUT3202M", "name": "现代控制理论", "credits": 2.5, "difficulty": 5 },
+        { "id": "AUT3391M", "name": "自动化系统综合设计", "credits": 4.0, "difficulty": 5 }
+      ]
+    },
+    {
+      "semester": "大四秋冬",
+      "courses": [
+        { "id": "PPAE4001G", "name": "体测与锻炼", "credits": 0.5, "difficulty": 2 },
+        { "id": "AUT4101M", "name": "机器人技术基础", "credits": 2.5, "difficulty": 4 },
+        { "id": "AUT4102M", "name": "大数据解析与应用导论", "credits": 2.0, "difficulty": 3 },
+        { "id": "AUT4103M", "name": "物联网安全", "credits": 3.0, "difficulty": 4 },
+        { "id": "AUT4201M", "name": "运筹学", "credits": 2.0, "difficulty": 4 }
+      ]
+    },
+    {
+      "semester": "大四春夏",
+      "courses": [
+        { "id": "ADMN2001G", "name": "形势与政策II", "credits": 1.0, "difficulty": 1 },
+        { "id": "AUT4000M", "name": "毕业设计/论文", "credits": 8.0, "difficulty": 5 }
+      ]
+    }
+  ]
+}

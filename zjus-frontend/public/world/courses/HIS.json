@@ -1,0 +1,79 @@
+{
+  "major": "历史学",
+  "abbr": "HIS",
+  "plan": [
+    {
+      "semester": "大一秋冬",
+      "courses": [
+        { "id": "ADMN1001G", "name": "思想道德与法治", "credits": 3.0, "difficulty": 2 },
+        { "id": "MARX1002G", "name": "中国近现代史纲要", "credits": 3.0, "difficulty": 2 },
+        { "id": "HIST1001M", "name": "历史学导论", "credits": 2.0, "difficulty": 3 },
+        { "id": "HIST1002M", "name": "中国古代史I", "credits": 4.0, "difficulty": 4 },
+        { "id": "SIS1001G", "name": "大学英语III", "credits": 3.0, "difficulty": 3 }
+      ]
+    },
+    {
+      "semester": "大一春夏",
+      "courses": [
+        { "id": "ADMN1002G", "name": "形势与政策I", "credits": 1.0, "difficulty": 1 },
+        { "id": "HIST1101M", "name": "中国古代史II", "credits": 4.0, "difficulty": 4 },
+        { "id": "HIST1102M", "name": "世界古代中世纪史", "credits": 4.0, "difficulty": 4 },
+        { "id": "SIS100RG", "name": "大学英语IV", "credits": 3.0, "difficulty": 3 },
+        { "id": "CS1241G", "name": "人工智能基础（A）", "credits": 2.0, "difficulty": 3 }
+      ]
+    },
+    {
+      "semester": "大二秋冬",
+      "courses": [
+        { "id": "MARX2001G", "name": "马克思主义基本原理", "credits": 3.0, "difficulty": 3 },
+        { "id": "HIST2001M", "name": "中国近代史", "credits": 4.0, "difficulty": 4 },
+        { "id": "HIST2002M", "name": "世界近代史", "credits": 4.0, "difficulty": 4 },
+        { "id": "HIST2003M", "name": "史学概论", "credits": 3.0, "difficulty": 4 },
+        { "id": "EDU2001G", "name": "军事理论", "credits": 2.0, "difficulty": 1 }
+      ]
+    },
+    {
+      "semester": "大二春夏",
+      "courses": [
+        { "id": "HIST2101M", "name": "中国现代史", "credits": 3.0, "difficulty": 3 },
+        { "id": "HIST2102M", "name": "世界现代史", "credits": 4.0, "difficulty": 4 },
+        { "id": "HIST2103M", "name": "中国史学史", "credits": 3.0, "difficulty": 4 },
+        { "id": "ECON2001G", "name": "中国改革开放史", "credits": 1.5, "difficulty": 2 }
+      ]
+    },
+    {
+      "semester": "大三秋冬",
+      "courses": [
+        { "id": "MARX3001G", "name": "毛泽东思想概论", "credits": 3.0, "difficulty": 2 },
+        { "id": "MARX300RG", "name": "习近平新时代思想概论", "credits": 3.0, "difficulty": 2 },
+        { "id": "HIST3001M", "name": "西方史学史", "credits": 3.0, "difficulty": 4 },
+        { "id": "HIST3002M", "name": "中国当代史", "credits": 3.0, "difficulty": 3 },
+        { "id": "HIST3003M", "name": "世界当代史", "credits": 3.0, "difficulty": 4 }
+      ]
+    },
+    {
+      "semester": "大三春夏",
+      "courses": [
+        { "id": "HIST3101M", "name": "历史文献学", "credits": 3.0, "difficulty": 5 },
+        { "id": "HIST3102M", "name": "考古学通论", "credits": 3.0, "difficulty": 4 },
+        { "id": "HIST4067M", "name": "历史学综合实习", "credits": 4.0, "difficulty": 3 },
+        { "id": "HIST3063M", "name": "环境史专题", "credits": 3.0, "difficulty": 4 }
+      ]
+    },
+    {
+      "semester": "大四秋冬",
+      "courses": [
+        { "id": "PPAE4001G", "name": "体测与锻炼", "credits": 0.5, "difficulty": 2 },
+        { "id": "HIST4101M", "name": "史学论文写作", "credits": 2.0, "difficulty": 4 },
+        { "id": "HIST3059M", "name": "数字人文与历史研究", "credits": 2.0, "difficulty": 4 }
+      ]
+    },
+    {
+      "semester": "大四春夏",
+      "courses": [
+        { "id": "ADMN2001G", "name": "形势与政策II", "credits": 1.0, "difficulty": 1 },
+        { "id": "HIST406M", "name": "毕业论文", "credits": 8.0, "difficulty": 5 }
+      ]
+    }
+  ]
+}

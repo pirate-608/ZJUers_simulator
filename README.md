@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="https://docs.67656.fun/assets/images/logo.png" alt="Game Logo" width="120" />
+  <img src="https://docs.67656.fun/assets/images/logo.svg" alt="Game Logo" width="120" />
   <h1>ZJUers Simulator</h1>
   <p><strong>我在这里放了67656颗星星，希望每个折大人都能找到属于自己的一颗</strong></p>
 </div>

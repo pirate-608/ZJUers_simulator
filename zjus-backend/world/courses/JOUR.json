@@ -1,0 +1,83 @@
+{
+  "major": "新闻学",
+  "abbr": "JOUR",
+  "plan": [
+    {
+      "semester": "大一秋冬",
+      "courses": [
+        { "id": "ADMN1001G", "name": "思想道德与法治", "credits": 3.0, "difficulty": 2 },
+        { "id": "MARX1002G", "name": "中国近现代史纲要", "credits": 3.0, "difficulty": 2 },
+        { "id": "MATH1101G", "name": "高等数学", "credits": 4.0, "difficulty": 4 },
+        { "id": "JOUR1001M", "name": "当代中外新闻事业", "credits": 3.0, "difficulty": 3 },
+        { "id": "SIS1001G", "name": "大学英语III", "credits": 3.0, "difficulty": 3 },
+        { "id": "CS1000G", "name": "计算机科学基础（B）", "credits": 2.0, "difficulty": 2 }
+      ]
+    },
+    {
+      "semester": "大一春夏",
+      "courses": [
+        { "id": "ADMN1002G", "name": "形势与政策I", "credits": 1.0, "difficulty": 1 },
+        { "id": "JOUR1101M", "name": "马克思主义新闻观", "credits": 2.0, "difficulty": 4 },
+        { "id": "JOUR1102M", "name": "传播学概论", "credits": 3.0, "difficulty": 4 },
+        { "id": "JOUR1103M", "name": "新媒体概论", "credits": 2.0, "difficulty": 3 },
+        { "id": "JOUR1104M", "name": "新闻采访与写作", "credits": 4.0, "difficulty": 5 },
+        { "id": "SIS100RG", "name": "大学英语IV", "credits": 3.0, "difficulty": 3 }
+      ]
+    },
+    {
+      "semester": "大二秋冬",
+      "courses": [
+        { "id": "MARX2001G", "name": "马克思主义基本原理", "credits": 3.0, "difficulty": 3 },
+        { "id": "JOUR2001M", "name": "新闻学概论", "credits": 3.0, "difficulty": 4 },
+        { "id": "JOUR2002M", "name": "中外新闻史", "credits": 4.0, "difficulty": 4 },
+        { "id": "JOUR2003M", "name": "社会科学研究方法", "credits": 3.0, "difficulty": 4 },
+        { "id": "JOUR2004M", "name": "新闻编辑", "credits": 3.0, "difficulty": 4 },
+        { "id": "EDU2001G", "name": "军事理论", "credits": 2.0, "difficulty": 1 }
+      ]
+    },
+    {
+      "semester": "大二春夏",
+      "courses": [
+        { "id": "JOUR2101M", "name": "媒介经营管理", "credits": 3.0, "difficulty": 3 },
+        { "id": "JOUR2102M", "name": "新闻摄影", "credits": 2.0, "difficulty": 3 },
+        { "id": "JOUR2103M", "name": "数字治理", "credits": 2.0, "difficulty": 4 },
+        { "id": "JOUR2104M", "name": "比较媒介体制", "credits": 2.0, "difficulty": 4 },
+        { "id": "ECON2001G", "name": "中国改革开放史", "credits": 1.5, "difficulty": 2 }
+      ]
+    },
+    {
+      "semester": "大三秋冬",
+      "courses": [
+        { "id": "MARX3001G", "name": "毛泽东思想概论", "credits": 3.0, "difficulty": 2 },
+        { "id": "MARX300RG", "name": "习近平新时代思想概论", "credits": 3.0, "difficulty": 2 },
+        { "id": "JOUR3001M", "name": "新闻伦理与法规", "credits": 3.0, "difficulty": 4 },
+        { "id": "JOUR3002M", "name": "视听语言", "credits": 2.0, "difficulty": 3 },
+        { "id": "JOUR3003M", "name": "深度报道", "credits": 3.0, "difficulty": 5 }
+      ]
+    },
+    {
+      "semester": "大三春夏",
+      "courses": [
+        { "id": "JOUR3101M", "name": "数据新闻", "credits": 3.0, "difficulty": 5 },
+        { "id": "JOUR3102M", "name": "融合新闻制作", "credits": 4.0, "difficulty": 5 },
+        { "id": "JOUR3103M", "name": "国际新闻报道", "credits": 3.0, "difficulty": 4 },
+        { "id": "JOUR3022M", "name": "专业实习", "credits": 4.0, "difficulty": 3 }
+      ]
+    },
+    {
+      "semester": "大四秋冬",
+      "courses": [
+        { "id": "PPAE4001G", "name": "体测与锻炼", "credits": 0.5, "difficulty": 2 },
+        { "id": "JOUR4101M", "name": "媒介批评", "credits": 2.0, "difficulty": 4 },
+        { "id": "JOUR4102M", "name": "舆情监测与研判", "credits": 2.0, "difficulty": 4 }
+      ]
+    },
+    {
+      "semester": "大四春夏",
+      "courses": [
+        { "id": "ADMN2001G", "name": "形势与政策II", "credits": 1.0, "difficulty": 1 },
+        { "id": "JOUR4105M", "name": "毕业论文", "credits": 8.0, "difficulty": 5 }
+      ]
+    }
+  ]
+}

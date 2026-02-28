@@ -1,0 +1,94 @@
+{
+  "major": "能源与环境系统工程",
+  "abbr": "NEE",
+  "plan": [
+    {
+      "semester": "大一秋冬",
+      "courses": [
+        { "id": "ADMN1001G", "name": "思想道德与法治", "credits": 2.0, "difficulty": 2 },
+        { "id": "MARX100IG", "name": "中国近现代史纲要", "credits": 3.0, "difficulty": 2 },
+        { "id": "MATH1135G", "name": "微积分（甲）I", "credits": 5.0, "difficulty": 5 },
+        { "id": "MATH1232G", "name": "线性代数（甲）", "credits": 3.5, "difficulty": 4 },
+        { "id": "ME1001F", "name": "工程图学", "credits": 2.5, "difficulty": 3 },
+        { "id": "CS1008G", "name": "Python程序设计", "credits": 3.0, "difficulty": 3 },
+        { "id": "SIS1001G", "name": "大学英语III", "credits": 3.0, "difficulty": 3 }
+      ]
+    },
+    {
+      "semester": "大一春夏",
+      "courses": [
+        { "id": "ADMN100RG", "name": "形势与政策I", "credits": 1.0, "difficulty": 1 },
+        { "id": "MATH1136G", "name": "微积分（甲）II", "credits": 5.0, "difficulty": 5 },
+        { "id": "MARX100RG", "name": "思想道德与法治实践", "credits": 3.0, "difficulty": 2 },
+        { "id": "PHY1001G", "name": "大学物理（甲）I", "credits": 4.0, "difficulty": 5 },
+        { "id": "MATH1137F", "name": "常微分方程", "credits": 1.0, "difficulty": 4 },
+        { "id": "ME1101F", "name": "机械制图及CAD基础", "credits": 1.5, "difficulty": 3 },
+        { "id": "CS1241G", "name": "人工智能基础（A）", "credits": 2.0, "difficulty": 4 },
+        { "id": "SIS100RG", "name": "大学英语IV", "credits": 3.0, "difficulty": 3 }
+      ]
+    },
+    {
+      "semester": "大二秋冬",
+      "courses": [
+        { "id": "CHEM1002G", "name": "普通化学（乙）", "credits": 3.0, "difficulty": 3 },
+        { "id": "CHEM1004G", "name": "普通化学实验（乙）", "credits": 1.0, "difficulty": 3 },
+        { "id": "MATH2432F", "name": "概率论与数理统计", "credits": 2.5, "difficulty": 4 },
+        { "id": "PHY2001G", "name": "大学物理（甲）II", "credits": 4.0, "difficulty": 5 },
+        { "id": "ME2102F", "name": "工程力学", "credits": 4.0, "difficulty": 4 },
+        { "id": "MARX2001G", "name": "马克思主义基本原理", "credits": 3.0, "difficulty": 3 },
+        { "id": "EDU2001G", "name": "军事理论", "credits": 2.0, "difficulty": 2 }
+      ]
+    },
+    {
+      "semester": "大二春夏",
+      "courses": [
+        { "id": "EEA2011F", "name": "工程流体力学", "credits": 3.5, "difficulty": 5 },
+        { "id": "EEA2007F", "name": "工程热力学", "credits": 4.0, "difficulty": 5 },
+        { "id": "EEA2009F", "name": "热工实验I", "credits": 1.0, "difficulty": 4 },
+        { "id": "PHY2005G", "name": "大学物理实验", "credits": 1.5, "difficulty": 4 },
+        { "id": "EE2001F", "name": "电工电子学及实验", "credits": 4.5, "difficulty": 5 },
+        { "id": "EEA2501M", "name": "微机原理与工业物联网", "credits": 2.5, "difficulty": 4 },
+        { "id": "ME1002F", "name": "工程训练", "credits": 1.5, "difficulty": 3 }
+      ]
+    },
+    {
+      "semester": "大三秋冬",
+      "courses": [
+        { "id": "EEA3001F", "name": "热工实验II", "credits": 1.0, "difficulty": 4 },
+        { "id": "EEA2008F", "name": "传热学（甲）", "credits": 4.0, "difficulty": 5 },
+        { "id": "EEA2201M", "name": "自动控制理论", "credits": 3.5, "difficulty": 4 },
+        { "id": "NEE2101M", "name": "能源与环境系统工程概论", "credits": 2.0, "difficulty": 2 },
+        { "id": "NEE3101M", "name": "制冷原理", "credits": 2.5, "difficulty": 4 },
+        { "id": "NEE3102M", "name": "流体输送及控制", "credits": 2.0, "difficulty": 3 },
+        { "id": "MARX3001G", "name": "毛泽东思想概论", "credits": 3.0, "difficulty": 3 },
+        { "id": "NEE3103M", "name": "制冷与低温测试技术", "credits": 1.5, "difficulty": 4 }
+      ]
+    },
+    {
+      "semester": "大三春夏",
+      "courses": [
+        { "id": "MARX3002G", "name": "习近平新时代思想概论", "credits": 3.0, "difficulty": 2 },
+        { "id": "NEE3201M", "name": "人工环境概论", "credits": 2.0, "difficulty": 3 },
+        { "id": "NEE3202M", "name": "暖通与空调", "credits": 2.5, "difficulty": 4 },
+        { "id": "NEE3203M", "name": "制冷装置自动化", "credits": 2.0, "difficulty": 4 },
+        { "id": "NEE3204M", "name": "低温原理", "credits": 2.0, "difficulty": 4 },
+        { "id": "NEE3205M", "name": "制冷与低温设备", "credits": 2.0, "difficulty": 4 }
+      ]
+    },
+    {
+      "semester": "大四秋冬",
+      "courses": [
+        { "id": "NEE4101M", "name": "能源工程伦理与管理", "credits": 2.0, "difficulty": 3 },
+        { "id": "NEE4102M", "name": "制冷与人工环境英语", "credits": 1.0, "difficulty": 3 },
+        { "id": "PPAE4001G", "name": "体测与锻炼", "credits": 0.5, "difficulty": 2 }
+      ]
+    },
+    {
+      "semester": "大四春夏",
+      "courses": [
+        { "id": "ADMN2001G", "name": "形势与政策II", "credits": 1.0, "difficulty": 1 },
+        { "id": "NEE4035M", "name": "毕业设计（论文）", "credits": 8.0, "difficulty": 5 }
+      ]
+    }
+  ]
+}

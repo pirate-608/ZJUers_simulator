@@ -2,7 +2,10 @@ version: '3.8'
 
 services:
   backend:
-    build: .
+    # 1. 修改 build 上下文
+    build: 
+      context: ./zjus-backend
+      dockerfile: Dockerfile
     container_name: zjuers_backend
     ports:
       - "8000:8000"
@@ -29,9 +32,8 @@ services:
     # 添加自动重启，防止意外崩溃后不恢复
     restart: always
     volumes:
-      - ./world:/app/world
-      - ./static:/app/static
-      - ./templates:/app/templates
+      - ./zjus-backend/world:/app/world
+      - ./zjus-backend/app:/app/app  # 可选：如果为了本地热更新开发，挂载具体的 app 目录
 
   db:
     image: postgres:15-alpine
@@ -60,7 +62,9 @@ services:
       - "127.0.0.1:6379:6379"
 
   migrate:
-    build: .
+    build:
+      context: ./zjus-backend
+      dockerfile: Dockerfile
     container_name: zjuers_migrate
     command: alembic upgrade head
     env_file:
@@ -85,9 +89,11 @@ services:
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
       - ./nginx/conf.d:/etc/nginx/conf.d:ro
-      - ./static:/app/static:ro
-      - ./world:/app/world:ro
       - ./nginx/ssl:/etc/nginx/ssl:ro
+      # 挂载前端打包产物
+      - ./zjus-frontend/dist:/usr/share/nginx/game-frontend
+      # 🌟 挂载后端的数据字典供 Nginx 直接极速代理（替代旧的 /app/world）
+      - ./zjus-backend/world:/usr/share/nginx/world
     depends_on:
       backend:
         condition: service_started

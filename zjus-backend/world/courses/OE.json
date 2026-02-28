@@ -1,0 +1,83 @@
+{
+  "major": "光电信息科学与工程",
+  "abbr": "OE",
+  "plan": [
+    {
+      "semester": "大一秋冬",
+      "courses": [
+        { "id": "ADMN1001G", "name": "思想道德与法治", "credits": 2.0, "difficulty": 2 },
+        { "id": "MARX100IG", "name": "中国近现代史纲要", "credits": 3.0, "difficulty": 2 },
+        { "id": "MATH1135G", "name": "微积分（甲）I", "credits": 5.0, "difficulty": 5 },
+        { "id": "MATH1232G", "name": "线性代数（甲）", "credits": 3.5, "difficulty": 4 },
+        { "id": "CS1001G", "name": "C程序设计基础及实验", "credits": 4.0, "difficulty": 3 },
+        { "id": "SIS1001G", "name": "大学英语III", "credits": 3.0, "difficulty": 3 }
+      ]
+    },
+    {
+      "semester": "大一春夏",
+      "courses": [
+        { "id": "MATH1136G", "name": "微积分（甲）II", "credits": 5.0, "difficulty": 5 },
+        { "id": "MARX100RG", "name": "思想道德与法治实践", "credits": 3.0, "difficulty": 2 },
+        { "id": "PHY1001G", "name": "大学物理（甲）I", "credits": 4.0, "difficulty": 4 },
+        { "id": "SIS100RG", "name": "大学英语IV", "credits": 3.0, "difficulty": 3 },
+        { "id": "MATH1138G", "name": "常微分方程", "credits": 1.0, "difficulty": 4 },
+        { "id": "OE1101M", "name": "光电信息科学与工程导论", "credits": 2.0, "difficulty": 2 }
+      ]
+    },
+    {
+      "semester": "大二秋冬",
+      "courses": [
+        { "id": "MATH2131F", "name": "复变函数", "credits": 1.5, "difficulty": 4 },
+        { "id": "PHY2001G", "name": "大学物理（甲）II", "credits": 4.0, "difficulty": 4 },
+        { "id": "PHY2005G", "name": "大学物理实验", "credits": 1.5, "difficulty": 3 },
+        { "id": "MARX2001G", "name": "马克思主义基本原理", "credits": 3.0, "difficulty": 3 },
+        { "id": "EE2101M", "name": "电磁场与电磁波", "credits": 2.5, "difficulty": 4 },
+        { "id": "MATH2432F", "name": "概率和统计", "credits": 2.5, "difficulty": 4 }
+      ]
+    },
+    {
+      "semester": "大二春夏",
+      "courses": [
+        { "id": "OE2001F", "name": "应用光学", "credits": 3.0, "difficulty": 5 },
+        { "id": "OE2002F", "name": "应用光学实验", "credits": 1.0, "difficulty": 4 },
+        { "id": "CS1019F", "name": "离散数学", "credits": 2.5, "difficulty": 4 },
+        { "id": "OE3101M", "name": "物理光学", "credits": 4.0, "difficulty": 5 },
+        { "id": "OE3102M", "name": "物理光学实验", "credits": 1.0, "difficulty": 4 }
+      ]
+    },
+    {
+      "semester": "大三秋冬",
+      "courses": [
+        { "id": "OE3201M", "name": "光电子学", "credits": 3.0, "difficulty": 5 },
+        { "id": "OE3202M", "name": "光电检测", "credits": 3.0, "difficulty": 4 },
+        { "id": "OE3301M", "name": "光通信及实验", "credits": 3.0, "difficulty": 4 },
+        { "id": "MARX3001G", "name": "毛泽东思想概论", "credits": 3.0, "difficulty": 2 },
+        { "id": "MARX300RG", "name": "习近平新时代思想概论", "credits": 3.0, "difficulty": 2 }
+      ]
+    },
+    {
+      "semester": "大三春夏",
+      "courses": [
+        { "id": "OE3391M", "name": "光电设计与综合实验", "credits": 2.5, "difficulty": 5 },
+        { "id": "OE3401M", "name": "光学系统设计", "credits": 2.0, "difficulty": 4 },
+        { "id": "OE3402M", "name": "机器视觉", "credits": 3.0, "difficulty": 4 },
+        { "id": "OE3501M", "name": "光电专业实习", "credits": 3.0, "difficulty": 3 }
+      ]
+    },
+    {
+      "semester": "大四秋冬",
+      "courses": [
+        { "id": "PPAE4001G", "name": "体测与锻炼", "credits": 0.5, "difficulty": 2 },
+        { "id": "OE4101M", "name": "文献综述与科技写作", "credits": 1.5, "difficulty": 3 },
+        { "id": "OE4561M", "name": "量子光学", "credits": 2.5, "difficulty": 5 }
+      ]
+    },
+    {
+      "semester": "大四春夏",
+      "courses": [
+        { "id": "ADMN2001G", "name": "形势与政策II", "credits": 1.0, "difficulty": 1 },
+        { "id": "OE4000M", "name": "毕业设计/毕业论文", "credits": 8.0, "difficulty": 5 }
+      ]
+    }
+  ]
+}

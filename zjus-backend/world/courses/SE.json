@@ -1,0 +1,91 @@
+{
+  "major": "软件工程",
+  "abbr": "SE",
+  "plan": [
+    {
+      "semester": "大一秋冬",
+      "courses": [
+        { "id": "ADMN1001G", "name": "思想道德与法治", "credits": 2.0, "difficulty": 2 },
+        { "id": "CS100IG", "name": "C程序设计基础及实验", "credits": 4.0, "difficulty": 3 },
+        { "id": "MARX100IG", "name": "中国近现代史纲要", "credits": 3.0, "difficulty": 2 },
+        { "id": "MATH1135G", "name": "微积分（甲）I", "credits": 5.0, "difficulty": 5 },
+        { "id": "MATH1232G", "name": "线性代数（甲）", "credits": 3.5, "difficulty": 4 },
+        { "id": "SIS1001G", "name": "大学英语III", "credits": 3.0, "difficulty": 3 }
+      ]
+    },
+    {
+      "semester": "大一春夏",
+      "courses": [
+        { "id": "ADMN100G", "name": "形势与政策I", "credits": 1.0, "difficulty": 1 },
+        { "id": "CS1017F", "name": "数据结构基础", "credits": 4.0, "difficulty": 4 },
+        { "id": "CS1018F", "name": "面向对象程序设计", "credits": 2.5, "difficulty": 3 },
+        { "id": "MARX100G", "name": "思想道德与法治实践", "credits": 3.0, "difficulty": 2 },
+        { "id": "MATH1136G", "name": "微积分（甲）II", "credits": 5.0, "difficulty": 5 },
+        { "id": "PHY1000G", "name": "大学物理（乙）I", "credits": 3.0, "difficulty": 4 },
+        { "id": "SIS100RG", "name": "大学英语IV", "credits": 3.0, "difficulty": 3 },
+        { "id": "CS1259M", "name": "现代软件工程综合实践I", "credits": 2.5, "difficulty": 4 }
+      ]
+    },
+    {
+      "semester": "大二秋冬",
+      "courses": [
+        { "id": "CS2045M", "name": "逻辑设计", "credits": 4.0, "difficulty": 4 },
+        { "id": "CS2054M", "name": "计算机系统原理", "credits": 4.0, "difficulty": 5 },
+        { "id": "EDU2001G", "name": "军事理论", "credits": 2.0, "difficulty": 2 },
+        { "id": "MARX2001G", "name": "马克思主义基本原理", "credits": 3.0, "difficulty": 3 },
+        { "id": "MATH2432F", "name": "概率论与数理统计", "credits": 2.5, "difficulty": 4 },
+        { "id": "PHY2000G", "name": "大学物理（乙）II", "credits": 3.0, "difficulty": 4 },
+        { "id": "PHY2005G", "name": "大学物理实验", "credits": 1.5, "difficulty": 3 }
+      ]
+    },
+    {
+      "semester": "大二春夏",
+      "courses": [
+        { "id": "CS2020F", "name": "高级数据结构与算法分析", "credits": 2.5, "difficulty": 5 },
+        { "id": "CS2075M", "name": "软件工程基础", "credits": 2.5, "difficulty": 4 },
+        { "id": "CS2089M", "name": "操作系统", "credits": 4.0, "difficulty": 5 },
+        { "id": "CS1019F", "name": "离散数学及其应用", "credits": 4.0, "difficulty": 5 },
+        { "id": "ECON2001G", "name": "中国改革开放史", "credits": 1.5, "difficulty": 2 },
+        { "id": "HIST2001G", "name": "新中国史", "credits": 1.5, "difficulty": 2 },
+        { "id": "CS2261M", "name": "软件工程项目实践", "credits": 1.5, "difficulty": 4 }
+      ]
+    },
+    {
+      "semester": "大三秋冬",
+      "courses": [
+        { "id": "CS3103M", "name": "数据库系统", "credits": 5.0, "difficulty": 4 },
+        { "id": "CS3136M", "name": "计算机网络", "credits": 4.5, "difficulty": 4 },
+        { "id": "CS3245M", "name": "软件质量与测试", "credits": 2.0, "difficulty": 4 },
+        { "id": "MARX3001G", "name": "毛泽东思想概论", "credits": 3.0, "difficulty": 2 },
+        { "id": "MARX300RG", "name": "习近平新时代思想概论", "credits": 3.0, "difficulty": 2 },
+        { "id": "CS3244M", "name": "软件工程管理", "credits": 2.0, "difficulty": 3 }
+      ]
+    },
+    {
+      "semester": "大三春夏",
+      "courses": [
+        { "id": "CS3246M", "name": "需求保证", "credits": 2.0, "difficulty": 4 },
+        { "id": "CS3129M", "name": "量子计算理论基础与软件系统", "credits": 2.5, "difficulty": 5 },
+        { "id": "CS3096M", "name": "B/S体系软件设计", "credits": 3.5, "difficulty": 4 },
+        { "id": "CS3097M", "name": "Java应用技术", "credits": 2.5, "difficulty": 3 },
+        { "id": "CS2260M", "name": "现代软件工程综合实践II", "credits": 2.5, "difficulty": 4 }
+      ]
+    },
+    {
+      "semester": "大四秋冬",
+      "courses": [
+        { "id": "PPAE4001G", "name": "体测与锻炼", "credits": 0.5, "difficulty": 2 },
+        { "id": "CS4227M", "name": "大数据存储与计算技术", "credits": 2.0, "difficulty": 4 },
+        { "id": "CS4228M", "name": "大规模信息系统构建技术导论", "credits": 4.0, "difficulty": 5 },
+        { "id": "CS4265M", "name": "复杂软件开发实践", "credits": 3.0, "difficulty": 5 }
+      ]
+    },
+    {
+      "semester": "大四春夏",
+      "courses": [
+        { "id": "ADMN2001G", "name": "形势与政策II", "credits": 1.0, "difficulty": 1 },
+        { "id": "CS4222M", "name": "毕业设计/论文", "credits": 8.0, "difficulty": 5 }
+      ]
+    }
+  ]
+}

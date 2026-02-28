@@ -1,0 +1,89 @@
+{
+  "major": "生物医学工程",
+  "abbr": "BME",
+  "plan": [
+    {
+      "semester": "大一秋冬",
+      "courses": [
+        { "id": "ADMN1001G", "name": "思想道德与法治", "credits": 2.0, "difficulty": 2 },
+        { "id": "MARX100IG", "name": "中国近现代史纲要", "credits": 3.0, "difficulty": 2 },
+        { "id": "MATH1135G", "name": "微积分（甲）I", "credits": 5.0, "difficulty": 5 },
+        { "id": "MATH1232G", "name": "线性代数（甲）", "credits": 3.5, "difficulty": 4 },
+        { "id": "CS1001G", "name": "C程序设计基础及实验", "credits": 4.0, "difficulty": 3 },
+        { "id": "SIS1001G", "name": "大学英语III", "credits": 3.0, "difficulty": 3 },
+        { "id": "ME1001F", "name": "工程图学", "credits": 2.5, "difficulty": 3 }
+      ]
+    },
+    {
+      "semester": "大一春夏",
+      "courses": [
+        { "id": "ADMN1002G", "name": "形势与政策I", "credits": 1.0, "difficulty": 1 },
+        { "id": "MATH1136G", "name": "微积分（甲）II", "credits": 5.0, "difficulty": 5 },
+        { "id": "PHY1001G", "name": "大学物理（甲）I", "credits": 4.0, "difficulty": 4 },
+        { "id": "CHEM1002G", "name": "普通化学（乙）", "credits": 3.0, "difficulty": 3 },
+        { "id": "SIS100RG", "name": "大学英语IV", "credits": 3.0, "difficulty": 3 },
+        { "id": "CS1241G", "name": "人工智能基础（A）", "credits": 2.0, "difficulty": 3 },
+        { "id": "MATH1137F", "name": "常微分方程", "credits": 1.0, "difficulty": 4 }
+      ]
+    },
+    {
+      "semester": "大二秋冬",
+      "courses": [
+        { "id": "PHY2001G", "name": "大学物理（甲）II", "credits": 4.0, "difficulty": 4 },
+        { "id": "MATH2131F", "name": "复变函数与积分方程", "credits": 1.5, "difficulty": 4 },
+        { "id": "MATH2432F", "name": "概率论与数理统计", "credits": 2.5, "difficulty": 4 },
+        { "id": "EE2004F", "name": "电路与模拟电子技术", "credits": 6.0, "difficulty": 5 },
+        { "id": "MARX2001G", "name": "马克思主义基本原理", "credits": 3.0, "difficulty": 3 },
+        { "id": "EDU2001G", "name": "军事理论", "credits": 2.0, "difficulty": 1 }
+      ]
+    },
+    {
+      "semester": "大二春夏",
+      "courses": [
+        { "id": "BME2001M", "name": "微机原理及应用", "credits": 3.0, "difficulty": 4 },
+        { "id": "EE2006F", "name": "数字电路分析与设计", "credits": 2.5, "difficulty": 4 },
+        { "id": "BME3001M", "name": "生物医学信号处理", "credits": 3.0, "difficulty": 5 },
+        { "id": "BME2003M", "name": "智能医学创新实践", "credits": 3.0, "difficulty": 4 },
+        { "id": "BME2020M", "name": "认识实习", "credits": 2.0, "difficulty": 2 },
+        { "id": "PHY2005G", "name": "大学物理实验", "credits": 1.5, "difficulty": 3 }
+      ]
+    },
+    {
+      "semester": "大三秋冬",
+      "courses": [
+        { "id": "BME3003M", "name": "生物医学图像处理", "credits": 3.0, "difficulty": 5 },
+        { "id": "BME3005M", "name": "定量生理学", "credits": 3.0, "difficulty": 4 },
+        { "id": "BME3008M", "name": "嵌入式系统", "credits": 2.0, "difficulty": 4 },
+        { "id": "BME3035M", "name": "生物医学成像技术", "credits": 3.0, "difficulty": 5 },
+        { "id": "MARX3001G", "name": "毛泽东思想概论", "credits": 3.0, "difficulty": 2 }
+      ]
+    },
+    {
+      "semester": "大三春夏",
+      "courses": [
+        { "id": "BME3004M", "name": "生物医学传感与检测", "credits": 3.0, "difficulty": 4 },
+        { "id": "BME3010M", "name": "硬件描述语言", "credits": 3.0, "difficulty": 4 },
+        { "id": "BME3015M1", "name": "电子系统设计与实践", "credits": 3.0, "difficulty": 5 },
+        { "id": "BME3034M", "name": "神经工程学", "credits": 2.0, "difficulty": 4 },
+        { "id": "BME3014M", "name": "生产实习", "credits": 3.0, "difficulty": 3 },
+        { "id": "MARX3002G", "name": "习近平新时代思想概论", "credits": 3.0, "difficulty": 2 }
+      ]
+    },
+    {
+      "semester": "大四秋冬",
+      "courses": [
+        { "id": "BME3036M", "name": "医学人工智能", "credits": 3.0, "difficulty": 5 },
+        { "id": "BME3037M", "name": "生物医学信息学", "credits": 2.0, "difficulty": 4 },
+        { "id": "BME3006M", "name": "仪器系统设计", "credits": 2.0, "difficulty": 4 },
+        { "id": "PPAE4001G", "name": "体测与锻炼I", "credits": 0.5, "difficulty": 2 }
+      ]
+    },
+    {
+      "semester": "大四春夏",
+      "courses": [
+        { "id": "BME4001M", "name": "毕业设计（论文）", "credits": 8.0, "difficulty": 5 },
+        { "id": "ADMN2001G", "name": "形势与政策II", "credits": 1.0, "difficulty": 1 }
+      ]
+    }
+  ]
+}

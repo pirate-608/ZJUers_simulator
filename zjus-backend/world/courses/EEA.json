@@ -1,0 +1,86 @@
+{
+  "major": "电气工程及其自动化",
+  "abbr": "EEA",
+  "plan": [
+    {
+      "semester": "大一秋冬",
+      "courses": [
+        { "id": "ADMN1001G", "name": "思想道德与法治", "credits": 2.0, "difficulty": 2 },
+        { "id": "MARX100IG", "name": "中国近现代史纲要", "credits": 3.0, "difficulty": 2 },
+        { "id": "MATH1135G", "name": "微积分（甲）I", "credits": 5.0, "difficulty": 5 },
+        { "id": "MATH1232G", "name": "线性代数（甲）", "credits": 3.5, "difficulty": 4 },
+        { "id": "CS100RG", "name": "C程序设计基础", "credits": 3.0, "difficulty": 3 },
+        { "id": "SIS1001G", "name": "大学英语III", "credits": 3.0, "difficulty": 3 }
+      ]
+    },
+    {
+      "semester": "大一春夏",
+      "courses": [
+        { "id": "ADMN100RG", "name": "形势与政策I", "credits": 1.0, "difficulty": 1 },
+        { "id": "MATH1136G", "name": "微积分（甲）II", "credits": 5.0, "difficulty": 5 },
+        { "id": "MARX100RG", "name": "思想道德与法治实践", "credits": 3.0, "difficulty": 2 },
+        { "id": "PHY1001G", "name": "大学物理（甲）I", "credits": 4.0, "difficulty": 5 },
+        { "id": "SIS100RG", "name": "大学英语IV", "credits": 3.0, "difficulty": 3 },
+        { "id": "CS1241G", "name": "人工智能基础（A）", "credits": 2.0, "difficulty": 4 }
+      ]
+    },
+    {
+      "semester": "大二秋冬",
+      "courses": [
+        { "id": "MATH2131F", "name": "复变函数与积分变换", "credits": 1.5, "difficulty": 4 },
+        { "id": "PHY2001G", "name": "大学物理（甲）II", "credits": 4.0, "difficulty": 5 },
+        { "id": "PHY2005G", "name": "大学物理实验", "credits": 1.5, "difficulty": 4 },
+        { "id": "MARX2001G", "name": "马克思主义基本原理", "credits": 3.0, "difficulty": 3 },
+        { "id": "EE2004F", "name": "电路与模拟电子技术", "credits": 5.5, "difficulty": 5 },
+        { "id": "EDU2001G", "name": "军事理论", "credits": 2.0, "difficulty": 2 },
+        { "id": "MATH2432F", "name": "概率论与数理统计", "credits": 2.5, "difficulty": 4 }
+      ]
+    },
+    {
+      "semester": "大二春夏",
+      "courses": [
+        { "id": "EE2201M", "name": "电磁场原理", "credits": 2.5, "difficulty": 4 },
+        { "id": "EE2101M", "name": "数字电子技术基础", "credits": 3.5, "difficulty": 4 },
+        { "id": "EE2110M", "name": "信号分析与处理", "credits": 3.5, "difficulty": 5 },
+        { "id": "ECON2001G", "name": "中国改革开放史", "credits": 1.5, "difficulty": 2 },
+        { "id": "HIST2001G", "name": "新中国史", "credits": 1.5, "difficulty": 2 },
+        { "id": "EE2005F", "name": "电路与模拟电子技术实验", "credits": 1.5, "difficulty": 4 }
+      ]
+    },
+    {
+      "semester": "大三秋冬",
+      "courses": [
+        { "id": "EE3102M", "name": "电机学", "credits": 4.0, "difficulty": 5 },
+        { "id": "EE3201M", "name": "自动控制理论", "credits": 3.5, "difficulty": 5 },
+        { "id": "EE3136M", "name": "电网络分析", "credits": 2.0, "difficulty": 4 },
+        { "id": "MARX3001G", "name": "毛泽东思想概论", "credits": 3.0, "difficulty": 3 },
+        { "id": "MARX300RG", "name": "习近平新时代思想概论", "credits": 3.0, "difficulty": 3 },
+        { "id": "EE3103M", "name": "电力系统分析", "credits": 4.0, "difficulty": 5 }
+      ]
+    },
+    {
+      "semester": "大三春夏",
+      "courses": [
+        { "id": "EE3111M", "name": "电力电子技术", "credits": 3.5, "difficulty": 4 },
+        { "id": "EE3112M", "name": "电力工程基础", "credits": 3.0, "difficulty": 4 },
+        { "id": "EE3391M", "name": "电气交叉创新设计与实践", "credits": 4.0, "difficulty": 5 },
+        { "id": "EE3120M", "name": "嵌入式系统及其应用", "credits": 2.5, "difficulty": 4 }
+      ]
+    },
+    {
+      "semester": "大四秋冬",
+      "courses": [
+        { "id": "PPAE4001G", "name": "体测与锻炼", "credits": 0.5, "difficulty": 2 },
+        { "id": "EE4361M", "name": "数字信号处理导论（DSP）", "credits": 2.5, "difficulty": 4 },
+        { "id": "EE4354M", "name": "高电压工程", "credits": 1.5, "difficulty": 4 }
+      ]
+    },
+    {
+      "semester": "大四春夏",
+      "courses": [
+        { "id": "ADMN2001G", "name": "形势与政策II", "credits": 1.0, "difficulty": 1 },
+        { "id": "EE40BIM", "name": "毕业设计（论文）", "credits": 6.0, "difficulty": 5 }
+      ]
+    }
+  ]
+}

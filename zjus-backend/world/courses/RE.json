@@ -1,0 +1,94 @@
+{
+  "major": "机器人工程",
+  "abbr": "RE",
+  "plan": [
+    {
+      "semester": "大一秋冬",
+      "courses": [
+        { "id": "ADMN1001G", "name": "思想道德与法治", "credits": 2.0, "difficulty": 2 },
+        { "id": "ADMN10002G", "name": "形势与政策I", "credits": 1.0, "difficulty": 1 },
+        { "id": "CS1015GZ", "name": "程序设计基础与实验", "credits": 4.0, "difficulty": 3 },
+        { "id": "MARX100IG", "name": "中国近现代史纲要", "credits": 3.0, "difficulty": 2 },
+        { "id": "MATH1135G", "name": "微积分（甲）I", "credits": 5.0, "difficulty": 5 },
+        { "id": "MATH1232G", "name": "线性代数（甲）", "credits": 3.5, "difficulty": 4 },
+        { "id": "SIS1001G", "name": "大学英语III", "credits": 3.0, "difficulty": 3 }
+      ]
+    },
+    {
+      "semester": "大一春夏",
+      "courses": [
+        { "id": "CS1241G", "name": "人工智能基础（A）", "credits": 2.0, "difficulty": 3 },
+        { "id": "MARX100RG", "name": "思想道德与法治实践", "credits": 3.0, "difficulty": 2 },
+        { "id": "MATH1133G", "name": "离散数学", "credits": 1.5, "difficulty": 4 },
+        { "id": "MATH1138", "name": "常微分方程", "credits": 1.0, "difficulty": 4 },
+        { "id": "ME1001F", "name": "工程图学", "credits": 2.5, "difficulty": 3 },
+        { "id": "PHY100RG", "name": "大学物理（乙）I", "credits": 3.0, "difficulty": 4 },
+        { "id": "SIS100RG", "name": "大学英语IV", "credits": 3.0, "difficulty": 3 },
+        { "id": "CSE1100M1", "name": "机器人导论", "credits": 1.5, "difficulty": 3 }
+      ]
+    },
+    {
+      "semester": "大二秋冬",
+      "courses": [
+        { "id": "MATH2131F", "name": "复变函数与积分变换", "credits": 1.5, "difficulty": 4 },
+        { "id": "AA2008F", "name": "理论力学（乙）", "credits": 3.0, "difficulty": 4 },
+        { "id": "EDU2001G", "name": "军事理论", "credits": 2.0, "difficulty": 2 },
+        { "id": "EE2004F", "name": "电路与模拟电子技术", "credits": 5.5, "difficulty": 5 },
+        { "id": "FE200SF", "name": "数据结构", "credits": 2.0, "difficulty": 4 },
+        { "id": "MARX2001G", "name": "马克思主义基本原理", "credits": 3.0, "difficulty": 3 },
+        { "id": "MATH2432F", "name": "概率论与数理统计", "credits": 2.5, "difficulty": 4 },
+        { "id": "PHY2000G", "name": "大学物理（乙）II", "credits": 3.0, "difficulty": 4 },
+        { "id": "PHY2005G", "name": "大学物理实验", "credits": 1.5, "difficulty": 3 }
+      ]
+    },
+    {
+      "semester": "大二春夏",
+      "courses": [
+        { "id": "CSE2000M", "name": "嵌入式系统", "credits": 4.0, "difficulty": 5 },
+        { "id": "CSE2100M", "name": "自动控制理论（乙）", "credits": 3.5, "difficulty": 5 },
+        { "id": "ME2106F", "name": "机械设计基础（甲）", "credits": 3.0, "difficulty": 4 },
+        { "id": "CSE2101M", "name": "数值计算方法", "credits": 2.5, "difficulty": 4 },
+        { "id": "CSE2120M", "name": "面向对象程序设计", "credits": 2.5, "difficulty": 3 },
+        { "id": "CSE2071M", "name": "电路与模电技术实验", "credits": 1.5, "difficulty": 4 }
+      ]
+    },
+    {
+      "semester": "大三秋冬",
+      "courses": [
+        { "id": "CSE3100M", "name": "机器人学", "credits": 2.5, "difficulty": 5 },
+        { "id": "CSE310IM", "name": "电气控制技术", "credits": 2.5, "difficulty": 4 },
+        { "id": "CSE3120M", "name": "人工智能进阶与实践", "credits": 2.5, "difficulty": 5 },
+        { "id": "CSE3170M", "name": "机器人传感技术", "credits": 2.0, "difficulty": 4 },
+        { "id": "MARX3001G", "name": "毛泽东思想概论", "credits": 3.0, "difficulty": 2 },
+        { "id": "MARX300RG", "name": "习近平新时代思想概论", "credits": 3.0, "difficulty": 2 },
+        { "id": "CSE3171M", "name": "机器人学强化训练与实践", "credits": 2.0, "difficulty": 5 }
+      ]
+    },
+    {
+      "semester": "大三春夏",
+      "courses": [
+        { "id": "CSE302ZM", "name": "智能控制技术", "credits": 1.5, "difficulty": 4 },
+        { "id": "CSE3174M", "name": "机器人驱动与控制", "credits": 2.0, "difficulty": 4 },
+        { "id": "EE3391M", "name": "机器人交叉创新设计与实践", "credits": 4.0, "difficulty": 5 },
+        { "id": "CSE3002M1", "name": "机器视觉", "credits": 2.5, "difficulty": 4 },
+        { "id": "CSE3121M", "name": "大数据解析与应用导论", "credits": 2.0, "difficulty": 4 }
+      ]
+    },
+    {
+      "semester": "大四秋冬",
+      "courses": [
+        { "id": "PPAE4001G", "name": "体测与锻炼", "credits": 0.5, "difficulty": 2 },
+        { "id": "1121308", "name": "具身智能与大模型", "credits": 2.5, "difficulty": 5 },
+        { "id": "CSE4120M", "name": "最优控制与强化学", "credits": 1.5, "difficulty": 5 },
+        { "id": "CSE3172M", "name": "机器人智能感知与分析", "credits": 2.0, "difficulty": 4 }
+      ]
+    },
+    {
+      "semester": "大四春夏",
+      "courses": [
+        { "id": "ADMN2001G", "name": "形势与政策II", "credits": 1.0, "difficulty": 1 },
+        { "id": "CSE4000M", "name": "毕业设计（论文）", "credits": 8.0, "difficulty": 5 }
+      ]
+    }
+  ]
+}

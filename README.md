@@ -1,25 +1,64 @@
-# ZJUers_simulator
+<div align="center">
+  <img src="https://docs.67656.fun/assets/images/logo.png" alt="Game Logo" width="120" />
+  <h1>ZJUers Simulator</h1>
+  <p><strong>我在这里放了67656颗星星，希望每个折大人都能找到属于自己的一颗</strong></p>
+</div>
+
 ## **声明**
 该项目仅供娱乐，不提供任何教学、考试、行政、管理方面的其他功能，一切有关学校具体信息的内容，由[@浙江大学](https://www.zju.edu.cn) 保留一切权利。
 
 ## 游戏网址：[game.67656.fun](game.67656.fun)
 
-	————我在这里放了67656颗星星，希望每个折大人都能找到属于自己的一颗。
+## 游戏界面预览
 
-![logo](./static/images/logo.png)
-## 开始界面
-![start](./static/images/start.png)
-## 入学考试
-![exam](./static/images/exam.png)
-## 录取通知书
-![admission](./static/images/admission.png)
-## 游戏控制台
-![dashboard](./static/images/dashboard.png)
-![dashboard2](./static/images/dashboard2.png)
-## 随机事件
-![event](./static/images/event.png)
-## 钉钉消息
-![dingtalk](./static/images/dingtalk.png)
+<details>
+<summary>🏁 开始界面</summary>
+
+![开始界面](https://docs.67656.fun/assets/images/start.png)
+
+</details>
+
+<details>
+<summary>📝 入学考试</summary>
+
+![入学考试](https://docs.67656.fun/assets/images/exam.png)
+
+</details>
+
+<details>
+<summary>📜 录取通知书</summary>
+
+![录取通知书](https://docs.67656.fun/assets/images/admission.png)
+
+</details>
+
+<details>
+<summary>🎛️ 游戏控制台</summary>
+
+![游戏控制台](https://docs.67656.fun/assets/images/dashboard.png)
+
+</details>
+
+<details>
+<summary>🎛️ 游戏控制台 2</summary>
+
+![游戏控制台2](https://docs.67656.fun/assets/images/dashboard2.png)
+
+</details>
+
+<details>
+<summary>✨ 随机事件</summary>
+
+![随机事件](https://docs.67656.fun/assets/images/event.png)
+
+</details>
+
+<details>
+<summary>💬 钉钉消息</summary>
+
+![钉钉消息](https://docs.67656.fun/assets/images/dingtalk.png)
+
+</details>
 
 ## 邀请：关键词添加和补充
 该游戏是一个基于大模型的文本游戏，world/keywords.json是大模型生成内容的一个重要根据，目前数据较为不全，欢迎有兴趣的uu们在其中补充关键信息（请参照原有json表结构）

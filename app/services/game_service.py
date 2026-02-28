@@ -91,6 +91,7 @@ class GameService:
             current_iq = random.randint(80, 100)
 
         update_fields = {
+            "elapsed_game_time": 0,
             "major": major_info["name"],
             "major_abbr": major_info["abbr"],
             "stress": current_stats.get("stress", major_info.get("stress_base", 0)),
@@ -148,7 +149,7 @@ class GameService:
 
         update_fields = {
             "semester": term_name,
-            "semester_start_time": int(time.time()),
+            "elapsed_game_time": 0,
             "course_info_json": json.dumps(my_courses, ensure_ascii=False),
         }
 
@@ -236,7 +237,7 @@ class GameService:
             "major_abbr": "",
             "semester": "大一秋冬",
             "semester_idx": 1,
-            "semester_start_time": int(time.time()),
+            "elapsed_game_time": 0,
             "energy": 100,
             "sanity": 80,
             "stress": 0,

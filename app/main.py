@@ -1,7 +1,5 @@
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
-from fastapi.templating import Jinja2Templates
 from fastapi import Request
 from app.core.config import settings
 import logging
@@ -15,7 +13,6 @@ from app.game.state import RedisState
 from app.admin import setup_admin
 from app.websockets.manager import manager
 
-templates = Jinja2Templates(directory="templates")
 
 logger = logging.getLogger(__name__)
 
@@ -33,28 +30,6 @@ setup_admin(app)
 app.mount("/static", StaticFiles(directory="static"), name="static")
 # 新增：公开 world 目录为静态资源
 app.mount("/world", StaticFiles(directory="world"), name="world")
-
-
-# 页面路由
-@app.get("/")
-async def read_index(request: Request):
-    return templates.TemplateResponse("index.html", {"request": request})
-
-
-@app.get("/dashboard.html")
-async def read_dashboard(request: Request):
-    return templates.TemplateResponse("dashboard.html", {"request": request})
-
-
-@app.get("/admission")
-async def read_admission(request: Request):
-    return templates.TemplateResponse("admission.html", {"request": request})
-
-
-@app.get("/end")
-async def read_end(request: Request):
-    return templates.TemplateResponse("end.html", {"request": request})
-
 
 # 启动事件：快速初始化数据库表 (开发用，生产建议用 Alembic)
 @app.on_event("startup")

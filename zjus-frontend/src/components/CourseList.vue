@@ -82,14 +82,11 @@ const getProgressColor = (progress) => {
 
 // 切换课程策略的方法
 const changeStrategy = (courseId, newState) => {
-  // 1. 乐观更新（Optimistic Update）：立刻修改本地 Store，让按钮瞬间变色，不等待服务器回包，体验极佳！
   store.setCourseState(courseId, newState)
-
-  // 2. 将玩家的选择通过 WebSocket 发送给后端引擎
   emit('send-action', {
     action: 'change_course_state',
-    course_id: courseId,
-    state: newState
+    target: courseId,  // 之前写的是 course_id，后端不认
+    value: newState    // 之前写的是 state，后端不认
   })
 }
 </script>

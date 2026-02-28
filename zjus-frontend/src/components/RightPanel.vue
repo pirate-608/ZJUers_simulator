@@ -90,6 +90,51 @@ import { useGameStore } from '../stores/gameStore'
 const store = useGameStore()
 const emit = defineEmits(['send-action'])
 
+// ✨ 本地虚拟时间，用于丝滑渲染
+const internalTime = ref(0)
+let animationFrameId = null
+let lastTick = performance.now()
+
+// 监听后端推送过来的绝对准确时间，消除任何前端误差
+watch(() => store.semesterTimeLeft, (newVal) => {
+  if (newVal !== undefined) {
+    internalTime.value = newVal // 每当后端 Tick 到达，强制校准
+  }
+})
+
+// ✨ 60帧/秒的平滑倒计时器
+const updateFrame = () => {
+  const now = performance.now()
+  const deltaMs = now - lastTick
+  lastTick = now
+
+  if (!store.isPaused && store.currentPhase === 'playing') {
+    // 根据当前的倍速，扣减对应流逝的秒数
+    // 如果是 2.0x，真实世界过去 16ms，游戏里就流逝 32ms
+    internalTime.value -= (deltaMs / 1000) * store.gameSpeed
+    if (internalTime.value < 0) internalTime.value = 0
+  }
+  animationFrameId = requestAnimationFrame(updateFrame)
+}
+
+onMounted(() => {
+  lastTick = performance.now()
+  animationFrameId = requestAnimationFrame(updateFrame)
+})
+
+onUnmounted(() => {
+  cancelAnimationFrame(animationFrameId)
+})
+
+// 将内部的浮点数秒数格式化为 MM:SS
+const formattedTime = computed(() => {
+  const totalSeconds = Math.ceil(internalTime.value) // 向上取整，显得紧凑
+  if (totalSeconds <= 0) return '00:00'
+  const m = Math.floor(totalSeconds / 60).toString().padStart(2, '0')
+  const s = (totalSeconds % 60).toString().padStart(2, '0')
+  return `${m}:${s}`
+})
+
 // --- 数据计算逻辑 ---
 
 // 计算效率的文案提示（替代原先 uiManager.js 里的长串 if-else）
@@ -118,16 +163,17 @@ const averageProgress = computed(() => {
 // 考试按钮是否可用（例如：倒计时显示为 0，或触发了特定状态）
 const canTakeExam = computed(() => {
   // 你可以根据你的游戏逻辑调整，比如如果时间变成 '00:00' 就可以考
-  return store.semesterTimeLeft === '00:00' || store.semesterTimeLeft === '考试周' 
+  return formattedTime.value === '00:00' || store.semesterTimeLeft === '考试周' 
 })
 
 // --- 发送指令逻辑 ---
 
 const sendRelax = (activity) => {
-  emit('send-action', { action: 'relax', type: activity })
+  // 之前写的是 type: activity，后端需要 target: activity
+  emit('send-action', { action: 'relax', target: activity }) 
 }
-
 const takeExam = () => {
-  emit('send-action', { action: 'exam' })
+  // 旧版 JS 发送了 target: 'final'，为保稳妥带上
+  emit('send-action', { action: 'exam', target: 'final' }) 
 }
 </script>

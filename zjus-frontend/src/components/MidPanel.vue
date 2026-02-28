@@ -145,6 +145,7 @@ const handlePause = () => {
 
 const setSpeed = (speed) => {
   store.gameSpeed = speed
+  // ✅ 恢复发送给后端，现在后端能听懂了！
   emit('send-action', { action: 'set_speed', speed: speed })
 }
 </script>

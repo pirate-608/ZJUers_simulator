@@ -71,6 +71,8 @@ class GameEngine:
         self.is_running = False
         self._ttl_refresh_interval_seconds = 600
         self._last_ttl_refresh = 0.0
+        # ✨ 新增：倍速乘数，默认为 1.0
+        self.speed_multiplier = 1.0
 
         # 预设成就路径
         self.achievement_path = Path("/app/world/achievements.json")
@@ -207,8 +209,13 @@ class GameEngine:
         tick_count = 0
         try:
             while self.is_running:
-                await asyncio.sleep(3)  # 3秒一个Tick
+                # ✨ 核心：真实的睡眠时间被倍速缩短！
+                # 例如 2.0 倍速下，真实世界只睡 1.5 秒
+                await asyncio.sleep(3.0 / self.speed_multiplier)
                 tick_count += 1
+
+                # ✨ 核心：但游戏内的虚拟时间，永远坚定地往前走 3 秒！
+                await self.repo.update_stat_safe("elapsed_game_time", 3)
 
                 # 低频 TTL 刷新：仅对活跃玩家做防线更新
                 now_ts = asyncio.get_running_loop().time()
@@ -348,6 +355,13 @@ class GameEngine:
             await self.repo.set_game_data(initial_stats)
             await self.emit("init", {"data": initial_stats})
             asyncio.create_task(self.run_loop())
+            return
+        
+        # ✨ 新增：真正接管全局倍速
+        if action == "set_speed":
+            speed = float(action_data.get("speed", 1.0))
+            # 限制在合理范围内，防止过快导致服务器 CPU 飙升
+            self.speed_multiplier = max(0.5, min(5.0, speed))
             return
 
         # [新增] 切换课程状态指令
@@ -819,9 +833,9 @@ class GameEngine:
             base_duration = semester_config.get("durations", {}).get(
                 str(semester_idx), semester_config.get("default_duration", 360)
             )
-            semester_time_left = self._get_semester_time_left(
-                new_stats.get("semester_start_time"), base_duration
-            )
+            # ✨ 传入我们在 Redis 中累加的虚拟流逝时间
+            elapsed = int(new_stats.get("elapsed_game_time", 0))
+            semester_time_left = self._get_semester_time_left(elapsed, base_duration)
 
             await self.emit(
                 "tick",
@@ -840,15 +854,18 @@ class GameEngine:
         """安全停止游戏循环"""
         self.is_running = False
 
-    def _get_semester_time_left(self, start_time: int, duration_seconds: int) -> int:
-        if not start_time:
-            return duration_seconds
+    def _get_semester_time_left(self, elapsed_game_time: int, duration_seconds: int) -> int:
         try:
-            elapsed = int(time.time()) - int(start_time)
+            # 尝试将传入的值强制转换为整型，防范 Redis 中的脏数据或 None
+            elapsed = int(elapsed_game_time)
+            duration = int(duration_seconds)
+            return max(0, duration - elapsed)
         except (TypeError, ValueError):
-            return duration_seconds
-        return max(0, duration_seconds - elapsed)
-
+            # 如果解析失败，兜底返回初始的 duration_seconds
+            # 若 duration_seconds 本身也有问题，则返回一个安全的硬编码值（如 360）
+            if isinstance(duration_seconds, (int, float)):
+                return int(duration_seconds)
+            return 360
     def _build_initial_stats(self, username: str) -> dict:
         return {
             "username": username,

@@ -44,6 +44,7 @@ export function useGameWebSocket() {
                     reconnectAttempts = 0
                     startHeartbeat()
                     gameStore.addLog('系统', '已连接服务器...', 'text-success')
+                    // 认证成功后，如果服务器没有立刻发 init，可以保持在 loading 或请求状态
                     break;
                     
                 case 'auth_error':
@@ -51,6 +52,9 @@ export function useGameWebSocket() {
                     break;
 
                 case 'init':
+                    // 收到 init 意味着开局完成或读取存档成功，正式进入游戏！
+                    gameStore.setPhase('playing')
+                    
                     gameStore.userInfo = msg.data
                     if (msg.data.course_info_json) {
                         gameStore.setCourseMetadata(JSON.parse(msg.data.course_info_json))
@@ -83,9 +87,18 @@ export function useGameWebSocket() {
                     gameStore.addLog('事件', msg.data.desc, 'text-primary')
                     break;
 
+                case 'need_admission': 
+                    // 假设你的后端在发现是新玩家时，会推送这个事件（具体按你的后端逻辑来）
+                    gameStore.setPhase('admission')
+                    gameStore.admissionData = msg.data // 把可供选择的专业/天赋数据存入 Store
+                    break;
+
                 // ---------------- 模态框/弹窗类事件 ----------------
                 case 'game_over':
-                    gameStore.showModal('game_over', { reason: msg.reason, restartable: msg.restartable })
+                    // 后端发送格式: type="game_over", data={"reason": "...", "restartable": True}
+                    gameStore.triggerEndGame('game_over', { 
+                        reason: msg.data.reason || '你在求是园中迷失了自我' 
+                    })
                     break;
 
                 case 'semester_summary':
@@ -101,7 +114,19 @@ export function useGameWebSocket() {
                     break;
 
                 case 'graduation':
-                    gameStore.showModal('graduation', msg.data)
+                    // 后端发送格式: type="graduation", data={"data": {"final_stats": {...}, "wenyan_report": "..."}}
+                    // 注意这里的双层 msg.data.data 嵌套！
+                    const gradData = msg.data.data || msg.data; 
+                    const finalStats = gradData.final_stats || {};
+                    
+                    gameStore.triggerEndGame('graduation', {
+                        gpa: parseFloat(finalStats.gpa || 0),
+                        iq: finalStats.iq || 100,
+                        eq: finalStats.eq || 100,
+                        gold: finalStats.gold || 0,
+                        achievements_count: (finalStats.achievements || []).length,
+                        llm_summary: gradData.wenyan_report || '此子聪颖过人，勤勉有加...'
+                    })
                     break;
 
                 case 'new_semester':
@@ -110,6 +135,18 @@ export function useGameWebSocket() {
                     gameStore.updateCourseStates({})
                     gameStore.clearEventLogs() // 清空日志
                     gameStore.addLog('系统', `=== 欢迎来到 ${msg.data.semester_name} ===`, 'text-success fw-bold')
+                    break;
+
+                // ✨ 新增：拦截保存结果并弹出 Toast
+                case 'save_result':
+                    gameStore.showToast(msg.message, msg.success ? 'success' : 'danger')
+                    break;
+
+                // ✨ 新增：拦截退出确认，直接切回登录或刷新页面
+                case 'exit_confirmed':
+                    // 清除 token 并直接刷新页面，回到最原始状态
+                    localStorage.removeItem('zju_token')
+                    window.location.reload()
                     break;
             }
         }

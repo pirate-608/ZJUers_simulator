@@ -11,6 +11,13 @@ export const useGameStore = defineStore('game', () => {
     const achievements = ref(null)
     const relaxCooldowns = ref({})
     const isPaused = ref(false)
+    // ✨ 新增：游戏当前所处的阶段
+    // 可能的值: 'loading' (连接中), 'admission' (开局选择), 'playing' (主游戏), 'ended' (游戏结束)
+    const currentPhase = ref('loading')
+    // ✨ 新增：全局 Toast 状态
+    const toast = ref(null)
+    // ==========================================
+
     // ✨ 新增：用于替代 eventHandler.js 中的直接 DOM 操作
     const eventLogs = ref([])          // 存储左侧的事件日志
     const activeModal = ref(null)      // 当前激活的弹窗，如 'game_over', 'transcript', 'random_event', 'graduation'
@@ -21,6 +28,17 @@ export const useGameStore = defineStore('game', () => {
     const dingMessages = ref([])       // 存储所有钉钉消息
     const unreadDingtalk = ref(0)      // 未读消息数量
     const gameSpeed = ref(1.0)         // 游戏倍速
+
+    // ✨ 新增：结局相关状态
+    const endType = ref(null) // 'game_over' (坏结局) 或 'graduation' (好结局)
+    const endData = ref({})   // 存储后端的总结数据和 LLM 生成的文言文
+
+    function triggerEndGame(type, data) {
+        endType.value = type
+        endData.value = data || {}
+        currentPhase.value = 'ended' // 切换到大结局场景
+        closeModal() // 确保没有任何弹窗残留
+    }
 
     // 添加日志的方法
     function addLog(type, message, cssClass = '') {
@@ -74,6 +92,11 @@ export const useGameStore = defineStore('game', () => {
         isPaused.value = paused
     }
 
+    // 新增：切换场景的 Action
+    function setPhase(phase) {
+        currentPhase.value = phase
+    }
+
     // ✨ 新增：处理钉钉消息的方法
     function addDingMessage(msg) {
         dingMessages.value.push(msg)
@@ -87,6 +110,17 @@ export const useGameStore = defineStore('game', () => {
 
     function clearEventLogs() {
         eventLogs.value = []
+    }
+
+    // ✨ 新增：显示 Toast 的方法
+    function showToast(message, type = 'success') {
+        toast.value = { message, type }
+        // 3秒后自动消失
+        setTimeout(() => {
+            if (toast.value && toast.value.message === message) {
+                toast.value = null
+            }
+        }, 3000)
     }
 
     // 核心逻辑：从 stats 中恢复课程元数据
@@ -127,6 +161,10 @@ export const useGameStore = defineStore('game', () => {
         achievements,
         relaxCooldowns,
         isPaused,
+        currentPhase,
+        setPhase, // ✨ 新增：暴露切换场景的方法
+        toast, showToast, // ✨ 新增：暴露 Toast 状态和方法
+        endType, endData, triggerEndGame, // ✨ 新增：暴露结局相关状态和方法
         
         // Actions
         setCourseMetadata,

@@ -65,11 +65,14 @@ const handleEnterGame = (token) => {
 
   <div v-else-if="store.currentPhase === 'loading'" class="vh-100 d-flex flex-column justify-content-center align-items-center bg-light">
     <div class="spinner-border text-primary mb-3" style="width: 3rem; height: 3rem;" role="status"></div>
-    <h4 class="text-muted">正在建立折大校园网长连接...</h4>
-    <div v-if="!isConnected" class="text-danger small mt-2">（如果长时间卡住，请检查后端是否已启动）</div>
+    <h4 class="text-muted">正在连接「zdbk」...</h4>
+    <div v-if="!isConnected" class="text-danger small mt-2">（如果长时间卡住，请尝试刷新页面）</div>
   </div>
 
   <div v-else-if="store.currentPhase === 'playing'" class="container-fluid px-4 mt-4 fade-in-up">
+
+    <TopNav @send-action="send" />
+    
     <HudBar />
     <div class="row">
       <div class="col-md-3">

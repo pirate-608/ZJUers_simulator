@@ -32,17 +32,18 @@
       </div>
       <div class="card-body p-2">
         <div class="row g-2">
+          <!-- 🌟 修复：全部绑定 :disabled="store.isPaused" -->
           <div class="col-6">
-            <button class="btn btn-sm btn-outline-primary w-100" @click="sendRelax('gym')">🏋️‍♂️ 健身</button>
+            <button class="btn btn-sm btn-outline-primary w-100" :disabled="store.isPaused" @click="sendRelax('gym')">🏋️‍♂️ 健身</button>
           </div>
           <div class="col-6">
-            <button class="btn btn-sm btn-outline-success w-100" @click="sendRelax('game')">🎮 游戏</button>
+            <button class="btn btn-sm btn-outline-success w-100" :disabled="store.isPaused" @click="sendRelax('game')">🎮 游戏</button>
           </div>
           <div class="col-6">
-            <button class="btn btn-sm btn-outline-info w-100" @click="sendRelax('cc98')">🌊 CC98</button>
+            <button class="btn btn-sm btn-outline-info w-100" :disabled="store.isPaused" @click="sendRelax('cc98')">🌊 CC98</button>
           </div>
           <div class="col-6">
-            <button class="btn btn-sm btn-outline-secondary w-100" @click="sendRelax('walk')">🚶 散步</button>
+            <button class="btn btn-sm btn-outline-secondary w-100" :disabled="store.isPaused" @click="sendRelax('walk')">🚶 散步</button>
           </div>
         </div>
       </div>
@@ -63,28 +64,28 @@
                :style="{ width: `${averageProgress}%` }"></div>
         </div>
 
+        <!-- 倒计时与考试按钮放在同一个高亮框内，完美融合 -->
         <div class="d-flex justify-content-between align-items-center p-2 rounded bg-light border border-danger border-opacity-25">
           <div class="text-center px-2">
             <div class="small text-muted" style="font-size: 0.75rem;">倒计时</div>
             <div class="fw-bold text-danger fs-5" style="font-family: monospace;">
-              {{ store.semesterTimeLeft ?? '--:--' }}
+              {{ formattedTime }}
             </div>
           </div>
+          <!-- 🌟 修复：考试按钮同时受控于暂停和倒计时状态 -->
           <button class="btn btn-danger fw-bold shadow-sm px-3" 
-                  :disabled="!canTakeExam"
+                  :disabled="store.isPaused || !canTakeExam"
                   @click="takeExam">
             参加期末考 ➔
           </button>
         </div>
-
       </div>
     </div>
-
   </div>
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { ref, watch, computed, onMounted, onUnmounted } from 'vue'
 import { useGameStore } from '../stores/gameStore'
 
 const store = useGameStore()
@@ -150,9 +151,7 @@ const efficiencyHint = computed(() => {
 const averageProgress = computed(() => {
   const courses = store.currentStats.courses
   if (!courses || Object.keys(courses).length === 0) return 0
-  
-  let totalProgress = 0
-  let count = 0
+  let totalProgress = 0, count = 0
   for (const courseId in courses) {
     totalProgress += courses[courseId].progress ?? 0
     count++
@@ -161,9 +160,9 @@ const averageProgress = computed(() => {
 })
 
 // 考试按钮是否可用（例如：倒计时显示为 0，或触发了特定状态）
+// 🌟 修复：直接判断数字，而不是判断字符串
 const canTakeExam = computed(() => {
-  // 你可以根据你的游戏逻辑调整，比如如果时间变成 '00:00' 就可以考
-  return formattedTime.value === '00:00' || store.semesterTimeLeft === '考试周' 
+  return internalTime.value <= 0
 })
 
 // --- 发送指令逻辑 ---

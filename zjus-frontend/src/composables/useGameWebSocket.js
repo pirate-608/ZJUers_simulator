@@ -30,7 +30,7 @@ export function useGameWebSocket() {
         ws.value.onopen = () => {
             // 🌟 修复：从 sessionStorage 提取自定义大模型配置，伴随 Token 一起发给后端引擎
             const llmModel = sessionStorage.getItem('custom_llm_model')
-            const llmKey = sessionStorage.getItem('custom_llm_api_key')
+            const llmKey = sessionStorage.getItem('custom_llm_key')
             
             ws.value.send(JSON.stringify({ 
                 token: token,
@@ -127,6 +127,16 @@ export function useGameWebSocket() {
 
                 case 'save_result':
                     gameStore.showToast(msg.message, msg.success ? 'success' : 'danger')
+                    
+                    // 🌟 修复：如果当前处于“保存并退出”的等待状态，且保存成功，则执行退出流程
+                    if (gameStore.isPendingExit && msg.success) {
+                        localStorage.removeItem('zju_token')
+                        window.location.reload()
+                    } else if (gameStore.isPendingExit && !msg.success) {
+                         // 如果保存失败，解除等待状态，让玩家重试
+                         gameStore.isPendingExit = false
+                         gameStore.addLog('系统', '保存失败，无法安全退出！', 'text-danger')
+                    }
                     break;
 
                 case 'exit_confirmed':

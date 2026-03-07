@@ -9,20 +9,28 @@
       </div>
 
       <div class="card-body p-4 text-center">
-        <p class="fs-6 mb-2">你要结束这段折大生涯了吗？</p>
-        <p class="small text-muted mb-0">如果你直接退出，<span class="text-danger fw-bold">未保存的进度将会永久丢失！</span></p>
+        <!-- 退出保存的等待状态 UI -->
+        <div v-if="store.isPendingExit">
+           <div class="spinner-border text-success mb-3" role="status"></div>
+           <p class="fs-6 mb-0">正在将数据持久化到服务器...</p>
+        </div>
+        <!-- 默认确认提示 UI -->
+        <div v-else>
+            <p class="fs-6 mb-2">你要结束这段折大生涯了吗？</p>
+            <p class="small text-muted mb-0">如果你直接退出，<span class="text-danger fw-bold">未保存的进度将会永久丢失！</span></p>
+        </div>
       </div>
 
       <div class="card-footer bg-light border-0 py-3 d-flex justify-content-between gap-2 px-4">
-        <button class="btn btn-outline-secondary px-3" @click="store.closeModal()">
+        <button class="btn btn-outline-secondary px-3" :disabled="store.isPendingExit" @click="store.closeModal()">
           点错了 (取消)
         </button>
         <div class="d-flex gap-2">
-          <button class="btn btn-danger px-3" @click="exitWithoutSave">
+          <button class="btn btn-danger px-3" :disabled="store.isPendingExit" @click="exitWithoutSave">
             直接退出
           </button>
-          <button class="btn btn-success fw-bold px-3 shadow-sm" @click="saveAndExit">
-            保存并退出
+          <button class="btn btn-success fw-bold px-3 shadow-sm" :disabled="store.isPendingExit" @click="saveAndExit">
+            {{ store.isPendingExit ? '保存中...' : '保存并退出' }}
           </button>
         </div>
       </div>
@@ -39,14 +47,16 @@ const emit = defineEmits(['send-action'])
 
 const exitWithoutSave = () => {
   store.closeModal()
-  // 向后端发送不保存直接销毁 Redis 缓存的指令
-  emit('send-action', { action: 'exit_without_save' })
+  // 直接销毁 Token 并强刷网页，断开的 WS 会让后端自动清理连接
+  localStorage.removeItem('zju_token')
+  window.location.reload()
 }
 
 const saveAndExit = () => {
-  store.closeModal()
-  // 向后端发送将 Redis 刷入 DB 并销毁缓存的指令
-  emit('send-action', { action: 'save_and_exit' })
+  // 🌟 修复：不再使用 setTimeout，而是设置等待标记，发送保存指令
+  // 配合 useGameWebSocket.js 里的 save_result 拦截，实现完美闭环
+  store.isPendingExit = true
+  emit('send-action', { action: 'save_game' })
 }
 </script>
 

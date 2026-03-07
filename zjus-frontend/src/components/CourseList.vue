@@ -25,14 +25,19 @@
         <div class="d-flex justify-content-between align-items-center">
           <small class="text-muted fw-bold">掌握度: {{ course.progress.toFixed(1) }}%</small>
           
+          <!-- 策略切换按钮组 (0:摆, 1:摸, 2:卷) -->
+          <!-- 🌟 修复：绑定 :disabled="store.isPaused" 冻结交互 -->
           <div class="btn-group btn-group-sm shadow-sm" role="group">
             <button class="btn" 
+                    :disabled="store.isPaused"
                     :class="course.state === 0 ? 'btn-danger text-white fw-bold' : 'btn-outline-secondary'"
                     @click="changeStrategy(course.id, 0)">摆</button>
             <button class="btn" 
+                    :disabled="store.isPaused"
                     :class="course.state === 1 ? 'btn-warning text-dark fw-bold' : 'btn-outline-secondary'"
                     @click="changeStrategy(course.id, 1)">摸</button>
             <button class="btn" 
+                    :disabled="store.isPaused"
                     :class="course.state === 2 ? 'btn-success text-white fw-bold' : 'btn-outline-secondary'"
                     @click="changeStrategy(course.id, 2)">卷</button>
           </div>

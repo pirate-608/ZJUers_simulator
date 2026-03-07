@@ -33,6 +33,9 @@ export const useGameStore = defineStore('game', () => {
     const endType = ref(null) // 'game_over' (坏结局) 或 'graduation' (好结局)
     const endData = ref({})   // 存储后端的总结数据和 LLM 生成的文言文
 
+    // 🌟 新增：标记是否正在执行退出保存流程
+    const isPendingExit = ref(false)
+
     function triggerEndGame(type, data) {
         endType.value = type
         endData.value = data || {}
@@ -176,6 +179,7 @@ export const useGameStore = defineStore('game', () => {
         setPaused,
         restoreCourseMetadataFromStats,
         loadAchievements, 
+        isPendingExit,
 
         eventLogs, 
         clearEventLogs,

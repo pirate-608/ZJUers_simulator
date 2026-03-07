@@ -215,8 +215,8 @@ const quickLogin = async () => {
 
   try {
     const payload = {
-      // 如果没有填用户名，传 null，让后端从 Token 解析
-      username: form.username || null,
+      // 🌟 修复：免试登录时，强制忽略填写的 username，完全信任 Token
+      username: null,
       token: form.token,
       custom_llm_model: form.useCustomLlm ? form.llmModel : null,
       custom_llm_api_key: form.useCustomLlm ? form.llmKey : null

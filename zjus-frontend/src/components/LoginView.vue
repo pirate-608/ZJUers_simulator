@@ -197,21 +197,17 @@ const startExam = async () => {
   } catch (error) {
     console.error("Fetch exam error:", error)
     alert('获取考卷失败，请检查网络！')
-    viewState.value = 'login'
   }
 }
-
+// 2. 提交考卷
 const submitExam = async () => {
   viewState.value = 'loading'
   loadingText.value = '正在由 C 语言判卷系统阅卷中...'
 
   try {
     const formattedAnswers = {}
-    
-    // 🌟 核心修复：遍历时，使用题库中真实的 q.id 作为键！
     examQuestions.value.forEach((q, index) => {
       const ans = examAnswers.value[index] || "";
-      // 提取题目 ID 转为字符串，如果没有 id 兜底使用 index + 1
       const questionId = String(q.id !== undefined ? q.id : index + 1);
       formattedAnswers[questionId] = ans.trim();
     });
@@ -245,10 +241,10 @@ const submitExam = async () => {
     const data = await response.json()
 
     if (data.status === 'success') {
-      saveTokenAndConfig(data.token)
+      // 🌟 修复：同时保存 Token 和真实的玩家姓名
+      saveTokenAndConfig(data.token, form.username.trim())
       store.setPhase('admission') 
     } else {
-      // 分数不够或者填错了
       alert(`❌ 判卷结果：${data.message}`)
       viewState.value = 'login'
     }
@@ -259,13 +255,15 @@ const submitExam = async () => {
   }
 }
 
+// 3. 快速登录
 const quickLogin = async () => {
   viewState.value = 'loading'
   loadingText.value = '正在验证学生凭证...'
 
   try {
     const payload = {
-      username: null,
+      // 🌟 修复：后端 Pydantic 强制要求传入 username(str)，不能传 null
+      username: form.username.trim() || localStorage.getItem('zju_username') || "折大人",
       token: form.token,
       custom_llm_model: form.useCustomLlm ? form.llmModel : null,
       custom_llm_api_key: form.useCustomLlm ? form.llmKey : null
@@ -279,7 +277,8 @@ const quickLogin = async () => {
     const data = await response.json()
 
     if (data.status === 'success') {
-      saveTokenAndConfig(data.token)
+      // 🌟 修复：同时保存 Token 和真实的玩家姓名
+      saveTokenAndConfig(data.token, payload.username)
       store.setPhase('admission')
     } else {
       alert(`登录失败：${data.message}`)
@@ -292,8 +291,11 @@ const quickLogin = async () => {
   }
 }
 
-const saveTokenAndConfig = (token) => {
+// 🌟 修复：增加 username 参数并存入 localStorage
+const saveTokenAndConfig = (token, username) => {
   if (token) localStorage.setItem('zju_token', token)
+  if (username) localStorage.setItem('zju_username', username)
+  
   if (form.useCustomLlm && form.llmKey) {
     sessionStorage.setItem('custom_llm_model', form.llmModel)
     sessionStorage.setItem('custom_llm_key', form.llmKey)

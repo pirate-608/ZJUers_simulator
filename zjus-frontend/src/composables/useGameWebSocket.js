@@ -31,7 +31,6 @@ export function useGameWebSocket() {
             const llmModel = sessionStorage.getItem('custom_llm_model')
             const llmKey = sessionStorage.getItem('custom_llm_key')
             
-            // 🌟 修复：严谨的 Payload 构造，防止向后端发送 null 导致 Pydantic 校验崩溃
             const payload = { token: token }
             if (llmModel && llmModel.trim() !== '') payload.custom_llm_model = llmModel.trim()
             if (llmKey && llmKey.trim() !== '') payload.custom_llm_api_key = llmKey.trim()
@@ -49,9 +48,10 @@ export function useGameWebSocket() {
                     startHeartbeat()
                     gameStore.addLog('系统', '已连接服务器...', 'text-success')
                     
-                    // 🌟 核心修复：主动踢后端引擎一脚，告诉它“我进来了，快把初始数据或者存档给我发过来！”
+                    // 🌟 修复 3A：打出动作组合拳，确保无论是新开局还是断线重连，都能唤醒后端引擎！
                     send({ action: 'start' })
-                    send({ action: 'get_state' }) // 兜底：兼容旧版后端的同步接口
+                    send({ action: 'resume' })
+                    send({ action: 'get_state' })
                     break;
                     
                 case 'auth_error':
@@ -68,13 +68,25 @@ export function useGameWebSocket() {
                     gameStore.semesterTimeLeft = msg.semester_time_left
                     break;
 
+                // 🌟 修复 3B：极端兜底逻辑。如果后端只发 tick 而遗漏了 init，强制打破 loading 卡死状态
                 case 'tick':
+                    if (gameStore.currentPhase !== 'playing') {
+                        gameStore.setPhase('playing')
+                    }
                     gameStore.updateStats(msg.stats)
                     if (msg.courses) gameStore.currentStats.courses = msg.courses
                     if (msg.course_states) gameStore.updateCourseStates(msg.course_states)
                     if (msg.semester_time_left !== undefined) {
                         gameStore.semesterTimeLeft = msg.semester_time_left
                     }
+                    break;
+
+                // 🌟 修复 3C：兼容部分后端返回 state 的情况
+                case 'state':
+                    if (gameStore.currentPhase !== 'playing') {
+                        gameStore.setPhase('playing')
+                    }
+                    if (msg.data) gameStore.updateStats(msg.data)
                     break;
 
                 case 'paused':
@@ -88,29 +100,31 @@ export function useGameWebSocket() {
                     break;
 
                 case 'event':
-                    gameStore.addLog('事件', msg.data.desc, 'text-primary')
+                    // 🌟 修复：防止 msg.data 为 undefined 导致的报错
+                    gameStore.addLog('事件', msg.data?.desc || msg.desc || '发生了未知事件', 'text-primary')
                     break;
 
                 case 'game_over':
+                    // 🌟 修复：安全读取 reason，兼容后端不同的打包格式
                     gameStore.triggerEndGame('game_over', { 
-                        reason: msg.data.reason || '你在求是园中迷失了自我' 
+                        reason: msg.data?.reason || msg.reason || '你在求是园中迷失了自我' 
                     })
                     break;
 
                 case 'semester_summary':
-                    gameStore.showModal('transcript', msg.data)
+                    gameStore.showModal('transcript', msg.data || msg)
                     break;
 
                 case 'random_event':
-                    gameStore.showModal('random_event', msg.data)
+                    gameStore.showModal('random_event', msg.data || msg)
                     break;
                     
                 case 'dingtalk_message':
-                    gameStore.addDingMessage(msg.data)
+                    gameStore.addDingMessage(msg.data || msg)
                     break;
 
                 case 'graduation':
-                    const gradData = msg.data.data || msg.data; 
+                    const gradData = msg.data?.data || msg.data || msg; 
                     const finalStats = gradData.final_stats || {};
                     gameStore.triggerEndGame('graduation', {
                         gpa: parseFloat(finalStats.gpa || 0),

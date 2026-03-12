@@ -28,15 +28,15 @@ export function useGameWebSocket() {
         ws.value = new WebSocket(`${baseUrl}/ws/game`)
 
         ws.value.onopen = () => {
-            // 🌟 修复：从 sessionStorage 提取自定义大模型配置，伴随 Token 一起发给后端引擎
             const llmModel = sessionStorage.getItem('custom_llm_model')
             const llmKey = sessionStorage.getItem('custom_llm_key')
             
-            ws.value.send(JSON.stringify({ 
-                token: token,
-                custom_llm_model: llmModel || null,
-                custom_llm_api_key: llmKey || null
-            }))
+            // 🌟 修复：严谨的 Payload 构造，防止向后端发送 null 导致 Pydantic 校验崩溃
+            const payload = { token: token }
+            if (llmModel && llmModel.trim() !== '') payload.custom_llm_model = llmModel.trim()
+            if (llmKey && llmKey.trim() !== '') payload.custom_llm_api_key = llmKey.trim()
+            
+            ws.value.send(JSON.stringify(payload))
         }
 
         ws.value.onmessage = (event) => {
@@ -48,6 +48,10 @@ export function useGameWebSocket() {
                     reconnectAttempts = 0
                     startHeartbeat()
                     gameStore.addLog('系统', '已连接服务器...', 'text-success')
+                    
+                    // 🌟 核心修复：主动踢后端引擎一脚，告诉它“我进来了，快把初始数据或者存档给我发过来！”
+                    send({ action: 'start' })
+                    send({ action: 'get_state' }) // 兜底：兼容旧版后端的同步接口
                     break;
                     
                 case 'auth_error':
@@ -127,13 +131,10 @@ export function useGameWebSocket() {
 
                 case 'save_result':
                     gameStore.showToast(msg.message, msg.success ? 'success' : 'danger')
-                    
-                    // 🌟 修复：如果当前处于“保存并退出”的等待状态，且保存成功，则执行退出流程
                     if (gameStore.isPendingExit && msg.success) {
                         localStorage.removeItem('zju_token')
                         window.location.reload()
                     } else if (gameStore.isPendingExit && !msg.success) {
-                         // 如果保存失败，解除等待状态，让玩家重试
                          gameStore.isPendingExit = false
                          gameStore.addLog('系统', '保存失败，无法安全退出！', 'text-danger')
                     }

@@ -26,8 +26,6 @@ app.include_router(game.router)
 
 setup_admin(app)
 
-# 挂载静态资源 (确保 static 目录在根目录下)
-app.mount("/static", StaticFiles(directory="static"), name="static")
 # 新增：公开 world 目录为静态资源
 app.mount("/world", StaticFiles(directory="world"), name="world")
 

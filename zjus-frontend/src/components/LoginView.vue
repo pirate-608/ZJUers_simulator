@@ -1,5 +1,7 @@
 <template>
-  <div class="container py-5 vh-100 d-flex justify-content-center align-items-center relative">
+  <!-- 背景淡入淡出层 -->
+  <div class="bg-fade" :style="{ backgroundImage: `url('${bgImages[bgIndex]}')`, opacity: bgOpacity }"></div>
+  <div class="container py-5">
     <div class="col-md-8 col-lg-6 w-100">
       <div class="card shadow-lg border-0 rounded-3">
         <div class="card-header bg-primary text-white text-center py-4">
@@ -51,13 +53,15 @@
           <!-- 状态 2：考试答题界面 -->
           <div v-else-if="viewState === 'exam'">
             <h5 class="text-center mb-4 text-danger fw-bold">请回答以下问题 (及格分: 60)</h5>
+            
             <div v-for="(q, index) in examQuestions" :key="index" class="mb-4">
-              <p class="fw-bold mb-2">{{ index + 1 }}. {{ q.content }}</p>
-              <div v-for="option in q.options" :key="option" class="form-check">
-                <input class="form-check-input" type="radio" :name="'question_'+index" :value="option" v-model="examAnswers[index]">
-                <label class="form-check-label">{{ option }}</label>
-              </div>
+              <!-- 兼容 json 中的 content 字段 -->
+              <label class="form-label fw-bold mb-2">{{ index + 1 }}. {{ q.content || q.question }}</label>
+              <input type="text" class="form-control form-control-lg bg-light" 
+                     v-model="examAnswers[index]" 
+                     placeholder="请输入你的答案...">
             </div>
+            
             <div class="d-flex gap-2 mt-4">
               <button class="btn btn-secondary w-25" @click="viewState = 'login'">返回</button>
               <button class="btn btn-success w-75 fw-bold" :disabled="!allQuestionsAnswered" @click="submitExam">
@@ -76,7 +80,7 @@
       </div>
     </div>
 
-    <!-- 🌟 修复：安全政策确认弹窗 -->
+    <!-- 安全政策确认弹窗 -->
     <div v-if="showLlmWarning" class="modal-backdrop-custom d-flex justify-content-center align-items-center">
       <div class="card shadow-lg border-0 p-4 mx-3" style="max-width: 500px;">
         <h4 class="text-danger fw-bold mb-3">⚠️ 安全政策确认</h4>
@@ -118,19 +122,23 @@ const examAnswers = ref({})
 
 const allQuestionsAnswered = computed(() => {
   if (examQuestions.value.length === 0) return false
-  return Object.keys(examAnswers.value).length === examQuestions.value.length
+  for (let i = 0; i < examQuestions.value.length; i++) {
+    if (!examAnswers.value[i] || examAnswers.value[i].trim() === '') {
+      return false
+    }
+  }
+  return true
 })
 
 // === 弹窗状态管理 ===
 const showLlmWarning = ref(false)
-const pendingAction = ref(null) // 'exam' 或 'quick'
+const pendingAction = ref(null) 
 
 const handleAction = (actionType) => {
   if (form.useCustomLlm && form.llmKey.trim() !== '') {
     pendingAction.value = actionType
-    showLlmWarning.value = true // 拦截并展示弹窗
+    showLlmWarning.value = true 
   } else {
-    // 没填密钥则直接放行
     executeAction(actionType)
   }
 }
@@ -150,42 +158,72 @@ const executeAction = (actionType) => {
   else if (actionType === 'quick') quickLogin()
 }
 
+const bgImages = [
+  '../../public/world/images/qiushimen.webp',
+  '../../public/world/images/zjg_night.jpeg',
+  '../../public/world/images/zjg_autumn.jpg',
+  '../../public/world/images/qizhen_lake.jpg',
+]
+const bgIndex = ref(0)
+const bgOpacity = ref(1)
+
+const fadeDuration = 800 // ms
+const switchBg = () => {
+  bgOpacity.value = 0
+  setTimeout(() => {
+    bgIndex.value = (bgIndex.value + 1) % bgImages.length
+    bgOpacity.value = 1
+  }, fadeDuration)
+}
+// 初始设置
+setTimeout(() => switchBg(), 10000)
+setInterval(switchBg, 10000)
+
 // ----------------- API 交互逻辑 -----------------
 
-// 1. 获取考题 (修复 API 路径和方法)
 const startExam = async () => {
   viewState.value = 'loading'
   loadingText.value = '正在为您生成专属考卷...'
   
   try {
-    const response = await fetch('/api/exam/generate', { 
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username: form.username })
-    })
-    const data = await response.json()
+    const response = await fetch('/api/exam/questions', { method: 'GET' })
+    if (!response.ok) throw new Error('网络响应异常')
     
-    examQuestions.value = data.questions || []
+    const data = await response.json()
+    examQuestions.value = data.questions || data || []
     examAnswers.value = {}
     viewState.value = 'exam'
 
   } catch (error) {
+    console.error("Fetch exam error:", error)
     alert('获取考卷失败，请检查网络！')
     viewState.value = 'login'
   }
 }
 
-// 2. 提交考卷
 const submitExam = async () => {
   viewState.value = 'loading'
   loadingText.value = '正在由 C 语言判卷系统阅卷中...'
 
   try {
+    const formattedAnswers = {}
+    
+    // 🌟 核心修复：遍历时，使用题库中真实的 q.id 作为键！
+    examQuestions.value.forEach((q, index) => {
+      const ans = examAnswers.value[index] || "";
+      // 提取题目 ID 转为字符串，如果没有 id 兜底使用 index + 1
+      const questionId = String(q.id !== undefined ? q.id : index + 1);
+      formattedAnswers[questionId] = ans.trim();
+    });
+
     const payload = { 
-      username: form.username,
-      answers: examAnswers.value,
-      custom_llm_model: form.useCustomLlm ? form.llmModel : null,
-      custom_llm_api_key: form.useCustomLlm ? form.llmKey : null
+      username: form.username.trim(),
+      answers: formattedAnswers
+    }
+
+    if (form.useCustomLlm) {
+      if (form.llmModel) payload.custom_llm_model = form.llmModel.trim();
+      if (form.llmKey) payload.custom_llm_api_key = form.llmKey.trim();
     }
 
     const response = await fetch('/api/exam/submit', {
@@ -193,29 +231,40 @@ const submitExam = async () => {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)
     })
+
+    if (response.status === 422) {
+      const errData = await response.json();
+      console.error("422 Error:", errData.detail);
+      alert('参数校验失败，请检查输入格式！');
+      viewState.value = 'login';
+      return;
+    }
+
+    if (!response.ok) throw new Error(`HTTP 异常: ${response.status}`);
+
     const data = await response.json()
 
     if (data.status === 'success') {
       saveTokenAndConfig(data.token)
       store.setPhase('admission') 
     } else {
+      // 分数不够或者填错了
       alert(`❌ 判卷结果：${data.message}`)
       viewState.value = 'login'
     }
   } catch (error) {
+    console.error("Submit Exception:", error);
     alert('判卷请求失败，请联系管理员！')
     viewState.value = 'login'
   }
 }
 
-// 3. 快速登录
 const quickLogin = async () => {
   viewState.value = 'loading'
   loadingText.value = '正在验证学生凭证...'
 
   try {
     const payload = {
-      // 🌟 修复：免试登录时，强制忽略填写的 username，完全信任 Token
       username: null,
       token: form.token,
       custom_llm_model: form.useCustomLlm ? form.llmModel : null,
@@ -245,7 +294,6 @@ const quickLogin = async () => {
 
 const saveTokenAndConfig = (token) => {
   if (token) localStorage.setItem('zju_token', token)
-  
   if (form.useCustomLlm && form.llmKey) {
     sessionStorage.setItem('custom_llm_model', form.llmModel)
     sessionStorage.setItem('custom_llm_key', form.llmKey)
@@ -261,4 +309,15 @@ const saveTokenAndConfig = (token) => {
   position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
   background-color: rgba(0, 0, 0, 0.65); z-index: 9999; backdrop-filter: blur(3px);
 }
+/* 背景淡入淡出层 */
+.bg-fade {
+  position: fixed;
+  top: 0; left: 0; width: 100vw; height: 100vh;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  z-index: -1;
+  transition: opacity 0.8s;
+}
 </style>
+

@@ -69,7 +69,7 @@ async def submit_exam(
         return {
             "status": "failed",
             "score": result["total_score"],
-            "message": "分数未达标，遗憾离场。",
+            "message": "分数未达标，遗憾离场😭。",
         }
 
     # 2. 判卷通过，检查用户是否已存在

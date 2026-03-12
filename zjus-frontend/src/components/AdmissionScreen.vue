@@ -202,6 +202,13 @@ onMounted(async () => {
         info.value.major = assignedMajor
       }
     } else {
+      // 🌟 修复：检查是否是因为数据库重置导致的凭证彻底失效
+      if (response.status === 401 || response.status === 404) {
+        alert("登录凭证已过期或失效（服务器可能已重置数据库），请重新参加入学考试！")
+        localStorage.removeItem('zju_token')
+        store.setPhase('login')
+        return
+      }
       console.warn(`专业分配接口请求失败 (${response.status})，触发降级保护`)
     }
   } catch (err) {
@@ -215,6 +222,7 @@ const enterGame = () => {
   emit('enter-game', playerToken.value)
 }
 </script>
+
 
 <style scoped>
 /* 引入传统衬线字体 */

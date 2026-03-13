@@ -867,25 +867,8 @@ class GameEngine:
                 return int(duration_seconds)
             return 360
     def _build_initial_stats(self, username: str) -> dict:
-        return {
-            "username": username,
-            "major": "",
-            "major_abbr": "",
-            "semester": "大一秋冬",
-            "semester_idx": 1,
-            "semester_start_time": int(time.time()),
-            "energy": 100,
-            "sanity": 80,
-            "stress": 0,
-            "iq": 0,
-            "eq": random.randint(60, 90),
-            "luck": random.randint(0, 100),
-            "gpa": "0.0",
-            "highest_gpa": "0.0",
-            "reputation": 0,
-            "course_plan_json": "",
-            "course_info_json": "",
-        }
+        from app.schemas.game_state import PlayerStats
+        return PlayerStats.build_initial(username=username).model_dump()
 
     async def _check_cooldown(self, action_type: str) -> int:
         last_use = await self.repo.get_cooldown_timestamp(action_type)

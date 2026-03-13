@@ -64,6 +64,51 @@ class PlayerStats(BaseModel):
             course_info_json=_to_str(raw.get("course_info_json"), ""),
         )
 
+    @classmethod
+    def build_initial(cls, username: str = "", **overrides) -> "PlayerStats":
+        """全局唯一的玩家初始状态工厂方法（Single Source of Truth）"""
+        import random as _random
+        import time as _time
+
+        defaults = cls(
+            username=username,
+            major="",
+            major_abbr="",
+            semester="大一秋冬",
+            semester_idx=1,
+            semester_start_time=int(_time.time()),
+            energy=100,
+            sanity=80,
+            stress=0,
+            iq=0,
+            eq=_random.randint(60, 90),
+            luck=_random.randint(0, 100),
+            gpa="0.0",
+            highest_gpa="0.0",
+            reputation=0,
+            course_plan_json="",
+            course_info_json="",
+        )
+        if overrides:
+            defaults = defaults.model_copy(update=overrides)
+        return defaults
+
+    def get_repair_fields(self) -> Dict[str, Any]:
+        """返回需要修复的字段字典（用于补全缺失/异常数据）"""
+        import random as _random
+        import time as _time
+
+        repairs: Dict[str, Any] = {}
+        if not self.semester:
+            repairs["semester"] = "大一秋冬"
+        if not self.semester_idx or self.semester_idx <= 0:
+            repairs["semester_idx"] = 1
+        if not self.semester_start_time:
+            repairs["semester_start_time"] = int(_time.time())
+        if not self.iq or self.iq <= 0:
+            repairs["iq"] = _random.randint(80, 100)
+        return repairs
+
 
 class GameStateSnapshot(BaseModel):
     stats: PlayerStats

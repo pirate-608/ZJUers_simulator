@@ -6,6 +6,7 @@ import time
 from typing import Dict, Any, Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.repositories.redis_repo import RedisRepository
+from app.schemas.game_state import PlayerStats
 from app.services.save_service import SaveService
 from app.services.world_service import WorldService
 
@@ -212,41 +213,12 @@ class GameService:
         }
 
     async def _ensure_base_fields(self, stats: Dict[str, Any], username: str):
-        repair_fields = {}
+        ps = PlayerStats.from_redis(stats)
+        repair_fields = ps.get_repair_fields()
         if not stats.get("username"):
             repair_fields["username"] = username
-        if not stats.get("semester"):
-            repair_fields["semester"] = "大一秋冬"
-        if not stats.get("semester_idx"):
-            repair_fields["semester_idx"] = 1
-        if not stats.get("semester_start_time"):
-            repair_fields["semester_start_time"] = int(time.time())
-        try:
-            current_iq = int(stats.get("iq"))
-        except (TypeError, ValueError):
-            current_iq = None
-        if not current_iq or current_iq <= 0:
-            repair_fields["iq"] = random.randint(80, 100)
         if repair_fields:
             await self.repo.update_courses_and_states(stats_update=repair_fields)
 
     def _build_initial_stats(self, username: str) -> Dict[str, Any]:
-        return {
-            "username": username,
-            "major": "",
-            "major_abbr": "",
-            "semester": "大一秋冬",
-            "semester_idx": 1,
-            "elapsed_game_time": 0,
-            "energy": 100,
-            "sanity": 80,
-            "stress": 0,
-            "iq": 0,
-            "eq": random.randint(60, 90),
-            "luck": random.randint(0, 100),
-            "gpa": "0.0",
-            "highest_gpa": "0.0",
-            "reputation": 0,
-            "course_plan_json": "",
-            "course_info_json": "",
-        }
+        return PlayerStats.build_initial(username=username).model_dump()

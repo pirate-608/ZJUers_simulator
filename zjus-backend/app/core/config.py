@@ -46,6 +46,13 @@ class Settings(BaseSettings):
     # 环境标识：production / development
     ENVIRONMENT: str = os.environ.get("ENVIRONMENT", "development")
 
+    # MiniMax M2-her 配置（钉钉消息 RP 生成）
+    MINIMAX_API_KEY: str = os.environ.get("MINIMAX_API_KEY", "")
+    MINIMAX_BASE_URL: str = os.environ.get(
+        "MINIMAX_BASE_URL",
+        "https://api.minimaxi.com/v1/text/chatcompletion_v2",
+    )
+
     class Config:
         env_file = ".env"
 

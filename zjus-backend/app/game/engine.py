@@ -699,7 +699,7 @@ class GameEngine:
         await self._push_update(f"事件：{desc}")
 
     async def _trigger_dingtalk_message(self):
-        """触发钉钉消息推送"""
+        """触发钉钉消息推送（优先使用 M2-her RP 模型）"""
         # 再次检查游戏是否暂停
         if not self.is_running:
             return
@@ -721,9 +721,19 @@ class GameEngine:
             elif gpa > 0 and gpa < 2.0:
                 context = "low_gpa"
 
-            msg_data = await generate_dingtalk_message(
-                stats, context, llm_override=self.llm_override
-            )
+            # 优先使用 M2-her RP 模型
+            msg_data = None
+            try:
+                from app.core.dingtalk_llm import generate_dingtalk_via_m2her
+                msg_data = await generate_dingtalk_via_m2her(stats, context)
+            except Exception as e:
+                logger.warning(f"M2-her dingtalk fallback: {e}")
+
+            # Fallback 到旧接口
+            if not msg_data:
+                msg_data = await generate_dingtalk_message(
+                    stats, context, llm_override=self.llm_override
+                )
 
             if msg_data:
                 await self.emit(

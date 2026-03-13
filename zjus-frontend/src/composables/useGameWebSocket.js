@@ -47,8 +47,6 @@ export function useGameWebSocket() {
                     reconnectAttempts = 0
                     startHeartbeat()
                     gameStore.addLog('系统', '已连接服务器...', 'text-success')
-                    
-                    // 🌟 修复 3A：打出动作组合拳，确保无论是新开局还是断线重连，都能唤醒后端引擎！
                     send({ action: 'start' })
                     send({ action: 'resume' })
                     send({ action: 'get_state' })
@@ -61,32 +59,42 @@ export function useGameWebSocket() {
                 case 'init':
                     gameStore.setPhase('playing')
                     gameStore.userInfo = msg.data
+                    // 1. 设置静态元数据
                     if (msg.data.course_info_json) {
                         gameStore.setCourseMetadata(JSON.parse(msg.data.course_info_json))
                     }
+                    // 2. 更新基础属性
                     gameStore.updateStats(msg.data)
+                    // 3. 如果 init 阶段也带了实时课程状态，更新它
+                    if (msg.data.courses) {
+                         gameStore.updateCourseStates(msg.data.courses)
+                    }
                     gameStore.semesterTimeLeft = msg.semester_time_left
                     break;
 
-                // 🌟 修复 3B：极端兜底逻辑。如果后端只发 tick 而遗漏了 init，强制打破 loading 卡死状态
                 case 'tick':
                     if (gameStore.currentPhase !== 'playing') {
                         gameStore.setPhase('playing')
                     }
+                    // 1. 更新基础属性 (iq, eq, energy, sanity)
                     gameStore.updateStats(msg.stats)
-                    if (msg.courses) gameStore.currentStats.courses = msg.courses
+                    // 2. 🌟 修复：专门更新课程实时状态
+                    if (msg.courses) gameStore.updateCourseStates(msg.courses)
                     if (msg.course_states) gameStore.updateCourseStates(msg.course_states)
+                    
                     if (msg.semester_time_left !== undefined) {
                         gameStore.semesterTimeLeft = msg.semester_time_left
                     }
                     break;
 
-                // 🌟 修复 3C：兼容部分后端返回 state 的情况
                 case 'state':
                     if (gameStore.currentPhase !== 'playing') {
                         gameStore.setPhase('playing')
                     }
-                    if (msg.data) gameStore.updateStats(msg.data)
+                    if (msg.data) {
+                        gameStore.updateStats(msg.data)
+                        if (msg.data.courses) gameStore.updateCourseStates(msg.data.courses)
+                    }
                     break;
 
                 case 'paused':
@@ -100,12 +108,10 @@ export function useGameWebSocket() {
                     break;
 
                 case 'event':
-                    // 🌟 修复：防止 msg.data 为 undefined 导致的报错
                     gameStore.addLog('事件', msg.data?.desc || msg.desc || '发生了未知事件', 'text-primary')
                     break;
 
                 case 'game_over':
-                    // 🌟 修复：安全读取 reason，兼容后端不同的打包格式
                     gameStore.triggerEndGame('game_over', { 
                         reason: msg.data?.reason || msg.reason || '你在求是园中迷失了自我' 
                     })
@@ -140,11 +146,11 @@ export function useGameWebSocket() {
                     gameStore.setCourseMetadata([])
                     gameStore.updateCourseStates({})
                     gameStore.eventLogs = [] 
-                    gameStore.addLog('系统', `=== 欢迎来到 ${msg.data.semester_name} ===`, 'text-success fw-bold')
+                    gameStore.addLog('系统', `=== 欢迎来到 ${msg.data?.semester_name || msg.semester_name || '新学期'} ===`, 'text-success fw-bold')
                     break;
 
                 case 'save_result':
-                    gameStore.showToast(msg.message, msg.success ? 'success' : 'danger')
+                    gameStore.showToast && gameStore.showToast(msg.message, msg.success ? 'success' : 'danger')
                     if (gameStore.isPendingExit && msg.success) {
                         localStorage.removeItem('zju_token')
                         window.location.reload()

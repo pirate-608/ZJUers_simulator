@@ -1,0 +1,42 @@
+# .github/workflows/mirror-to-gitee.yml
+name: Mirror to Gitee  # Action 名称，可自定义
+
+on:  # 触发条件：main/master 分支有 push/merge 操作时执行
+  push:
+    branches: [ "main", "master" ]
+  # 可选：手动触发（在 GitHub Actions 面板点击「Run workflow」）
+  workflow_dispatch:
+
+jobs:
+  mirror-to-gitee:
+    runs-on: ubuntu-latest  # 运行环境（推荐 Ubuntu）
+
+    steps:
+      # 步骤1：检出 GitHub 仓库代码
+      - name: Checkout GitHub repo
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # 拉取所有历史提交（必须，否则无法完整推送）
+
+      # 步骤2：配置 Git 身份（避免推送时身份认证失败）
+      - name: Configure Git identity
+        run: |
+          git config --global user.name "GitHub Actions"
+          git config --global user.email "actions@github.com"
+
+      # 步骤3：添加 Gitee 镜像仓库为远程仓库
+      - name: Add Gitee remote repo
+        run: |
+          git remote add gitee https://${{ secrets.GITEE_USERNAME }}:${{ secrets.GITEE_TOKEN }}@gitee.com/${{ secrets.GITEE_USERNAME }}/你的仓库名.git
+
+      # 步骤4：推送代码到 Gitee 镜像仓库（强制推送，确保同步）
+      - name: Push to Gitee
+        run: |
+          # 推送所有分支 + 所有标签（可选：仅推送当前分支则用 git push gitee HEAD:main）
+          git push --force --tags gitee 'refs/heads/*:refs/heads/*'
+          
+          # 异常处理：推送失败时重试1次（可选，提升稳定性）
+          if [ $? -ne 0 ]; then
+            echo "第一次推送失败，重试..."
+            git push --force --tags gitee 'refs/heads/*:refs/heads/*'
+          fi

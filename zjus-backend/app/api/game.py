@@ -134,10 +134,13 @@ async def websocket_endpoint(websocket: WebSocket):
     llm_override = None
     custom_model = (auth_data.get("custom_llm_model") or "").strip()
     custom_key = (auth_data.get("custom_llm_api_key") or "").strip()
+    custom_provider = (auth_data.get("custom_llm_provider") or "").strip()
+    
     if custom_model or custom_key:
         llm_override = {
             "model": custom_model or None,
             "api_key": custom_key or None,
+            "provider": custom_provider or None,
         }
 
     async with AsyncSessionLocal() as db:

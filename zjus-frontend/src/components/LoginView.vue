@@ -23,16 +23,31 @@
               <input v-model="form.token" type="text" class="form-control" placeholder="如有请粘贴，否则留空">
             </div>
 
-            <!-- 自定义 LLM 配置区 -->
-            <div class="form-check form-switch mb-2">
-              <input v-model="form.useCustomLlm" class="form-check-input" type="checkbox" id="llm-toggle">
-              <label class="form-check-label" for="llm-toggle">使用自定义大模型（可选）</label>
+            <div class="d-flex justify-content-between align-items-center mb-2">
+              <div class="form-check form-switch">
+                <input v-model="form.useCustomLlm" class="form-check-input" type="checkbox" id="llm-toggle">
+                <label class="form-check-label" for="llm-toggle">使用自定义大模型（可选）</label>
+              </div>
+              <a href="https://docs.67656.fun/user/models" target="_blank" class="text-decoration-none small text-primary">
+                <i class="bi bi-info-circle"></i> 关于模型配置
+              </a>
             </div>
             
             <div v-if="form.useCustomLlm" class="card card-body border border-info bg-light mb-3">
               <div class="mb-2">
+                <label class="form-label small fw-bold">服务商</label>
+                <select v-model="form.llmProvider" class="form-select form-select-sm">
+                  <option value="openai">OpenAI (默认)</option>
+                  <option value="deepseek">DeepSeek</option>
+                  <option value="qwen">阿里通义千问 (Qwen)</option>
+                  <option value="glm">智谱清言 (GLM)</option>
+                  <option value="moonshot">月之暗面 (Kimi)</option>
+                  <option value="minimax">MiniMax</option>
+                </select>
+              </div>
+              <div class="mb-2">
                 <label class="form-label small fw-bold">模型代号</label>
-                <input v-model="form.llmModel" type="text" class="form-control form-control-sm" placeholder="如: gpt-4o-mini">
+                <input v-model="form.llmModel" type="text" class="form-control form-control-sm" placeholder="如: gpt-4o-mini 或 deepseek-chat">
               </div>
               <div class="mb-2">
                 <label class="form-label small fw-bold">API Key</label>
@@ -89,6 +104,7 @@
           <li>你的 API Key 仅在当前浏览器内存和本次后端的临时会话中使用。</li>
           <li>游戏绝不会将你的密钥持久化存储到数据库。</li>
           <li>关闭浏览器后配置即失效，游戏可能面临模型回退。</li>
+          <li>阅读<a href="https://docs.67656.fun/user/models/#security-notice">安全须知</a></li>
         </ul>
         <div class="d-flex justify-content-end gap-2 mt-4">
           <button class="btn btn-secondary" @click="cancelLlmAction">返回修改</button>
@@ -113,6 +129,7 @@ const form = reactive({
   username: '',
   token: '',
   useCustomLlm: false,
+  llmProvider: 'openai',
   llmModel: '',
   llmKey: ''
 })
@@ -218,6 +235,7 @@ const submitExam = async () => {
     }
 
     if (form.useCustomLlm) {
+      if (form.llmProvider) payload.custom_llm_provider = form.llmProvider;
       if (form.llmModel) payload.custom_llm_model = form.llmModel.trim();
       if (form.llmKey) payload.custom_llm_api_key = form.llmKey.trim();
     }
@@ -265,6 +283,7 @@ const quickLogin = async () => {
       // 🌟 修复：后端 Pydantic 强制要求传入 username(str)，不能传 null
       username: form.username.trim() || localStorage.getItem('zju_username') || "折大人",
       token: form.token,
+      custom_llm_provider: form.useCustomLlm ? form.llmProvider : null,
       custom_llm_model: form.useCustomLlm ? form.llmModel : null,
       custom_llm_api_key: form.useCustomLlm ? form.llmKey : null
     }
@@ -297,9 +316,11 @@ const saveTokenAndConfig = (token, username) => {
   if (username) localStorage.setItem('zju_username', username)
   
   if (form.useCustomLlm && form.llmKey) {
+    sessionStorage.setItem('custom_llm_provider', form.llmProvider)
     sessionStorage.setItem('custom_llm_model', form.llmModel)
     sessionStorage.setItem('custom_llm_key', form.llmKey)
   } else {
+    sessionStorage.removeItem('custom_llm_provider')
     sessionStorage.removeItem('custom_llm_model')
     sessionStorage.removeItem('custom_llm_key')
   }

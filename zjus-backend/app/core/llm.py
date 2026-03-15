@@ -5,11 +5,26 @@ from openai import AsyncOpenAI
 from app.api.cache import RedisCache
 
 
+PROVIDER_BASE_URLS = {
+    "openai": "https://api.openai.com/v1",
+    "deepseek": "https://api.deepseek.com",
+    "qwen": "https://dashscope.aliyuncs.com/compatible-mode/v1",
+    "glm": "https://open.bigmodel.cn/api/paas/v4",
+    "moonshot": "https://api.moonshot.cn/v1",
+    "minimax": "https://api.minimax.chat/v1",
+}
+
 def _resolve_llm_config(llm_override: Optional[Dict] = None):
     """根据用户配置或环境变量确定 LLM 配置"""
     model = (llm_override or {}).get("model") or os.getenv("LLM")
     api_key = (llm_override or {}).get("api_key") or os.getenv("LLM_API_KEY")
-    base_url = os.getenv("LLM_BASE_URL")
+    
+    provider = (llm_override or {}).get("provider")
+    if provider and provider in PROVIDER_BASE_URLS:
+        base_url = PROVIDER_BASE_URLS[provider]
+    else:
+        base_url = os.getenv("LLM_BASE_URL")
+        
     return api_key, base_url, model
 
 

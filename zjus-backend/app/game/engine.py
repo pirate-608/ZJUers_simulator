@@ -721,13 +721,14 @@ class GameEngine:
             elif gpa > 0 and gpa < 2.0:
                 context = "low_gpa"
 
-            # 优先使用 M2-her RP 模型
+            # 优先使用 M2-her RP 模型（若用户配置了自定义模型，则跳过直接走 fallback）
             msg_data = None
-            try:
-                from app.core.dingtalk_llm import generate_dingtalk_via_m2her
-                msg_data = await generate_dingtalk_via_m2her(stats, context)
-            except Exception as e:
-                logger.warning(f"M2-her dingtalk fallback: {e}")
+            if not self.llm_override:
+                try:
+                    from app.core.dingtalk_llm import generate_dingtalk_via_m2her
+                    msg_data = await generate_dingtalk_via_m2her(stats, context)
+                except Exception as e:
+                    logger.warning(f"M2-her dingtalk fallback: {e}")
 
             # Fallback 到旧接口
             if not msg_data:

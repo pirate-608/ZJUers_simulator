@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from fastapi import Request
 from app.core.config import settings
+from app.core.logging_config import setup_logging
 import logging
 from starlette.middleware.sessions import SessionMiddleware
 from app.core.database import engine, Base
@@ -13,6 +14,8 @@ from app.game.state import RedisState
 from app.admin import setup_admin
 from app.websockets.manager import manager
 
+# 初始化结构化日志（必须在使用 logger 前调用）
+setup_logging(environment=settings.ENVIRONMENT)
 
 logger = logging.getLogger(__name__)
 

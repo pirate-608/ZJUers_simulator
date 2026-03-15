@@ -28,10 +28,12 @@ export function useGameWebSocket() {
         ws.value = new WebSocket(`${baseUrl}/ws/game`)
 
         ws.value.onopen = () => {
+            const llmProvider = sessionStorage.getItem('custom_llm_provider')
             const llmModel = sessionStorage.getItem('custom_llm_model')
             const llmKey = sessionStorage.getItem('custom_llm_key')
             
             const payload = { token: token }
+            if (llmProvider) payload.custom_llm_provider = llmProvider
             if (llmModel && llmModel.trim() !== '') payload.custom_llm_model = llmModel.trim()
             if (llmKey && llmKey.trim() !== '') payload.custom_llm_api_key = llmKey.trim()
             

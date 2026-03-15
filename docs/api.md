@@ -22,6 +22,7 @@
     "username": "用户昵称",
     "answers": {"1": "A", "2": "B"},
     "token": "可选，老用户凭证",
+    "custom_llm_provider": "可选，自定义模型提供商(如 openai, deepseek 等)",
     "custom_llm_model": "可选，会话级自定义模型",
     "custom_llm_api_key": "可选，会话级自定义 API Key"
   }
@@ -36,7 +37,7 @@
 - 作用：老用户免试登录，验证用户名 + 凭证。
 - 请求体：
   ```json
-  {"username": "用户昵称", "token": "老用户凭证", "custom_llm_model": "可选", "custom_llm_api_key": "可选"}
+  {"username": "用户昵称", "token": "老用户凭证", "custom_llm_provider": "可选", "custom_llm_model": "可选", "custom_llm_api_key": "可选"}
   ```
 - 响应：
   ```json
@@ -72,6 +73,7 @@
   ```json
   {
     "token": "<JWT>",
+    "custom_llm_provider": "可选，自定义模型提供商",
     "custom_llm_model": "可选，会话级自定义模型",
     "custom_llm_api_key": "可选，会话级自定义 Key"
   }
@@ -115,5 +117,6 @@
 - 黑名单/限制用户会在各入口被拒绝。
 
 ## 会话级自定义 LLM
-- 前端可在登录页提供 `custom_llm_model` / `custom_llm_api_key`，仅在当次会话传递，不落库。
-- WS 首条消息携带后，后端在本连接中使用该配置，若无效则回退默认环境配置。
+- 前端可在登录页/免试登录/WebSocket 建联时提供 `custom_llm_provider` / `custom_llm_model` / `custom_llm_api_key`。
+- 这些配置仅在当次会话传递，存于前端内存与后端临时 `llm_override` 字典中，不落库。
+- 后端会自动根据 `custom_llm_provider` 映射到真实的 `LLM_BASE_URL`。若无效或 API 调用失败，通常会记录警告并可能导致游戏体验降级。

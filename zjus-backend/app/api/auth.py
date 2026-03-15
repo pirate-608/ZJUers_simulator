@@ -29,6 +29,7 @@ class ExamSubmission(BaseModel):
     token: str = None  # 可选，老用户重新考试时携带
     custom_llm_model: Optional[str] = None
     custom_llm_api_key: Optional[str] = None
+    custom_llm_provider: Optional[str] = None
 
 
 class ExamResponse(BaseModel):
@@ -206,6 +207,7 @@ class QuickLoginRequest(BaseModel):
     token: str = None  # 可选，提供则验证凭证
     custom_llm_model: Optional[str] = None
     custom_llm_api_key: Optional[str] = None
+    custom_llm_provider: Optional[str] = None
 
 
 # POST /exam/quick_login

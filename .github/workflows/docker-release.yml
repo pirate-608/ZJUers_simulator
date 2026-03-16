@@ -1,128 +1,54 @@
-name: Build and Release Docker Images
+name: Build and Publish Docker Image
 
 on:
   push:
+    branches:
+      - main
     tags:
-      - 'v*'
-  release:
-    types: [published]
-  workflow_dispatch:
+      - 'v*.*.*'
+  workflow_dispatch: # 允许手动触发
 
 env:
-  REGISTRY: ghcr.io
-  # 统一镜像命名，显式指定小写名称，避免 ghcr 大小写限制问题
-  IMAGE_NAME: ghcr.io/${{ github.repository_owner }}/zjuers-simulator
+  # 替换为你自己的 Docker Hub 用户名
+  DOCKER_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+  IMAGE_NAME: zjus-backend
 
 jobs:
   build-and-push:
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: write
-    
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-        
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
-        
-      - name: Log in to Container Registry
+
+      - name: Log in to Docker Hub
         uses: docker/login-action@v3
         with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-          
-      - name: Extract metadata
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Extract metadata (tags, labels) for Docker
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ env.IMAGE_NAME }}
+          images: ${{ env.DOCKER_USERNAME }}/${{ env.IMAGE_NAME }}
           tags: |
-            type=ref,event=branch
-            type=ref,event=pr
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
             type=raw,value=latest,enable={{is_default_branch}}
-            
+            type=ref,event=tag
+            type=sha,format=short
+
       - name: Build and push Docker image
         uses: docker/build-push-action@v5
         with:
-          context: .
-          file: ./Dockerfile
+          context: ./zjus-backend
+          file: ./zjus-backend/Dockerfile
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
-          
-  create-release-package:
-    needs: build-and-push
-    runs-on: ubuntu-latest
-    if: startsWith(github.ref, 'refs/tags/')
-    permissions:
-      contents: write
-    
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-        
-      - name: Create release package
-        env:
-          PKG_NAME: zjuers-simulator-${{ github.ref_name }}
-        run: |
-          set -e
-          mkdir -p "${PKG_NAME}"
-
-          # 必需资源
-          cp docker-compose.yml Dockerfile requirements.txt README.md LICENSE "${PKG_NAME}/"
-          cp -r app static templates world nginx "${PKG_NAME}/"
-
-          # 可选资源
-          [ -f README.myself.md ] && cp README.myself.md "${PKG_NAME}/"
-          if [ -d docs ]; then
-            mkdir -p "${PKG_NAME}/docs"
-            cp docs/*.md "${PKG_NAME}/docs/" || true
-          fi
-          if [ -d scripts ]; then
-            mkdir -p "${PKG_NAME}/scripts"
-            # 允许 scripts 为空；使用 scripts/. 避免空目录时报错
-            cp -a scripts/. "${PKG_NAME}/scripts/" || true
-          fi
-
-          zip -r "${PKG_NAME}.zip" "${PKG_NAME}"
-          tar -czf "${PKG_NAME}.tar.gz" "${PKG_NAME}"
-          ls -lh "${PKG_NAME}.zip" "${PKG_NAME}.tar.gz"
-          
-      - name: Upload Release Assets
-        uses: softprops/action-gh-release@v1
-        with:
-          files: |
-            zjuers-simulator-*.zip
-            zjuers-simulator-*.tar.gz
-          body: |
-            ## ZJUers Simulator ${{ github.ref_name }}
-            
-            ### 🚀 快速开始
-            1) 下载并解压发布包
-            2) 准备环境变量（至少 SECRET_KEY、POSTGRES_PASSWORD、LLM_API_KEY/LLM_BASE_URL 如使用 LLM）
-            3) 运行：`docker-compose up -d --build`
-            4) 浏览器访问 http://localhost:8000
-            
-            ### 📦 预构建镜像
-            ```bash
-            docker pull ${{ env.IMAGE_NAME }}:${{ github.ref_name }}
-            ```
-            
-            ### 🔧 系统要求
-            - Docker 20.10+
-            - 可用内存 2GB+
-            - 可用磁盘空间 1GB+
-            
-            ### 📖 参考文档
-            - README.md（部署与开发指南）
-            - docs/*.md（架构说明与存档系统指南）
-            
-            ### 🤝 贡献与反馈
-            欢迎提交 Issue 和 Pull Request！

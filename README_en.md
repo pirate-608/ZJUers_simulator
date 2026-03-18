@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="https://docs.67656.fun/assets/images/logo.svg" alt="Game Logo" width="120" />
+  <img src="https://zjusim-docs.67656.fun/assets/images/logo.svg" alt="Game Logo" width="120" />
   <h1>ZJUers Simulator</h1>
   <p><strong>I've placed 67,656 stars here, hoping every ZJUer can find their own.</strong></p>
 </div>

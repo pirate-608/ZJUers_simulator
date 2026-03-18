@@ -43,6 +43,10 @@ shortuuid>=1.0.11
 # 模板引擎 (用于渲染 HTML 页面)
 jinja2>=3.1.2
 itsdangerous>=2.1.2
+# 测试框架
+pytest>=9.0.2
+pytest-asyncio>=1.3.0
+ruff>=0.15.6
 
 # --- 管理后台 ---
 sqladmin>=0.16.0

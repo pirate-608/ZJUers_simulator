@@ -4,6 +4,9 @@ set -euo pipefail
 # Update UFW to allow HTTP/HTTPS only from current Cloudflare IP ranges (IPv4 + IPv6).
 # Idempotent: skips rules that already exist. Does not delete old rules.
 
+# 注意，这个脚本用于在服务器上定期更新ufw防火墙规则，以允许来自Cloudflare的HTTP/HTTPS流量。
+# 如无必要，不要在开发环境编辑或运行该文件。当前版本仅支持ufw，如需支持其他防火墙，请修改该脚本。
+
 CF_V4_URL="https://www.cloudflare.com/ips-v4"
 CF_V6_URL="https://www.cloudflare.com/ips-v6"
 PORTS=(80 443)

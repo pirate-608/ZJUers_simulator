@@ -1,17 +1,22 @@
 <template>
-  <div class="hud-container d-flex justify-content-between align-items-center p-3 bg-white border rounded shadow-sm mb-3" id="hud-bars">
-    
+  <div
+    id="hud-bars"
+    class="hud-container d-flex justify-content-between align-items-center p-3 bg-white border rounded shadow-sm mb-3"
+  >
     <div class="d-flex gap-4 flex-grow-1 me-4">
-      
       <div class="stat-item flex-grow-1">
         <div class="d-flex justify-content-between small mb-1 fw-bold">
           <span>⚡ 精力</span>
           <span>{{ Math.floor(safeNumber(stats.energy, 100)) }} / 100</span>
         </div>
-        <div class="progress" style="height: 12px;">
-          <div class="progress-bar bg-warning progress-bar-striped progress-bar-animated" 
-               :style="{ width: `${Math.min(100, Math.max(0, safeNumber(stats.energy, 100)))}%` }">
-          </div>
+        <div
+          class="progress"
+          style="height: 12px;"
+        >
+          <div
+            class="progress-bar bg-warning progress-bar-striped progress-bar-animated" 
+            :style="{ width: `${Math.min(100, Math.max(0, safeNumber(stats.energy, 100)))}%` }"
+          />
         </div>
       </div>
 
@@ -20,33 +25,42 @@
           <span>💖 心态</span>
           <span>{{ Math.floor(safeNumber(stats.sanity, 100)) }} / 100</span>
         </div>
-        <div class="progress" style="height: 12px;">
-          <div class="progress-bar progress-bar-striped progress-bar-animated" 
-               :class="sanityColorClass"
-               :style="{ width: `${Math.min(100, Math.max(0, safeNumber(stats.sanity, 100)))}%` }">
-          </div>
+        <div
+          class="progress"
+          style="height: 12px;"
+        >
+          <div
+            class="progress-bar progress-bar-striped progress-bar-animated" 
+            :class="sanityColorClass"
+            :style="{ width: `${Math.min(100, Math.max(0, safeNumber(stats.sanity, 100)))}%` }"
+          />
         </div>
       </div>
-
     </div>
 
     <div class="d-flex gap-4 border-start ps-4">
       <div class="text-center">
-        <div class="small text-muted fw-bold">🧠 IQ / 🤝 EQ</div>
+        <div class="small text-muted fw-bold">
+          🧠 IQ / 🤝 EQ
+        </div>
         <div class="fw-bold fs-5">
           {{ Math.floor(safeNumber(stats.iq, 100)) }} <span class="text-muted fs-6">/</span> {{ Math.floor(safeNumber(stats.eq, 100)) }}
         </div>
       </div>
       
       <div class="text-center">
-        <div class="small text-muted fw-bold">🎓 GPA</div>
-        <div class="fw-bold fs-5" :class="gpaColorClass">
+        <div class="small text-muted fw-bold">
+          🎓 GPA
+        </div>
+        <div
+          class="fw-bold fs-5"
+          :class="gpaColorClass"
+        >
           <!-- 🌟 核心防御：保证 gpa 绝对是数字，再执行 toFixed -->
           {{ safeNumber(stats.gpa, 0).toFixed(2) }}
         </div>
       </div>
     </div>
-    
   </div>
 </template>
 

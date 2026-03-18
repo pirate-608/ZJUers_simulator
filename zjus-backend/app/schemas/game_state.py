@@ -38,6 +38,7 @@ class PlayerStats(BaseModel):
     gpa: str = "0.0"
     highest_gpa: str = "0.0"
     reputation: int = 0
+    efficiency: int = 100
     course_plan_json: str = ""
     course_info_json: str = ""
 
@@ -60,6 +61,7 @@ class PlayerStats(BaseModel):
             gpa=_to_str(raw.get("gpa"), "0.0"),
             highest_gpa=_to_str(raw.get("highest_gpa"), "0.0"),
             reputation=_to_int(raw.get("reputation"), 0),
+            efficiency=_to_int(raw.get("efficiency"), 100),
             course_plan_json=_to_str(raw.get("course_plan_json"), ""),
             course_info_json=_to_str(raw.get("course_info_json"), ""),
         )
@@ -86,6 +88,7 @@ class PlayerStats(BaseModel):
             gpa="0.0",
             highest_gpa="0.0",
             reputation=0,
+            efficiency=100,
             course_plan_json="",
             course_info_json="",
         )

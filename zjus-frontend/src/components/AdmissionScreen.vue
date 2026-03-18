@@ -1,152 +1,387 @@
 <template>
   <div class="admission-wrapper vh-100 d-flex flex-column justify-content-center align-items-center">
-    
     <!-- 加载中 -->
-    <div v-if="loading" class="text-center fade-in">
-      <div class="spinner-border mb-3" style="width: 3rem; height: 3rem; color: #b93a32;"></div>
-      <h4 class="fw-bold text-dark" style="letter-spacing: 2px;">正在连接到zdbk...</h4>
+    <div
+      v-if="loading"
+      class="text-center fade-in"
+    >
+      <div
+        class="spinner-border mb-3"
+        style="width: 3rem; height: 3rem; color: #b93a32;"
+      />
+      <h4
+        class="fw-bold text-dark"
+        style="letter-spacing: 2px;"
+      >
+        正在连接到zdbk...
+      </h4>
     </div>
 
     <!-- 正常展示区 -->
-    <div v-else class="content-container d-flex flex-column justify-content-center align-items-center fade-in">
-      
+    <div
+      v-else
+      class="content-container d-flex flex-column justify-content-center align-items-center fade-in"
+    >
       <!-- 📜 核心区域：1:1 完美复刻 HTML 录取通知书 -->
       <div class="admission-card-wrapper">
         <div class="admission-card relative overflow-hidden">
-            <!-- 底部建筑风景矢量剪影 -->
-            <div class="footer-landscape" style="position: absolute; bottom: 0; left: 0; width: 100%; height: 200px; pointer-events: none; z-index: 1; opacity: 0.6;">
-            <svg viewBox="0 0 1000 200" preserveAspectRatio="none" width="100%" height="100%">
+          <!-- 底部建筑风景矢量剪影 -->
+          <div
+            class="footer-landscape"
+            style="position: absolute; bottom: 0; left: 0; width: 100%; height: 200px; pointer-events: none; z-index: 1; opacity: 0.6;"
+          >
+            <svg
+              viewBox="0 0 1000 200"
+              preserveAspectRatio="none"
+              width="100%"
+              height="100%"
+            >
               <!-- 远山/云层 -->
-              <path d="M0,150 Q150,120 300,160 T700,130 T1000,160 L1000,200 L0,200 Z" fill="#d8c5b3" opacity="0.5"/>
-              <path d="M0,170 Q200,140 400,180 T800,150 T1000,180 L1000,200 L0,200 Z" fill="#cfbba8" opacity="0.6"/>
+              <path
+                d="M0,150 Q150,120 300,160 T700,130 T1000,160 L1000,200 L0,200 Z"
+                fill="#d8c5b3"
+                opacity="0.5"
+              />
+              <path
+                d="M0,170 Q200,140 400,180 T800,150 T1000,180 L1000,200 L0,200 Z"
+                fill="#cfbba8"
+                opacity="0.6"
+              />
               <!-- 飞鸟 -->
-              <g stroke="#b59c87" stroke-width="2" fill="none">
+              <g
+                stroke="#b59c87"
+                stroke-width="2"
+                fill="none"
+              >
                 <path d="M 120,60 Q 130,50 140,60 Q 130,55 120,60" />
                 <path d="M 150,80 Q 160,70 170,80 Q 160,75 150,80" />
                 <path d="M 100,100 Q 115,85 130,100 Q 115,90 100,100" />
               </g>
               <!-- 桥梁 (左侧) -->
-              <path d="M -50,200 L -50,140 L 350,140 L 350,200 Z" fill="#e2d6ca" stroke="#b59c87" stroke-width="1.5"/>
+              <path
+                d="M -50,200 L -50,140 L 350,140 L 350,200 Z"
+                fill="#e2d6ca"
+                stroke="#b59c87"
+                stroke-width="1.5"
+              />
               <!-- 桥洞 -->
-              <path d="M 20,200 A 40 40 0 0 1 100,200" fill="#f4e8d8" stroke="#b59c87" stroke-width="1.5"/>
-              <path d="M 140,200 A 40 40 0 0 1 220,200" fill="#f4e8d8" stroke="#b59c87" stroke-width="1.5"/>
-              <path d="M 260,200 A 40 40 0 0 1 340,200" fill="#f4e8d8" stroke="#b59c87" stroke-width="1.5"/>
+              <path
+                d="M 20,200 A 40 40 0 0 1 100,200"
+                fill="#f4e8d8"
+                stroke="#b59c87"
+                stroke-width="1.5"
+              />
+              <path
+                d="M 140,200 A 40 40 0 0 1 220,200"
+                fill="#f4e8d8"
+                stroke="#b59c87"
+                stroke-width="1.5"
+              />
+              <path
+                d="M 260,200 A 40 40 0 0 1 340,200"
+                fill="#f4e8d8"
+                stroke="#b59c87"
+                stroke-width="1.5"
+              />
               <!-- 主建筑群 (中间与右侧) -->
-              <rect x="380" y="150" width="350" height="50" fill="#e2d6ca" stroke="#b59c87" stroke-width="1.5"/>
-              <rect x="750" y="120" width="150" height="80" fill="#e2d6ca" stroke="#b59c87" stroke-width="1.5"/>
-              <rect x="920" y="140" width="100" height="60" fill="#e2d6ca" stroke="#b59c87" stroke-width="1.5"/>
+              <rect
+                x="380"
+                y="150"
+                width="350"
+                height="50"
+                fill="#e2d6ca"
+                stroke="#b59c87"
+                stroke-width="1.5"
+              />
+              <rect
+                x="750"
+                y="120"
+                width="150"
+                height="80"
+                fill="#e2d6ca"
+                stroke="#b59c87"
+                stroke-width="1.5"
+              />
+              <rect
+                x="920"
+                y="140"
+                width="100"
+                height="60"
+                fill="#e2d6ca"
+                stroke="#b59c87"
+                stroke-width="1.5"
+              />
               <!-- 建筑屋顶 -->
-              <path d="M 360,150 L 555,100 L 750,150 Z" fill="#c3b09e" stroke="#b59c87" stroke-width="1.5"/>
-              <path d="M 400,125 L 555,80 L 710,125 Z" fill="#d2c0ae" stroke="#b59c87" stroke-width="1.5"/>
+              <path
+                d="M 360,150 L 555,100 L 750,150 Z"
+                fill="#c3b09e"
+                stroke="#b59c87"
+                stroke-width="1.5"
+              />
+              <path
+                d="M 400,125 L 555,80 L 710,125 Z"
+                fill="#d2c0ae"
+                stroke="#b59c87"
+                stroke-width="1.5"
+              />
               <!-- 柱子/细节门窗纹理模拟 -->
-              <g fill="#b59c87" opacity="0.4">
-                <rect x="420" y="160" width="10" height="40" />
-                <rect x="450" y="160" width="10" height="40" />
-                <rect x="480" y="160" width="10" height="40" />
-                <rect x="620" y="160" width="10" height="40" />
-                <rect x="650" y="160" width="10" height="40" />
-                <rect x="680" y="160" width="10" height="40" />
-                <rect x="770" y="140" width="30" height="20" />
-                <rect x="830" y="140" width="30" height="20" />
+              <g
+                fill="#b59c87"
+                opacity="0.4"
+              >
+                <rect
+                  x="420"
+                  y="160"
+                  width="10"
+                  height="40"
+                />
+                <rect
+                  x="450"
+                  y="160"
+                  width="10"
+                  height="40"
+                />
+                <rect
+                  x="480"
+                  y="160"
+                  width="10"
+                  height="40"
+                />
+                <rect
+                  x="620"
+                  y="160"
+                  width="10"
+                  height="40"
+                />
+                <rect
+                  x="650"
+                  y="160"
+                  width="10"
+                  height="40"
+                />
+                <rect
+                  x="680"
+                  y="160"
+                  width="10"
+                  height="40"
+                />
+                <rect
+                  x="770"
+                  y="140"
+                  width="30"
+                  height="20"
+                />
+                <rect
+                  x="830"
+                  y="140"
+                  width="30"
+                  height="20"
+                />
               </g>
               <!-- 装饰性文字牌匾 -->
-              <rect x="530" y="130" width="50" height="15" fill="#b93a32" opacity="0.8"/>
+              <rect
+                x="530"
+                y="130"
+                width="50"
+                height="15"
+                fill="#b93a32"
+                opacity="0.8"
+              />
             </svg>
-            </div>
+          </div>
 
-            <!-- 右上角：页面竖直排列标题 -->
-            <div class="absolute z-10 text-right vertical-title-true" style="right: 2rem; top: 2rem;">
-              <div style="display: flex; flex-direction: column; align-items: flex-end;">
-                <span class="font-bold text-red-accent vertical-text-true" style="font-size: 2.5rem; letter-spacing: 0.5em;">折</span>
-                <span class="font-bold text-red-accent vertical-text-true" style="font-size: 2.5rem; letter-spacing: 0.5em;">姜</span>
-                <span class="font-bold text-red-accent vertical-text-true" style="font-size: 2.5rem; letter-spacing: 0.5em;">大</span>
-                <span class="font-bold text-red-accent vertical-text-true" style="font-size: 2.5rem; letter-spacing: 0.5em;">学</span>
-                <span class="text-red-accent vertical-text-true" style="font-size: 1.8rem; letter-spacing: 1em; margin-top: 2rem;">录</span>
-                <span class="text-red-accent vertical-text-true" style="font-size: 1.8rem; letter-spacing: 1em;">取</span>
-                <span class="text-red-accent vertical-text-true" style="font-size: 1.8rem; letter-spacing: 1em;">通</span>
-                <span class="text-red-accent vertical-text-true" style="font-size: 1.8rem; letter-spacing: 1em;">知</span>
-                <span class="text-red-accent vertical-text-true" style="font-size: 1.8rem; letter-spacing: 1em;">书</span>
-              </div>
+          <!-- 右上角：页面竖直排列标题 -->
+          <div
+            class="absolute z-10 text-right vertical-title-true"
+            style="right: 2rem; top: 2rem;"
+          >
+            <div style="display: flex; flex-direction: column; align-items: flex-end;">
+              <span
+                class="font-bold text-red-accent vertical-text-true"
+                style="font-size: 2.5rem; letter-spacing: 0.5em;"
+              >折</span>
+              <span
+                class="font-bold text-red-accent vertical-text-true"
+                style="font-size: 2.5rem; letter-spacing: 0.5em;"
+              >姜</span>
+              <span
+                class="font-bold text-red-accent vertical-text-true"
+                style="font-size: 2.5rem; letter-spacing: 0.5em;"
+              >大</span>
+              <span
+                class="font-bold text-red-accent vertical-text-true"
+                style="font-size: 2.5rem; letter-spacing: 0.5em;"
+              >学</span>
+              <span
+                class="text-red-accent vertical-text-true"
+                style="font-size: 1.8rem; letter-spacing: 1em; margin-top: 2rem;"
+              >录</span>
+              <span
+                class="text-red-accent vertical-text-true"
+                style="font-size: 1.8rem; letter-spacing: 1em;"
+              >取</span>
+              <span
+                class="text-red-accent vertical-text-true"
+                style="font-size: 1.8rem; letter-spacing: 1em;"
+              >通</span>
+              <span
+                class="text-red-accent vertical-text-true"
+                style="font-size: 1.8rem; letter-spacing: 1em;"
+              >知</span>
+              <span
+                class="text-red-accent vertical-text-true"
+                style="font-size: 1.8rem; letter-spacing: 1em;"
+              >书</span>
             </div>
+          </div>
 
           <!-- 中部：正文 -->
-          <div class="absolute z-10 font-serif text-gray-800 vertical-rl" style="right: 10rem; top: 4rem; bottom: 4rem; left: 28rem; text-align: justify;">
-              <p class="font-bold text-lg" style="margin-right: 0rem;">
-                <span style="border-right: 1px solid #4b5563; padding-right: 4px; text-orientation: upright;">{{ info.username }}</span> 同学：
-              </p>
+          <div
+            class="absolute z-10 font-serif text-gray-800 vertical-rl"
+            style="right: 10rem; top: 4rem; bottom: 4rem; left: 28rem; text-align: justify;"
+          >
+            <p
+              class="font-bold text-lg"
+              style="margin-right: 0rem;"
+            >
+              <span style="border-right: 1px solid #4b5563; padding-right: 4px; text-orientation: upright;">{{ info.username }}</span> 同学：
+            </p>
               
-              <p class="text-lg leading-loose" style="margin-right: 1rem;">
+            <p
+              class="text-lg leading-loose"
+              style="margin-right: 1rem;"
+            >
               你已经被折姜大学正式录取为二零二五级新生。
-              </p>
+            </p>
 
-              <p class="text-lg leading-loose" style="margin-right: 1rem;">
+            <p
+              class="text-lg leading-loose"
+              style="margin-right: 1rem;"
+            >
               谨向你表示热烈祝贺！
-              </p>
+            </p>
 
-              <p class="text-lg leading-loose" style="margin-right: 1rem;">
+            <p
+              class="text-lg leading-loose"
+              style="margin-right: 1rem;"
+            >
               在过去的学习生涯中，你是一位当之无愧的佼佼者。
-              </p>
+            </p>
               
-              <p class="text-lg leading-loose" style="margin-right: 1rem;">
+            <p
+              class="text-lg leading-loose"
+              style="margin-right: 1rem;"
+            >
               现在，你将踏入美丽的求是园，在更广阔的天地里
-              </p>
+            </p>
 
-              <p class="text-lg leading-loose" style="margin-right: 1rem;">
+            <p
+              class="text-lg leading-loose"
+              style="margin-right: 1rem;"
+            >
               开启更加卓越、更有梦想的人生。
-              </p>
+            </p>
               
-              <p class="text-lg leading-loose" style="margin-right: 1rem;">
+            <p
+              class="text-lg leading-loose"
+              style="margin-right: 1rem;"
+            >
               此后，你将与历史上众多灿若星辰的名字一起，
-              </p>
+            </p>
               
-              <p class="text-lg leading-loose" style="margin-right: 1rem;">
+            <p
+              class="text-lg leading-loose"
+              style="margin-right: 1rem;"
+            >
               分享「折大人」这个光荣的称号，共同承担起服务
-              </p>
+            </p>
 
-              <p class="text-lg leading-loose" style="margin-right: 1rem;">
+            <p
+              class="text-lg leading-loose"
+              style="margin-right: 1rem;"
+            >
               民族复兴、促进人类进步的责任。
-              </p>
+            </p>
 
-              <p class="text-lg leading-loose" style="margin-right: 1rem;">
+            <p
+              class="text-lg leading-loose"
+              style="margin-right: 1rem;"
+            >
               录取专业：<span class="text-red-accent font-bold px-1">{{ info.major }}</span>
-              </p>
+            </p>
           </div>
 
-            <!-- 左侧：落款与印章 -->
-            <div class="absolute z-10 font-serif text-gray-800 vertical-rl" style="left: 4rem; bottom: 18rem;">
-              <p class="font-bold text-lg" style="margin-top: 2rem;">折姜大学</p>
-              <p class="font-bold text-lg" style="margin-right: 1.5rem; margin-top: 2rem;">二〇二六年秋</p>
-              <div class="seal-box" style="writing-mode: horizontal-tb; transform: rotate(-2deg); margin-top: 1rem; margin-right: 1rem;">
-                <span class="tracking-widest" style="letter-spacing: 0.15em;">求柿<br>创辛</span>
-              </div>
+          <!-- 左侧：落款与印章 -->
+          <div
+            class="absolute z-10 font-serif text-gray-800 vertical-rl"
+            style="left: 4rem; bottom: 18rem;"
+          >
+            <p
+              class="font-bold text-lg"
+              style="margin-top: 2rem;"
+            >
+              折姜大学
+            </p>
+            <p
+              class="font-bold text-lg"
+              style="margin-right: 1.5rem; margin-top: 2rem;"
+            >
+              二〇二六年秋
+            </p>
+            <div
+              class="seal-box"
+              style="writing-mode: horizontal-tb; transform: rotate(-2deg); margin-top: 1rem; margin-right: 1rem;"
+            >
+              <span
+                class="tracking-widest"
+                style="letter-spacing: 0.15em;"
+              >求柿<br>创辛</span>
             </div>
+          </div>
 
           <!-- 🌟 左下角： Token 与入园按钮 -->
-          <div class="absolute z-20" style="left: 4rem; bottom: 4rem; width: 300px;">
-              <div class="d-flex justify-content-between align-items-center w-100 mb-1">
-                  <span class="text-gray-500 font-bold" style="font-size: 0.7rem; font-family: sans-serif; letter-spacing: 0.1em;">NO. CREDENTIAL</span>
-                  <span class="text-red-accent font-bold" style="font-size: 0.7rem;">机密 / 请妥善保存，下次登录凭此报到</span>
-              </div>
+          <div
+            class="absolute z-20"
+            style="left: 4rem; bottom: 4rem; width: 300px;"
+          >
+            <div class="d-flex justify-content-between align-items-center w-100 mb-1">
+              <span
+                class="text-gray-500 font-bold"
+                style="font-size: 0.7rem; font-family: sans-serif; letter-spacing: 0.1em;"
+              >NO. CREDENTIAL</span>
+              <span
+                class="text-red-accent font-bold"
+                style="font-size: 0.7rem;"
+              >机密 / 请妥善保存，下次登录凭此报到</span>
+            </div>
               
-              <!-- 仿溯源码的专属凭证展示 -->
-              <div class="w-100 font-mono text-gray-600 p-2 border border-dashed border-gray-400 bg-white-50 rounded select-all cursor-pointer transition-all hover-border-red shadow-sm" style="font-size: 0.75rem; word-break: break-all;" title="双击全选并保存此凭证">
-                  {{ playerToken }}
-              </div>
+            <!-- 仿溯源码的专属凭证展示 -->
+            <div
+              class="w-100 font-mono text-gray-600 p-2 border border-dashed border-gray-400 bg-white-50 rounded select-all cursor-pointer transition-all hover-border-red shadow-sm"
+              style="font-size: 0.75rem; word-break: break-all;"
+              title="双击全选并保存此凭证"
+            >
+              {{ playerToken }}
+            </div>
               
-              <!-- 沉浸式入园按钮 -->
-              <button @click="enterGame" class="w-100 mt-3 py-2 bg-red-accent text-white font-bold tracking-widest shadow-sm hover-shadow-md transition-all rounded border-0 cursor-pointer d-block">
-                  报到 ➔
-              </button>
+            <!-- 沉浸式入园按钮 -->
+            <button
+              class="w-100 mt-3 py-2 bg-red-accent text-white font-bold tracking-widest shadow-sm hover-shadow-md transition-all rounded border-0 cursor-pointer d-block"
+              @click="enterGame"
+            >
+              报到 ➔
+            </button>
           </div>
-
         </div>
       </div>
       
       <!-- 🌟 终极自救按钮：清理浏览器缓存防止僵尸状态 -->
-      <button @click="forceReset" class="btn-reset mt-3">
+      <button
+        class="btn-reset mt-3"
+        @click="forceReset"
+      >
         🔄 档案数据异常？或者卡在白屏？点击此处清除缓存并重新参加入学考试
       </button>
-
     </div>
   </div>
 </template>
@@ -179,7 +414,7 @@ onMounted(async () => {
   }
 
   try {
-    const response = await fetch(`/api/assign_major?token=${encodeURIComponent(token)}`, {
+    const response = await fetch(`/api/assign_major`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -203,7 +438,7 @@ onMounted(async () => {
           // 如果后端骗了我们，返回了对象，尝试提取可能包含专业的字段
           finalMajor = jsonObj.assigned_major || jsonObj.major || jsonObj.data || jsonObj.result || ''
         }
-      } catch (parseErr) {
+      } catch {
         // 解析 JSON 失败，说明后端返回的是纯文本 (Text)
         finalMajor = rawText
       }

@@ -2,7 +2,7 @@ version: '3.8'
 
 services:
   backend:
-    image: ${DOCKER_USERNAME:-your_username}/zjus-backend:latest
+    image: ${DOCKER_USERNAME:-pirate608}/zjus-backend:latest
     container_name: zjus_backend
     ports:
       - "8000:8000"
@@ -80,7 +80,8 @@ services:
     restart: "no"
 
   nginx:
-    image: nginx:latest
+    # 🌟 修改：直接拉取打包好 dist 静态文件的独立前端映像（底层仍是 nginx:alpine）
+    image: ${DOCKER_USERNAME:-pirate608}/zjus-frontend:latest
     container_name: zjus_nginx
     ports:
       - "80:80"
@@ -89,9 +90,8 @@ services:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
       - ./nginx/conf.d:/etc/nginx/conf.d:ro
       - ./nginx/ssl:/etc/nginx/ssl:ro
-      # 挂载前端打包产物
-      - ./zjus-frontend/dist:/usr/share/nginx/game-frontend
-      # 🌟 挂载后端的数据字典供 Nginx 直接极速代理（替代旧的 /app/world）
+      # 🌟 删除了对本地 zjus-frontend/dist 的挂载，因为产物已经提前打在 zjus-frontend 镜像的 /usr/share/nginx/game-frontend/ 里了
+      # 挂载后端的数据字典供 Nginx 直接极速代理（替代旧的 /app/world）
       - ./zjus-backend/world:/usr/share/nginx/world
     depends_on:
       backend:

@@ -118,7 +118,7 @@ class TestBuildInitial:
         expected_keys = {
             "username", "major", "major_abbr", "semester", "semester_idx",
             "semester_start_time", "energy", "sanity", "stress", "iq", "eq",
-            "luck", "gpa", "highest_gpa", "reputation", "course_plan_json",
+            "luck", "gpa", "highest_gpa", "reputation", "efficiency", "course_plan_json",
             "course_info_json",
         }
         assert set(d.keys()) == expected_keys

@@ -1,0 +1,119 @@
+{
+  "version": "1.3.0",
+  "description": "游戏数值平衡配置 v1.3 - 2026-02-01 节奏优化版",
+  
+  "semester": {
+    "duration_by_index": {
+      "1": 420,
+      "2": 420,
+      "3": 420,
+      "4": 420,
+      "5": 300,
+      "6": 300,
+      "7": 300,
+      "8": 300
+    },
+    "default_duration_seconds": 360,
+    "speed_modes": {
+      "1.0": {"label": "正常速度", "multiplier": 1.0},
+      "1.5": {"label": "1.5x 加速", "multiplier": 1.5},
+      "2.0": {"label": "2x 加速", "multiplier": 2.0}
+    },
+    "description": "前4学期7分钟（新手期），后4学期5分钟（熟练期），总时长48分钟"
+  },
+  
+  "tick": {
+    "interval_seconds": 3,
+    "base_energy_drain": 0.8,
+    "base_mastery_growth": 0.5
+  },
+  
+  "course_states": {
+    "0": {"name": "摆", "emoji": "💤", "growth": 0.0, "drain": 0.0},
+    "1": {"name": "摸", "emoji": "😐", "growth": 1.0, "drain": 0.8},
+    "2": {"name": "卷", "emoji": "🔥", "growth": 4.0, "drain": 3.0}
+  },
+  
+  "sanity_stress_modifiers": {
+    "growth": {
+      "sanity": {
+        "critical_low": {"threshold": 20, "factor": 0.6},
+        "low_slope": 0.013,
+        "high_slope": 0.007,
+        "excellent": {"threshold": 80, "factor": 1.2}
+      },
+      "stress": {
+        "optimal_range": [40, 70],
+        "optimal_factor": 1.3,
+        "suboptimal_factor": 0.85,
+        "extreme_factor": 0.6
+      }
+    },
+    "exam": {
+      "sanity": {
+        "low_slope": 0.3,
+        "high_slope": 0.12,
+        "excellent_bonus": 6
+      },
+      "stress": {
+        "optimal_bonus": 6,
+        "suboptimal_penalty": -5,
+        "extreme_penalty": -10
+      }
+    }
+  },
+  
+  "relax_actions": {
+    "gym": {
+      "energy_cost": -20,
+      "energy_gain": 30,
+      "sanity_gain": 5,
+      "stress_change": -5,
+      "cooldown_seconds": 30,
+      "min_energy_required": 20,
+      "label": "健身房"
+    },
+    "game": {
+      "energy_cost": -5,
+      "sanity_gain": 20,
+      "cooldown_seconds": 15,
+      "label": "打游戏"
+    },
+    "walk": {
+      "stress_change": -10,
+      "cooldown_seconds": 15,
+      "label": "散步启真湖"
+    },
+    "cc98": {
+      "cooldown_seconds": 15,
+      "label": "刷CC98",
+      "effects": [
+        {"weight": 0.5, "sanity": 8, "stress": -5},
+        {"weight": 0.3, "sanity": -10, "stress": 8},
+        {"weight": 0.2, "sanity": -15, "stress": 15}
+      ]
+    }
+  },
+  
+  "events": {
+    "random_event": {
+      "check_interval_ticks": 5,
+      "trigger_probability": 0.4
+    },
+    "dingtalk": {
+      "check_interval_ticks": 10,
+      "trigger_probability": 0.3
+    }
+  },
+  
+  "exam": {
+    "fail_threshold": 60,
+    "fail_sanity_penalty_per_course": -10,
+    "pass_all_sanity_bonus": 10
+  },
+  
+  "game_over": {
+    "sanity_threshold": 0,
+    "energy_threshold": 0
+  }
+}

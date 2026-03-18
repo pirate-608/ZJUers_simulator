@@ -131,7 +131,7 @@ export function useGameWebSocket() {
                     gameStore.addDingMessage(msg.data || msg)
                     break;
 
-                case 'graduation':
+                case 'graduation': {
                     const gradData = msg.data?.data || msg.data || msg; 
                     const finalStats = gradData.final_stats || {};
                     gameStore.triggerEndGame('graduation', {
@@ -143,6 +143,7 @@ export function useGameWebSocket() {
                         llm_summary: gradData.wenyan_report || '此子聪颖过人，勤勉有加...'
                     })
                     break;
+                }
 
                 case 'new_semester':
                     gameStore.setCourseMetadata([])

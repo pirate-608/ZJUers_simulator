@@ -1,25 +1,43 @@
 <template>
   <div class="d-flex flex-column gap-3 h-100">
-
     <div class="card border-0 shadow-sm">
-      <div class="card-header bg-success text-white py-1 text-center fw-bold" style="font-size: 0.9rem;">
+      <div
+        class="card-header bg-success text-white py-1 text-center fw-bold"
+        style="font-size: 0.9rem;"
+      >
         📊 状态与增益
       </div>
       <div class="card-body p-2">
-        <div class="d-flex justify-content-between align-items-center p-2 rounded mb-2" 
-             style="background-color: rgba(13, 110, 253, 0.08); border: 1px solid rgba(13, 110, 253, 0.2);">
+        <div
+          class="d-flex justify-content-between align-items-center p-2 rounded mb-2" 
+          style="background-color: rgba(13, 110, 253, 0.08); border: 1px solid rgba(13, 110, 253, 0.2);"
+        >
           <div>
-            <span class="text-muted" style="font-size: 0.8rem;">学习效率</span>
-            <div class="small text-muted" style="font-size: 0.7rem;">{{ efficiencyHint }}</div>
+            <span
+              class="text-muted"
+              style="font-size: 0.8rem;"
+            >学习效率</span>
+            <div
+              class="small text-muted"
+              style="font-size: 0.7rem;"
+            >
+              {{ efficiencyHint }}
+            </div>
           </div>
           <span class="fw-bold text-primary fs-5">{{ store.currentStats.efficiency ?? 100 }}%</span>
         </div>
 
         <div class="d-flex justify-content-around align-items-center pt-1 border-top">
-          <div class="text-center" title="运气影响随机事件的好坏">
+          <div
+            class="text-center"
+            title="运气影响随机事件的好坏"
+          >
             <span class="fs-5">🍀</span> <span class="fw-bold small">{{ store.currentStats.luck ?? '--' }}</span>
           </div>
-          <div class="text-center" title="风评影响部分课程和NPC互动">
+          <div
+            class="text-center"
+            title="风评影响部分课程和NPC互动"
+          >
             <span class="fs-5">⭐</span> <span class="fw-bold small">{{ store.currentStats.reputation ?? 0 }}</span>
           </div>
         </div>
@@ -27,55 +45,99 @@
     </div>
 
     <div class="card border-0 shadow-sm">
-      <div class="card-header bg-warning text-dark py-1 text-center fw-bold" style="font-size: 0.9rem;">
+      <div
+        class="card-header bg-warning text-dark py-1 text-center fw-bold"
+        style="font-size: 0.9rem;"
+      >
         ☕ 摸鱼休闲
       </div>
       <div class="card-body p-2">
         <div class="row g-2">
           <!-- 🌟 修复：全部绑定 :disabled="store.isPaused" -->
           <div class="col-6">
-            <button class="btn btn-sm btn-outline-primary w-100" :disabled="store.isPaused" @click="sendRelax('gym')">🏋️‍♂️ 健身</button>
+            <button
+              class="btn btn-sm btn-outline-primary w-100"
+              :disabled="store.isPaused"
+              @click="sendRelax('gym')"
+            >
+              🏋️‍♂️ 健身
+            </button>
           </div>
           <div class="col-6">
-            <button class="btn btn-sm btn-outline-success w-100" :disabled="store.isPaused" @click="sendRelax('game')">🎮 游戏</button>
+            <button
+              class="btn btn-sm btn-outline-success w-100"
+              :disabled="store.isPaused"
+              @click="sendRelax('game')"
+            >
+              🎮 游戏
+            </button>
           </div>
           <div class="col-6">
-            <button class="btn btn-sm btn-outline-info w-100" :disabled="store.isPaused" @click="sendRelax('cc98')">🌊 CC98</button>
+            <button
+              class="btn btn-sm btn-outline-info w-100"
+              :disabled="store.isPaused"
+              @click="sendRelax('cc98')"
+            >
+              🌊 CC98
+            </button>
           </div>
           <div class="col-6">
-            <button class="btn btn-sm btn-outline-secondary w-100" :disabled="store.isPaused" @click="sendRelax('walk')">🚶 散步</button>
+            <button
+              class="btn btn-sm btn-outline-secondary w-100"
+              :disabled="store.isPaused"
+              @click="sendRelax('walk')"
+            >
+              🚶 散步
+            </button>
           </div>
         </div>
       </div>
     </div>
 
     <div class="card border-0 shadow-sm flex-grow-1">
-      <div class="card-header bg-danger text-white py-1 text-center fw-bold" style="font-size: 0.9rem;">
+      <div
+        class="card-header bg-danger text-white py-1 text-center fw-bold"
+        style="font-size: 0.9rem;"
+      >
         🔥 学期进度
       </div>
       <div class="card-body p-3 d-flex flex-column justify-content-center">
-        
         <div class="d-flex justify-content-between align-items-end mb-1">
           <span class="small fw-bold text-muted">平均课程掌握度</span>
           <span class="text-primary fw-bold">{{ averageProgress.toFixed(1) }}%</span>
         </div>
-        <div class="progress mb-3 shadow-sm" style="height: 12px;">
-          <div class="progress-bar bg-info progress-bar-striped progress-bar-animated" 
-               :style="{ width: `${averageProgress}%` }"></div>
+        <div
+          class="progress mb-3 shadow-sm"
+          style="height: 12px;"
+        >
+          <div
+            class="progress-bar bg-info progress-bar-striped progress-bar-animated" 
+            :style="{ width: `${averageProgress}%` }"
+          />
         </div>
 
         <!-- 倒计时与考试按钮放在同一个高亮框内，完美融合 -->
         <div class="d-flex justify-content-between align-items-center p-2 rounded bg-light border border-danger border-opacity-25">
           <div class="text-center px-2">
-            <div class="small text-muted" style="font-size: 0.75rem;">倒计时</div>
-            <div class="fw-bold text-danger fs-5" style="font-family: monospace;">
+            <div
+              class="small text-muted"
+              style="font-size: 0.75rem;"
+            >
+              倒计时
+            </div>
+            <div
+              class="fw-bold text-danger fs-5"
+              style="font-family: monospace;"
+            >
               {{ formattedTime }}
             </div>
           </div>
           <!-- 🌟 修复：考试按钮同时受控于暂停和倒计时状态 -->
-          <button class="btn btn-danger fw-bold shadow-sm px-3" 
-                  :disabled="store.isPaused || !canTakeExam"
-                  @click="takeExam">
+          <button
+            class="btn btn-danger fw-bold shadow-sm px-3" 
+            :disabled="store.isPaused || !canTakeExam"
+            @click="takeExam"
+          >
             参加期末考 ➔
           </button>
         </div>

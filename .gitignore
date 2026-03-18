@@ -1,29 +1,88 @@
-.venv
-.conda
-.env
-.env.prod
-.env.dev
-.tmp.driveupload/
-__recycle_bin/
-__pycache__/
-env/
-temp/
-build/
-*.log
-*.pyc
-instance
-.envrc
-.DS_Store
-.vscode/
-.idea/
-coverage/
-migrations/
-world/entrance_exam.json
-*.tar
-*.tar.gz
-.tar/
-*.zip
+# 版本控制系统
 README.myself.md
 ChangeLog.md
+
+# Python 缓存和编译文件
+__pycache__/
+*.pyc
+zjus-backend/__pycache__/
+
+# 测试和代码质量工具
+.pytest_cache/
+zjus-backend/.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# 虚拟环境
+.venv/
+env/
+venv/
+env.bak/
+
+# 环境变量和配置文件
+.env
+.envrc
+.env.local
+instance
+.env.production
+.env.development
+
+# IDE 和编辑器
+.vscode/
+.antigravity/
+.idea/
+*.swp
+*.swo
+*~
+
+# 操作系统生成的文件
+.DS_Store
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+__recycle_bin/
+
+# 构建产物和临时文件
+build/
+dist/
+*.egg-info/
+temp/
+.raw_docs/
+.tmp.driveupload/
+*.log
+logs/
+*.pid
+*.seed
+*.pid.lock
+scripts/sync_log.txt
+
+# 数据文件（根据需求决定是否忽略）
+*.db
+*.sqlite
+*.sqlite3
+
+# 压缩文件
+*.tar
+*.tar.gz
+*.tgz
+*.zip
+*.rar
+.tar/
+
+# Docker 相关
 Dockerfile.tunnel
 nginx/
+docker-compose.override.yml
+
+# 前端构建产物（如果有）
+node_modules/
+npm-debug.log
+yarn-error.log
+dist/
+build/
+
+# 备份文件
+*.bak
+*.orig
+*.backup

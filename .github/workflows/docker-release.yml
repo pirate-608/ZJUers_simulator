@@ -2,8 +2,6 @@ name: Build and Publish Docker Image
 
 on:
   push:
-    branches:
-      - main
     tags:
       - 'v*.*.*'
   workflow_dispatch: # 允许手动触发
@@ -11,7 +9,8 @@ on:
 env:
   # 替换为你自己的 Docker Hub 用户名
   DOCKER_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
-  IMAGE_NAME: zjus-backend
+  BACKEND_IMAGE_NAME: zjus-backend
+  FRONTEND_IMAGE_NAME: zjus-frontend
 
 jobs:
   build-and-push:
@@ -32,23 +31,44 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Extract metadata (tags, labels) for Docker
-        id: meta
+      - name: Extract metadata for Backend
+        id: meta-backend
         uses: docker/metadata-action@v5
         with:
-          images: ${{ env.DOCKER_USERNAME }}/${{ env.IMAGE_NAME }}
+          images: ${{ env.DOCKER_USERNAME }}/${{ env.BACKEND_IMAGE_NAME }}
           tags: |
-            type=raw,value=latest,enable={{is_default_branch}}
+            type=raw,value=latest
             type=ref,event=tag
             type=sha,format=short
 
-      - name: Build and push Docker image
+      - name: Extract metadata for Frontend
+        id: meta-frontend
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.DOCKER_USERNAME }}/${{ env.FRONTEND_IMAGE_NAME }}
+          tags: |
+            type=raw,value=latest
+            type=ref,event=tag
+            type=sha,format=short
+
+      - name: Build and push Backend image
         uses: docker/build-push-action@v5
         with:
           context: ./zjus-backend
           file: ./zjus-backend/Dockerfile
           push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
+          tags: ${{ steps.meta-backend.outputs.tags }}
+          labels: ${{ steps.meta-backend.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Build and push Frontend image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./zjus-frontend
+          file: ./zjus-frontend/Dockerfile
+          push: true
+          tags: ${{ steps.meta-frontend.outputs.tags }}
+          labels: ${{ steps.meta-frontend.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max

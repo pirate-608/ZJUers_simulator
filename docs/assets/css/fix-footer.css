@@ -1,0 +1,39 @@
+/* 1. 强制 body 和根容器使用 Flex 布局，并撑满视口 */
+body {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+}
+
+.md-container {
+    display: flex;
+    flex-direction: column;
+    flex: 1 0 auto;
+    /* 让 container 自动填充剩余空间 */
+}
+
+/* 2. 关键：让主内容区占据所有的弹性空间，从而将页脚强行压到底部 */
+.md-main {
+    flex: 1 0 auto;
+    /* 删除所有写死的 min-height，如 70vh */
+}
+
+/* 3. 防止 Instant Loading 导致内层高度坍塌 */
+.md-main__inner {
+    height: 100%;
+}
+
+/* 4. 确保页脚保持在底部，不参与弹性伸缩 */
+.md-footer {
+    flex-shrink: 0;
+}
+
+.site-beian {
+    padding-top: 0;
+}
+
+.site-beian__content {
+    width: 100%;
+    text-align: center;
+    opacity: 0.92;
+}

@@ -1,0 +1,149 @@
+name: Generate Local Release Package
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+  workflow_dispatch:
+
+jobs:
+  build-release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Verify tools
+        run: sudo apt-get install zip -y
+      
+      - name: Create release payload directory
+        run: |
+          mkdir zjuers-local-release
+          cp setup.ps1 setup.sh zjuers-local-release/
+          cp -r zjus-backend/world zjuers-local-release/
+          chmod +x zjuers-local-release/setup.sh
+          
+          # 1. 创建专门为本地 release 包去除了各种开发映射、只用镜像拉起的极度纯真 docker-compose.yml
+          cat > zjuers-local-release/docker-compose.yml << 'EOF'
+          version: '3.8'
+
+          services:
+            backend:
+              image: pirate608/zjus-backend:latest
+              container_name: zjus_backend
+              ports:
+                - "8000:8000"
+              command: uvicorn app.main:app --host 0.0.0.0 --port 8000
+              env_file: .env
+              restart: always
+              depends_on:
+                db:
+                  condition: service_healthy
+                redis:
+                  condition: service_started
+                migrate:
+                  condition: service_completed_successfully
+
+            db:
+              image: postgres:15-alpine
+              container_name: zjus_db
+              restart: always
+              environment:
+                POSTGRES_USER: zju
+                POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+                POSTGRES_DB: zjus
+              volumes:
+                - postgres_data:/var/lib/postgresql/data
+              healthcheck:
+                test: [ "CMD-SHELL", "pg_isready -U zju -d zjus" ]
+                interval: 5s
+                timeout: 5s
+                retries: 5
+
+            redis:
+              image: redis:7-alpine
+              container_name: zjus_redis
+              restart: always
+              ports:
+                - "127.0.0.1:6379:6379"
+
+            migrate:
+              image: pirate608/zjus-backend:latest
+              container_name: zjus_migrate
+              command: alembic upgrade head
+              env_file: .env
+              depends_on:
+                db:
+                  condition: service_healthy
+              restart: "no"
+
+            nginx:
+              # 内置编译好了 dist 的前端镜像
+              image: pirate608/zjus-frontend:latest
+              container_name: zjus_nginx
+              ports:
+                - "80:80"
+              volumes:
+                # 抛弃 SSL 配置，纯被动转发的本地配置文件
+                - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+                - ./world:/usr/share/nginx/world
+              depends_on:
+                backend:
+                  condition: service_started
+              restart: always
+
+          volumes:
+            postgres_data:
+          EOF
+
+          # 2. 为 Nginx 创建去除了 SSL 且极简的反代路由配置文件
+          cat > zjuers-local-release/nginx.conf << 'EOF'
+          server {
+              listen 80;
+              server_name localhost;
+
+              # Front-end static files
+              location / {
+                  root /usr/share/nginx/game-frontend;
+                  index index.html index.htm;
+                  try_files $uri $uri/ /index.html;
+              }
+
+              # Back-end static resources
+              location /world/ {
+                  alias /usr/share/nginx/world/;
+              }
+
+              # API requests proxy
+              location /api/ {
+                  proxy_pass http://backend:8000;
+                  proxy_set_header Host $host;
+                  proxy_set_header X-Real-IP $remote_addr;
+                  proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+                  proxy_set_header X-Forwarded-Proto $scheme;
+              }
+
+              # WebSockets proxy
+              location /ws/ {
+                  proxy_pass http://backend:8000;
+                  proxy_http_version 1.1;
+                  proxy_set_header Upgrade $http_upgrade;
+                  proxy_set_header Connection "Upgrade";
+                  proxy_set_header Host $host;
+              }
+          }
+          EOF
+
+      - name: Zip Release Package
+        run: |
+          cd zjuers-local-release
+          zip -r ../ZJUers_simulator-local.zip ./*
+
+      - name: Upload Release Asset
+        uses: softprops/action-gh-release@v1
+        if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'
+        with:
+          files: ZJUers_simulator-local.zip
+          tag_name: ${{ github.ref_name }} # Release tag
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

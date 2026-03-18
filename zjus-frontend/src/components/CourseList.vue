@@ -1,25 +1,43 @@
 <template>
   <div class="d-flex flex-column h-100">
-    <div v-if="enrichedCourses.length === 0" class="text-center text-muted py-5">
-      <div class="spinner-border spinner-border-sm text-info mb-2" role="status"></div>
+    <div
+      v-if="enrichedCourses.length === 0"
+      class="text-center text-muted py-5"
+    >
+      <div
+        class="spinner-border spinner-border-sm text-info mb-2"
+        role="status"
+      />
       <div>正在加载课程大纲...</div>
     </div>
 
-    <div v-else class="list-group list-group-flush course-list-panel overflow-auto flex-grow-1" style="max-height: 500px;">
-      
-      <div v-for="course in enrichedCourses" :key="course.id" 
-           class="list-group-item px-3 py-3 course-item border-bottom">
-        
+    <div
+      v-else
+      class="list-group list-group-flush course-list-panel overflow-auto flex-grow-1"
+      style="max-height: 500px;"
+    >
+      <div
+        v-for="course in enrichedCourses"
+        :key="course.id" 
+        class="list-group-item px-3 py-3 course-item border-bottom"
+      >
         <div class="d-flex justify-content-between align-items-center mb-2">
-          <span class="fw-bold text-dark" style="font-size: 0.95rem;">{{ course.name }}</span>
+          <span
+            class="fw-bold text-dark"
+            style="font-size: 0.95rem;"
+          >{{ course.name }}</span>
           <span class="badge bg-light text-secondary border">{{ course.credit }} 学分</span>
         </div>
         
-        <div class="progress mb-2 bg-light" style="height: 8px;">
-          <div class="progress-bar progress-bar-striped" 
-               :class="getProgressColor(course.progress)" 
-               :style="{ width: `${course.progress}%` }">
-          </div>
+        <div
+          class="progress mb-2 bg-light"
+          style="height: 8px;"
+        >
+          <div
+            class="progress-bar progress-bar-striped" 
+            :class="getProgressColor(course.progress)" 
+            :style="{ width: `${course.progress}%` }"
+          />
         </div>
         
         <div class="d-flex justify-content-between align-items-center">
@@ -27,24 +45,37 @@
           
           <!-- 策略切换按钮组 (0:摆, 1:摸, 2:卷) -->
           <!-- 🌟 修复：绑定 :disabled="store.isPaused" 冻结交互 -->
-          <div class="btn-group btn-group-sm shadow-sm" role="group">
-            <button class="btn" 
-                    :disabled="store.isPaused"
-                    :class="course.state === 0 ? 'btn-danger text-white fw-bold' : 'btn-outline-secondary'"
-                    @click="changeStrategy(course.id, 0)">摆</button>
-            <button class="btn" 
-                    :disabled="store.isPaused"
-                    :class="course.state === 1 ? 'btn-warning text-dark fw-bold' : 'btn-outline-secondary'"
-                    @click="changeStrategy(course.id, 1)">摸</button>
-            <button class="btn" 
-                    :disabled="store.isPaused"
-                    :class="course.state === 2 ? 'btn-success text-white fw-bold' : 'btn-outline-secondary'"
-                    @click="changeStrategy(course.id, 2)">卷</button>
+          <div
+            class="btn-group btn-group-sm shadow-sm"
+            role="group"
+          >
+            <button
+              class="btn" 
+              :disabled="store.isPaused"
+              :class="course.state === 0 ? 'btn-danger text-white fw-bold' : 'btn-outline-secondary'"
+              @click="changeStrategy(course.id, 0)"
+            >
+              摆
+            </button>
+            <button
+              class="btn" 
+              :disabled="store.isPaused"
+              :class="course.state === 1 ? 'btn-warning text-dark fw-bold' : 'btn-outline-secondary'"
+              @click="changeStrategy(course.id, 1)"
+            >
+              摸
+            </button>
+            <button
+              class="btn" 
+              :disabled="store.isPaused"
+              :class="course.state === 2 ? 'btn-success text-white fw-bold' : 'btn-outline-secondary'"
+              @click="changeStrategy(course.id, 2)"
+            >
+              卷
+            </button>
           </div>
         </div>
-
       </div>
-      
     </div>
   </div>
 </template>

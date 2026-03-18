@@ -1,20 +1,37 @@
 <template>
   <div class="d-flex justify-content-between align-items-end mb-3">
     <div>
-      <h3 class="mb-0 fw-bold text-primary" style="letter-spacing: 1px;">🎓 ZJUers Simulator</h3>
-      <div class="small text-muted fw-bold">折姜大学生存模拟器</div>
+      <h3
+        class="mb-0 fw-bold text-primary"
+        style="letter-spacing: 1px;"
+      >
+        🎓 ZJUers Simulator
+      </h3>
+      <div class="small text-muted fw-bold">
+        折姜大学生存模拟器
+      </div>
     </div>
     
     <div class="d-flex gap-2">
-      <a href="https://docs.67656.fun/rules/" target="_blank" class="btn btn-sm btn-outline-info fw-bold shadow-sm">
+      <a
+        href="https://zjusim-adocs.67656.fun/rules/"
+        target="_blank"
+        class="btn btn-sm btn-outline-info fw-bold shadow-sm"
+      >
         📖 游戏规则
       </a>
       
-      <button class="btn btn-sm btn-outline-success fw-bold shadow-sm" @click="saveGame">
+      <button
+        class="btn btn-sm btn-outline-success fw-bold shadow-sm"
+        @click="saveGame"
+      >
         💾 快速保存
       </button>
       
-      <button class="btn btn-sm btn-outline-danger fw-bold shadow-sm" @click="requestExit">
+      <button
+        class="btn btn-sm btn-outline-danger fw-bold shadow-sm"
+        @click="requestExit"
+      >
         🚪 退出游戏
       </button>
     </div>

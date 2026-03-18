@@ -45,39 +45,74 @@ const handleEnterGame = (token) => {
 </script>
 
 <template>
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link
+    href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
+    rel="stylesheet"
+  >
 
-  <div class="toast-container position-fixed top-0 end-0 p-4" style="z-index: 10000;">
-    <div v-if="store.toast" class="toast show align-items-center text-white border-0 shadow-lg fade-in" 
-         :class="`bg-${store.toast.type}`" role="alert">
+  <div
+    class="toast-container position-fixed top-0 end-0 p-4"
+    style="z-index: 10000;"
+  >
+    <div
+      v-if="store.toast"
+      class="toast show align-items-center text-white border-0 shadow-lg fade-in" 
+      :class="`bg-${store.toast.type}`"
+      role="alert"
+    >
       <div class="d-flex px-1 py-1">
         <div class="toast-body fw-bold fs-6">
-           {{ store.toast.type === 'success' ? '✅' : '⚠️' }} {{ store.toast.message }}
+          {{ store.toast.type === 'success' ? '✅' : '⚠️' }} {{ store.toast.message }}
         </div>
-        <button type="button" class="btn-close btn-close-white me-2 m-auto" @click="store.toast = null"></button>
+        <button
+          type="button"
+          class="btn-close btn-close-white me-2 m-auto"
+          @click="store.toast = null"
+        />
       </div>
     </div>
   </div>
   
   <LoginView v-if="store.currentPhase === 'login'" />
 
-  <AdmissionScreen v-else-if="store.currentPhase === 'admission'" @enter-game="handleEnterGame" />
+  <AdmissionScreen
+    v-else-if="store.currentPhase === 'admission'"
+    @enter-game="handleEnterGame"
+  />
 
-  <div v-else-if="store.currentPhase === 'loading'" class="vh-100 d-flex flex-column justify-content-center align-items-center bg-light">
-    <div class="spinner-border text-primary mb-3" style="width: 3rem; height: 3rem;" role="status"></div>
-    <h4 class="text-muted">正在连接「zdbk」...</h4>
-    <div v-if="!isConnected" class="text-danger small mt-2">（如果长时间卡住，请尝试刷新页面）</div>
+  <div
+    v-else-if="store.currentPhase === 'loading'"
+    class="vh-100 d-flex flex-column justify-content-center align-items-center bg-light"
+  >
+    <div
+      class="spinner-border text-primary mb-3"
+      style="width: 3rem; height: 3rem;"
+      role="status"
+    />
+    <h4 class="text-muted">
+      正在连接「zdbk」...
+    </h4>
+    <div
+      v-if="!isConnected"
+      class="text-danger small mt-2"
+    >
+      （如果长时间卡住，请尝试刷新页面）
+    </div>
   </div>
 
-  <div v-else-if="store.currentPhase === 'playing'" class="container-fluid px-4 mt-4 fade-in-up">
-
+  <div
+    v-else-if="store.currentPhase === 'playing'"
+    class="container-fluid px-4 mt-4 fade-in-up"
+  >
     <TopNav @send-action="send" />
     
     <HudBar />
     <div class="row">
       <div class="col-md-3">
         <div class="card mb-3 border-0 shadow-sm h-100">
-          <div class="card-header bg-info text-white text-center fw-bold py-2">📚 学在折大</div>
+          <div class="card-header bg-info text-white text-center fw-bold py-2">
+            📚 学在折大
+          </div>
           <div class="card-body p-0">
             <CourseList @send-action="send" />
           </div>
@@ -94,11 +129,9 @@ const handleEnterGame = (token) => {
     <TranscriptModal @send-action="send" />
     <RandomEventModal @send-action="send" />
     <ExitConfirmModal @send-action="send" />
-
   </div>
 
   <EndScreen v-else-if="store.currentPhase === 'ended'" />
-
 </template>
 
 <style>

@@ -1,0 +1,48 @@
+{
+  "projects_dir": "D:/projects",
+  "source_folder": "ZJUers_simulator",
+  "target_folder": "zjusim_docs",
+  "docs_subdir": "docs",
+  "sync_options": {
+    "delete_extra_files": false,
+    "compare_content": false,
+    "follow_symlinks": true,
+    "preserve_metadata": true,
+    "dry_run": false
+  },
+  "exclude_patterns": [
+    "*.tmp",
+    "*.log",
+    ".git",
+    "__pycache__",
+    "*.pyc",
+    "*.swp",
+    "*.bak",
+    "node_modules",
+    ".DS_Store",
+    "Thumbs.db"
+  ],
+  "include_patterns": [],
+  "backup": {
+    "enabled": false,
+    "backup_dir": "backups",
+    "max_backups": 5,
+    "backup_before_sync": true
+  },
+  "logging": {
+    "enabled": true,
+    "log_file": "sync_log.txt",
+    "log_level": "INFO"
+  },
+  "notifications": {
+    "show_progress": true,
+    "show_summary": true,
+    "sound_on_complete": false
+  },
+  "filters": {
+    "min_file_size": 0,
+    "max_file_size": 0,
+    "include_hidden": false,
+    "include_empty_dirs": true
+  }
+}

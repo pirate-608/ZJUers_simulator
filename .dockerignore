@@ -10,8 +10,9 @@ venv/
 .env.key
 .env.dev
 .env.prod
-.conda
-c_modules/build/
+.antigravity/
+build/
+zjus-backend/.pytest_cache
 *.so
 *.dll
 *.dylib

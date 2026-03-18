@@ -1,0 +1,93 @@
+:root {
+    --card-bg: color-mix(in srgb, var(--md-default-bg-color) 92%, var(--md-default-fg-color) 8%);
+    --card-bg-hover: color-mix(in srgb, var(--md-default-bg-color) 86%, var(--md-default-fg-color) 14%);
+    --card-border: color-mix(in srgb, var(--md-default-fg-color) 10%, transparent);
+    --card-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
+    --card-shadow-hover: 0 8px 22px rgba(0, 0, 0, 0.14);
+}
+
+[data-md-color-scheme="default"] {
+    --card-bg: #eef2ff;
+    --card-bg-hover: #dbeafe;
+    --card-border: rgba(30, 64, 175, 0.24);
+    --card-shadow: 0 3px 10px rgba(15, 23, 42, 0.08);
+    --card-shadow-hover: 0 8px 20px rgba(15, 23, 42, 0.14);
+}
+
+[data-md-color-scheme="default"] .md-tabs__link {
+    color: #1e3a8a;
+    font-weight: 600;
+}
+
+[data-md-color-scheme="default"] .md-tabs__link:hover,
+[data-md-color-scheme="default"] .md-tabs__link:focus-visible {
+    color: #1e40af;
+}
+
+/* 顶部标签导航卡片化 */
+.md-tabs__link {
+    border-radius: 12px;
+    border: 1px solid var(--card-border);
+    padding-inline: 14px;
+    margin: 8px 6px;
+    background: var(--card-bg);
+    box-shadow: var(--card-shadow);
+    transition: background 0.2s ease, color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+.md-tabs__link:hover,
+.md-tabs__link:focus-visible {
+    background: var(--card-bg-hover);
+    box-shadow: var(--card-shadow-hover);
+    transform: translateY(-1px);
+}
+
+.md-tabs__item--active .md-tabs__link {
+    background: var(--md-primary-fg-color);
+    color: var(--md-primary-bg-color);
+    border-color: transparent;
+    box-shadow: var(--card-shadow-hover);
+}
+
+[data-md-color-scheme="default"] .md-tabs__item--active .md-tabs__link {
+    color: #fff;
+    background: #1e3a8a;
+    box-shadow: 0 10px 24px rgba(30, 58, 138, 0.32);
+}
+
+/* 侧边目录与内部锚点卡片化 */
+.md-nav__link {
+    border-radius: 10px;
+    padding: 6px 10px;
+    margin: 2px 0;
+    transition: background 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.md-nav__link:hover,
+.md-nav__link:focus-visible {
+    background: var(--card-bg-hover);
+    box-shadow: var(--card-shadow);
+}
+
+.md-nav__item .md-nav__link--active {
+    background: var(--md-primary-fg-color);
+    color: var(--md-primary-bg-color);
+    border-radius: 10px;
+    box-shadow: var(--card-shadow-hover);
+}
+
+[data-md-color-scheme="default"] .md-nav__item .md-nav__link--active {
+    color: #fff;
+    background: #1e3a8a;
+}
+
+.md-nav--primary .md-nav__title {
+    border-radius: 10px;
+}
+
+/* 兼容暗色模式的透明度表现 */
+[data-md-color-scheme="slate"] {
+    --card-bg: color-mix(in srgb, var(--md-default-bg-color) 92%, var(--md-default-fg-color) 8%);
+    --card-bg-hover: color-mix(in srgb, var(--md-default-bg-color) 86%, var(--md-default-fg-color) 14%);
+    --card-border: color-mix(in srgb, var(--md-default-fg-color) 18%, transparent);
+}

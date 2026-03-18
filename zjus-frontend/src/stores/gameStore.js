@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { ref, computed, reactive } from 'vue'
+import { ref, reactive } from 'vue'
 
 export const useGameStore = defineStore('game', () => {
     // --- 核心状态 ---
@@ -9,11 +9,22 @@ export const useGameStore = defineStore('game', () => {
     // 🌟 修复：使用 reactive 初始化，确保所有后端可能发来的核心属性都是响应式的！
     // 坚决使用你后端的字段名：iq, eq, energy, sanity, gpa
     const currentStats = reactive({
+        username: '',
+        major: '',
+        major_abbr: '',
+        semester: '大一秋冬',
+        semester_idx: 1,
+        semester_start_time: 0,
+        energy: 100,
+        sanity: 80,
+        stress: 0,
         iq: 100,
         eq: 100,
-        energy: 100,
-        sanity: 100,
-        gpa: 0,
+        luck: 50,
+        gpa: 0.0,
+        highest_gpa: 0.0,
+        reputation: 0,
+        efficiency: 100,
         courses: {} // 存放实时的掌握度进度
     })
 

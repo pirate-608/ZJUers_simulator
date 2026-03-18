@@ -848,6 +848,14 @@ class GameEngine:
             elapsed = int(new_stats.get("elapsed_game_time", 0))
             semester_time_left = self._get_semester_time_left(elapsed, base_duration)
 
+            # 新增：真正下发综合效率（用于前端渲染）
+            # 基于 iq 和 stress 计算并存入将下发的 new_stats 中
+            iq = int(new_stats.get("iq", 100))
+            stress = int(new_stats.get("stress", 0))
+            # 基准 100，每高出一点智商提高 1%，每多一点压力降低 0.5%
+            calculated_efficiency = max(10, 100 + (iq - 100) * 1 - int(stress * 0.5))
+            new_stats["efficiency"] = calculated_efficiency
+
             await self.emit(
                 "tick",
                 {

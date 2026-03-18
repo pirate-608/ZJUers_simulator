@@ -1,16 +1,35 @@
 <template>
-  <div v-if="store.activeModal === 'random_event'" class="modal-backdrop-custom d-flex justify-content-center align-items-center fade-in">
-    <div class="card shadow border-0 modal-card scale-in" style="width: 90%; max-width: 500px;">
+  <div
+    v-if="store.activeModal === 'random_event'"
+    class="modal-backdrop-custom d-flex justify-content-center align-items-center fade-in"
+  >
+    <div
+      class="card shadow border-0 modal-card scale-in"
+      style="width: 90%; max-width: 500px;"
+    >
       <div class="card-header text-white py-3 bg-primary">
-        <h5 class="mb-0 fw-bold">🌟 突发事件：{{ data.title }}</h5>
+        <h5 class="mb-0 fw-bold">
+          🌟 突发事件：{{ data.title }}
+        </h5>
       </div>
       <div class="card-body p-4">
-        <p class="fs-6 mb-4" style="line-height: 1.6; white-space: pre-wrap;">{{ data.desc }}</p>
+        <p
+          class="fs-6 mb-4"
+          style="line-height: 1.6; white-space: pre-wrap;"
+        >
+          {{ data.desc }}
+        </p>
         
-        <div class="d-grid gap-3" v-if="data.options && data.options.length > 0">
-          <button v-for="(opt, idx) in data.options" :key="idx" 
-                  class="btn btn-outline-primary text-start p-3"
-                  @click="makeChoice(opt.effects)">
+        <div
+          v-if="data.options && data.options.length > 0"
+          class="d-grid gap-3"
+        >
+          <button
+            v-for="(opt, idx) in data.options"
+            :key="idx" 
+            class="btn btn-outline-primary text-start p-3"
+            @click="makeChoice(opt.effects)"
+          >
             <strong>选项 {{ idx + 1 }}:</strong> {{ opt.text }}
           </button>
         </div>

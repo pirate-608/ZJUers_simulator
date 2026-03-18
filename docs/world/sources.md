@@ -1,0 +1,9 @@
+|资源|更新时间|下载|
+|---|---|---|
+|全部设定|20260216|[下载zip](../assets/sources/world.zip){:download=world.zip}|
+|课程数据|20260216|[下载zip](../assets/sources/courses.zip){:download=courses.zip}|
+|关键词|20260216|[下载json](../assets/sources/keywords.json){:download=keywords.json}|
+|专业数据|20260216|[下载json](../assets/sources/majors.json){:download=majors.json}|
+|角色数据|20260216|[下载json](../assets/sources/characters.json){:download=characters.json}|
+|成就数据|20260216|[下载json](../assets/sources/achievements.json){:download=achievements.json}|
+|数值|20260216|[下载json](../assets/sources/game_balance.json){:download=game_balance.json}|

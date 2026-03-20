@@ -70,3 +70,29 @@ export function extractNewSemesterName(msg: Extract<WsMessage, { type: 'new_seme
   return '新学期'
 }
 
+// ─── 客户端 → 服务器 动作类型（覆盖全部合法 action） ───
+
+export type RelaxTarget = 'gym' | 'game' | 'walk' | 'cc98'
+
+export type WsClientAction =
+  | { action: 'ping' }
+  | { action: 'start' }
+  | { action: 'pause' }
+  | { action: 'resume' }
+  | { action: 'get_state' }
+  | { action: 'set_speed'; speed: number }
+  | { action: 'change_course_state'; target: string; value: number }
+  | { action: 'relax'; target: RelaxTarget }
+  | { action: 'exam' }
+  | { action: 'next_semester' }
+  | { action: 'event_choice'; effects: unknown }
+  | { action: 'save_game' }
+  | { action: 'save_and_exit' }
+  | { action: 'exit_without_save' }
+  | { action: 'restart' }
+
+// ─── 运行时类型守卫 ───
+
+export function isWsMessage(raw: unknown): raw is WsMessage {
+  return typeof raw === 'object' && raw !== null && typeof (raw as Record<string, unknown>).type === 'string'
+}

@@ -29,8 +29,8 @@ export interface RandomEventModalData {
 
 export interface DingTalkMessage {
   sender?: string
-  role?: string
-  content?: string
+  role: string
+  content: string
   is_urgent?: boolean
   [k: string]: unknown
 }

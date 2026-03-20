@@ -146,20 +146,23 @@
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { ref, watch, computed, onMounted, onUnmounted } from 'vue'
 import { useGameStore } from '../stores/gameStore.ts'
+import type { WsClientAction, RelaxTarget } from '@/types/websocket'
 
 const store = useGameStore()
-const emit = defineEmits(['send-action'])
+const emit = defineEmits<{
+  'send-action': [payload: WsClientAction]
+}>()
 
 // ✨ 本地虚拟时间，用于丝滑渲染
 const internalTime = ref(0)
-let animationFrameId = null
+let animationFrameId: number | null = null
 let lastTick = performance.now()
 
 // 监听后端推送过来的绝对准确时间，消除任何前端误差
-watch(() => store.semesterTimeLeft, (newVal) => {
+watch(() => store.semesterTimeLeft, (newVal: number) => {
   if (newVal !== undefined) {
     internalTime.value = newVal // 每当后端 Tick 到达，强制校准
   }
@@ -186,7 +189,9 @@ onMounted(() => {
 })
 
 onUnmounted(() => {
-  cancelAnimationFrame(animationFrameId)
+  if (animationFrameId !== null) {
+    cancelAnimationFrame(animationFrameId)
+  }
 })
 
 // 将内部的浮点数秒数格式化为 MM:SS
@@ -200,7 +205,7 @@ const formattedTime = computed(() => {
 
 // --- 数据计算逻辑 ---
 
-// 计算效率的文案提示（替代原先 uiManager.js 里的长串 if-else）
+// 计算效率的文案提示
 const efficiencyHint = computed(() => {
   const eff = store.currentStats.efficiency ?? 100
   if (eff >= 120) return '如有神助 🚀'
@@ -215,26 +220,23 @@ const averageProgress = computed(() => {
   if (!courses || Object.keys(courses).length === 0) return 0
   let totalProgress = 0, count = 0
   for (const courseId in courses) {
-    totalProgress += courses[courseId].progress ?? 0
+    totalProgress += (courses[courseId].progress as number) ?? 0
     count++
   }
   return count > 0 ? Math.min(100, totalProgress / count) : 0
 })
 
-// 考试按钮是否可用（例如：倒计时显示为 0，或触发了特定状态）
-// 🌟 修复：直接判断数字，而不是判断字符串
+// 考试按钮是否可用
 const canTakeExam = computed(() => {
   return internalTime.value <= 0
 })
 
 // --- 发送指令逻辑 ---
 
-const sendRelax = (activity) => {
-  // 之前写的是 type: activity，后端需要 target: activity
+const sendRelax = (activity: RelaxTarget) => {
   emit('send-action', { action: 'relax', target: activity }) 
 }
 const takeExam = () => {
-  // 旧版 JS 发送了 target: 'final'，为保稳妥带上
-  emit('send-action', { action: 'exam', target: 'final' }) 
+  emit('send-action', { action: 'exam' }) 
 }
 </script>

@@ -177,20 +177,23 @@
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { ref, watch, nextTick } from 'vue'
 import { useGameStore } from '../stores/gameStore.ts'
+import type { WsClientAction } from '@/types/websocket'
 
 // 定义向外发送的事件（替代原本直接调用 wsManager.send）
-const emit = defineEmits(['send-action'])
+const emit = defineEmits<{
+  'send-action': [payload: WsClientAction]
+}>()
 
 const store = useGameStore()
-const activeTab = ref('events')
-const dingScrollContainer = ref(null)
+const activeTab = ref<string>('events')
+const dingScrollContainer = ref<HTMLDivElement | null>(null)
 
 // 角色配置抽取（替代 dingTalkManager 中的硬编码逻辑）
-const getRoleConfig = (role) => {
-  const configs = {
+const getRoleConfig = (role: string) => {
+  const configs: Record<string, { bg: string; icon: string; name: string }> = {
     "counselor": { bg: "#FF9F43", icon: "导", name: "辅导员" },
     "teacher": { bg: "#54a0ff", icon: "师", name: "老师" },
     "student": { bg: "#1dd1a1", icon: "生", name: "同学" },
@@ -200,7 +203,7 @@ const getRoleConfig = (role) => {
 }
 
 // 切换 Tab 的逻辑
-const switchTab = (tabName) => {
+const switchTab = (tabName: string) => {
   activeTab.value = tabName
   if (tabName === 'dingtalk') {
     store.clearUnreadDingtalk() // 切过去时自动清空红点
@@ -231,7 +234,7 @@ const handlePause = () => {
   emit('send-action', { action: action })
 }
 
-const setSpeed = (speed) => {
+const setSpeed = (speed: number) => {
   store.gameSpeed = speed
   // ✅ 恢复发送给后端，现在后端能听懂了！
   emit('send-action', { action: 'set_speed', speed: speed })

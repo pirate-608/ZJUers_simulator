@@ -95,27 +95,31 @@
           class="btn btn-primary btn-lg px-5 rounded-pill shadow-sm fw-bold pulse-btn"
           @click="startNextSemester"
         >
-          {{ store.currentStats.semester_idx >= 8 ? '🎓 参加毕业典礼 ➔' : '🚀 开启新学期 ➔' }}
+          {{ (store.currentStats.semester_idx ?? 1) >= 8 ? '🎓 参加毕业典礼 ➔' : '🚀 开启新学期 ➔' }}
         </button>
       </div>
     </div>
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { computed } from 'vue'
 import { useGameStore } from '../../stores/gameStore.ts'
+import type { WsClientAction } from '@/types/websocket'
+import type { TranscriptModalData, TranscriptModalCourseRow } from '@/types/modal'
 
 const store = useGameStore()
-const emit = defineEmits(['send-action'])
+const emit = defineEmits<{
+  'send-action': [payload: WsClientAction]
+}>()
 
 // 动态获取模态框附带的数据
-const data = computed(() => store.modalData)
+const data = computed(() => store.modalData as TranscriptModalData)
 
 // 计算是否有挂科
 const hasFailedCourse = computed(() => {
   if (!data.value.courses) return false
-  return data.value.courses.some(c => c.grade < 60)
+  return data.value.courses.some((c: TranscriptModalCourseRow) => c.grade < 60)
 })
 
 const startNextSemester = () => {

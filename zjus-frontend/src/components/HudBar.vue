@@ -64,7 +64,7 @@
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { computed } from 'vue'
 import { useGameStore } from '../stores/gameStore.ts'
 
@@ -72,7 +72,7 @@ const store = useGameStore()
 const stats = computed(() => store.currentStats)
 
 // 🌟 安全转换函数，防止 undefined / null / string 导致页面崩溃
-const safeNumber = (val, defaultVal = 0) => {
+const safeNumber = (val: unknown, defaultVal: number = 0): number => {
   if (val === null || val === undefined) return defaultVal
   const num = Number(val)
   return isNaN(num) ? defaultVal : num

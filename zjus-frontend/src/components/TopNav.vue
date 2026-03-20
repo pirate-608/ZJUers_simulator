@@ -38,11 +38,14 @@
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { useGameStore } from '../stores/gameStore.ts'
+import type { WsClientAction } from '@/types/websocket'
 
 const store = useGameStore()
-const emit = defineEmits(['send-action'])
+const emit = defineEmits<{
+  'send-action': [payload: WsClientAction]
+}>()
 
 const saveGame = () => {
   emit('send-action', { action: 'save_game' })

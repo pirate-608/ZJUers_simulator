@@ -38,15 +38,19 @@
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { computed } from 'vue'
 import { useGameStore } from '../../stores/gameStore.ts'
+import type { WsClientAction } from '@/types/websocket'
+import type { RandomEventModalData } from '@/types/modal'
 
 const store = useGameStore()
-const emit = defineEmits(['send-action'])
-const data = computed(() => store.modalData)
+const emit = defineEmits<{
+  'send-action': [payload: WsClientAction]
+}>()
+const data = computed(() => store.modalData as RandomEventModalData)
 
-const makeChoice = (effects) => {
+const makeChoice = (effects: unknown) => {
   store.closeModal()
   // 完全对齐旧版逻辑和后端的 _handle_event_choice 需求
   emit('send-action', { action: 'event_choice', effects: effects })

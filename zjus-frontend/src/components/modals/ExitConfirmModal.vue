@@ -64,11 +64,14 @@
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { useGameStore } from '../../stores/gameStore.ts'
+import type { WsClientAction } from '@/types/websocket'
 
 const store = useGameStore()
-const emit = defineEmits(['send-action'])
+const emit = defineEmits<{
+  'send-action': [payload: WsClientAction]
+}>()
 
 const exitWithoutSave = () => {
   store.closeModal()
@@ -79,7 +82,7 @@ const exitWithoutSave = () => {
 
 const saveAndExit = () => {
   // 🌟 修复：不再使用 setTimeout，而是设置等待标记，发送保存指令
-  // 配合 useGameWebSocket.js 里的 save_result 拦截，实现完美闭环
+  // 配合 useGameWebSocket.ts 里的 save_result 拦截，实现完美闭环
   store.isPendingExit = true
   emit('send-action', { action: 'save_game' })
 }

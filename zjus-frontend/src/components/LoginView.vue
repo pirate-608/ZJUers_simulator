@@ -254,13 +254,14 @@
   </footer>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { ref, reactive, computed } from 'vue'
 import { useGameStore } from '../stores/gameStore.ts'
+import type { ExamQuestion } from '@/types/api'
 
 const store = useGameStore()
 
-const viewState = ref('login')
+const viewState = ref<'login' | 'loading' | 'exam' | 'examFinished'>('login')
 const loadingText = ref('正在连接服务器...')
 
 const form = reactive({
@@ -272,8 +273,8 @@ const form = reactive({
   llmKey: ''
 })
 
-const examQuestions = ref([])
-const examAnswers = ref({})
+const examQuestions = ref<ExamQuestion[]>([])
+const examAnswers = ref<Record<number, string>>({})
 
 const allQuestionsAnswered = computed(() => {
   if (examQuestions.value.length === 0) return false
@@ -287,9 +288,9 @@ const allQuestionsAnswered = computed(() => {
 
 // === 弹窗状态管理 ===
 const showLlmWarning = ref(false)
-const pendingAction = ref(null) 
+const pendingAction = ref<string | null>(null) 
 
-const handleAction = (actionType) => {
+const handleAction = (actionType: string) => {
   if (form.useCustomLlm && form.llmKey.trim() !== '') {
     pendingAction.value = actionType
     showLlmWarning.value = true 
@@ -308,7 +309,7 @@ const confirmLlmAction = () => {
   executeAction(pendingAction.value)
 }
 
-const executeAction = (actionType) => {
+const executeAction = (actionType: string | null) => {
   if (actionType === 'exam') startExam()
   else if (actionType === 'quick') quickLogin()
 }
@@ -344,8 +345,14 @@ const startExam = async () => {
     const response = await fetch('/api/exam/questions', { method: 'GET' })
     if (!response.ok) throw new Error('网络响应异常')
     
-    const data = await response.json()
-    examQuestions.value = data.questions || data || []
+    const data: unknown = await response.json()
+    if (Array.isArray(data)) {
+      examQuestions.value = data as ExamQuestion[]
+    } else if (typeof data === 'object' && data !== null && 'questions' in data) {
+      examQuestions.value = (data as { questions: ExamQuestion[] }).questions || []
+    } else {
+      examQuestions.value = []
+    }
     examAnswers.value = {}
     viewState.value = 'exam'
 
@@ -360,22 +367,22 @@ const submitExam = async () => {
   loadingText.value = '正在由 C 语言判卷系统阅卷中...'
 
   try {
-    const formattedAnswers = {}
+    const formattedAnswers: Record<string, string> = {}
     examQuestions.value.forEach((q, index) => {
-      const ans = examAnswers.value[index] || "";
-      const questionId = String(q.id !== undefined ? q.id : index + 1);
-      formattedAnswers[questionId] = ans.trim();
-    });
+      const ans = examAnswers.value[index] || ""
+      const questionId = String(q.id !== undefined ? q.id : index + 1)
+      formattedAnswers[questionId] = ans.trim()
+    })
 
-    const payload = { 
+    const payload: Record<string, unknown> = { 
       username: form.username.trim(),
       answers: formattedAnswers
     }
 
     if (form.useCustomLlm) {
-      if (form.llmProvider) payload.custom_llm_provider = form.llmProvider;
-      if (form.llmModel) payload.custom_llm_model = form.llmModel.trim();
-      if (form.llmKey) payload.custom_llm_api_key = form.llmKey.trim();
+      if (form.llmProvider) payload.custom_llm_provider = form.llmProvider
+      if (form.llmModel) payload.custom_llm_model = form.llmModel.trim()
+      if (form.llmKey) payload.custom_llm_api_key = form.llmKey.trim()
     }
 
     const response = await fetch('/api/exam/submit', {
@@ -385,27 +392,26 @@ const submitExam = async () => {
     })
 
     if (response.status === 422) {
-      const errData = await response.json();
-      console.error("422 Error:", errData.detail);
-      alert('参数校验失败，请检查输入格式！');
-      viewState.value = 'login';
-      return;
+      const errData = await response.json()
+      console.error("422 Error:", errData.detail)
+      alert('参数校验失败，请检查输入格式！')
+      viewState.value = 'login'
+      return
     }
 
-    if (!response.ok) throw new Error(`HTTP 异常: ${response.status}`);
+    if (!response.ok) throw new Error(`HTTP 异常: ${response.status}`)
 
-    const data = await response.json()
+    const data = (await response.json()) as { status: string; token?: string; message?: string }
 
     if (data.status === 'success') {
-      // 🌟 修复：同时保存 Token 和真实的玩家姓名
-      saveTokenAndConfig(data.token, form.username.trim())
+      saveTokenAndConfig(data.token ?? '', form.username.trim())
       store.setPhase('admission') 
     } else {
       alert(`❌ 判卷结果：${data.message}`)
       viewState.value = 'login'
     }
   } catch (error) {
-    console.error("Submit Exception:", error);
+    console.error("Submit Exception:", error)
     alert('判卷请求失败，请联系管理员！')
     viewState.value = 'login'
   }
@@ -417,8 +423,7 @@ const quickLogin = async () => {
   loadingText.value = '正在验证学生凭证...'
 
   try {
-    const payload = {
-      // 🌟 修复：后端 Pydantic 强制要求传入 username(str)，不能传 null
+    const payload: Record<string, unknown> = {
       username: form.username.trim() || localStorage.getItem('zju_username') || "折大人",
       token: form.token,
       custom_llm_provider: form.useCustomLlm ? form.llmProvider : null,
@@ -431,11 +436,10 @@ const quickLogin = async () => {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)
     })
-    const data = await response.json()
+    const data = (await response.json()) as { status: string; token?: string; message?: string }
 
     if (data.status === 'success') {
-      // 🌟 修复：同时保存 Token 和真实的玩家姓名
-      saveTokenAndConfig(data.token, payload.username)
+      saveTokenAndConfig(data.token ?? '', payload.username as string)
       store.setPhase('admission')
     } else {
       alert(`登录失败：${data.message}`)
@@ -449,7 +453,7 @@ const quickLogin = async () => {
 }
 
 // 🌟 修复：增加 username 参数并存入 localStorage
-const saveTokenAndConfig = (token, username) => {
+const saveTokenAndConfig = (token: string, username: string) => {
   if (token) localStorage.setItem('zju_token', token)
   if (username) localStorage.setItem('zju_username', username)
   

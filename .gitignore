@@ -81,6 +81,7 @@ npm-debug.log
 yarn-error.log
 dist/
 build/
+site/
 
 # 备份文件
 *.bak

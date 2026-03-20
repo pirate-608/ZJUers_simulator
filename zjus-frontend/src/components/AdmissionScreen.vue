@@ -386,15 +386,17 @@
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { useGameStore } from '../stores/gameStore.ts'
 
 const store = useGameStore()
-const emit = defineEmits(['enter-game'])
+const emit = defineEmits<{
+  'enter-game': [token: string]
+}>()
 
 const loading = ref(true)
-const info = ref({ username: '折大人', major: '大类招生(未定)' })
+const info = ref<{ username: string; major: string }>({ username: '折大人', major: '大类招生(未定)' })
 const playerToken = ref('')
 
 onMounted(async () => {
@@ -431,12 +433,12 @@ onMounted(async () => {
       let finalMajor = ''
       try {
         // 尝试按 JSON 解析
-        const jsonObj = JSON.parse(rawText)
+        const jsonObj = JSON.parse(rawText) as unknown
         if (typeof jsonObj === 'string') {
           finalMajor = jsonObj // 后端直接返回了 "专业名"
         } else if (typeof jsonObj === 'object' && jsonObj !== null) {
-          // 如果后端骗了我们，返回了对象，尝试提取可能包含专业的字段
-          finalMajor = jsonObj.assigned_major || jsonObj.major || jsonObj.data || jsonObj.result || ''
+          const obj = jsonObj as Record<string, unknown>
+          finalMajor = String(obj.assigned_major || obj.major || obj.data || obj.result || '')
         }
       } catch {
         // 解析 JSON 失败，说明后端返回的是纯文本 (Text)

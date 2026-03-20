@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import { onMounted } from 'vue'
 import { useGameStore } from '@/stores/gameStore.ts'
 import { useGameWebSocket } from '@/composables/useGameWebSocket.ts'
@@ -31,14 +31,13 @@ onMounted(() => {
 })
 
 // 核心：处理正式进入游戏的动作
-/** @param {string} token */
-const handleEnterGame = (token) => {
+const handleEnterGame = (token: string) => {
   store.setPhase('loading') 
   
   // 动态获取当前协议和域名
-  const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-  const wsHost = window.location.host; // 会自动带上端口(如果有)
-  const wsUrl = `${wsProtocol}//${wsHost}`; // 结果例如: wss://game.67656.fun
+  const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
+  const wsHost = window.location.host // 会自动带上端口(如果有)
+  const wsUrl = `${wsProtocol}//${wsHost}` // 结果例如: wss://game.67656.fun
   
   // 同样，API fetch 请求因为写的是 '/api/xxx'，也会自动拼在这个域名后
   connect(token, wsUrl) 

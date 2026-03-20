@@ -86,6 +86,7 @@ nav:
     - 开发计划: 
       - 总览: dev/plans/index.md
       - ZJUers模拟器前端计划迁移至TypeScript: dev/plans/migrate_js_to_ts.md
+      - 将所有vue组件迁移至TS: dev/plans/completely_ts.md
       - UI设计优化: dev/plans/ui_design.md
     - 测试: dev/test.md
   - 常见问题: 

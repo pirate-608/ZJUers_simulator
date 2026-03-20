@@ -7,7 +7,7 @@ on:
     paths:
       - 'docs/**'
       - 'mkdocs.yml'
-      - 'hooks.py'
+      - 'overrides/**'
       - '.github/workflows/deploy_docs.yml'
   workflow_dispatch:
 

@@ -1,5 +1,6 @@
 import js from '@eslint/js'
 import pluginVue from 'eslint-plugin-vue'
+import tsParser from '@typescript-eslint/parser'
 
 export default [
     {
@@ -8,11 +9,41 @@ export default [
     js.configs.recommended,
     ...pluginVue.configs['flat/recommended'],
     {
-        files: ['*.vue', '**/*.vue', '**/*.js', '**/*.jsx', '**/*.cjs', '**/*.mjs', '**/*.ts', '**/*.tsx'],
+        files: ['**/*.ts', '**/*.tsx'],
+        languageOptions: {
+            parser: tsParser,
+            parserOptions: {
+                ecmaVersion: 'latest',
+                sourceType: 'module',
+            },
+        },
+        rules: {
+            'no-unused-vars': 'warn',
+            'no-undef': 'off', // TS handles this
+        },
+    },
+    {
+        files: ['**/*.vue'],
+        languageOptions: {
+            parserOptions: {
+                parser: tsParser,
+                ecmaVersion: 'latest',
+                sourceType: 'module',
+            },
+        },
         rules: {
             'vue/multi-word-component-names': 'off',
             'no-console': process.env.NODE_ENV === 'production' ? 'warn' : 'off',
-            'no-unused-vars': 'warn', // 改为警告，方便开发
+            'no-unused-vars': 'warn',
+            'no-undef': 'off', // TS handles this
+        },
+    },
+    {
+        files: ['**/*.js', '**/*.jsx', '**/*.cjs', '**/*.mjs'],
+        rules: {
+            'vue/multi-word-component-names': 'off',
+            'no-console': process.env.NODE_ENV === 'production' ? 'warn' : 'off',
+            'no-unused-vars': 'warn',
         },
     },
     {

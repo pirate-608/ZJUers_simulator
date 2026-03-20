@@ -1,7 +1,7 @@
 import { ref, onUnmounted } from 'vue'
 import { useGameStore } from '../stores/gameStore.ts'
 import type { CoursesMap } from '../types/course'
-import type { WsMessage } from '../types/websocket'
+import type { WsMessage, WsClientAction } from '../types/websocket'
 import { extractGraduationFinalStats, extractNewSemesterName } from '../types/websocket'
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -27,7 +27,7 @@ export function useGameWebSocket() {
   const reconnectDelay = 3000
   let heartbeatInterval: ReturnType<typeof setInterval> | null = null
 
-  const send = (data: unknown) => {
+  const send = (data: WsClientAction) => {
     if (ws.value && ws.value.readyState === WebSocket.OPEN) {
       ws.value.send(JSON.stringify(data))
     }

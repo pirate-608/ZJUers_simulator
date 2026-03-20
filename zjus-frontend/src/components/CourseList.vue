@@ -80,12 +80,15 @@
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { computed } from 'vue'
 import { useGameStore } from '../stores/gameStore.ts'
+import type { WsClientAction } from '@/types/websocket'
 
 const store = useGameStore()
-const emit = defineEmits(['send-action'])
+const emit = defineEmits<{
+  'send-action': [payload: WsClientAction]
+}>()
 
 // 🌟 核心魔法：数据缝合计算属性
 // 我们将 courseMetadata(静态数据), courses(进度数据), courseStates(策略数据) 缝合成一个数组
@@ -103,26 +106,26 @@ const enrichedCourses = computed(() => {
       id: meta.id,
       name: meta.name,
       credit: meta.credit,
-      progress: progressData.progress ?? 0,
+      progress: (progressData.progress as number) ?? 0,
       state: state
     }
   })
 })
 
 // 根据进度改变进度条颜色
-const getProgressColor = (progress) => {
+const getProgressColor = (progress: number): string => {
   if (progress >= 85) return 'bg-success'
   if (progress >= 60) return 'bg-info'
   return 'bg-secondary' // 不及格时的颜色
 }
 
 // 切换课程策略的方法
-const changeStrategy = (courseId, newState) => {
+const changeStrategy = (courseId: string, newState: number) => {
   store.setCourseState(courseId, newState)
   emit('send-action', {
     action: 'change_course_state',
-    target: courseId,  // 之前写的是 course_id，后端不认
-    value: newState    // 之前写的是 state，后端不认
+    target: courseId,
+    value: newState
   })
 }
 </script>

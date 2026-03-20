@@ -154,12 +154,15 @@
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useGameStore } from '../stores/gameStore.ts'
+import type { WsClientAction } from '@/types/websocket'
 
 const store = useGameStore()
-const emit = defineEmits(['send-action']) // 记得在 setup 里加上这行
+const emit = defineEmits<{
+  'send-action': [payload: WsClientAction]
+}>()
 // 判断是否是好结局
 const isSuccess = computed(() => store.endType === 'graduation')
 
@@ -176,7 +179,7 @@ onMounted(() => {
 })
 
 // 打字机特效函数
-const startTypewriter = (text) => {
+const startTypewriter = (text: string) => {
   isTyping.value = true
   let i = 0
   typedText.value = ''
@@ -189,14 +192,13 @@ const startTypewriter = (text) => {
       clearInterval(timer)
       isTyping.value = false
     }
-  }, 50) // 每 50ms 吐出一个字，你可以根据需要调整速度
+  }, 50) // 每 50ms 吐出一个字
 }
 
 // 重新开始游戏逻辑
 const restartGame = () => {
   // 发送重开指令
   emit('send-action', { action: 'restart' })
-  // WebSocket 监听到 'init' 时，会自动把 store.currentPhase 设回 'playing'！体验无缝衔接！
 }
 </script>
 

@@ -104,7 +104,7 @@
 
 <script setup>
 import { computed } from 'vue'
-import { useGameStore } from '../../stores/gameStore'
+import { useGameStore } from '../../stores/gameStore.ts'
 
 const store = useGameStore()
 const emit = defineEmits(['send-action'])

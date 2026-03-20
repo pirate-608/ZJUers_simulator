@@ -45,54 +45,71 @@ zjus-backend/world/
 <details>
 <summary>🏁 开始界面</summary>
 
-![开始界面](https://docs.67656.fun/assets/images/start.png)
+![开始界面](https://zjusim-docs.67656.fun/assets/images/start.png)
 
 </details>
 
 <details>
 <summary>📝 入学考试</summary>
 
-![入学考试](https://docs.67656.fun/assets/images/exam.png)
+![入学考试](https://zjusim-docs.67656.fun/assets/images/exam.png)
 
 </details>
 
 <details>
 <summary>📜 录取通知书</summary>
 
-![录取通知书](https://docs.67656.fun/assets/images/admission.png)
+![录取通知书](https://zjusim-docs.67656.fun/assets/images/admission.png)
 
 </details>
 
 <details>
 <summary>🎛️ 游戏控制台</summary>
 
-![游戏控制台](https://docs.67656.fun/assets/images/dashboard.png)
+![游戏控制台](https://zjusim-docs.67656.fun/assets/images/dashboard.png)
 
 </details>
 
 <details>
 <summary>🎛️ 游戏控制台 2</summary>
 
-![游戏控制台2](https://docs.67656.fun/assets/images/dashboard2.png)
+![游戏控制台2](https://zjusim-docs.67656.fun/assets/images/dashboard2.png)
 
 </details>
 
 <details>
 <summary>✨ 随机事件</summary>
 
-![随机事件](https://docs.67656.fun/assets/images/event.png)
+![随机事件](https://zjusim-docs.67656.fun/assets/images/event.png)
 
 </details>
 
 <details>
 <summary>💬 钉钉消息</summary>
 
-![钉钉消息](https://docs.67656.fun/assets/images/dingtalk.png)
+![钉钉消息](https://zjusim-docs.67656.fun/assets/images/dingtalk.png)
 
 </details>
 
 ## 文档
 查看[项目文档](https://zjusim-docs.67656.fun)
+
+## 内容同步
+
+如需将本地的代码仓库中的文档内容同步到文档仓库，只需将两者放在统一目录下，如：
+
+```
+projects
+├── ZJUers_simulator
+└── ZJUers_simulator-docs
+```
+
+然后在scripts/sync_config.json中配置好`project_dir`, `source_folder`和`target_folder`
+
+在代码仓库根目录执行
+```bash
+python scripts/sync_docs.py
+```
 
 ## 许可证
 本项目采用 MIT License 开源。

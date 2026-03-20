@@ -8,7 +8,7 @@ export default [
     js.configs.recommended,
     ...pluginVue.configs['flat/recommended'],
     {
-        files: ['*.vue', '**/*.vue', '**/*.js', '**/*.jsx', '**/*.cjs', '**/*.mjs'],
+        files: ['*.vue', '**/*.vue', '**/*.js', '**/*.jsx', '**/*.cjs', '**/*.mjs', '**/*.ts', '**/*.tsx'],
         rules: {
             'vue/multi-word-component-names': 'off',
             'no-console': process.env.NODE_ENV === 'production' ? 'warn' : 'off',

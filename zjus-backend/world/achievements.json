@@ -33,6 +33,6 @@
     "name": "98大水怪",
     "desc": "累计水了100次cc98",
     "condition": "action_counts.get('cc98', 0) >= 100",
-    "icon": "🚑"
+    "icon": "🐙"
   }
 }

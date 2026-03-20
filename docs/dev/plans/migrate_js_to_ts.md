@@ -1,4 +1,4 @@
-# Vue 3 (JavaScript) 至 TypeScript 渐进式迁移技术文档
+# Vue 3 前端从 JavaScript 至 TypeScript 渐进式迁移（已完成）
 
 本文档旨在为 `zjus-frontend` 项目提供一套安全、稳健的 TypeScript (TS) 迁移方案。
 
@@ -163,3 +163,5 @@ const energy = ref<number>(100);
     - 旧命令：`npm run lint`
     - 新命令：`npm run lint && npm run type-check` (对应 package.json 中 `"type-check": "vue-tsc --noEmit"`)
 3.  **阈值设定**：在迁移初期，允许 type-check 存在一定数量的错误（设置 `--max-warnings` 或忽略特定目录），防止因为个别类型报错阻塞整个 CI。
+
+

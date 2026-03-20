@@ -1,0 +1,95 @@
+/* docs/assets/css/todo-list.css */
+.todo-container {
+    max-width: 1000px;
+    margin: 0 auto;
+    padding: 20px;
+  }
+  
+  .todo-columns {
+    display: flex;
+    gap: 2rem;
+    margin-top: 30px;
+  }
+  
+  .todo-column {
+    flex: 1;
+    background: var(--card-bg, #f8f9fa);
+    border-radius: 16px;
+    padding: 24px;
+    box-shadow: var(--card-shadow, 0 4px 12px rgba(0,0,0,0.05));
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+  }
+  
+  .todo-column:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--card-shadow-hover, 0 8px 24px rgba(0,0,0,0.1));
+  }
+  
+  .todo-column h2 {
+    text-align: center;
+    margin-top: 0;
+    margin-bottom: 20px;
+    padding-bottom: 10px;
+    border-bottom: 2px solid var(--border-soft, #e9ecef);
+    color: var(--md-default-fg-color, #2c3e50);
+  }
+  
+  .todo-list {
+    list-style-type: none;
+    padding-left: 0;
+    margin: 0;
+  }
+  
+  .todo-item {
+    margin-bottom: 20px;
+    padding: 12px;
+    background: var(--md-default-bg-color, white);
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.02);
+    border: 1px solid var(--border-soft, transparent);
+  }
+  
+  .todo-item input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    margin-right: 10px;
+    cursor: default;
+    accent-color: var(--md-primary-fg-color, #4CAF50);
+  }
+  
+  .todo-item strong {
+    color: var(--md-default-fg-color, #2c3e50);
+    font-size: 1.1em;
+  }
+  
+  .todo-sub-list {
+    list-style-type: none;
+    padding-left: 28px;
+    margin-top: 10px;
+    margin-bottom: 0;
+  }
+  
+  .todo-sub-list li {
+    color: var(--md-default-fg-color--light, #6c757d);
+    font-size: 0.95em;
+    margin-bottom: 4px;
+  }
+  
+  .todo-sub-list a {
+    color: var(--md-primary-fg-color, #007bff);
+    text-decoration: none;
+  }
+  
+  .todo-sub-list a:hover {
+    text-decoration: underline;
+  }
+  
+  /* 暗色模式适配 */
+  [data-md-color-scheme="slate"] .todo-column {
+    background: var(--card-bg);
+  }
+  
+  [data-md-color-scheme="slate"] .todo-item {
+    background: var(--md-default-bg-color);
+    border-color: var(--border-soft);
+  }

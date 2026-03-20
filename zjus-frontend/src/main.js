@@ -1,6 +1,6 @@
 import { createApp } from 'vue'
 import { createPinia } from 'pinia'
-import './style.css' // 如果你有全局样式的话
+import './style.css'
 import App from './App.vue'
 
 const app = createApp(App)

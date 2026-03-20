@@ -1,7 +1,7 @@
 <script setup>
 import { onMounted } from 'vue'
-import { useGameStore } from './stores/gameStore'
-import { useGameWebSocket } from './composables/useGameWebSocket'
+import { useGameStore } from '@/stores/gameStore.ts'
+import { useGameWebSocket } from '@/composables/useGameWebSocket.ts'
 import LoginView from './components/LoginView.vue'
 import AdmissionScreen from './components/AdmissionScreen.vue'
 import HudBar from './components/HudBar.vue'
@@ -31,6 +31,7 @@ onMounted(() => {
 })
 
 // 核心：处理正式进入游戏的动作
+/** @param {string} token */
 const handleEnterGame = (token) => {
   store.setPhase('loading') 
   
@@ -46,7 +47,7 @@ const handleEnterGame = (token) => {
 
 <template>
   <link
-    href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
+    href="https://cdn.bootcdn.net/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css"
     rel="stylesheet"
   >
 

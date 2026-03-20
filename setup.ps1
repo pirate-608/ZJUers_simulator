@@ -12,7 +12,11 @@ if (!(Get-Command docker -ErrorAction SilentlyContinue)) {
     exit
 }
 
-if (!(docker info 2>$null)) {
+try {
+    $null = docker info 2>&1
+    if ($LASTEXITCODE -ne 0) { throw }
+}
+catch {
     Write-Host "错误: Docker 未启动（或者是由于权限不足）。请先打开 Docker Desktop 并确保其运行正常。" -ForegroundColor Red
     Pause
     exit
@@ -62,7 +66,7 @@ $apiKey = Read-Host "请输入您的大模型 API Key"
 $modelName = Read-Host "请输入使用的模型代号 (如 gpt-4o-mini, deepseek-chat 等)"
 
 # Generate Random keys silently
-function Generate-RandomString($length) {
+function New-RandomString($length) {
     $chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
     $bytes = New-Object byte[] $length
     $rng = [System.Security.Cryptography.RNGCryptoServiceProvider]::Create()

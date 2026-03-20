@@ -22,8 +22,9 @@
 
 3. **前端审查流水线 (If RUN_FRONTEND is true)：**
    - 必须先 `cd zjus-frontend`。
-   - 运行逻辑与格式检查：`npm run lint` (假设 package.json 中配置了 eslint --fix)。
+   - 运行逻辑与格式检查：`npm run lint && npm run type-check` (假设 package.json 中配置了 eslint --fix)。
    - 如果 ESLint 报出 Error 级别的错误，阅读并尝试修改代码修复。
+   - 执行 `vue-tsc --noEmit`。这可以捕捉到 ESLint 无法发现的组件间 Props 类型不匹配。
    - 运行前端测试：`npm run test` (假设配置了 Vitest)。
    - 如果测试失败，尝试修复至多 2 次。如果依然失败，使用 `ask_user` 询问用户。
 

@@ -125,7 +125,7 @@
       </div>
       <div class="d-flex flex-wrap justify-content-center gap-2">
         <a
-          href="https://zjusim-docs.67656.fun/rules"
+          href="https://zjusim-docs.67656.fun/user/rules/"
           target="_blank"
           class="btn btn-outline-secondary btn-sm rounded-pill"
         >折大校规</a>
@@ -156,7 +156,7 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import { useGameStore } from '../stores/gameStore'
+import { useGameStore } from '../stores/gameStore.ts'
 
 const store = useGameStore()
 const emit = defineEmits(['send-action']) // 记得在 setup 里加上这行

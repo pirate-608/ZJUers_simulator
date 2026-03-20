@@ -179,7 +179,7 @@
 
 <script setup>
 import { ref, watch, nextTick } from 'vue'
-import { useGameStore } from '../stores/gameStore'
+import { useGameStore } from '../stores/gameStore.ts'
 
 // 定义向外发送的事件（替代原本直接调用 wsManager.send）
 const emit = defineEmits(['send-action'])

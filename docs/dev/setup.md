@@ -53,13 +53,13 @@
      ```
      （本地存在 `docker-compose.override.yml`，这会让 Docker 自动在本地重新 build 前后端，并挂载对应目录以支持热更新）。
 3. 纯宿主机开发（Vue Vite + Uvicorn）：
-   推荐前后端分离启动，获得最极致的热更新体验。具体细节请参考 [纯宿主机本地部署指南](local_deployment_guide.md)。
-3. 查看日志
+   推荐前后端分离启动，获得最极致的热更新体验。具体细节请参考 [纯宿主机本地部署指南](../user/local_deploy_bare.md)。
+4. 查看日志
    ```bash
    docker compose logs -f backend
    docker compose logs -f migrate
    ```
-4. 停止/清理
+5. 停止/清理
    ```bash
    docker compose down
    ```

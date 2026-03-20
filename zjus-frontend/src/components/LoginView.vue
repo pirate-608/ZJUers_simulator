@@ -223,11 +223,40 @@
       </div>
     </div>
   </div>
+
+  <!-- 游戏首页底部备案信息 -->
+  <footer class="beian-footer mt-4">
+    <div class="d-flex flex-column flex-md-row justify-content-center gap-3 align-items-center">
+      <a
+        href="https://zjusim-docs.67656.fun/user/notice/"
+        target="_blank"
+        class="text-secondary small"
+      >折姜大学招生减章</a>
+      <a
+        href="http://beian.miit.gov.cn/"
+        target="_blank"
+        class="text-secondary small"
+      >浙ICP备2026007685号</a>
+      <a
+        href="https://beian.mps.gov.cn/#/query/webSearch?code=33010602014394"
+        rel="noreferrer"
+        target="_blank"
+        class="text-secondary small d-flex align-items-center gap-1"
+      >
+        <img
+          src="https://67656.fun/static/images/beian-icon.png"
+          style="height: 1.2em; width: auto;"
+          alt="公安备案"
+        >
+        <span>浙公网安备33010602014394号</span>
+      </a>
+    </div>
+  </footer>
 </template>
 
 <script setup>
 import { ref, reactive, computed } from 'vue'
-import { useGameStore } from '../stores/gameStore'
+import { useGameStore } from '../stores/gameStore.ts'
 
 const store = useGameStore()
 

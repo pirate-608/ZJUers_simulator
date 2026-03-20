@@ -1,0 +1,179 @@
+site_name: 折姜大学学生手册
+site_description: 折姜大学模拟器的用户手册+技术手册
+site_url: https://docs.67656.fun
+dev_addr: '127.0.0.1:8080'
+repo_url: https://github.com/pirate-608/ZJUers_simulator
+repo_name: GitHub
+edit_uri: edit/main/docs/
+
+# 1. 导航菜单
+nav:
+  - 首页: index.md
+  - 游戏预览: 
+    - 开始页面: preview/start.md
+    - 入学考试: preview/exam.md
+    - 录取通知书: preview/admission.md
+    - 主循环控制台: preview/dashboard.md
+    - 随机事件: preview/event.md
+    - 钉钉消息: preview/dingtalk.md
+  - 用户指南:
+    - 折姜大学招生减章: user/notice.md
+    - 折姜大学校规: user/rules.md
+    - 在线游戏: user/online_guide.md
+    - 本地部署: user/local_deploy.md
+    - 原生本地部署: user/local_deploy_bare.md
+    - 模型配置: user/models.md
+  - 游戏设定:
+    - 资源下载: world/sources.md
+    - 角色: world/characters.md
+    - 成就: world/achievements.md
+    - 数值: world/game_balance.md
+    - 关键词: world/keywords.md
+    - 专业: world/majors.md
+    - 培养方案:
+      - 总览: world/courses.md
+      - TIER1:
+        - 计算机科学与技术: world/courses/TIER1/CS.md
+        - 人工智能: world/courses/TIER1/AI.md
+        - 软件工程: world/courses/TIER1/SE.md
+        - 临床医学（5+3）: world/courses/TIER1/MD.md
+        - 机器人工程: world/courses/TIER1/RE.md
+      - TIER2:
+        - 电气工程及其自动化: world/courses/TIER2/EEA.md
+        - 光电信息科学与工程: world/courses/TIER2/OE.md
+        - 自动化（控制）: world/courses/TIER2/AUT.md
+        - 微电子科学与工程: world/courses/TIER2/MISE.md
+        - 信息安全: world/courses/TIER2/IS.md
+        - 数学与应用数学: world/courses/TIER2/MAM.md
+        - 电子信息工程: world/courses/TIER2/EIE.md
+        - 电子科学与技术: world/courses/TIER2/EST.md
+        - 数字金融: world/courses/TIER2/DF.md
+      - TIER3:
+        - 机械工程: world/courses/TIER3/ME.md
+        - 物理学: world/courses/TIER3/PHY.md
+        - 能源与环境系统工程: world/courses/TIER3/NEE.md
+        - 口腔医学: world/courses/TIER3/DEN.md
+        - 飞行器设计与工程: world/courses/TIER3/ADE.md
+        - 建筑学: world/courses/TIER3/ARCH.md
+        - 化学工程与工艺: world/courses/TIER3/CHE.md
+        - 材料科学与工程: world/courses/TIER3/MSE.md
+        - 化学: world/courses/TIER3/CHEM.md
+        - 经济学: world/courses/TIER3/ECON.md
+        - 法学: world/courses/TIER3/LAW.md
+        - 药学: world/courses/TIER3/PHAR.md
+        - 生物医学工程: world/courses/TIER3/BME.md
+        - 工商管理: world/courses/TIER3/BA.md
+      - TIER4:
+        - 汉语言文学: world/courses/TIER4/CL.md
+        - 历史学: world/courses/TIER4/HIS.md
+        - 哲学: world/courses/TIER4/PHI.md
+        - 新闻学: world/courses/TIER4/JOUR.md
+        - 英语: world/courses/TIER4/ENG.md
+        - 农学: world/courses/TIER4/AGR.md
+        - 茶学: world/courses/TIER4/TEA.md
+        - 动物科学: world/courses/TIER4/AS.md
+        - 环境科学: world/courses/TIER4/ENV.md
+        - 心理学: world/courses/TIER4/PSY.md
+        - 社会学: world/courses/TIER4/SOC.md
+        - 地质学: world/courses/TIER4/GEO.md
+  - 开发人员指南:
+    - 资源下载: dev/sources_dev.md
+    - 框架说明: 
+      - 后端: dev/framework/backend_framework.md
+      - 前端: dev/framework/frontend_framework.md
+    - 开发环境搭建: dev/setup.md
+    - API文档: dev/api.md
+    - 开发计划: 
+      - 总览: dev/plans/index.md
+      - ZJUers模拟器前端计划迁移至TypeScript: dev/plans/migrate_js_to_ts.md
+      - UI设计优化: dev/plans/ui_design.md
+    - 测试: dev/test.md
+  - 常见问题: 
+    - 玩家常见问题: faq.md
+    - 开发者常见问题: dev/faq_dev.md
+  - 关于: 
+    - 更新日志: about/release-notes.md
+    - 许可: about/LICENSE.md
+    - 贡献: about/contributing.md
+
+# 2. 主题与样式（推荐Material主题）
+theme:
+  name: material
+  custom_dir: overrides
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.expand
+    - navigation.instant
+    - navigation.tracking
+    - navigation.top
+    - content.code.copy
+    - content.code.annotate
+    - content.tabs.link
+    - content.tooltips
+    - toc.integrate
+    - search.suggest
+    - search.highlight
+    - search.share
+    - navigation.footer
+    - content.action.edit  # 显示编辑按钮 [citation:3][citation:8]
+  palette:
+    - scheme: default
+      primary: indigo
+      accent: amber
+      toggle:
+        icon: material/weather-night
+        name: 切换到暗色主题
+    - scheme: slate
+      primary: indigo
+      accent: amber
+      toggle:
+        icon: material/white-balance-sunny
+        name: 切换到亮色主题
+  favicon: assets/images/favicon.ico
+  logo: assets/images/logo.png
+
+# 2.1 页脚备案信息
+extra:
+  copyright: '<a href="http://beian.miit.gov.cn/" rel="noopener" target="_blank">浙ICP备2026007685号</a>'
+  generator: false
+
+extra_css:
+  - assets/css/custom-cards.css
+  - assets/css/theme-tweaks.css
+  - assets/css/fix-footer.css
+  - assets/css/todo-list.css
+
+# 3. 插件（必需项！）
+plugins:
+  - search # 搜索插件
+  - glightbox:
+      touchNavigation: true
+      loop: false
+      effect: zoom
+      width: 90%
+      height: auto
+
+# 4. 扩展（Markdown增强）
+markdown_extensions:
+  - meta
+  - admonition
+  - codehilite
+  - attr_list  # 允许在标题等处使用 {#id}
+  - pymdownx.details
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.inlinehilite
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.keys
+  - pymdownx.tilde  # 支持删除线 ~~text~~
+  - pymdownx.tasklist:
+      custom_checkbox: true  # 这会让复选框看起来更美观
+  - toc:
+      permalink: true

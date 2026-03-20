@@ -1,0 +1,5 @@
+mkdocs>=1.5.3
+mkdocs-material>=9.5.25
+pymdown-extensions>=10.7
+mkdocs-exclude-search
+mkdocs-glightbox>=0.4.0

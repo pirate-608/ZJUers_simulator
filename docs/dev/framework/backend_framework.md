@@ -254,12 +254,3 @@ sequenceDiagram
     W->>R: 清理数据
     W-->>C: 断开连接
 ```
-
-## 关于本项目
-这是一个可能还有很多bug的游戏，不过好在代码用MIT证书完全开源，来得及被修复（？）
-### 如果你想了解更多，请：
-*   [访问GitHub项目仓库](https://github.com/pirate-608/ZJUers_simulator.git)
-*   或直接：
-```Powershell
-git clone https://github.com/pirate-608/ZJUers_simulator.git
-```

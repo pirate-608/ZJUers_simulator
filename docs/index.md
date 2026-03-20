@@ -27,3 +27,12 @@ hide:
 ## **声明**
 
 该项目仅供娱乐，不提供任何教学、考试、行政、管理方面的其他功能，一切有关学校具体信息的内容，由[@浙江大学](https://www.zju.edu.cn) 保留一切权利。
+
+## 关于本项目
+这是一个可能还有很多bug的游戏，不过好在代码用MIT证书完全开源，来得及被修复（？）
+### 如果你想了解更多，请：
+*   [访问GitHub项目仓库](https://github.com/pirate-608/ZJUers_simulator.git)
+*   或直接：
+```Powershell
+git clone https://github.com/pirate-608/ZJUers_simulator.git
+```

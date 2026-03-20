@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block announce %}
+<div class="site-announce" data-variant="soft" role="note" aria-label="站点提示">
+    <span>📘 文档持续更新中，建议使用右上角主题切换获得最佳阅读体验。</span>
+</div>
+{% endblock %}
+
+{% block footer %}
+{{ super() }}
+<div class="md-footer__inner md-grid site-beian" data-beian="true">
+    <div class="md-footer__copyright site-beian__content">
+        <a href="http://beian.miit.gov.cn/" rel="noopener" target="_blank">浙ICP备2026007685号</a>
+        <a href="https://beian.mps.gov.cn/#/query/webSearch?code=33010602014394" rel="noopener noreferrer" target="_blank" class="text-secondary small d-flex align-items-center gap-1">
+            <img src="https://67656.fun/static/images/beian-icon.png" style="height: 1.2em; width: auto;" alt="公安备案图标">
+            <span>浙公网安备33010602014394号</span>
+        </a>
+    </div>
+</div>
+{% endblock %}

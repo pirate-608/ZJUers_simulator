@@ -12,6 +12,8 @@
 
 ## 游戏网址：[67656.fun](https://67656.fun)
 
+## 文档：查看[项目文档](https://zjusim-docs.67656.fun)
+
 ## 这是什么？
 
 这是「折姜大学模拟器」，一个致力于打造浙江大学平行空间的游戏。我们使用大模型为游戏提供内容支持，并维护一份完整的世界观文件集作为游戏的底层设定。
@@ -90,9 +92,6 @@ zjus-backend/world/
 ![钉钉消息](https://zjusim-docs.67656.fun/assets/images/dingtalk.png)
 
 </details>
-
-## 文档
-查看[项目文档](https://zjusim-docs.67656.fun)
 
 ## 内容同步
 

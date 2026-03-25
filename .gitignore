@@ -72,7 +72,7 @@ scripts/sync_log.txt
 
 # Docker 相关
 Dockerfile.tunnel
-nginx/
+nginx/ssl
 docker-compose.override.yml
 
 # 前端构建产物（如果有）

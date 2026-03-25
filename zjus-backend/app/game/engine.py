@@ -540,19 +540,19 @@ class GameEngine:
             snapshot = await self.repo.get_snapshot()
             stats = snapshot.stats.model_dump()
             current_energy = int(stats.get("energy", 0))
-            min_energy = action_cfg.get("min_energy_required", 50)
+            min_energy = action_cfg.get("min_energy_required", 30)
 
             if current_energy < min_energy:
                 msg = "你太累了，现在去健身只会晕过去..."
             else:
                 # 从配置读取数值
-                energy_cost = action_cfg.get("energy_cost", -50)
-                energy_gain = action_cfg.get("energy_gain", 60)
+                energy_cost = action_cfg.get("energy_cost", -30)
+                energy_gain = action_cfg.get("energy_gain", 40)
                 sanity_gain = action_cfg.get("sanity_gain", 5)
                 stress_change = action_cfg.get("stress_change", -5)
 
-                await self.repo.update_stat_safe("energy", energy_cost)
-                await self.repo.update_stat_safe("energy", energy_gain)
+                net_energy = energy_cost + energy_gain
+                await self.repo.update_stat_safe("energy", net_energy)
                 await self.repo.update_stat_safe("sanity", sanity_gain)
                 await self.repo.update_stat_safe("stress", stress_change)
                 await self.repo.set_cooldown(target, time.time())

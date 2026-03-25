@@ -65,12 +65,12 @@
   
   "relax_actions": {
     "gym": {
-      "energy_cost": -20,
-      "energy_gain": 30,
+      "energy_cost": -30,
+      "energy_gain": 40,
       "sanity_gain": 5,
       "stress_change": -5,
       "cooldown_seconds": 30,
-      "min_energy_required": 20,
+      "min_energy_required": 30,
       "label": "健身房"
     },
     "game": {

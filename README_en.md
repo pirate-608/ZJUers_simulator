@@ -12,6 +12,8 @@ This project is for entertainment purposes only and does not provide any teachin
 
 ## Game Website: [67656.fun](https://67656.fun)
 
+## Documentation: [Project Documentation](https://zjusim-docs.67656.fun)
+
 ## What is this?
 
 This is the "Zhejiang University Simulator," a game dedicated to creating a parallel universe of Zhejiang University. We use large language models to provide content support for the game and maintain a comprehensive set of world-building files as the foundational setting for the game.
@@ -90,9 +92,6 @@ We need you! Please don’t hesitate to share your keyword inspirations, suggest
 ![DingTalk Messages](https://docs.67656.fun/assets/images/dingtalk.png)
 
 </details>
-
-## Documentation
-Check out the [Project Documentation](https://zjusim-docs.67656.fun)
 
 ## License
 This project is open-sourced under the MIT License.

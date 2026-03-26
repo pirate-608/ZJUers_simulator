@@ -244,7 +244,9 @@ export function useGameWebSocket() {
         }
 
         case 'new_semester': {
-          gameStore.setCourseMetadata([])
+          const nsData = isRecord(wsMsg.data) ? wsMsg.data : {}
+          const newCourseJson = typeof nsData.course_info_json === 'string' ? nsData.course_info_json as string : '[]'
+          gameStore.setCourseMetadata(JSON.parse(newCourseJson))
           gameStore.updateCourseProgress({})
           gameStore.updateCourseStatesRaw({})
           gameStore.clearEventLogs()

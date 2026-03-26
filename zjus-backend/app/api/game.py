@@ -221,10 +221,7 @@ async def websocket_endpoint(websocket: WebSocket):
 
         # 计算学期剩余时间（init 时就下发，避免前端等 tick 才拿到）
         semester_idx = int(final_stats.get("semester_idx", 1))
-        semester_config = balance.semester_config
-        base_duration = semester_config.get("durations", {}).get(
-            str(semester_idx), semester_config.get("default_duration", 360)
-        )
+        base_duration = balance.get_semester_duration(semester_idx)
         elapsed = int(final_stats.get("elapsed_game_time", 0))
         semester_time_left = max(0, base_duration - elapsed)
 

@@ -8,7 +8,7 @@
         🎓 ZJUers Simulator
       </h3>
       <div class="small text-muted fw-bold">
-        折姜大学生存模拟器
+        {{ store.currentStats.username || '折大人' }} · {{ store.currentStats.major || '??' }} · {{ store.currentStats.semester || '??' }}
       </div>
     </div>
     

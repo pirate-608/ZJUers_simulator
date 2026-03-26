@@ -226,9 +226,9 @@ const averageProgress = computed(() => {
   return count > 0 ? Math.min(100, totalProgress / count) : 0
 })
 
-// 考试按钮是否可用
+// 考试按钮始终可用（玩家可以主动提前考试）
 const canTakeExam = computed(() => {
-  return internalTime.value <= 0
+  return true
 })
 
 // --- 发送指令逻辑 ---

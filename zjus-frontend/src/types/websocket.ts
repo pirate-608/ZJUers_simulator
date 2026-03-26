@@ -45,7 +45,7 @@ export type WsMessage =
         wenyan_report?: string
       }
     }
-  | { type: 'new_semester'; data?: { semester_name?: string }; semester_name?: string }
+  | { type: 'new_semester'; data?: { semester_name?: string; course_info_json?: string }; semester_name?: string }
   | { type: 'save_result'; message?: string; success?: boolean }
   | { type: 'exit_confirmed' }
 

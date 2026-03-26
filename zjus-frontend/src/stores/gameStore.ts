@@ -110,6 +110,13 @@ export const useGameStore = defineStore('game', () => {
 
   function updateCourseProgress(progressMap: Record<string, unknown> | null | undefined) {
     if (!progressMap) return
+    // 空对象表示新学期：清空旧课程进度
+    if (Object.keys(progressMap).length === 0) {
+      for (const key in currentStats.courses) {
+        delete currentStats.courses[key]
+      }
+      return
+    }
     for (const courseId in progressMap) {
       if (!currentStats.courses[courseId]) currentStats.courses[courseId] = {}
       currentStats.courses[courseId].progress = Number(progressMap[courseId]) || 0

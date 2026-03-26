@@ -215,15 +215,13 @@ class GameEngine:
                 tick_count += 1
 
                 # ✨ 核心：但游戏内的虚拟时间，永远坚定地往前走 3 秒！
-                elapsed = await self.repo.update_stat_safe("elapsed_game_time", 3)
+                # 注意：不能用 update_stat_safe，因为它的 max_val 默认值 200 会截断计时器
+                elapsed = await self.repo.update_stat("elapsed_game_time", 3)
                 
                 # 动态获取当前学期时长上限
                 snapshot_for_time = await self.repo.get_snapshot()
                 sem_idx = int(snapshot_for_time.stats.semester_idx or 1)
-                sem_cfg = balance.semester_config
-                sem_duration = sem_cfg.get("durations", {}).get(
-                    str(sem_idx), sem_cfg.get("default_duration", 360)
-                )
+                sem_duration = balance.get_semester_duration(sem_idx)
                 if elapsed >= sem_duration:
                     logger.info(f"Semester time exceeded for {self.user_id}, triggering final exam.")
                     self.stop()
@@ -256,6 +254,7 @@ class GameEngine:
 
                 # 如果没有课程（如假期），只自然恢复或轻微消耗
                 if not course_info:
+                    logger.warning(f"[{self.user_id}] course_info is EMPTY, skipping mastery growth")
                     await self.repo.update_stat_safe("energy", 1)  # 假期回血
                     await self._push_update()
                     continue
@@ -304,6 +303,11 @@ class GameEngine:
                 # 批量更新课程进度
                 if mastery_updates:
                     await self.repo.batch_update_course_mastery(mastery_updates)
+                    if tick_count <= 3:  # 只在前几个 tick 打印诊断信息
+                        logger.info(f"[{self.user_id}] tick#{tick_count} mastery_updates: {mastery_updates}")
+                else:
+                    if tick_count <= 3:
+                        logger.warning(f"[{self.user_id}] tick#{tick_count} mastery_updates is EMPTY")
 
                 # 结算总精力消耗
                 # 最终消耗 = 基础消耗 * 加权系数（保留浮点数精度）
@@ -349,7 +353,7 @@ class GameEngine:
                 await self._push_update()
 
         except Exception as e:
-            logger.error(f"Engine Loop Error: {e}")
+            logger.error(f"Engine Loop Error: {e}", exc_info=True)
             self.stop()
 
     async def process_action(self, action_data: dict):
@@ -406,14 +410,18 @@ class GameEngine:
         snapshot = await self.repo.get_snapshot()
         stats = snapshot.stats.model_dump()
         course_mastery = snapshot.courses
+        logger.info(f"[{self.user_id}] EXAM: course_mastery from Redis = {course_mastery}")
 
         try:
-            course_info = json.loads(stats.get("course_info_json", "[]"))
-        except:
+            raw_json = stats.get("course_info_json", "[]")
+            course_info = json.loads(raw_json)
+            logger.info(f"[{self.user_id}] EXAM: parsed {len(course_info)} courses")
+        except Exception as parse_err:
+            logger.error(f"[{self.user_id}] EXAM: Failed to parse course_info_json: {parse_err}")
             course_info = []
 
         total_credits, total_gp, failed_count = 0, 0, 0
-        transcript = []
+        courses_result = []  # 前端 TranscriptModal 需要的 courses 数组
 
         sanity = int(stats.get("sanity", 50))
         luck = int(stats.get("luck", 50))
@@ -421,9 +429,8 @@ class GameEngine:
         for course in course_info:
             c_id = str(course.get("id"))
             mastery = float(course_mastery.get(c_id, 0))
-            credits = course.get("credits", 1)
+            credits = float(course.get("credits", 1))
             # 考试表现计算公式：擅长度占大头，心态和运气波动
-            # 新增：心态压力修正
             sanity = int(stats.get("sanity", 50))
             stress = int(stats.get("stress", 40))
             exam_bonus = self._sanity_stress_exam_factor(sanity, stress)
@@ -432,25 +439,31 @@ class GameEngine:
 
             # 5分制绩点计算：绩点 = 分数 / 10 - 5，最低0分
             gp = max(0.0, round(final_score / 10 - 5, 2))
-            # 挂科阈值从配置读取
             fail_threshold = balance.fail_threshold
             if final_score < fail_threshold:
                 failed_count += 1
 
             total_credits += credits
             total_gp += gp * credits
-            transcript.append(
+            # 按前端 TranscriptModal.vue 期望的字段名
+            courses_result.append(
                 {
                     "name": course.get("name", "未知课程"),
-                    "score": round(final_score, 1),
-                    "gp": round(gp, 2),
+                    "credit": credits,
+                    "progress": round(mastery, 1),
+                    "grade": round(final_score, 1),
+                    "gpa": round(gp, 2),
                 }
             )
 
-        gpa = round(total_gp / total_credits, 2) if total_credits > 0 else 0.0
+        term_gpa = round(total_gp / total_credits, 2) if total_credits > 0 else 0.0
+        # 尝试读取累计 GPA，如果没有就用当期 GPA
+        cgpa = float(stats.get("highest_gpa", 0) or 0)
+        if term_gpa > cgpa:
+            cgpa = term_gpa
 
         # 结果反馈（从配置读取惩罚/奖励）
-        msg = f"期末考试结束！GPA: {gpa}"
+        msg = f"期末考试结束！GPA: {term_gpa}"
         if failed_count > 0:
             penalty = balance.fail_sanity_penalty * failed_count
             await self.repo.update_stat_safe("sanity", penalty)
@@ -459,17 +472,25 @@ class GameEngine:
             bonus = balance.pass_all_bonus
             await self.repo.update_stat_safe("sanity", bonus)
 
-        # 异步更新持久化数据库
-        asyncio.create_task(self._update_db_highest_gpa(gpa))
+        # 将当期 GPA 和累计 GPA 写回 Redis stats（HudBar 实时读取）
+        await self.repo.update_stats({
+            "gpa": str(term_gpa),
+            "highest_gpa": str(cgpa),
+        })
 
-        # 发送结算弹窗和通知
+        # 异步更新持久化数据库
+        asyncio.create_task(self._update_db_highest_gpa(cgpa))
+
+        # 发送结算弹窗 — 字段名严格匹配前端 TranscriptModal.vue
         await self.emit(
             "semester_summary",
             {
                 "data": {
-                    "gpa": str(gpa),
+                    "term_gpa": term_gpa,
+                    "cgpa": cgpa,
+                    "gold_earned": 0,
                     "failed_count": failed_count,
-                    "details": transcript,
+                    "courses": courses_result,
                 }
             },
         )
@@ -832,12 +853,17 @@ class GameEngine:
             self.stop()
             return
 
+        # 获取新学期的最新快照（含新课程数据）
+        new_snapshot = await self.repo.get_snapshot()
+        new_stats = new_snapshot.stats.model_dump()
+
         await self.emit(
             "new_semester",
             {
                 "data": {
                     "semester_name": f"第 {current_semester_idx} 学期",
                     "holiday_event": transition.get("holiday_event"),
+                    "course_info_json": new_stats.get("course_info_json", "[]"),
                 }
             },
         )
@@ -853,10 +879,7 @@ class GameEngine:
 
             # 计算学期剩余时间
             semester_idx = int(new_stats.get("semester_idx", 1))
-            semester_config = balance.semester_config
-            base_duration = semester_config.get("durations", {}).get(
-                str(semester_idx), semester_config.get("default_duration", 360)
-            )
+            base_duration = balance.get_semester_duration(semester_idx)
             # ✨ 传入我们在 Redis 中累加的虚拟流逝时间
             elapsed = int(new_stats.get("elapsed_game_time", 0))
             semester_time_left = self._get_semester_time_left(elapsed, base_duration)

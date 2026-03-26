@@ -36,6 +36,23 @@
           />
         </div>
       </div>
+
+      <div class="stat-item flex-grow-1">
+        <div class="d-flex justify-content-between small mb-1 fw-bold">
+          <span>😰 压力</span>
+          <span>{{ Math.floor(safeNumber(stats.stress, 0)) }} / 100</span>
+        </div>
+        <div
+          class="progress"
+          style="height: 12px;"
+        >
+          <div
+            class="progress-bar progress-bar-striped progress-bar-animated"
+            :class="stressColorClass"
+            :style="{ width: `${Math.min(100, Math.max(0, safeNumber(stats.stress, 0)))}%` }"
+          />
+        </div>
+      </div>
     </div>
 
     <div class="d-flex gap-4 border-start ps-4">
@@ -91,6 +108,13 @@ const gpaColorClass = computed(() => {
   if (gpa >= 3.0) return 'text-success'
   if (gpa >= 2.0) return 'text-warning'
   return 'text-danger'
+})
+
+const stressColorClass = computed(() => {
+  const stress = safeNumber(stats.value.stress, 0)
+  if (stress > 70) return 'bg-danger'
+  if (stress > 40) return 'bg-warning'
+  return 'bg-success'
 })
 </script>
 

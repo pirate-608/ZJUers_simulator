@@ -219,9 +219,25 @@ async def websocket_endpoint(websocket: WebSocket):
                 user_id,
             )
 
-        # 发送初始化数据包
+        # 计算学期剩余时间（init 时就下发，避免前端等 tick 才拿到）
+        semester_idx = int(final_stats.get("semester_idx", 1))
+        semester_config = balance.semester_config
+        base_duration = semester_config.get("durations", {}).get(
+            str(semester_idx), semester_config.get("default_duration", 360)
+        )
+        elapsed = int(final_stats.get("elapsed_game_time", 0))
+        semester_time_left = max(0, base_duration - elapsed)
+
+        # 发送初始化数据包（携带完整的课程进度 + 策略 + 倒计时）
         await manager.send_personal_message(
-            {"type": "init", "data": final_stats}, user_id
+            {
+                "type": "init",
+                "data": final_stats,
+                "courses": snapshot.courses,
+                "course_states": snapshot.course_states,
+                "semester_time_left": semester_time_left,
+            },
+            user_id,
         )
 
         # --- 启动游戏引擎 ---

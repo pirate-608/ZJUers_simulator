@@ -142,7 +142,6 @@ async def generate_cc98_post(
         response = await llm_client.chat.completions.create(
             model=model,
             messages=messages,
-            response_format={"type": "json_object"},  # 开启 JSON 模式确保解析稳定
             max_tokens=300,
         )
 
@@ -233,7 +232,6 @@ async def generate_random_event(
         response = await llm_client.chat.completions.create(
             model=model,
             messages=messages,
-            response_format={"type": "json_object"},
             max_tokens=800,
         )
         data = json.loads(response.choices[0].message.content)
@@ -314,7 +312,6 @@ async def generate_dingtalk_message(
         response = await llm_client.chat.completions.create(
             model=model,
             messages=messages,
-            response_format={"type": "json_object"},
             max_tokens=500,
         )
         data = json.loads(response.choices[0].message.content)

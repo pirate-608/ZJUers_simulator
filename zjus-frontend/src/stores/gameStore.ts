@@ -108,24 +108,21 @@ export const useGameStore = defineStore('game', () => {
     courseMetadata.value = Array.isArray(data) ? (data as CourseMetadata[]) : []
   }
 
-  function updateCourseStates(courseUpdates: CoursesMap | null | undefined) {
-    if (!courseUpdates) return
+  function updateCourseProgress(progressMap: Record<string, unknown> | null | undefined) {
+    if (!progressMap) return
+    for (const courseId in progressMap) {
+      if (!currentStats.courses[courseId]) currentStats.courses[courseId] = {}
+      currentStats.courses[courseId].progress = Number(progressMap[courseId]) || 0
+    }
+  }
 
-    for (const courseId in courseUpdates) {
-      if (!currentStats.courses[courseId]) {
-        currentStats.courses[courseId] = {}
-      }
-
-      // 响应式更新（掌握度/策略等）
-      Object.assign(currentStats.courses[courseId], courseUpdates[courseId] as CourseProgressUpdate)
-
-      // 同步提取策略 state，兼容 courseUpdates[courseId].state 不存在的情况
-      const maybeState = courseUpdates[courseId]?.state
-      if (maybeState !== undefined && maybeState !== null) {
-        currentCourseStates[courseId] = maybeState
-      } else if (currentStats.courses[courseId]?.state !== undefined) {
-        currentCourseStates[courseId] = currentStats.courses[courseId].state as number
-      }
+  function updateCourseStatesRaw(statesMap: Record<string, unknown> | null | undefined) {
+    if (!statesMap) return
+    for (const courseId in statesMap) {
+      const s = Number(statesMap[courseId])
+      currentCourseStates[courseId] = s
+      if (!currentStats.courses[courseId]) currentStats.courses[courseId] = {}
+      currentStats.courses[courseId].state = s
     }
   }
 
@@ -199,7 +196,8 @@ export const useGameStore = defineStore('game', () => {
     triggerEndGame,
     courseMetadata,
     setCourseMetadata,
-    updateCourseStates,
+    updateCourseProgress,
+    updateCourseStatesRaw,
     currentCourseStates,
     setCourseState,
     semesterTimeLeft,

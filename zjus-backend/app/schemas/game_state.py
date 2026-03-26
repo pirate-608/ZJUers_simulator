@@ -41,6 +41,7 @@ class PlayerStats(BaseModel):
     efficiency: int = 100
     course_plan_json: str = ""
     course_info_json: str = ""
+    elapsed_game_time: int = 0
 
     @classmethod
     def from_redis(cls, raw: Dict[str, Any]) -> "PlayerStats":
@@ -64,6 +65,7 @@ class PlayerStats(BaseModel):
             efficiency=_to_int(raw.get("efficiency"), 100),
             course_plan_json=_to_str(raw.get("course_plan_json"), ""),
             course_info_json=_to_str(raw.get("course_info_json"), ""),
+            elapsed_game_time=_to_int(raw.get("elapsed_game_time"), 0),
         )
 
     @classmethod

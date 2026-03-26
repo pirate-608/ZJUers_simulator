@@ -39,6 +39,25 @@ class ExamResponse(BaseModel):
     token: str = None
     message: str = None
 
+# 恶意关键词黑名单
+BLACKLIST = [
+    "SYSTEM MODE", "系统提示", "IGNORE START",
+    "flag{", "====", "====================",
+    "Happy Hacking", "Is it SQL Injection"
+]
+
+def is_username_safe(username: str) -> bool:
+    if not username:
+        return False
+    # 长度限制
+    if len(username) > 50:
+        return False
+    # 黑名单过滤
+    for keyword in BLACKLIST:
+        if keyword in username:
+            return False
+    return True
+
 
 @router.get("/exam/questions")
 async def get_exam_questions():
@@ -56,6 +75,9 @@ async def get_exam_questions():
 async def submit_exam(
     submission: ExamSubmission, db: AsyncSession = Depends(deps.get_db)
 ):
+    if not is_username_safe(submission.username):
+        return {"status": "error", "message": "用户名包含不允许的内容或过长"}
+    
     if await RestrictionService.is_blacklisted(db, submission.username, "username"):
         return {"status": "error", "message": "该用户名已被拉黑"}
     if submission.token and await RestrictionService.is_blacklisted(
@@ -213,6 +235,9 @@ class QuickLoginRequest(BaseModel):
 # POST /exam/quick_login
 @router.post("/exam/quick_login")
 async def quick_login(data: QuickLoginRequest, db: AsyncSession = Depends(deps.get_db)):
+    if not is_username_safe(data.username):
+        return {"status": "error", "message": "用户名包含不允许的内容或过长"}
+    
     stmt = select(User).where(User.username == data.username)
     result = await db.execute(stmt)
     user = result.scalars().first()

@@ -117,10 +117,14 @@ export function useGameWebSocket() {
           // 基础属性
           gameStore.updateStats(data)
 
-          // 如果 init 阶段也带了实时课程状态，更新它
-          const courses = (data as Record<string, unknown>).courses
+          // 课程掌握度 & 策略状态：优先从 wsMsg 顶层读（新版 init），兼容旧版 data 内嵌
+          const courses = wsMsg.courses ?? (data as Record<string, unknown>).courses
           if (isRecord(courses)) {
-            gameStore.updateCourseStates(courses as CoursesMap)
+            gameStore.updateCourseProgress(courses as Record<string, unknown>)
+          }
+          const c_states = wsMsg.course_states ?? (data as Record<string, unknown>).course_states
+          if (isRecord(c_states)) {
+            gameStore.updateCourseStatesRaw(c_states as Record<string, unknown>)
           }
 
           const stl = wsMsg.semester_time_left
@@ -140,8 +144,8 @@ export function useGameWebSocket() {
             gameStore.updateStats(stats)
           }
 
-          if (isRecord(wsMsg.courses)) gameStore.updateCourseStates(wsMsg.courses as CoursesMap)
-          if (isRecord(wsMsg.course_states)) gameStore.updateCourseStates(wsMsg.course_states as CoursesMap)
+          if (isRecord(wsMsg.courses)) gameStore.updateCourseProgress(wsMsg.courses as Record<string, unknown>)
+          if (isRecord(wsMsg.course_states)) gameStore.updateCourseStatesRaw(wsMsg.course_states as Record<string, unknown>)
 
           if (wsMsg.semester_time_left !== undefined && typeof wsMsg.semester_time_left === 'number') {
             gameStore.semesterTimeLeft = wsMsg.semester_time_left
@@ -158,7 +162,10 @@ export function useGameWebSocket() {
           if (isRecord(data)) {
             gameStore.updateStats(data)
             if (isRecord(data.courses)) {
-              gameStore.updateCourseStates(data.courses as CoursesMap)
+              gameStore.updateCourseProgress(data.courses as Record<string, unknown>)
+            }
+            if (isRecord(data.course_states)) {
+              gameStore.updateCourseStatesRaw(data.course_states as Record<string, unknown>)
             }
           }
           break
@@ -238,7 +245,8 @@ export function useGameWebSocket() {
 
         case 'new_semester': {
           gameStore.setCourseMetadata([])
-          gameStore.updateCourseStates({})
+          gameStore.updateCourseProgress({})
+          gameStore.updateCourseStatesRaw({})
           gameStore.clearEventLogs()
           const semesterName = extractNewSemesterName(wsMsg)
           gameStore.addLog('系统', `=== 欢迎来到 ${semesterName} ===`, 'text-success fw-bold')
@@ -252,6 +260,7 @@ export function useGameWebSocket() {
 
           if (gameStore.isPendingExit && success) {
             localStorage.removeItem('zju_token')
+            localStorage.removeItem('game_started')
             window.location.reload()
           } else if (gameStore.isPendingExit && !success) {
             gameStore.isPendingExit = false
@@ -262,6 +271,7 @@ export function useGameWebSocket() {
 
         case 'exit_confirmed': {
           localStorage.removeItem('zju_token')
+          localStorage.removeItem('game_started')
           window.location.reload()
           break
         }

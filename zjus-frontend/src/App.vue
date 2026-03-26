@@ -21,9 +21,16 @@ const { connect, isConnected, send } = useGameWebSocket()
 onMounted(() => {
   // SPA 路由入口：检查是否有 Token
   const existingToken = localStorage.getItem('zju_token')
+  const gameStarted = localStorage.getItem('game_started')
+  
   if (existingToken) {
-    // 如果有，说明是老玩家刷新了页面，直接去录取通知书页面加载数据
-    store.setPhase('admission')
+    if (gameStarted) {
+      // 老玩家且已经过了录取阶段，直接进游戏
+      handleEnterGame(existingToken)
+    } else {
+      // 虽然有token但没开始游戏（比如刚登录完刷新了），退回录取界面重新走流程
+      store.setPhase('admission')
+    }
   } else {
     // 如果没有，乖乖去考试
     store.setPhase('login')
@@ -131,7 +138,7 @@ const handleEnterGame = (token: string) => {
     <ExitConfirmModal @send-action="send" />
   </div>
 
-  <EndScreen v-else-if="store.currentPhase === 'ended'" />
+  <EndScreen v-else-if="store.currentPhase === 'ended'" @send-action="send" />
 </template>
 
 <style>

@@ -11,6 +11,8 @@ export type WsMessage =
         course_info_json?: string
         courses?: CoursesMap
       }
+      courses?: CoursesMap
+      course_states?: CoursesMap
       semester_time_left?: number
     }
   | {

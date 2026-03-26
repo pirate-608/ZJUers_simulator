@@ -13,8 +13,16 @@
     </div>
     
     <div class="d-flex gap-2">
+      <button
+        class="btn btn-sm fw-bold shadow-sm"
+        :class="store.isPaused ? 'btn-success' : 'btn-warning'"
+        @click="togglePause"
+      >
+        {{ store.isPaused ? '▶️ 继续' : '⏸️ 暂停' }}
+      </button>
+      
       <a
-        href="https://zjusim-adocs.67656.fun/rules/"
+        href="https://zjusim-docs.67656.fun/user/rules/"
         target="_blank"
         class="btn btn-sm btn-outline-info fw-bold shadow-sm"
       >
@@ -54,5 +62,9 @@ const saveGame = () => {
 const requestExit = () => {
   // 触发弹窗，而不是直接发送指令
   store.showModal('exit_confirm')
+}
+
+const togglePause = () => {
+  emit('send-action', { action: store.isPaused ? 'resume' : 'pause' })
 }
 </script>

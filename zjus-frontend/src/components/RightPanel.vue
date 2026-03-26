@@ -166,7 +166,7 @@ watch(() => store.semesterTimeLeft, (newVal: number) => {
   if (newVal !== undefined) {
     internalTime.value = newVal // 每当后端 Tick 到达，强制校准
   }
-})
+}, { immediate: true })
 
 // ✨ 60帧/秒的平滑倒计时器
 const updateFrame = () => {

@@ -215,7 +215,20 @@ class GameEngine:
                 tick_count += 1
 
                 # ✨ 核心：但游戏内的虚拟时间，永远坚定地往前走 3 秒！
-                await self.repo.update_stat_safe("elapsed_game_time", 3)
+                elapsed = await self.repo.update_stat_safe("elapsed_game_time", 3)
+                
+                # 动态获取当前学期时长上限
+                snapshot_for_time = await self.repo.get_snapshot()
+                sem_idx = int(snapshot_for_time.stats.semester_idx or 1)
+                sem_cfg = balance.semester_config
+                sem_duration = sem_cfg.get("durations", {}).get(
+                    str(sem_idx), sem_cfg.get("default_duration", 360)
+                )
+                if elapsed >= sem_duration:
+                    logger.info(f"Semester time exceeded for {self.user_id}, triggering final exam.")
+                    self.stop()
+                    await self._handle_final_exam()
+                    break
 
                 # 低频 TTL 刷新：仅对活跃玩家做防线更新
                 now_ts = asyncio.get_running_loop().time()

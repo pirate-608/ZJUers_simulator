@@ -471,6 +471,7 @@ onMounted(async () => {
 })
 
 const enterGame = () => {
+  localStorage.setItem('game_started', '1')
   emit('enter-game', playerToken.value)
 }
 

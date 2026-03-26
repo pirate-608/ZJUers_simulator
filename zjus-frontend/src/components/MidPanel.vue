@@ -37,7 +37,7 @@
       style="height: 280px;"
     >
       <div
-        v-show="activeTab === 'events'"
+        v-if="activeTab === 'events'"
         class="h-100 d-flex flex-column"
       >
         <div
@@ -70,7 +70,7 @@
       </div>
 
       <div
-        v-show="activeTab === 'dingtalk'"
+        v-if="activeTab === 'dingtalk'"
         class="h-100 d-flex flex-column"
         style="background: #f7faff;"
       >
@@ -153,13 +153,6 @@
     </div>
 
     <div class="card-footer bg-white border-top p-3 d-flex flex-column gap-2">
-      <button
-        class="btn"
-        :class="store.isPaused ? 'btn-success' : 'btn-outline-danger'"
-        @click="handlePause"
-      >
-        {{ store.isPaused ? '▶️ 继续游戏' : '⏸️ 暂停游戏' }}
-      </button>
       
       <div class="btn-group w-100">
         <button
@@ -228,11 +221,6 @@ const scrollToBottom = async () => {
 }
 
 // 控制面板动作
-const handlePause = () => {
-  // 触发事件让外层（App.vue）通过 WebSocket 发送指令
-  const action = store.isPaused ? 'resume' : 'pause'
-  emit('send-action', { action: action })
-}
 
 const setSpeed = (speed: number) => {
   store.gameSpeed = speed

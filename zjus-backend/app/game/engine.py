@@ -8,6 +8,8 @@ from typing import Callable, Optional
 
 import time
 
+from app.content.event_library import pick_random_event, pick_cc98_post
+
 from app.core.llm import (
     generate_cc98_post,
     generate_random_event,
@@ -659,11 +661,23 @@ class GameEngine:
                 ]
 
             trigger = random.choice(trigger_words)
-            snapshot = await self.repo.get_snapshot()
-            stats = snapshot.stats.model_dump()
-            post_content, feedback = await generate_cc98_post(
-                stats, effect_type, trigger, llm_override=self.llm_override
-            )
+            # 优先从预编译帖子库获取（零 token 消耗）
+            post_content = pick_cc98_post(effect=effect_type, trigger=trigger)
+            if not post_content:
+                # 帖子库为空，fallback 到 LLM
+                snapshot = await self.repo.get_snapshot()
+                stats = snapshot.stats.model_dump()
+                post_content, feedback = await generate_cc98_post(
+                    stats, effect_type, trigger, llm_override=self.llm_override
+                )
+            else:
+                # 帖子库命中，用固定 feedback
+                feedback_map = {
+                    "positive": "心情不错，继续冲浪~",
+                    "neutral": "就这样吧，继续划水。",
+                    "negative": "看得心态有点崩...",
+                }
+                feedback = feedback_map.get(effect_type, "")
             await self.repo.set_cooldown(target, time.time())
             msg = f"你在CC98刷到了：\n{post_content}\n{feedback}"
 
@@ -672,29 +686,30 @@ class GameEngine:
     # app/game/engine.py
 
     async def _trigger_random_event(self):
-        """触发 LLM 驱动的随机事件（带去重逻辑）"""
-        # 再次检查游戏是否暂停（防止暂停时已创建的任务执行）
+        """触发随机事件（优先事件库，LLM 兜底）"""
         if not self.is_running:
             return
 
         try:
-            # 1. 从 Redis 获取该玩家的事件历史
             history = await self.repo.get_event_history()
-
-            # 2. 获取当前状态
             snapshot = await self.repo.get_snapshot()
             stats = snapshot.stats.model_dump()
 
-            # 3. 调用 LLM（传入历史记录进行避雷）
-            event_data = await generate_random_event(
-                stats, history, llm_override=self.llm_override
+            # 优先从预编译事件库检索（零 token 消耗）
+            event_data = pick_random_event(
+                sanity=int(stats.get("sanity", 50)),
+                stress=int(stats.get("stress", 0)),
+                seen_ids=set(history) if history else None,
             )
 
-            if event_data:
-                # 4. 记录本次事件标题到历史中
-                await self.repo.add_event_to_history(event_data["title"])
+            # 事件库耗尽时 fallback 到 LLM
+            if not event_data:
+                event_data = await generate_random_event(
+                    stats, history, llm_override=self.llm_override
+                )
 
-                # 5. 推送给前端
+            if event_data:
+                await self.repo.add_event_to_history(event_data["title"])
                 await self.emit("random_event", {"data": event_data})
         except Exception as e:
             logger.error(f"Random event error: {e}", exc_info=True)

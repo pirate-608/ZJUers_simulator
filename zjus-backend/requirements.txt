@@ -38,6 +38,7 @@ pydantic-settings>=2.1.0
 # --- 工具类 ---
 # 异步 HTTP 客户端 (虽然 OpenAI SDK 内置了，但如果需要请求其他外部 API 很有用)
 httpx>=0.26.0
+requests>=2.32.5
 # 简单的 UUID 生成 (虽然标准库有，但有时为了 slugify ID 会用到)
 shortuuid>=1.0.11
 # 模板引擎 (用于渲染 HTML 页面)

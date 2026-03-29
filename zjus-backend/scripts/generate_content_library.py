@@ -65,6 +65,20 @@ else:
     ]
 
 # ============================================================
+# 加载校园关键词库
+# ============================================================
+
+KEYWORDS_DATA = []
+KEYWORDS_PATH = WORLD_DIR / "keywords.json"
+
+if KEYWORDS_PATH.exists():
+    with open(KEYWORDS_PATH, "r", encoding="utf-8") as f:
+        KEYWORDS_DATA = json.load(f)
+    print(f"✅ 已加载 {len(KEYWORDS_DATA)} 个校园关键词")
+else:
+    print(f"⚠️ 未找到 keywords.json，将不使用关键词提示")
+
+# ============================================================
 # Ollama 调用（非流式，think=False）
 # ============================================================
 
@@ -198,13 +212,30 @@ def extract_json(raw: str) -> Optional[Any]:
 
     return None
 
+def get_random_keywords(count: int = 3) -> str:
+    """随机选取 count 个关键词，返回适合嵌入提示词的字符串（包含示例）"""
+    if not KEYWORDS_DATA:
+        return ""
+    selected = random.sample(KEYWORDS_DATA, min(count, len(KEYWORDS_DATA)))
+    lines = []
+    for kw in selected:
+        keyword = kw.get("keyword", "")
+        desc = kw.get("desc", "")
+        examples = kw.get("examples", [])
+        # 随机选一条示例（如果有）
+        example_text = ""
+        if examples:
+            example = random.choice(examples)
+            example_text = f" 示例：{example}"
+        lines.append(f"- {keyword}：{desc}{example_text}")
+    return "浙大校园关键词（仅供参考）：\n" + "\n".join(lines)
 
 # ============================================================
 # 事件库生成
 # ============================================================
 
 EVENT_CATEGORIES = [
-    ("学业压力", "考试/选课/GPA/挂科/补考/毕业论文"),
+    ("学业压力", "考试/选课/均绩/挂科/补考/毕业论文"),
     ("社团社交", "社团招新/学生会/聚餐/团建/志愿者"),
     ("校园传说", "月牙楼/图书馆鬼层/校园怪谈/神秘涂鸦"),
     ("校园恋爱", "表白/暗恋/约会/分手/520"),
@@ -246,10 +277,11 @@ def generate_events(target_count: int) -> List[Dict[str, Any]]:
             category, keywords = random.choice(EVENT_CATEGORIES)
             sanity_range, sanity_label = random.choice(SANITY_RANGES)
             stress_range, stress_label = random.choice(STRESS_RANGES)
+            keywords_text = get_random_keywords(3)
 
             prompt = f"""你是一个浙江大学校园生活模拟游戏的事件设计师。
 请生成 {current_batch} 个不同的校园随机事件，主题类型为【{category}】。
-参考关键词：{keywords}
+{keywords_text}
 
 【重要】请直接输出一个 JSON 对象，不要包含任何其他文字、注释或 Markdown 标记：
 {{
@@ -410,9 +442,14 @@ def generate_cc98_posts(target_count: int) -> List[Dict[str, Any]]:
                 "negative": "emo/焦虑/吐槽/烂坑，让人心态崩",
             }[effect]
 
+            # 随机选取 2 个关键词
+            keywords_text = get_random_keywords(2)
+
             prompt = f"""你正在模拟浙江大学 CC98 论坛的「{topic}」版面。
 版面描述：{description}
 {example_text}
+
+{keywords_text}
 
 请生成 {current_batch} 条符合该版面风格的简短论坛帖子内容。
 情绪效果：{effect_desc}
@@ -423,7 +460,7 @@ def generate_cc98_posts(target_count: int) -> List[Dict[str, Any]]:
 要求：
 1. 每条帖子内容简短（10-30字），像真实浙大学生发的
 2. 使用大学生网络用语，自然接地气
-3. 可以包含浙大校园元素（紫金港、启真湖、东教、基础馆、CC98 梗等）
+3. {keywords_text}
 4. 不同帖子之间风格要有差异 
 5. 可根据语境添加cc98独有的表情符号，如[ac01]（扇子）、[ac05]（呆住，无语）、[ac06]（抿嘴憋笑卖萌，表示可爱）、[ac08]（抱拳微笑，表示感谢、祝福、赞美等）、[ac09]（暴跳如雷，表示“怒了一下”）、[ac19]（震惊、惊讶）、[ac22]（难过）、[ac35]（大哭）
 

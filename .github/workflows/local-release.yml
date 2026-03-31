@@ -45,7 +45,7 @@ jobs:
                   condition: service_completed_successfully
 
             db:
-              image: postgres:15-alpine
+              image: pgvector/pgvector:pg15
               container_name: zjus_db
               restart: always
               environment:

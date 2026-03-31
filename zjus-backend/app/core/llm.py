@@ -1,8 +1,12 @@
 import json
 import os
+import logging
 from typing import Optional, Dict
 from openai import AsyncOpenAI
 from app.api.cache import RedisCache
+from app.content.state_vector import PlayerStateVector
+
+logger = logging.getLogger(__name__)
 
 
 PROVIDER_BASE_URLS = {
@@ -57,22 +61,6 @@ def _load_keywords():
         return []
 
 
-def _load_character_list():
-    """加载 world/characters.json 供 LLM 提示词使用"""
-    from pathlib import Path
-
-    base_dir = Path(__file__).resolve().parent.parent.parent
-    char_path = (
-        Path("/app/world/characters.json")
-        if Path("/app/world/characters.json").exists()
-        else base_dir / "world" / "characters.json"
-    )
-    try:
-        with open(char_path, "r", encoding="utf-8") as f:
-            return json.load(f)
-    except Exception:
-        return []
-
 
 async def generate_cc98_post(
     player_stats: dict, effect: str, trigger: str, llm_override: Optional[Dict] = None
@@ -104,35 +92,16 @@ async def generate_cc98_post(
         # 队列里有货，直接返回，不再存回去（避免重复）
         return post_content, feedback
 
-    # 2. 队列为空，触发批量进货 (Batch Generation)
-    keywords = _load_keywords()
-    # 显式缓存 keywords，动态部分放 prompt
+    # 2. LLM 补货 (状态浓缩: ~50 tok 代替 ~300 tok)
+    state = PlayerStateVector.from_stats(player_stats)
     messages = []
-    if keywords:
-        messages.append(
-            {
-                "role": "system",
-                "content": [
-                    {
-                        "type": "text",
-                        "text": json.dumps(keywords, ensure_ascii=False),
-                        "cache_control": {"type": "ephemeral"},
-                    }
-                ],
-            }
-        )
-    prompt = f"""
-    玩家当前状态：{json.dumps(player_stats, ensure_ascii=False)}
-    你正在模拟浙江大学CC98论坛的帖子列表。
-    
-    请生成 5 条简短、有趣、符合大学生网络用语的帖子标题/内容。
-    要求：
-    1. 第一条内容必须与主题“{trigger}”相关（效果：{effect}）。
-    2. 剩下的 4 条可以是随机的校园日常话题（吐槽、求助、分享等），越丰富越好，避免重复单调的关键词（如在多个帖子里反复提及“GPA”等）。
-    
-    请严格输出 JSON 格式，结构如下：
-    {{ "posts": ["帖子内容1", "帖子内容2", "帖子内容3", "帖子内容4", "帖子内容5"] }}
-    """
+    prompt = (
+        f"玩家状态：{state.to_prompt_fragment()}\n"
+        f"模拟浙江大学CC98论坛，生成 5 条帖子。\n"
+        f"1. 第一条与\"{trigger}\"相关（{effect}效果）。\n"
+        f"2. 其余 4 条随机校园话题。\n"
+        f'\n严格输出 JSON：{{ "posts": ["帖1", "帖2", "帖3", "帖4", "帖5"] }}'
+    )
     messages.append({"role": "user", "content": prompt})
 
     try:
@@ -182,48 +151,20 @@ async def generate_random_event(
     if cached_event:
         return json.loads(cached_event)
 
-    # 2. 缓存为空，批量进货 (一次生成 3 个)
-    keywords = _load_keywords()
+    # 2. LLM 补货 (状态浓缩: ~50 tok 代替 ~300 tok + keywords ~800 tok)
+    state = PlayerStateVector.from_stats(player_stats)
     messages = []
-    if keywords:
-        messages.append(
-            {
-                "role": "system",
-                "content": [
-                    {
-                        "type": "text",
-                        "text": json.dumps(keywords, ensure_ascii=False),
-                        "cache_control": {"type": "ephemeral"},
-                    }
-                ],
-            }
-        )
-        history_hint = ""
-        if history:
-            history_hint = f"\n近期已发生事件（请务必不要生成与之重复或高度相似的内容）：{', '.join(history)}"
-        prompt = f"""
-        玩家当前状态：{json.dumps(player_stats, ensure_ascii=False)}
-        你是一个文字模拟游戏的上帝系统。浙大学生。
-        {history_hint}
-        请生成 3 个突发的校园随机事件。要求风格迥异：包含学习压力、社团社交、校园传说、校园恋爱、惊险事故、狼狈瞬间或生活小插曲。
-        严禁与上方“近期已发生事件”雷同。
-        每个事件应包含两个选项，会对玩家状态产生合理影响（-10 到 +10）。
-    
-        请严格输出 JSON 格式，结构如下：
-        {{
-            "events": [
-                {{
-                    "title": "事件标题",
-                    "desc": "描述...",
-                    "options": [
-                        {{"id": "A", "text": "...", "effects": {{"energy": -5, "desc": "..."}}}},
-                        {{"id": "B", "text": "...", "effects": {{"sanity": 5, "desc": "..."}}}}
-                    ]
-                }},
-                ... (重复 3 个)
-            ]
-        }}
-        """
+    history_hint = ""
+    if history:
+        history_hint = f"\n已发生事件（勿重复）：{', '.join(history[-5:])}"
+    prompt = (
+        f"玩家状态：{state.to_prompt_fragment()}{history_hint}\n"
+        f"生成 3 个浙大校园随机事件，风格迥异。\n"
+        f"每个事件含两个选项，effects 范围 -10~+10。\n"
+        f'\n严格 JSON：{{ "events": [{{ "title": "...", "desc": "...", '
+        f'"options": [{{"id": "A", "text": "...", "effects": {{"energy": -5, "desc": "..."}}}}, '
+        f'{{"id": "B", "text": "...", "effects": {{"sanity": 5, "desc": "..."}}}}] }}] }}'
+    )
     messages.append({"role": "user", "content": prompt})
     try:
         api_key, base_url, model = _resolve_llm_config(llm_override)
@@ -269,41 +210,17 @@ async def generate_dingtalk_message(
     if cached_msg:
         return json.loads(cached_msg)
 
-    # 2. 批量进货 (一次生成 5 条)
-    character_list = _load_character_list()
+    # 2. LLM 补货 (状态浓缩: ~50 tok 代替 ~2300 tok)
+    state = PlayerStateVector.from_stats(player_stats)
     messages = []
-    if character_list:
-        messages.append(
-            {
-                "role": "system",
-                "content": [
-                    {
-                        "type": "text",
-                        "text": json.dumps(character_list, ensure_ascii=False),
-                        "cache_control": {"type": "ephemeral"},
-                    }
-                ],
-            }
-        )
-    prompt = f"""
-    玩家当前状态：{json.dumps(player_stats, ensure_ascii=False)}
-    你正在模拟浙江大学的“钉钉”消息通知。浙大学生。
-    触发场景：{context}。
-    请批量生成 5 条不同的钉钉消息。
-    要求：内容要真实（包含通知、约饭、求助、催作业等），发送人身份要切换。
-    请严格输出 JSON 格式：
-    {{
-        "messages": [
-            {{
-                "sender": "发送人",
-                "role": "counselor/student/system/teacher",
-                "content": "内容（30字以内）",
-                "is_urgent": false
-            }},
-            ... (重复 5 条)
-        ]
-    }}
-    """
+    prompt = (
+        f"玩家状态：{state.to_prompt_fragment()}\n"
+        f"场景：{context}。\n"
+        f"模拟浙江大学钉钉消息，生成 5 条（通知/约饭/求助/催作业），发送人身份各异。\n"
+        f'\n严格 JSON：{{ "messages": ['
+        f'{{ "sender": "发送人", "role": "counselor/student/system/teacher", '
+        f'"content": "30字内", "is_urgent": false }}] }}'
+    )
     messages.append({"role": "user", "content": prompt})
     try:
         api_key, base_url, model = _resolve_llm_config(llm_override)

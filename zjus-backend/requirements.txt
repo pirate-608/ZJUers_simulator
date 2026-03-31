@@ -52,3 +52,6 @@ ruff>=0.15.6
 # --- 管理后台 ---
 sqladmin>=0.16.0
 psycopg2-binary>=2.9.9
+
+# --- 向量检索 (pgvector) ---
+pgvector>=0.3.6

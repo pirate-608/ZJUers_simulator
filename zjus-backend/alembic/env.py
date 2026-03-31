@@ -7,6 +7,8 @@ from alembic import context
 
 from app.core.config import settings
 from app.core.database import Base
+# Import all models so Alembic can detect them
+import app.models.embedding  # noqa: F401
 
 config = context.config
 

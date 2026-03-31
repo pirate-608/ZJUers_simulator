@@ -37,7 +37,7 @@ services:
       - ./zjus-backend/app:/app/app  # 可选：如果为了本地热更新开发，挂载具体的 app 目录
 
   db:
-    image: postgres:15-alpine
+    image: pgvector/pgvector:pg15
     container_name: zjus_db
     restart: always
     environment:

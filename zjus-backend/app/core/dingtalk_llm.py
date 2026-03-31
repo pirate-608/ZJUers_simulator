@@ -195,6 +195,48 @@ async def _call_m2her_api(messages: List[Dict]) -> Optional[str]:
 
 
 # ==========================================
+# 向量化角色选取
+# ==========================================
+
+
+async def _select_characters_vectorized(
+    player_stats: dict,
+    context: str,
+    top_k: int = 3,
+) -> List[Dict[str, Any]]:
+    """
+    通过 pgvector 余弦相似度检索选取最匹配的角色。
+
+    使用预计算的 context 查询向量（零运行时推理）在
+    character_embeddings 表中检索 Top-K 最相似的角色。
+
+    Returns:
+        角色 dict 列表，或空列表（不可用时由调用方 fallback）
+    """
+    try:
+        from app.content.vector_store import search_similar_characters
+    except ImportError:
+        logger.debug("vector_store not available, skipping vectorized selection")
+        return []
+
+    try:
+        results = await search_similar_characters(context, top_k=top_k)
+        if results:
+            chars = [r["char"] for r in results]
+            logger.info(
+                "Vector search selected %d characters: %s (context=%s)",
+                len(chars),
+                [c.get("name", "?") for c in chars],
+                context,
+            )
+            return chars
+    except Exception as e:
+        logger.warning("Vector search failed, will fallback: %s", e)
+
+    return []
+
+
+# ==========================================
 # 主入口
 # ==========================================
 
@@ -221,38 +263,15 @@ async def generate_dingtalk_via_m2her(
         except (json.JSONDecodeError, TypeError):
             pass
 
-    # 2. 加载角色列表并随机选取
-    characters = _load_characters()
-    if not characters:
-        return None
+    # 2. 向量化角色选取（优先）→ 随机兜底
+    unique_chars = await _select_characters_vectorized(player_stats, context)
 
-    # 根据 context 做加权选取（某些角色在特定场景下更合适）
-    context_role_weights = {
-        "low_sanity": {"roommate": 3, "crush": 2, "counselor": 2},
-        "high_stress": {"roommate": 3, "classmate": 2, "volunteer_coordinator": 1},
-        "low_gpa": {"teaching_assistant": 3, "teacher": 2, "classmate": 2},
-        "random": {},  # 均等权重
-    }
-    weights = context_role_weights.get(context, {})
-
-    weighted_chars = []
-    for char in characters:
-        role = char.get("role", "")
-        w = weights.get(role, 1)
-        weighted_chars.extend([char] * w)
-
-    # 选一个主角色 + 额外角色用于补充缓存
-    selected_chars = random.sample(
-        weighted_chars, min(3, len(weighted_chars))
-    )
-    # 去重（可能抽到同一个角色多次）
-    seen = set()
-    unique_chars = []
-    for c in selected_chars:
-        key = c.get("name", "")
-        if key not in seen:
-            seen.add(key)
-            unique_chars.append(c)
+    if not unique_chars:
+        # pgvector 不可用时回退到随机选取
+        characters = _load_characters()
+        if not characters:
+            return None
+        unique_chars = random.sample(characters, min(3, len(characters)))
 
     # 3. 并发调用 M2-her 生成多条消息
     import asyncio

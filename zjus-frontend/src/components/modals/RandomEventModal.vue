@@ -64,10 +64,32 @@ const makeChoice = (effects: unknown) => {
 <style scoped>
 .modal-backdrop-custom {
   position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+  padding: 14px;
+  overflow-y: auto;
   background-color: rgba(0, 0, 0, 0.6); z-index: 9999; backdrop-filter: blur(2px);
+}
+.modal-card {
+  margin: auto;
+  background: #fdfaf2;
+  border: 1px solid #d8d0bd !important;
 }
 .fade-in { animation: fadeIn 0.2s ease-out; }
 .scale-in { animation: scaleIn 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 @keyframes scaleIn { from { transform: scale(0.9); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+
+@media (max-width: 430px) {
+  .modal-backdrop-custom {
+    padding: 10px;
+  }
+
+  .modal-card .card-body {
+    padding: 0.95rem !important;
+  }
+
+  .modal-card .btn {
+    padding: 0.5rem 0.6rem;
+    font-size: 0.83rem;
+  }
+}
 </style>

@@ -1,6 +1,6 @@
 <template>
-  <div class="card mb-3 d-flex flex-column h-100 shadow-sm border-0">
-    <div class="card-header pb-0 bg-white border-bottom">
+  <div class="card mid-panel-card mb-3 d-flex flex-column h-100 shadow-sm border-0">
+    <div class="card-header pb-0 bg-white border-bottom mid-panel-header">
       <ul
         class="nav nav-tabs card-header-tabs"
         role="tablist"
@@ -234,6 +234,16 @@ const setSpeed = (speed: number) => {
 .event-log {
   font-family: 'Courier New', Courier, monospace;
 }
+
+.mid-panel-header {
+  background: linear-gradient(180deg, #fbf9f1 0%, #f4f0e2 100%) !important;
+}
+
+.mid-panel-card .nav-link.active {
+  color: #1f4368;
+  font-weight: 700;
+  border-color: #d9d2c2 #d9d2c2 #ffffff;
+}
 .ding-msg-anim {
   animation: slideIn 0.3s ease-out forwards;
 }
@@ -248,5 +258,17 @@ const setSpeed = (speed: number) => {
   0% { transform: scale(1); }
   50% { transform: scale(1.3); }
   100% { transform: scale(1); }
+}
+
+@media (max-width: 430px) {
+  .card-body[style] {
+    height: 250px !important;
+  }
+
+  .mid-panel-card .nav-link {
+    padding: 0.45rem 0.52rem;
+    font-size: 0.82rem;
+    white-space: nowrap;
+  }
 }
 </style>

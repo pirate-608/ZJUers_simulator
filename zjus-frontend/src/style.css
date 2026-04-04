@@ -1,79 +1,92 @@
 :root {
-  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
+  --page-bg: #f6f2e9;
+  --page-bg-alt: #ece6d8;
+  --text-main: #1c2a3a;
+  --text-sub: #5a6470;
+  --brand: #2f5d88;
+  --brand-strong: #1f4368;
+  --border-soft: #d9d2c2;
+  --card-shadow: 0 10px 30px rgba(32, 44, 58, 0.1);
+  font-family: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans SC", sans-serif;
   line-height: 1.5;
   font-weight: 400;
-
-  color-scheme: light dark;
-  color: rgba(255, 255, 255, 0.87);
-  background-color: #242424;
-
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-a {
-  font-weight: 500;
-  color: #646cff;
-  text-decoration: inherit;
+* {
+  box-sizing: border-box;
 }
-a:hover {
-  color: #535bf2;
+
+html,
+body,
+#app {
+  width: 100%;
+  min-height: 100%;
+}
+
+html,
+body {
+  margin: 0;
+  min-width: 320px;
 }
 
 body {
-  margin: 0;
-  display: flex;
-  place-items: center;
-  min-width: 320px;
-  min-height: 100vh;
-}
-
-h1 {
-  font-size: 3.2em;
-  line-height: 1.1;
-}
-
-button {
-  border-radius: 8px;
-  border: 1px solid transparent;
-  padding: 0.6em 1.2em;
-  font-size: 1em;
-  font-weight: 500;
-  font-family: inherit;
-  background-color: #1a1a1a;
-  cursor: pointer;
-  transition: border-color 0.25s;
-}
-button:hover {
-  border-color: #646cff;
-}
-button:focus,
-button:focus-visible {
-  outline: 4px auto -webkit-focus-ring-color;
-}
-
-.card {
-  padding: 2em;
+  color: var(--text-main);
+  background:
+    radial-gradient(circle at 18% 16%, rgba(49, 86, 122, 0.14), transparent 32%),
+    radial-gradient(circle at 84% 0%, rgba(130, 110, 76, 0.09), transparent 30%),
+    linear-gradient(160deg, var(--page-bg), var(--page-bg-alt));
 }
 
 #app {
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 2rem;
-  text-align: center;
+  margin: 0;
+  padding: 0;
 }
 
-@media (prefers-color-scheme: light) {
-  :root {
-    color: #213547;
-    background-color: #ffffff;
+a {
+  color: var(--brand);
+}
+
+a:hover {
+  color: var(--brand-strong);
+}
+
+button,
+.btn {
+  transition: all 0.2s ease;
+}
+
+.card {
+  border: 1px solid var(--border-soft);
+  border-radius: 14px;
+  box-shadow: var(--card-shadow);
+}
+
+.card-header {
+  font-family: "Noto Serif SC", "Songti SC", "STSong", serif;
+  letter-spacing: 0.02em;
+}
+
+.btn-primary {
+  background-color: var(--brand);
+  border-color: var(--brand);
+}
+
+.btn-primary:hover,
+.btn-primary:focus {
+  background-color: var(--brand-strong);
+  border-color: var(--brand-strong);
+}
+
+@media (max-width: 430px) {
+  body {
+    font-size: 14px;
   }
-  a:hover {
-    color: #747bff;
-  }
-  button {
-    background-color: #f9f9f9;
+
+  .card {
+    border-radius: 12px;
   }
 }

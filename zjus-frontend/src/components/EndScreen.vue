@@ -1,7 +1,7 @@
 <template>
   <div
-    class="end-screen vh-100 w-100 d-flex flex-column align-items-center justify-content-center"
-    :class="isSuccess ? 'bg-grad' : 'bg-dark text-white'"
+    class="end-screen min-vh-100 w-100 d-flex flex-column align-items-center justify-content-center px-3 py-4"
+    :class="isSuccess ? 'bg-grad' : 'bg-fail text-white'"
   >
     <div
       v-if="!isSuccess"
@@ -9,7 +9,7 @@
     >
       <h2
         class="mb-4 fw-light text-light"
-        style="letter-spacing: 2px; line-height: 1.6;"
+        style="letter-spacing: 1px; line-height: 1.7;"
       >
         很多年后，我才明白，<br>我也许只属于灿烂星辰背后的那片黑夜......
       </h2>
@@ -30,7 +30,7 @@
       class="container fade-in-up my-auto"
     >
       <div class="row justify-content-center">
-        <div class="col-lg-8 col-md-10">
+        <div class="col-12 col-xl-9 col-xxl-8">
           <div class="card shadow-lg border-0 bg-white rounded-4 overflow-hidden">
             <div
               class="card-header text-white text-center py-4"
@@ -45,8 +45,8 @@
             </div>
 
             <div class="card-body p-4 p-md-5">
-              <div class="row text-center mb-4 pb-4 border-bottom">
-                <div class="col-6 col-md-3 mb-3 mb-md-0">
+              <div class="row text-center mb-4 pb-4 border-bottom g-3 g-md-0">
+                <div class="col-6 col-md-3">
                   <div class="text-muted small fw-bold">
                     最终 GPA
                   </div>
@@ -54,7 +54,7 @@
                     {{ store.endData.gpa?.toFixed(2) ?? '0.00' }}
                   </div>
                 </div>
-                <div class="col-6 col-md-3 border-md-start border-md-end mb-3 mb-md-0">
+                <div class="col-6 col-md-3 stat-col-divider">
                   <div class="text-muted small fw-bold">
                     智商 / 情商
                   </div>
@@ -62,7 +62,7 @@
                     {{ store.endData.iq ?? 100 }} / {{ store.endData.eq ?? 100 }}
                   </div>
                 </div>
-                <div class="col-6 col-md-3 border-md-end">
+                <div class="col-6 col-md-3 stat-col-divider-right">
                   <div class="text-muted small fw-bold">
                     累计财富
                   </div>
@@ -84,7 +84,7 @@
                 <span>📜</span> 校史公曰：
               </h5>
               <div
-                class="ai-summary-box p-4 rounded bg-light border"
+                class="ai-summary-box p-4 rounded border"
                 style="min-height: 120px;"
               >
                 <p
@@ -114,7 +114,7 @@
     </div>
 
     <div
-      class="world-links mt-5 text-center fade-in-up"
+      class="world-links mt-4 mt-md-5 text-center fade-in-up"
       style="animation-delay: 1s;"
     >
       <div
@@ -205,17 +205,40 @@ const restartGame = () => {
 <style scoped>
 /* 渐变背景 (好结局) */
 .bg-grad {
-  background: linear-gradient(120deg, #fdfbfb 0%, #ebedee 100%);
+  background:
+    radial-gradient(circle at 15% 20%, rgba(47, 83, 122, 0.14), transparent 30%),
+    radial-gradient(circle at 80% 5%, rgba(126, 111, 84, 0.09), transparent 28%),
+    linear-gradient(120deg, #f8f4ea 0%, #ece4d4 100%);
+}
+
+.bg-fail {
+  background:
+    radial-gradient(circle at 50% 100%, rgba(129, 18, 18, 0.35), transparent 55%),
+    linear-gradient(180deg, #161b22 0%, #0d1117 100%);
 }
 
 /* 坏结局的暗黑居中框 (还原 end.html) */
 .center-box {
-  max-width: 600px;
-  padding: 40px;
-  background: rgba(17, 17, 17, 0.8);
-  border-radius: 12px;
-  box-shadow: 0 2px 24px rgba(255, 255, 255, 0.05);
-  backdrop-filter: blur(5px);
+  max-width: 700px;
+  padding: 36px;
+  background: rgba(10, 13, 19, 0.78);
+  border-radius: 16px;
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(7px);
+}
+
+.ai-summary-box {
+  background: linear-gradient(180deg, #fbf7ee 0%, #f3ebdd 100%);
+  border-color: #d9cfbb !important;
+}
+
+.stat-col-divider {
+  border-left: 1px solid #e9edf3;
+  border-right: 1px solid #e9edf3;
+}
+
+.stat-col-divider-right {
+  border-right: 1px solid #e9edf3;
 }
 
 /* 动画特效 */
@@ -246,5 +269,45 @@ const restartGame = () => {
 .world-links a {
   text-decoration: none;
   backdrop-filter: blur(2px);
+}
+
+@media (max-width: 768px) {
+  .center-box {
+    padding: 28px 20px;
+  }
+
+  .stat-col-divider,
+  .stat-col-divider-right {
+    border: none;
+  }
+}
+
+@media (max-width: 430px) {
+  .end-screen {
+    padding-left: 10px !important;
+    padding-right: 10px !important;
+  }
+
+  .card-body {
+    padding: 0.95rem !important;
+  }
+
+  .card-header h1 {
+    font-size: 1.5rem;
+  }
+
+  .card-header p {
+    font-size: 0.8rem;
+  }
+
+  .ai-summary-box p {
+    font-size: 1rem !important;
+    line-height: 1.75 !important;
+  }
+
+  .world-links .btn {
+    padding: 0.22rem 0.58rem;
+    font-size: 0.73rem;
+  }
 }
 </style>

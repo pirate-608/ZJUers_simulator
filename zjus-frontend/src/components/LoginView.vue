@@ -1,22 +1,23 @@
 <template>
-  <!-- 背景淡入淡出层 -->
-  <div
-    class="bg-fade"
-    :style="{ backgroundImage: `url('${bgImages[bgIndex]}')`, opacity: bgOpacity }"
-  />
-  <div class="container py-5">
-    <div class="col-md-8 col-lg-6 w-100">
-      <div class="card shadow-lg border-0 rounded-3">
-        <div class="card-header bg-primary text-white text-center py-4">
-          <h2 class="mb-0">
-            🎓 ZJUers Simulator
-          </h2>
-          <p class="mb-0 opacity-75">
-            入学资格审查
-          </p>
-        </div>
+  <div class="login-root">
+    <div
+      class="bg-fade"
+      :style="{ backgroundImage: `url('${bgImages[bgIndex]}')`, opacity: bgOpacity }"
+    />
 
-        <div class="card-body p-4 p-md-5">
+    <div class="login-shell container-fluid px-3 px-md-4 py-4 py-md-5">
+      <div class="mx-auto login-card-wrap">
+        <div class="card login-card border-0 overflow-hidden">
+          <div class="card-header login-header text-white text-center py-4">
+            <h2 class="mb-1 fw-bold">
+              🎓 ZJUers Simulator
+            </h2>
+            <p class="mb-0 opacity-75">
+              入学资格审查
+            </p>
+          </div>
+
+          <div class="card-body p-4 p-md-5">
           <!-- 状态 1：登录表单 -->
           <div v-if="viewState === 'login'">
             <div class="mb-3">
@@ -63,7 +64,7 @@
             
             <div
               v-if="form.useCustomLlm"
-              class="card card-body border border-info bg-light mb-3"
+              class="card card-body border border-info-subtle llm-config-box mb-3"
             >
               <div class="mb-2">
                 <label class="form-label small fw-bold">服务商</label>
@@ -135,6 +136,7 @@
               请回答以下问题 (及格分: 60)
             </h5>
             
+            <div class="exam-scroll-area pe-1">
             <div
               v-for="(q, index) in examQuestions"
               :key="index"
@@ -145,9 +147,10 @@
               <input
                 v-model="examAnswers[index]"
                 type="text" 
-                class="form-control form-control-lg bg-light" 
+                class="form-control form-control-lg exam-answer-input" 
                 placeholder="请输入你的答案..."
               >
+            </div>
             </div>
             
             <div class="d-flex gap-2 mt-4">
@@ -183,79 +186,79 @@
           </div>
         </div>
       </div>
-    </div>
+      </div>
 
-    <!-- 安全政策确认弹窗 -->
-    <div
-      v-if="showLlmWarning"
-      class="modal-backdrop-custom d-flex justify-content-center align-items-center"
-    >
+      <!-- 安全政策确认弹窗 -->
       <div
-        class="card shadow-lg border-0 p-4 mx-3"
-        style="max-width: 500px;"
+        v-if="showLlmWarning"
+        class="modal-backdrop-custom d-flex justify-content-center align-items-center"
       >
-        <h4 class="text-danger fw-bold mb-3">
-          ⚠️ 安全政策确认
-        </h4>
-        <p class="mb-2">
-          你正在使用自定义的 LLM API Key。
-        </p>
-        <ul class="text-muted small">
-          <li>你的 API Key 仅在当前浏览器内存和本次后端的临时会话中使用。</li>
-          <li>游戏绝不会将你的密钥持久化存储到数据库。</li>
-          <li>关闭浏览器后配置即失效，游戏可能面临模型回退。</li>
-          <li>阅读<a href="https://zjusim-docs.67656.fun/user/models/#security-notice">安全须知</a></li>
-        </ul>
-        <div class="d-flex justify-content-end gap-2 mt-4">
-          <button
-            class="btn btn-secondary"
-            @click="cancelLlmAction"
-          >
-            返回修改
-          </button>
-          <button
-            class="btn btn-danger fw-bold"
-            @click="confirmLlmAction"
-          >
-            我已知晓并同意
-          </button>
+        <div
+          class="card shadow-lg border-0 p-4 mx-3"
+          style="max-width: 500px;"
+        >
+          <h4 class="text-danger fw-bold mb-3">
+            ⚠️ 安全政策确认
+          </h4>
+          <p class="mb-2">
+            你正在使用自定义的 LLM API Key。
+          </p>
+          <ul class="text-muted small">
+            <li>你的 API Key 仅在当前浏览器内存和本次后端的临时会话中使用。</li>
+            <li>游戏绝不会将你的密钥持久化存储到数据库。</li>
+            <li>关闭浏览器后配置即失效，游戏可能面临模型回退。</li>
+            <li>阅读<a href="https://zjusim-docs.67656.fun/user/models/#security-notice">安全须知</a></li>
+          </ul>
+          <div class="d-flex justify-content-end gap-2 mt-4">
+            <button
+              class="btn btn-secondary"
+              @click="cancelLlmAction"
+            >
+              返回修改
+            </button>
+            <button
+              class="btn btn-danger fw-bold"
+              @click="confirmLlmAction"
+            >
+              我已知晓并同意
+            </button>
+          </div>
         </div>
       </div>
     </div>
-  </div>
 
-  <!-- 游戏首页底部备案信息 -->
-  <footer class="beian-footer mt-4">
-    <div class="d-flex flex-column flex-md-row justify-content-center gap-3 align-items-center">
-      <a
-        href="https://zjusim-docs.67656.fun/user/notice/"
-        target="_blank"
-        class="text-secondary small"
-      >折姜大学招生减章</a>
-      <a
-        href="http://beian.miit.gov.cn/"
-        target="_blank"
-        class="text-secondary small"
-      >浙ICP备2026007685号</a>
-      <a
-        href="https://beian.mps.gov.cn/#/query/webSearch?code=33010602014394"
-        rel="noreferrer"
-        target="_blank"
-        class="text-secondary small d-flex align-items-center gap-1"
-      >
-        <img
-          src="https://67656.fun/static/images/beian-icon.png"
-          style="height: 1.2em; width: auto;"
-          alt="公安备案"
+    <footer class="beian-footer mt-4">
+      <div class="d-flex flex-column flex-md-row justify-content-center gap-3 align-items-center">
+        <a
+          href="https://zjusim-docs.67656.fun/user/notice/"
+          target="_blank"
+          class="text-secondary small"
+        >折姜大学招生减章</a>
+        <a
+          href="http://beian.miit.gov.cn/"
+          target="_blank"
+          class="text-secondary small"
+        >浙ICP备2026007685号</a>
+        <a
+          href="https://beian.mps.gov.cn/#/query/webSearch?code=33010602014394"
+          rel="noreferrer"
+          target="_blank"
+          class="text-secondary small d-flex align-items-center gap-1"
         >
-        <span>浙公网安备33010602014394号</span>
-      </a>
-    </div>
-  </footer>
+          <img
+            src="https://67656.fun/static/images/beian-icon.png"
+            style="height: 1.2em; width: auto;"
+            alt="公安备案"
+          >
+          <span>浙公网安备33010602014394号</span>
+        </a>
+      </div>
+    </footer>
+  </div>
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed } from 'vue'
+import { ref, reactive, computed, onMounted, onUnmounted } from 'vue'
 import { useGameStore } from '../stores/gameStore.ts'
 import type { ExamQuestion } from '@/types/api'
 
@@ -314,26 +317,39 @@ const executeAction = (actionType: string | null) => {
   else if (actionType === 'quick') quickLogin()
 }
 
+const baseUrl = import.meta.env.BASE_URL || '/'
 const bgImages = [
-  '/images/qiushimen.webp',
-  '/images/zjg_night.jpeg',
-  '/images/zjg_autumn.jpg',
-  '/images/qizhen_lake.jpg',
+  `${baseUrl}images/qiushimen.webp`,
+  `${baseUrl}images/zjg_night.jpeg`,
+  `${baseUrl}images/zjg_autumn.jpg`,
+  `${baseUrl}images/qizhen_lake.jpg`,
 ]
 const bgIndex = ref(0)
 const bgOpacity = ref(1)
+let bgSwitchTimeout: ReturnType<typeof setTimeout> | null = null
+let bgSwitchInterval: ReturnType<typeof setInterval> | null = null
 
 const fadeDuration = 800 // ms
 const switchBg = () => {
   bgOpacity.value = 0
-  setTimeout(() => {
+  bgSwitchTimeout = setTimeout(() => {
     bgIndex.value = (bgIndex.value + 1) % bgImages.length
     bgOpacity.value = 1
   }, fadeDuration)
 }
-// 初始设置
-setTimeout(() => switchBg(), 10000)
-setInterval(switchBg, 10000)
+
+onMounted(() => {
+  bgImages.forEach((src) => {
+    const image = new Image()
+    image.src = src
+  })
+  bgSwitchInterval = setInterval(switchBg, 10000)
+})
+
+onUnmounted(() => {
+  if (bgSwitchTimeout) clearTimeout(bgSwitchTimeout)
+  if (bgSwitchInterval) clearInterval(bgSwitchInterval)
+})
 
 // ----------------- API 交互逻辑 -----------------
 
@@ -470,6 +486,48 @@ const saveTokenAndConfig = (token: string, username: string) => {
 </script>
 
 <style scoped>
+.login-root {
+  position: relative;
+  min-height: 100vh;
+  isolation: isolate;
+}
+
+.login-shell {
+  position: relative;
+  z-index: 1;
+  min-height: calc(100vh - 64px);
+}
+
+.login-card-wrap {
+  width: 100%;
+  max-width: 760px;
+}
+
+.login-card {
+  background: rgba(251, 248, 240, 0.94);
+  border: 1px solid rgba(216, 205, 182, 0.72);
+  backdrop-filter: blur(8px);
+}
+
+.login-header {
+  background: linear-gradient(120deg, #2e5275 0%, #3a698f 100%);
+  font-family: "Noto Serif SC", "Songti SC", "STSong", serif;
+}
+
+.llm-config-box {
+  background: rgba(236, 242, 250, 0.85);
+}
+
+.exam-scroll-area {
+  max-height: 50vh;
+  overflow-y: auto;
+  padding-right: 2px;
+}
+
+.exam-answer-input {
+  background: #f8fbff;
+}
+
 .modal-backdrop-custom {
   position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
   background-color: rgba(0, 0, 0, 0.65); z-index: 9999; backdrop-filter: blur(3px);
@@ -481,8 +539,77 @@ const saveTokenAndConfig = (token: string, username: string) => {
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
-  z-index: -1;
+  z-index: 0;
   transition: opacity 0.8s;
+}
+
+.bg-fade::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(160deg, rgba(11, 26, 41, 0.5), rgba(28, 51, 74, 0.2));
+}
+
+.beian-footer {
+  position: relative;
+  z-index: 1;
+  padding: 0 12px 20px;
+}
+
+.beian-footer a {
+  color: #eef5ff !important;
+}
+
+@media (max-width: 768px) {
+  .login-shell {
+    min-height: calc(100vh - 86px);
+  }
+
+  .exam-scroll-area {
+    max-height: 45vh;
+  }
+}
+
+@media (max-width: 430px) {
+  .login-shell {
+    padding-top: 14px !important;
+    min-height: calc(100vh - 102px);
+  }
+
+  .login-card .card-body {
+    padding: 1rem !important;
+  }
+
+  .login-header {
+    padding: 1rem 0.8rem !important;
+  }
+
+  .login-header h2 {
+    font-size: 1.4rem;
+  }
+
+  .login-header p {
+    font-size: 0.82rem;
+  }
+
+  .exam-scroll-area {
+    max-height: 40vh;
+  }
+
+  .d-flex.justify-content-between.align-items-center.mb-2 {
+    flex-direction: column;
+    align-items: flex-start !important;
+    gap: 6px;
+  }
+
+  .beian-footer {
+    padding: 0 10px 12px;
+    margin-top: 10px !important;
+  }
+
+  .beian-footer .small {
+    font-size: 0.72rem !important;
+  }
 }
 </style>
 

@@ -122,8 +122,40 @@ const stressColorClass = computed(() => {
 .hud-container {
   /* 确保它在页面上有足够的层级不被盖住 */
   z-index: 100;
+  background: linear-gradient(180deg, #fefdf9 0%, #f7f3e9 100%) !important;
 }
 .stat-item {
   min-width: 150px;
+}
+
+@media (max-width: 430px) {
+  .hud-container {
+    padding: 10px !important;
+    flex-direction: column;
+    align-items: stretch !important;
+    gap: 10px;
+    margin-bottom: 10px !important;
+  }
+
+  .hud-container > .d-flex:first-child {
+    width: 100%;
+    margin-right: 0 !important;
+    gap: 8px !important;
+    flex-direction: column;
+  }
+
+  .hud-container > .d-flex:last-child {
+    width: 100%;
+    border-left: 0 !important;
+    padding-left: 0 !important;
+    border-top: 1px solid #d8d2c4;
+    padding-top: 8px;
+    justify-content: space-between;
+    gap: 0.5rem !important;
+  }
+
+  .stat-item {
+    min-width: 0;
+  }
 }
 </style>

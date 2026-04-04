@@ -9,7 +9,7 @@
     "id": "cc98_4e6d4b0a",
     "effect": "negative",
     "topic": "郁闷小屋",
-    "content": "刚在东教刷完题，[ac01]突然发现自己连奶茶钱都凑不齐，这缘分怎么配不上我？"
+    "content": "刚在东教刷完题，[ac01]突然发现自己连奶茶钱都凑不齐，这好运怎么配不上我？"
   },
   {
     "id": "cc98_fc05d128",
@@ -38,31 +38,31 @@
   {
     "id": "cc98_db0d6ae2",
     "effect": "negative",
-    "topic": "缘分天空",
+    "topic": "心灵之约",
     "content": "基座启真湖畔，相亲男说我数学不好，不如去算算他妈的房贷利率[ac22]"
   },
   {
     "id": "cc98_5fd8c758",
     "effect": "negative",
-    "topic": "缘分天空",
-    "content": "紫金港晚自习，隔壁学霸带个女同桌，我怀疑 CC98 版缘天空全是恋爱脑[ac19]"
+    "topic": "郁闷小屋",
+    "content": "紫金港晚自习，隔壁学霸带个女同桌，我怀疑我这辈子就这样了[ac19]"
   },
   {
     "id": "cc98_e1bd86cb",
     "effect": "negative",
-    "topic": "缘分天空",
+    "topic": "郁闷小屋",
     "content": "相亲被问有没有车，我掏出二手共享单车，对方笑了，我直接哭死东教[ac35]"
   },
   {
     "id": "cc98_236b11c4",
     "effect": "negative",
-    "topic": "缘分天空",
+    "topic": "郁闷小屋",
     "content": "基础馆图书馆，隔壁情侣吵架，我想插队征友，结果被保安请出去[ac09]"
   },
   {
     "id": "cc98_98d09bc7",
     "effect": "negative",
-    "topic": "缘分天空",
+    "topic": "郁闷小屋",
     "content": "帮室友征友，结果他妈直接骂我，说我找的是穷鬼，我直接退学算了[ac05]"
   },
   {
@@ -260,8 +260,8 @@
   {
     "id": "cc98_244a7953",
     "effect": "positive",
-    "topic": "缘分天空",
-    "content": "别卷绩点了，不如来缘分天空聊聊，基辅湖边的月亮比图书馆还亮 [ac06]"
+    "topic": "一路走来",
+    "content": "别卷绩点了，不如来一路楼聊聊，基辅湖边的月亮比图书馆还亮 [ac06]"
   },
   {
     "id": "cc98_762a3e70",
@@ -1076,19 +1076,19 @@
   {
     "id": "cc98_f81a0c0d",
     "effect": "neutral",
-    "topic": "缘分天空",
+    "topic": "校园信息",
     "content": "基础馆 WiFi 又断了，这网速比我挂科的速度还快...[ac05]"
   },
   {
     "id": "cc98_a8a3167b",
     "effect": "neutral",
-    "topic": "缘分天空",
-    "content": "CC98 缘分天空今日宜：晒被子，宜：假装自己很闲。[ac06]"
+    "topic": "一路走来",
+    "content": "今日宜：晒被子，宜：假装自己很闲。[ac06]"
   },
   {
     "id": "cc98_bc570aad",
     "effect": "neutral",
-    "topic": "缘分天空",
+    "topic": "似水流年",
     "content": "紫金港的猫今天没出现，是不是被教导处老师抓去填表了？[ac19]"
   },
   {
@@ -1634,19 +1634,19 @@
   {
     "id": "cc98_e1876b8f",
     "effect": "neutral",
-    "topic": "缘分天空",
+    "topic": "感性空间",
     "content": "刚在基础馆看完实验数据，感觉今天的风都带着启真湖的凉意 [ac06]"
   },
   {
     "id": "cc98_ba8768df",
     "effect": "neutral",
-    "topic": "缘分天空",
+    "topic": "开怀一笑",
     "content": "在紫金港迷路三次了，今天的导航是不是也去图书馆搬砖了 [ac05]"
   },
   {
     "id": "cc98_e0590fe1",
     "effect": "neutral",
-    "topic": "缘分天空",
+    "topic": "校园信息",
     "content": "东教的食堂今天居然有新菜品，这日子过得太有盼头了 [ac01]"
   },
   {
@@ -1658,7 +1658,7 @@
   {
     "id": "cc98_111d847a",
     "effect": "neutral",
-    "topic": "缘分天空",
+    "topic": "似水流年",
     "content": "刚从实验室出来，头发都被染白了，急需一杯咖啡续命 [ac06]"
   },
   {

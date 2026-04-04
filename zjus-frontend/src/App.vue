@@ -58,7 +58,7 @@ const handleEnterGame = (token: string) => {
   >
 
   <div
-    class="toast-container position-fixed top-0 end-0 p-4"
+    class="toast-container app-toast position-fixed top-0 end-0 p-4"
     style="z-index: 10000;"
   >
     <div
@@ -89,7 +89,7 @@ const handleEnterGame = (token: string) => {
 
   <div
     v-else-if="store.currentPhase === 'loading'"
-    class="vh-100 d-flex flex-column justify-content-center align-items-center bg-light"
+    class="app-loading vh-100 d-flex flex-column justify-content-center align-items-center"
   >
     <div
       class="spinner-border text-primary mb-3"
@@ -109,13 +109,13 @@ const handleEnterGame = (token: string) => {
 
   <div
     v-else-if="store.currentPhase === 'playing'"
-    class="container-fluid px-4 mt-4 fade-in-up"
+    class="container-fluid app-playing px-3 px-lg-4 py-3 py-lg-4 fade-in-up"
   >
     <TopNav @send-action="send" />
     
     <HudBar />
-    <div class="row">
-      <div class="col-md-3">
+    <div class="row g-3 g-xl-4">
+      <div class="col-12 col-lg-3">
         <div class="card mb-3 border-0 shadow-sm h-100">
           <div class="card-header bg-info text-white text-center fw-bold py-2">
             📚 学在折大
@@ -125,10 +125,10 @@ const handleEnterGame = (token: string) => {
           </div>
         </div>
       </div>
-      <div class="col-md-6">
+      <div class="col-12 col-lg-6">
         <MidPanel @send-action="send" />
       </div>
-      <div class="col-md-3">
+      <div class="col-12 col-lg-3">
         <RightPanel @send-action="send" />
       </div>
     </div>
@@ -153,15 +153,38 @@ const handleEnterGame = (token: string) => {
 </style>
 
 <style>
-/* 全局样式 */
-body {
-  background-color: #f0f2f5;
+.app-loading {
+  background: linear-gradient(160deg, #f8fbff 0%, #edf3f9 100%);
 }
+
+.app-playing {
+  max-width: 1440px;
+  margin: 0 auto;
+}
+
 .fade-in-up {
   animation: fadeInUp 0.5s ease-out forwards;
 }
 @keyframes fadeInUp {
   from { opacity: 0; transform: translateY(20px); }
   to { opacity: 1; transform: translateY(0); }
+}
+
+@media (max-width: 430px) {
+  .app-toast {
+    width: calc(100% - 12px);
+    left: 6px;
+    right: 6px;
+    padding: 6px !important;
+  }
+
+  .app-toast .toast {
+    width: 100%;
+  }
+
+  .app-playing {
+    padding-top: 10px !important;
+    padding-bottom: 14px !important;
+  }
 }
 </style>

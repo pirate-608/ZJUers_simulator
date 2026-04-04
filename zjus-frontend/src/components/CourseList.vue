@@ -138,4 +138,29 @@ const changeStrategy = (courseId: string, newState: number) => {
 .btn-group .btn:active {
   transform: scale(0.95);
 }
+
+@media (max-width: 430px) {
+  .course-list-panel {
+    max-height: 360px !important;
+  }
+
+  .course-item {
+    padding: 0.7rem 0.65rem !important;
+  }
+
+  .course-item .fw-bold.text-dark {
+    max-width: 66%;
+    line-height: 1.25;
+    font-size: 0.86rem !important;
+  }
+
+  .course-item .badge {
+    font-size: 0.7rem;
+  }
+
+  .course-item .btn-group .btn {
+    font-size: 0.75rem;
+    padding: 0.2rem 0.42rem;
+  }
+}
 </style>

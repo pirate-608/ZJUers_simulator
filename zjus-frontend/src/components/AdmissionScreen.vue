@@ -363,6 +363,23 @@
             >
               {{ playerToken }}
             </div>
+
+            <div class="d-flex gap-2 mt-2">
+              <button
+                class="flex-fill py-1 bg-white text-gray-600 rounded border border-gray-400 shadow-sm transition-all hover-border-red"
+                style="font-size: 0.75rem;"
+                @click="copyToken"
+              >
+                复制凭证
+              </button>
+              <button
+                class="flex-fill py-1 bg-white text-gray-600 rounded border border-gray-400 shadow-sm transition-all hover-border-red"
+                style="font-size: 0.75rem;"
+                @click="downloadTokenTxt"
+              >
+                下载 TXT
+              </button>
+            </div>
               
             <!-- 沉浸式入园按钮 -->
             <button
@@ -473,6 +490,49 @@ onMounted(async () => {
 const enterGame = () => {
   localStorage.setItem('game_started', '1')
   emit('enter-game', playerToken.value)
+}
+
+const buildCredentialText = () => {
+  return [
+    'ZJUers Simulator 学生凭证',
+    `姓名: ${info.value.username}`,
+    `专业: ${info.value.major}`,
+    `Token: ${playerToken.value}`,
+    `生成时间: ${new Date().toLocaleString('zh-CN')}`,
+  ].join('\n')
+}
+
+const copyToken = async () => {
+  if (!playerToken.value) {
+    store.showToast('暂无可复制凭证', 'warning')
+    return
+  }
+
+  try {
+    await navigator.clipboard.writeText(playerToken.value)
+    store.showToast('凭证已复制到剪贴板', 'success')
+  } catch {
+    store.showToast('复制失败，请手动选择文本复制', 'danger')
+  }
+}
+
+const downloadTokenTxt = () => {
+  if (!playerToken.value) {
+    store.showToast('暂无可下载凭证', 'warning')
+    return
+  }
+
+  const textBlob = new Blob([buildCredentialText()], { type: 'text/plain;charset=utf-8' })
+  const fileName = `zju_credential_${(info.value.username || 'player').replace(/\s+/g, '_')}.txt`
+  const blobUrl = URL.createObjectURL(textBlob)
+  const link = document.createElement('a')
+  link.href = blobUrl
+  link.download = fileName
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
+  URL.revokeObjectURL(blobUrl)
+  store.showToast('凭证 TXT 已下载', 'success')
 }
 
 const forceReset = () => {

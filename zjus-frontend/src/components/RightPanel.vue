@@ -1,8 +1,8 @@
 <template>
-  <div class="d-flex flex-column gap-3 h-100">
+  <div class="right-panel d-flex flex-column gap-3 h-100">
     <div class="card border-0 shadow-sm">
       <div
-        class="card-header bg-success text-white py-1 text-center fw-bold"
+        class="card-header section-header section-header-info text-white py-1 text-center fw-bold"
         style="font-size: 0.9rem;"
       >
         📊 状态与增益
@@ -46,7 +46,7 @@
 
     <div class="card border-0 shadow-sm">
       <div
-        class="card-header bg-warning text-dark py-1 text-center fw-bold"
+        class="card-header section-header section-header-warn text-dark py-1 text-center fw-bold"
         style="font-size: 0.9rem;"
       >
         ☕ 摸鱼休闲
@@ -96,7 +96,7 @@
 
     <div class="card border-0 shadow-sm flex-grow-1">
       <div
-        class="card-header bg-danger text-white py-1 text-center fw-bold"
+        class="card-header section-header section-header-danger text-white py-1 text-center fw-bold"
         style="font-size: 0.9rem;"
       >
         🔥 学期进度
@@ -240,3 +240,41 @@ const takeExam = () => {
   emit('send-action', { action: 'exam' }) 
 }
 </script>
+
+<style scoped>
+.section-header {
+  font-family: "Noto Serif SC", "Songti SC", "STSong", serif;
+}
+
+.section-header-info {
+  background: linear-gradient(120deg, #315f89 0%, #3e759f 100%) !important;
+}
+
+.section-header-warn {
+  background: linear-gradient(120deg, #e8ddc2 0%, #ddd0ae 100%) !important;
+  color: #483927 !important;
+}
+
+.section-header-danger {
+  background: linear-gradient(120deg, #8d3f3f 0%, #724040 100%) !important;
+}
+
+@media (max-width: 430px) {
+  .right-panel {
+    gap: 10px !important;
+  }
+
+  .right-panel .card-body {
+    padding: 0.6rem !important;
+  }
+
+  .right-panel .btn {
+    font-size: 0.78rem;
+    padding: 0.34rem 0.2rem;
+  }
+
+  .right-panel .fs-5 {
+    font-size: 1rem !important;
+  }
+}
+</style>

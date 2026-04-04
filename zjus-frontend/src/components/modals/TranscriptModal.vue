@@ -137,9 +137,17 @@ const startNextSemester = () => {
   left: 0;
   width: 100vw;
   height: 100vh;
+  padding: 14px;
+  overflow-y: auto;
   background-color: rgba(0, 0, 0, 0.6);
   z-index: 9999;
   backdrop-filter: blur(3px); /* 背景模糊效果 */
+}
+
+.modal-card {
+  margin: auto;
+  background: #fdfaf2;
+  border: 1px solid #d8d0bd !important;
 }
 
 /* 简单的入场动画 */
@@ -156,5 +164,36 @@ const startNextSemester = () => {
   0% { box-shadow: 0 0 0 0 rgba(13, 110, 253, 0.4); }
   70% { box-shadow: 0 0 0 10px rgba(13, 110, 253, 0); }
   100% { box-shadow: 0 0 0 0 rgba(13, 110, 253, 0); }
+}
+
+@media (max-width: 768px) {
+  .card-body {
+    padding: 1rem !important;
+  }
+}
+
+@media (max-width: 430px) {
+  .modal-backdrop-custom {
+    padding: 10px;
+  }
+
+  .modal-card {
+    width: 100% !important;
+  }
+
+  .modal-card .row .col-4 {
+    padding-left: 4px;
+    padding-right: 4px;
+  }
+
+  .modal-card .fs-2 {
+    font-size: 1.3rem !important;
+  }
+
+  .modal-card .btn-lg {
+    width: 100%;
+    font-size: 0.9rem;
+    padding: 0.58rem 0.8rem;
+  }
 }
 </style>

@@ -1,8 +1,13 @@
 """
 离线批量生成事件库和 CC98 帖子库
 
-使用 Ollama 本地模型 (qwen3.5:4B-Q4_K_M) 批量生成内容，
+使用 OpenAI 兼容的云端 API 批量生成内容，
 输出到 world/event_library.json 和 world/cc98_library.json。
+
+可以通过环境变量或命令行参数配置 API：
+export OPENAI_API_BASE="https://dashscope.aliyuncs.com/compatible-mode/v1"
+export OPENAI_API_KEY="your_api_key_here"
+export OPENAI_API_MODEL="qwen3.5-flash"
 
 Usage:
     python scripts/generate_content_library.py --events 300 --cc98 500
@@ -12,6 +17,7 @@ Usage:
 
 import argparse
 import json
+import os
 import sys
 import time
 import uuid
@@ -27,8 +33,11 @@ import requests
 # 配置
 # ============================================================
 
-OLLAMA_URL = "http://localhost:11434/api/chat"
-_config = {"model": "qwen3.5:4B"}
+_config = {
+    "api_base": os.environ.get("OPENAI_API_BASE", "https://dashscope.aliyuncs.com/compatible-mode/v1"),
+    "api_key": os.environ.get("OPENAI_API_KEY", ""),
+    "model": os.environ.get("OPENAI_API_MODEL", "qwen3.5-flash")
+}
 WORLD_DIR = Path(__file__).resolve().parent.parent / "zjus-backend" / "world"
 
 # 如果从 zjus-backend 目录运行
@@ -79,30 +88,42 @@ else:
     print(f"⚠️ 未找到 keywords.json，将不使用关键词提示")
 
 # ============================================================
-# Ollama 调用（非流式，think=False）
+# OpenAI 兼容 API 调用
 # ============================================================
 
-def call_ollama(messages: List[Dict[str, str]], max_retries: int = 3) -> Optional[str]:
-    """调用 Ollama API，禁用思考模式，返回纯文本响应"""
+def call_llm(messages: List[Dict[str, Any]], max_retries: int = 3) -> Optional[str]:
+    """调用 OpenAI 兼容 API，返回纯文本响应"""
+    api_base = _config.get("api_base", "https://api.openai.com/v1")
+    api_key = _config.get("api_key", "")
+    
+    url = f"{api_base.rstrip('/')}/chat/completions"
+    headers = {
+        "Content-Type": "application/json",
+    }
+    if api_key:
+        headers["Authorization"] = f"Bearer {api_key}"
+        
     payload = {
         "model": _config["model"],
         "messages": messages,
-        "stream": False,
-        "think": False,
+        "temperature": 0.7,
+        "response_format": {"type": "json_object"}
     }
 
     for attempt in range(max_retries):
         try:
             # 连接超时 5 秒，读取超时 120 秒
-            resp = requests.post(OLLAMA_URL, json=payload, timeout=(5, 120))
+            resp = requests.post(url, json=payload, headers=headers, timeout=(5, 120))
+            if resp.status_code != 200:
+                print(f"  ⚠️ API 错误: {resp.status_code} - {resp.text}")
             resp.raise_for_status()
             data = resp.json()
-            content = data.get("message", {}).get("content", "")
+            content = data.get("choices", [{}])[0].get("message", {}).get("content", "")
             return content.strip()
         except requests.exceptions.Timeout:
             print(f"  ⚠️ 请求超时 (尝试 {attempt+1}/{max_retries})")
         except requests.exceptions.ConnectionError:
-            print(f"  ⚠️ Ollama 连接失败 (尝试 {attempt+1}/{max_retries})，请确认 ollama serve 已启动")
+            print(f"  ⚠️ API 连接失败 (尝试 {attempt+1}/{max_retries})，请确认网络和 API_BASE 设置")
         except Exception as e:
             print(f"  ⚠️ 调用失败: {e} (尝试 {attempt+1}/{max_retries})")
 
@@ -329,8 +350,17 @@ def generate_events(target_count: int) -> List[Dict[str, Any]]:
 
 现在请直接输出 JSON："""
 
-            messages = [{"role": "user", "content": prompt}]
-            raw = call_ollama(messages)
+            messages = [{
+                "role": "user",
+                "content": [
+                    {
+                        "type": "text",
+                        "text": prompt,
+                        "cache_control": {"type": "ephemeral"}
+                    }
+                ]
+            }]
+            raw = call_llm(messages)
 
             if not raw:
                 print(f"  ❌ 生成失败，跳过本批次")
@@ -466,8 +496,17 @@ def generate_cc98_posts(target_count: int) -> List[Dict[str, Any]]:
 
 现在请直接输出 JSON："""
 
-            messages = [{"role": "user", "content": prompt}]
-            raw = call_ollama(messages)
+            messages = [{
+                "role": "user",
+                "content": [
+                    {
+                        "type": "text",
+                        "text": prompt,
+                        "cache_control": {"type": "ephemeral"}
+                    }
+                ]
+            }]
+            raw = call_llm(messages)
 
             if not raw:
                 print(f"  ❌ 生成失败，跳过本批次")
@@ -531,11 +570,15 @@ def main():
     parser.add_argument("--cc98", type=int, default=0, help="生成 CC98 帖子数量")
     parser.add_argument("--events-only", type=int, default=0, help="仅生成事件")
     parser.add_argument("--cc98-only", type=int, default=0, help="仅生成帖子")
-    parser.add_argument("--model", type=str, default=_config["model"], help=f"Ollama 模型名（默认 {_config['model']}）")
+    parser.add_argument("--model", type=str, default=_config["model"], help="调用的模型名")
+    parser.add_argument("--api-base", type=str, default=_config["api_base"], help="OpenAI 兼容 API Base URL")
+    parser.add_argument("--api-key", type=str, default=_config["api_key"], help="API Key")
     parser.add_argument("--append", action="store_true", help="追加到现有库而不是覆盖")
     args = parser.parse_args()
 
     _config["model"] = args.model
+    _config["api_base"] = args.api_base
+    _config["api_key"] = args.api_key
 
     event_count = args.events or args.events_only
     cc98_count = args.cc98 or args.cc98_only
@@ -546,18 +589,25 @@ def main():
         print("  python scripts/generate_content_library.py --events-only 50")
         sys.exit(1)
 
-    # 检查 Ollama 可用性
-    try:
-        resp = requests.get("http://localhost:11434/api/tags", timeout=5)
-        resp.raise_for_status()
-        models = [m["name"] for m in resp.json().get("models", [])]
-        print(f"✅ Ollama 已连接，可用模型: {', '.join(models[:5])}")
-        if not any(_config["model"].split(":")[0] in m for m in models):
-            print(f"⚠️  模型 {_config['model']} 未找到，请先 `ollama pull {_config['model']}`")
-            sys.exit(1)
-    except Exception as e:
-        print(f"❌ 无法连接 Ollama: {e}")
-        print("请确保已启动 `ollama serve`")
+    # 检查 API 可用性
+    if _config["api_base"].startswith("http"):
+        try:
+            url = f"{_config['api_base'].rstrip('/')}/models"
+            headers = {}
+            if _config["api_key"]:
+                headers["Authorization"] = f"Bearer {_config['api_key']}"
+            resp = requests.get(url, headers=headers, timeout=10)
+            if resp.status_code == 200:
+                models = [m["id"] for m in resp.json().get("data", [])]
+                print(f"✅ API 已连接，获取到 {len(models)} 个可用模型")
+                if _config["model"] not in models:
+                    print(f"⚠️  提示：目标模型 '{_config['model']}' 可能不在可用模型列表中。请确认拼写正确。")
+            else:
+                print(f"⚠️ 无法获取模型列表，HTTP 状态码: {resp.status_code}，将直接尝试调用...")
+        except Exception as e:
+            print(f"⚠️ API 连接测试失败: {e}，将直接尝试调用...")
+    else:
+        print("⚠️ 无效的 API_BASE，必须以 http/https 开头")
         sys.exit(1)
 
     try:

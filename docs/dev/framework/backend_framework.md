@@ -45,6 +45,45 @@ zjus-backend/app/
 
 ---
 
+## 预构建检索架构（2026-04 更新）
+
+后端内容系统已升级为：
+
+- **离线预构建**：在开发机生成内容库与向量资产
+- **运行时检索**：服务端不做 embedding 推理，只做本地 JSON 匹配与 pgvector 检索
+- **LLM 兜底**：仅在库缺失或检索不可用时回退
+
+### 离线预构建资产
+
+1. 事件与 CC98 内容库：
+
+- 脚本：`zjus-backend/scripts/generate_content_library.py`
+- 产物：
+    - `zjus-backend/world/event_library.json`
+    - `zjus-backend/world/cc98_library.json`
+
+2. 角色向量与查询向量：
+
+- 脚本：`zjus-backend/scripts/embed_world_data.py --csv-only`
+- 产物：
+    - `zjus-backend/world/query_embeddings.json`
+    - `zjus-backend/world/character_embeddings.csv`
+
+### 运行时链路
+
+1. `engine.py` 优先从 `event_library.json` / `cc98_library.json` 检索。
+2. 钉钉角色优先使用 `vector_store.py`（`query_embeddings.json` + `character_embeddings` 表）。
+3. 启动阶段由 `seed_embeddings` 服务导入 CSV 到 pgvector 表。
+4. 检索失败或资产缺失时，才回退到 `core/llm.py` 兜底生成。
+
+### 启动依赖顺序（Docker）
+
+`db -> migrate -> seed_embeddings -> backend`
+
+这样可保证 backend 启动时 `character_embeddings` 已就绪。
+
+---
+
 ## 核心架构与数据流
 
 ```mermaid
@@ -171,12 +210,16 @@ graph TD
 
 ### 7. LLM 内容生成 — [core/llm.py](file:///d:/projects/ZJUers_simulator/zjus-backend/app/core/llm.py)
 
-使用 OpenAI API（可配置 base_url），支持用户自定义 LLM。**全部采用"批量进货+Redis 队列"模式**降低调用频次：
+使用 OpenAI API（可配置 base_url），支持用户自定义 LLM。当前模式为：
+
+- 事件/CC98：优先本地内容库，LLM 仅兜底
+- 钉钉：优先向量检索角色 + M2-her，失败时回退 LLM
+- 文言文结业：保持 LLM 生成
 
 | 函数 | 用途 | 批量数 | 缓存 TTL |
 |---|---|---|---|
-| [generate_cc98_post](file:///d:/projects/ZJUers_simulator/zjus-backend/app/core/llm.py#62-156) | CC98 论坛帖子 | 5 条 | 6h |
-| [generate_random_event](file:///d:/projects/ZJUers_simulator/zjus-backend/app/core/llm.py#158-244) | 校园随机事件 | 3 个 | 12h |
+| [generate_cc98_post](file:///d:/projects/ZJUers_simulator/zjus-backend/app/core/llm.py#62-156) | CC98 论坛帖子（库耗尽兜底） | 5 条 | 6h |
+| [generate_random_event](file:///d:/projects/ZJUers_simulator/zjus-backend/app/core/llm.py#158-244) | 校园随机事件（库耗尽兜底） | 3 个 | 12h |
 | [generate_dingtalk_message](file:///d:/projects/ZJUers_simulator/zjus-backend/app/core/llm.py#246-324) | 钉钉消息 | 5 条 | 6h |
 | [generate_wenyan_report](file:///d:/projects/ZJUers_simulator/zjus-backend/app/core/llm.py#326-366) | 毕业文言文总结 | 1 条 | 不缓存 |
 
@@ -189,7 +232,7 @@ graph TD
 - `player:{id}:course_states` — Hash，课程状态(0/1/2)
 - `player:{id}:actions` — Hash，行为计数
 - `player:{id}:achievements` — Set，已解锁成就
-- `player:{id}:event_history` — List，近期事件标题（去重用）
+- `player:{id}:event_history` — List，近期事件 ID（去重用）
 - `player:{id}:cooldowns` — Hash，动作冷却时间戳
 
 [RedisRepository](file:///d:/projects/ZJUers_simulator/zjus-backend/app/repositories/redis_repo.py#11-242) 提供原子操作：Lua 脚本安全更新（[update_stat_safe](file:///d:/projects/ZJUers_simulator/zjus-backend/app/repositories/redis_repo.py#191-207)）、Pipeline 批量操作。

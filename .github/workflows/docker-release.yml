@@ -19,6 +19,14 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Validate prebuilt retrieval assets
+        run: |
+          test -f zjus-backend/world/query_embeddings.json
+          test -f zjus-backend/world/character_embeddings.csv
+          test -f zjus-backend/world/event_library.json
+          test -f zjus-backend/world/cc98_library.json
+          echo "Prebuilt assets verified."
+
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
 

@@ -231,9 +231,9 @@ class RedisRepository:
     async def set_cooldown(self, action_type: str, timestamp: float):
         await self.redis.hset(self.keys["cooldowns"], action_type, timestamp)
 
-    async def add_event_to_history(self, title: str, limit: int = 10):
+    async def add_event_to_history(self, event_id: str, limit: int = 10):
         async with self.redis.pipeline() as pipe:
-            pipe.lpush(self.keys["history"], title)
+            pipe.lpush(self.keys["history"], event_id)
             pipe.ltrim(self.keys["history"], 0, limit - 1)
             await pipe.execute()
 

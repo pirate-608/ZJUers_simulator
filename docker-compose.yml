@@ -26,6 +26,8 @@ services:
     depends_on:
       migrate:
         condition: service_completed_successfully
+      seed_embeddings:
+        condition: service_completed_successfully
       db:
         condition: service_healthy
       redis:
@@ -34,7 +36,7 @@ services:
     restart: always
     volumes:
       - ./zjus-backend/world:/app/world
-      - ./zjus-backend/app:/app/app  # 可选：如果为了本地热更新开发，挂载具体的 app 目录
+      - ./zjus-backend/app:/app/app # 可选：如果为了本地热更新开发，挂载具体的 app 目录
 
   db:
     image: pgvector/pgvector:pg15
@@ -77,6 +79,23 @@ services:
     depends_on:
       db:
         condition: service_healthy
+    restart: "no"
+
+  seed_embeddings:
+    image: ${DOCKER_USERNAME:-pirate608}/zjus-backend:latest
+    container_name: zjus_seed_embeddings
+    command: python scripts/import_character_embeddings.py
+    env_file:
+      - .env
+    environment:
+      - DATABASE_URL=${DATABASE_URL}
+    depends_on:
+      db:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    volumes:
+      - ./zjus-backend/world:/app/world
     restart: "no"
 
   nginx:

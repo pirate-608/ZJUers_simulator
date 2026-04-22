@@ -2,6 +2,7 @@ import asyncio
 import random
 import json
 import logging
+import hashlib
 from pathlib import Path
 from sqlalchemy import update
 from typing import Callable, Optional
@@ -219,13 +220,15 @@ class GameEngine:
                 # ✨ 核心：但游戏内的虚拟时间，永远坚定地往前走 3 秒！
                 # 注意：不能用 update_stat_safe，因为它的 max_val 默认值 200 会截断计时器
                 elapsed = await self.repo.update_stat("elapsed_game_time", 3)
-                
+
                 # 动态获取当前学期时长上限
                 snapshot_for_time = await self.repo.get_snapshot()
                 sem_idx = int(snapshot_for_time.stats.semester_idx or 1)
                 sem_duration = balance.get_semester_duration(sem_idx)
                 if elapsed >= sem_duration:
-                    logger.info(f"Semester time exceeded for {self.user_id}, triggering final exam.")
+                    logger.info(
+                        f"Semester time exceeded for {self.user_id}, triggering final exam."
+                    )
                     self.stop()
                     await self._handle_final_exam()
                     break
@@ -256,7 +259,9 @@ class GameEngine:
 
                 # 如果没有课程（如假期），只自然恢复或轻微消耗
                 if not course_info:
-                    logger.warning(f"[{self.user_id}] course_info is EMPTY, skipping mastery growth")
+                    logger.warning(
+                        f"[{self.user_id}] course_info is EMPTY, skipping mastery growth"
+                    )
                     await self.repo.update_stat_safe("energy", 1)  # 假期回血
                     await self._push_update()
                     continue
@@ -306,10 +311,14 @@ class GameEngine:
                 if mastery_updates:
                     await self.repo.batch_update_course_mastery(mastery_updates)
                     if tick_count <= 3:  # 只在前几个 tick 打印诊断信息
-                        logger.info(f"[{self.user_id}] tick#{tick_count} mastery_updates: {mastery_updates}")
+                        logger.info(
+                            f"[{self.user_id}] tick#{tick_count} mastery_updates: {mastery_updates}"
+                        )
                 else:
                     if tick_count <= 3:
-                        logger.warning(f"[{self.user_id}] tick#{tick_count} mastery_updates is EMPTY")
+                        logger.warning(
+                            f"[{self.user_id}] tick#{tick_count} mastery_updates is EMPTY"
+                        )
 
                 # 结算总精力消耗
                 # 最终消耗 = 基础消耗 * 加权系数（保留浮点数精度）
@@ -375,7 +384,7 @@ class GameEngine:
             await self.emit("init", {"data": initial_stats})
             asyncio.create_task(self.run_loop())
             return
-        
+
         # ✨ 新增：真正接管全局倍速
         if action == "set_speed":
             speed = float(action_data.get("speed", 1.0))
@@ -412,14 +421,18 @@ class GameEngine:
         snapshot = await self.repo.get_snapshot()
         stats = snapshot.stats.model_dump()
         course_mastery = snapshot.courses
-        logger.info(f"[{self.user_id}] EXAM: course_mastery from Redis = {course_mastery}")
+        logger.info(
+            f"[{self.user_id}] EXAM: course_mastery from Redis = {course_mastery}"
+        )
 
         try:
             raw_json = stats.get("course_info_json", "[]")
             course_info = json.loads(raw_json)
             logger.info(f"[{self.user_id}] EXAM: parsed {len(course_info)} courses")
         except Exception as parse_err:
-            logger.error(f"[{self.user_id}] EXAM: Failed to parse course_info_json: {parse_err}")
+            logger.error(
+                f"[{self.user_id}] EXAM: Failed to parse course_info_json: {parse_err}"
+            )
             course_info = []
 
         total_credits, total_gp, failed_count = 0, 0, 0
@@ -475,10 +488,12 @@ class GameEngine:
             await self.repo.update_stat_safe("sanity", bonus)
 
         # 将当期 GPA 和累计 GPA 写回 Redis stats（HudBar 实时读取）
-        await self.repo.update_stats({
-            "gpa": str(term_gpa),
-            "highest_gpa": str(cgpa),
-        })
+        await self.repo.update_stats(
+            {
+                "gpa": str(term_gpa),
+                "highest_gpa": str(cgpa),
+            }
+        )
 
         # 异步更新持久化数据库
         asyncio.create_task(self._update_db_highest_gpa(cgpa))
@@ -709,7 +724,16 @@ class GameEngine:
                 )
 
             if event_data:
-                await self.repo.add_event_to_history(event_data["title"])
+                # 统一按 event_id 去重：库事件直接使用 id；LLM 兜底生成稳定 id
+                event_id = event_data.get("id")
+                if not event_id:
+                    seed = f"{event_data.get('title', '')}|{event_data.get('desc', '')}"
+                    event_id = (
+                        f"llm_evt_{hashlib.md5(seed.encode('utf-8')).hexdigest()[:10]}"
+                    )
+                    event_data["id"] = event_id
+
+                await self.repo.add_event_to_history(event_id)
                 await self.emit("random_event", {"data": event_data})
         except Exception as e:
             logger.error(f"Random event error: {e}", exc_info=True)
@@ -775,6 +799,7 @@ class GameEngine:
             if not self.llm_override:
                 try:
                     from app.core.dingtalk_llm import generate_dingtalk_via_m2her
+
                     msg_data = await generate_dingtalk_via_m2her(stats, context)
                 except Exception as e:
                     logger.warning(f"M2-her dingtalk fallback: {e}")
@@ -924,7 +949,9 @@ class GameEngine:
         """安全停止游戏循环"""
         self.is_running = False
 
-    def _get_semester_time_left(self, elapsed_game_time: int, duration_seconds: int) -> int:
+    def _get_semester_time_left(
+        self, elapsed_game_time: int, duration_seconds: int
+    ) -> int:
         try:
             # 尝试将传入的值强制转换为整型，防范 Redis 中的脏数据或 None
             elapsed = int(elapsed_game_time)
@@ -936,8 +963,10 @@ class GameEngine:
             if isinstance(duration_seconds, (int, float)):
                 return int(duration_seconds)
             return 360
+
     def _build_initial_stats(self, username: str) -> dict:
         from app.schemas.game_state import PlayerStats
+
         return PlayerStats.build_initial(username=username).model_dump()
 
     async def _check_cooldown(self, action_type: str) -> int:

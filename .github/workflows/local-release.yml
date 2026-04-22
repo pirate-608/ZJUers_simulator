@@ -12,6 +12,14 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+
+      - name: Validate prebuilt retrieval assets
+        run: |
+          test -f zjus-backend/world/query_embeddings.json
+          test -f zjus-backend/world/character_embeddings.csv
+          test -f zjus-backend/world/event_library.json
+          test -f zjus-backend/world/cc98_library.json
+          echo "Prebuilt assets verified."
       
       - name: Verify tools
         run: sudo apt-get install zip -y
@@ -35,6 +43,8 @@ jobs:
                 - "8000:8000"
               command: uvicorn app.main:app --host 0.0.0.0 --port 8000
               env_file: .env
+              volumes:
+                - ./world:/app/world
               restart: always
               depends_on:
                 db:
@@ -42,6 +52,8 @@ jobs:
                 redis:
                   condition: service_started
                 migrate:
+                  condition: service_completed_successfully
+                seed_embeddings:
                   condition: service_completed_successfully
 
             db:
@@ -75,6 +87,20 @@ jobs:
               depends_on:
                 db:
                   condition: service_healthy
+              restart: "no"
+
+            seed_embeddings:
+              image: pirate608/zjus-backend:latest
+              container_name: zjus_seed_embeddings
+              command: python scripts/import_character_embeddings.py
+              env_file: .env
+              volumes:
+                - ./world:/app/world
+              depends_on:
+                db:
+                  condition: service_healthy
+                migrate:
+                  condition: service_completed_successfully
               restart: "no"
 
             nginx:

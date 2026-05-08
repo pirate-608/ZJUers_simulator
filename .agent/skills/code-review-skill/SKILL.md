@@ -1,32 +1,41 @@
 # Smart Full-Stack Code Review Skill
 
 ## Description
-当 Agent 较大程度修改了项目代码（“程度”由 Agent 自行判断，但必须确保不进行无意义的测试），或者用户要求“审查代码”、“跑一下检查”时触发。该技能具备路径感知能力，能够自动判断是前端还是后端代码发生了变更，并按需执行对应的静态检查和单元测试。
+触发条件（满足任一即触发）：
+- 用户明确要求"审查代码"、"跑一下检查"、"lint"、"format"等。
+- Agent 修改了项目中任意文件，且变更行数 ≥ 5 行（仅统计新增/修改行，不含删除行）。
+- Agent 修改了核心模块（`app/game/`、`app/services/`、`src/stores/`、`src/api/`），不受行数限制。
+
+该技能具备路径感知能力，能够自动判断是前端还是后端代码发生了变更，并按需执行对应的静态检查和单元测试。
 
 ## Instructions
 执行 Code Review 时，必须严格遵循以下步骤：
 
-1. **变更范围侦测 (Scope Detection)：**
-   - 检查本次对话中被修改、新增或审查的文件路径。
-   - 如果变更包含 `zjus-backend/` 下的文件，标记 `RUN_BACKEND = true`。
-   - 如果变更包含 `zjus-frontend/` 下的文件，标记 `RUN_FRONTEND = true`。
-   - **核心规则：未被标记的端，绝对不执行对应的检查和测试。**
+### 步骤 1：变更范围侦测 (Scope Detection)
+检查本次对话中被修改、新增或审查的文件路径：
+- 变更包含 `zjus-backend/` → 标记 `RUN_BACKEND = true`
+- 变更包含 `zjus-frontend/` → 标记 `RUN_FRONTEND = true`
+- 两端均有变更 → 两者均标记为 true，按先 Backend 后 Frontend 的顺序依次执行
+- **核心规则：未被标记的端，绝对不执行对应的检查和测试。**
 
-2. **后端审查流水线 (If RUN_BACKEND is true)：**
-   - 必须先 `cd zjus-backend`。
-   - 运行格式化：`python -m ruff format .`
-   - 运行静态检查：`python -m ruff check --fix .`
-   - 如果 ruff 报错，阅读并尝试修改代码修复，直到通过。
-   - 运行测试：`python -m pytest tests/ -v`
-   - 如果 pytest 失败，读取 traceback 并尝试修复代码至多 2 次。如果依然失败，使用 `ask_user` 询问用户。
+### 步骤 2：执行审查流水线
+根据步骤 1 的标记，仅执行被标记的流水线。两端均标记时，先执行 Backend 流水线，完成后再执行 Frontend 流水线。
 
-3. **前端审查流水线 (If RUN_FRONTEND is true)：**
-   - 必须先 `cd zjus-frontend`。
-   - 运行逻辑与格式检查：`npm run lint && npm run type-check` (假设 package.json 中配置了 eslint --fix)。
-   - 如果 ESLint 报出 Error 级别的错误，阅读并尝试修改代码修复。
-   - 执行 `vue-tsc --noEmit`。这可以捕捉到 ESLint 无法发现的组件间 Props 类型不匹配。
-   - 运行前端测试：`npm run test` (假设配置了 Vitest)。
-   - 如果测试失败，尝试修复至多 2 次。如果依然失败，使用 `ask_user` 询问用户。
+#### 后端审查流水线 (RUN_BACKEND = true)
+| 顺序 | 操作 | 命令 | 失败处理 |
+|------|------|------|----------|
+| 1 | 切换目录 | `cd zjus-backend` | — |
+| 2 | 格式化 | `python -m ruff format .` | — |
+| 3 | 静态检查 | `python -m ruff check --fix .` | 阅读错误，修改代码直到通过 |
+| 4 | 单元测试 | `python -m pytest tests/ -v` | 修复至多 2 次，仍失败则询问用户 |
+
+#### 前端审查流水线 (RUN_FRONTEND = true)
+| 顺序 | 操作 | 命令 | 失败处理 |
+|------|------|------|----------|
+| 1 | 切换目录 | `cd zjus-frontend` | — |
+| 2 | Lint + 类型检查 | `npm run lint && npm run type-check` | ESLint Error 级别必须修复 |
+| 3 | 组件类型检查 | `vue-tsc --noEmit` | 修复类型错误 |
+| 4 | 单元测试 | `npm run test` | 修复至多 2 次，仍失败则询问用户 |
 
 4. **结果汇报 (Reporting)：**
    - 检查完成后，向用户提供一份简报。
@@ -35,5 +44,5 @@
 ## Constraints
 - **严禁**跨目录执行命令（必须在对应的 `zjus-backend` 或 `zjus-frontend` 目录下执行各自的命令）。
 - **严禁**为了让测试通过而删除或注释掉测试用例中的断言。
-- **严禁**修改任何代码时都执行测试，必须判断是否有测试的必要性。
-- 对于后端的警告 (Warning) 视为通过；但对于前端 ESLint 的 Error 必须修复。
+- **严禁**修改任何代码后无条件执行测试（pytest / Vitest）。仅当涉及业务逻辑变更、API 接口修改或数据模型调整时才需要执行测试；纯格式化、注释修改、类型注解补充等变更应跳过测试。
+- 静态检查（ruff、ESLint、vue-tsc）与测试是两个独立阶段：ESLint Error 属于静态检查范畴，无论是否执行测试，ESLint Error 都必须修复。后端的 ruff Warning 视为通过。

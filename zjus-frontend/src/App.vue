@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { onMounted } from 'vue'
+import { onMounted, watch } from 'vue'
 import { useGameStore } from '@/stores/gameStore.ts'
 import { useGameWebSocket } from '@/composables/useGameWebSocket.ts'
+import { useGameGuide } from '@/composables/useGameGuide.ts'
 import LoginView from './components/LoginView.vue'
 import AdmissionScreen from './components/AdmissionScreen.vue'
 import HudBar from './components/HudBar.vue'
@@ -17,6 +18,17 @@ import EndScreen from './components/EndScreen.vue'
 const store = useGameStore()
 // 将 connect 暴露出来
 const { connect, isConnected, send } = useGameWebSocket()
+const { startGuide } = useGameGuide()
+
+// 首次进入 playing 阶段后触发引导
+watch(
+  () => store.currentPhase,
+  (phase) => {
+    if (phase === 'playing') {
+      requestAnimationFrame(() => startGuide())
+    }
+  },
+)
 
 onMounted(() => {
   // SPA 路由入口：检查是否有 Token

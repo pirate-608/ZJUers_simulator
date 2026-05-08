@@ -1,6 +1,6 @@
 <template>
   <div class="top-nav d-flex justify-content-between align-items-end mb-3">
-    <div>
+    <div id="tour-game-header">
       <h3
         class="mb-0 fw-bold text-primary title"
         style="letter-spacing: 1px;"
@@ -11,16 +11,17 @@
         {{ store.currentStats.username || '折大人' }} · {{ store.currentStats.major || '??' }} · {{ store.currentStats.semester || '??' }}
       </div>
     </div>
-    
+
     <div class="d-flex gap-2 top-nav-actions">
       <button
+        id="tour-pause-btn"
         class="btn btn-sm fw-bold shadow-sm"
         :class="store.isPaused ? 'btn-success' : 'btn-warning'"
         @click="togglePause"
       >
         {{ store.isPaused ? '▶️ 继续' : '⏸️ 暂停' }}
       </button>
-      
+
       <a
         href="https://zjusim-docs.67656.fun/user/rules/"
         target="_blank"
@@ -28,8 +29,9 @@
       >
         📖 游戏规则
       </a>
-      
+
       <button
+        id="tour-save-btn"
         class="btn btn-sm btn-outline-success fw-bold shadow-sm"
         @click="saveGame"
       >

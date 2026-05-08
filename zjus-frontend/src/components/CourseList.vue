@@ -1,5 +1,5 @@
 <template>
-  <div class="d-flex flex-column h-100">
+  <div class="d-flex flex-column h-100" id="tour-course-list">
     <div
       v-if="enrichedCourses.length === 0"
       class="text-center text-muted py-5"

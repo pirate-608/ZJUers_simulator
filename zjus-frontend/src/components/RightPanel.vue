@@ -1,5 +1,5 @@
 <template>
-  <div class="right-panel d-flex flex-column gap-3 h-100">
+  <div class="right-panel d-flex flex-column gap-3 h-100" id="tour-right-panel">
     <div class="card border-0 shadow-sm">
       <div
         class="card-header section-header section-header-info text-white py-1 text-center fw-bold"

@@ -1,5 +1,5 @@
 <template>
-  <div class="card mid-panel-card mb-3 d-flex flex-column h-100 shadow-sm border-0">
+  <div class="card mid-panel-card mb-3 d-flex flex-column h-100 shadow-sm border-0" id="tour-mid-panel">
     <div class="card-header pb-0 bg-white border-bottom mid-panel-header">
       <ul
         class="nav nav-tabs card-header-tabs"

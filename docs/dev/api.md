@@ -5,14 +5,15 @@
 ### GET /api/exam/questions
 - 作用：获取入学考试题库。
 - 请求参数：无。
+- 响应类型：`ExamQuestion[]`
 - 响应示例：
   ```json
   [
-    {"id": "1", "content": "题目内容", "score": 10},
+    {"id": "1", "content": "题目内容", "score": 10, "options": ["A", "B", "C", "D"]},
     ...
   ]
   ```
-- 备注：若题库加载失败，返回兜底题目，避免前端报错。
+- 备注：`options` 为可选的选项列表；若题库加载失败，返回兜底题目，避免前端报错。
 
 ### POST /api/exam/submit
 - 作用：提交考试答案，判分并颁发登录凭证。
@@ -37,7 +38,7 @@
 - 作用：老用户免试登录，验证用户名 + 凭证。
 - 请求体：
   ```json
-  {"username": "用户昵称", "token": "老用户凭证", "custom_llm_provider": "可选", "custom_llm_model": "可选", "custom_llm_api_key": "可选"}
+  {"username": "用户昵称", "token": "可选，老用户凭证", "custom_llm_provider": "可选", "custom_llm_model": "可选", "custom_llm_api_key": "可选"}
   ```
 - 响应：
   ```json
@@ -59,11 +60,39 @@
 
 ### GET /api/admission_info
 - 作用：查询当前用户用户名与已分配专业。
-- 认证：`Authorization: Bearer <JWT>`
+- 认证：`Authorization: Bearer <JWT>`（header 参数，required）
+- 响应类型：`AdmissionInfoResponse`
 - 响应：
   ```json
   {"username": "...", "assigned_major": "...", "token": "老用户凭证"}
   ```
+
+## 游戏配置 (app/api/game.py)
+
+### GET /config
+- 作用：获取前端所需的游戏平衡参数。
+- 请求参数：无。
+- 响应类型：`GameConfigResponse`
+- 响应示例：
+  ```json
+  {
+    "version": "1.0",
+    "semester": {
+      "durations": {"1": 360, "2": 420, "3": 480, "4": 540},
+      "default_duration": 360,
+      "speed_modes": {"normal": 1.0, "fast": 2.0, "ultra": 5.0}
+    },
+    "course_states": {
+      "0": {"name": "摆烂", "description": "彻底放弃"},
+      "1": {"name": "摸鱼", "description": "略尽人事"},
+      "2": {"name": "卷王", "description": "全力以赴"}
+    },
+    "cooldowns": {"sleep": 120, "exercise": 60, "club": 30},
+    "tick_interval": 1.0,
+    "base_drain": 5
+  }
+  ```
+- 备注：`course_states` 为策略枚举（0/1/2 → 摆/摸/卷）；`cooldowns` 为各放松动作的冷却秒数。
 
 ## 游戏 WebSocket (app/api/game.py)
 

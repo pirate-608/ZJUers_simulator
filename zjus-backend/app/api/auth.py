@@ -1,7 +1,6 @@
-from fastapi import Request
 from jose import JWTError, jwt
 from app.core.config import settings
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, Header, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from pydantic import BaseModel
@@ -206,14 +205,16 @@ class AdmissionInfoResponse(BaseModel):
 
 # 获取当前用户 admission 信息
 @router.get("/admission_info", response_model=AdmissionInfoResponse)
-async def get_admission_info(request: Request, db: AsyncSession = Depends(deps.get_db)):
+async def get_admission_info(
+    authorization: str = Header(..., description="Bearer <token>"),
+    db: AsyncSession = Depends(deps.get_db),
+):
     """
     获取当前用户的用户名和分配专业（tier）。需前端携带 Authorization: Bearer <token>
     """
-    auth_header = request.headers.get("authorization")
-    if not auth_header or not auth_header.lower().startswith("bearer "):
+    if not authorization.lower().startswith("bearer "):
         raise HTTPException(status_code=401, detail="Missing or invalid token")
-    token = auth_header.split(" ", 1)[1]
+    token = authorization.split(" ", 1)[1]
     try:
         payload = jwt.decode(
             token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM]

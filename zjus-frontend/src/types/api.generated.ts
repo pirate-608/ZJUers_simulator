@@ -362,7 +362,10 @@ export interface operations {
     get_admission_info_api_admission_info_get: {
         parameters: {
             query?: never;
-            header?: never;
+            header: {
+                /** @description Bearer <token> */
+                authorization: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -375,6 +378,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AdmissionInfoResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

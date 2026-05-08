@@ -1,26 +1,23 @@
 /**
  * 类型安全的 HTTP API 客户端
- * 封装所有与后端 REST API 的交互，入参和返回值均有类型约束。
+ * 使用从 OpenAPI schema 生成的类型，与后端 Pydantic response_model 保持一致。
  */
-import type {
-  ExamQuestion,
-  ExamSubmission,
-  ExamResponse,
-  QuickLoginPayload,
-} from '@/types/api'
+import type { components } from '@/types/api.generated'
+
+export type ExamQuestion = components['schemas']['ExamQuestion']
+export type ExamSubmission = components['schemas']['ExamSubmission']
+export type ExamResponse = components['schemas']['ExamResponse']
+export type QuickLoginRequest = components['schemas']['QuickLoginRequest']
+export type QuickLoginResponse = components['schemas']['QuickLoginResponse']
+export type AssignMajorResponse = components['schemas']['AssignMajorResponse']
+export type AdmissionInfoResponse = components['schemas']['AdmissionInfoResponse']
 
 // ─── 考试相关 ───
 
 export async function fetchExamQuestions(): Promise<ExamQuestion[]> {
   const res = await fetch('/api/exam/questions')
   if (!res.ok) throw new Error(`HTTP ${res.status}`)
-  const data: unknown = await res.json()
-  // 后端可能返回 { questions: [...] } 或直接 [...]
-  if (Array.isArray(data)) return data as ExamQuestion[]
-  if (typeof data === 'object' && data !== null && 'questions' in data) {
-    return (data as { questions: ExamQuestion[] }).questions
-  }
-  return []
+  return (await res.json()) as ExamQuestion[]
 }
 
 export async function submitExam(payload: ExamSubmission): Promise<ExamResponse> {
@@ -38,19 +35,19 @@ export async function submitExam(payload: ExamSubmission): Promise<ExamResponse>
   return (await res.json()) as ExamResponse
 }
 
-export async function quickLogin(payload: QuickLoginPayload): Promise<ExamResponse> {
+export async function quickLogin(payload: QuickLoginRequest): Promise<QuickLoginResponse> {
   const res = await fetch('/api/exam/quick_login', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
   })
   if (!res.ok) throw new Error(`HTTP ${res.status}`)
-  return (await res.json()) as ExamResponse
+  return (await res.json()) as QuickLoginResponse
 }
 
 // ─── 专业分配 ───
 
-export async function assignMajor(token: string): Promise<string> {
+export async function assignMajor(token: string): Promise<AssignMajorResponse> {
   const res = await fetch('/api/assign_major', {
     method: 'POST',
     headers: {
@@ -67,29 +64,15 @@ export async function assignMajor(token: string): Promise<string> {
     throw new Error(`HTTP ${res.status}`)
   }
 
-  const rawText = await res.text()
-
-  try {
-    const jsonObj = JSON.parse(rawText) as unknown
-    if (typeof jsonObj === 'string') return jsonObj
-    if (typeof jsonObj === 'object' && jsonObj !== null) {
-      const obj = jsonObj as Record<string, unknown>
-      const major = obj.assigned_major || obj.major || obj.data || obj.result || ''
-      return String(major)
-    }
-  } catch {
-    // 非 JSON，直接返回纯文本
-  }
-
-  return rawText.replace(/^["']|["']$/g, '').trim()
+  return (await res.json()) as AssignMajorResponse
 }
 
 // ─── 入学信息 ───
 
-export async function getAdmissionInfo(token: string): Promise<Record<string, unknown>> {
+export async function getAdmissionInfo(token: string): Promise<AdmissionInfoResponse> {
   const res = await fetch('/api/admission_info', {
     headers: { Authorization: `Bearer ${token}` },
   })
   if (!res.ok) throw new Error(`HTTP ${res.status}`)
-  return (await res.json()) as Record<string, unknown>
+  return (await res.json()) as AdmissionInfoResponse
 }

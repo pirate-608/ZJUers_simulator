@@ -1,6 +1,8 @@
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Depends, Query
 from jose import JWTError, jwt
 from sqlalchemy.ext.asyncio import AsyncSession
+from pydantic import BaseModel
+from typing import Dict
 import asyncio
 import json
 import logging
@@ -75,8 +77,23 @@ def _parse_token(token: str) -> dict:
         return {}
 
 
+class SemesterConfigResponse(BaseModel):
+    durations: Dict[str, int]
+    default_duration: int
+    speed_modes: Dict[str, float]
+
+
+class GameConfigResponse(BaseModel):
+    version: str
+    semester: SemesterConfigResponse
+    course_states: Dict[str, Dict[str, str]]
+    cooldowns: Dict[str, int]
+    tick_interval: float
+    base_drain: int
+
+
 # 2.5 游戏配置API
-@router.get("/config")
+@router.get("/config", response_model=GameConfigResponse)
 async def get_game_config():
     """获取游戏配置（供前端使用）"""
     return {

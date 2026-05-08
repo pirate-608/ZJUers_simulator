@@ -406,6 +406,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { useGameStore } from '../stores/gameStore.ts'
+import { assignMajor } from '@/api/client'
 
 const store = useGameStore()
 const emit = defineEmits<{
@@ -433,54 +434,19 @@ onMounted(async () => {
   }
 
   try {
-    const response = await fetch(`/api/assign_major`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}` 
-      },
-      body: JSON.stringify({ token: token })
-    })
+    const result = await assignMajor(token)
 
-    if (response.ok) {
-      // 🌟 终极宽容解析大法
-      const rawText = await response.text()
-      console.log("【API Debug】后端 /api/assign_major 返回的原始数据:", rawText)
-      
-      let finalMajor = ''
-      try {
-        // 尝试按 JSON 解析
-        const jsonObj = JSON.parse(rawText) as unknown
-        if (typeof jsonObj === 'string') {
-          finalMajor = jsonObj // 后端直接返回了 "专业名"
-        } else if (typeof jsonObj === 'object' && jsonObj !== null) {
-          const obj = jsonObj as Record<string, unknown>
-          finalMajor = String(obj.assigned_major || obj.major || obj.data || obj.result || '')
-        }
-      } catch {
-        // 解析 JSON 失败，说明后端返回的是纯文本 (Text)
-        finalMajor = rawText
-      }
-
-      // 清理两端的残余引号和空格
-      finalMajor = finalMajor.replace(/^["']|["']$/g, '').trim()
-
-      if (finalMajor) {
-        info.value.major = finalMajor
-      } else {
-        console.warn("【API Warning】虽然请求成功，但未能从返回内容中提取出有效专业名。")
-      }
-    } else {
-      if (response.status === 401 || response.status === 404) {
-        alert("登录凭证已过期或失效（服务器可能已重置数据库），请重新参加入学考试！")
-        localStorage.removeItem('zju_token')
-        localStorage.removeItem('zju_username')
-        store.setPhase('login')
-        return
-      }
-      console.warn(`专业分配接口请求失败 (${response.status})，触发降级保护`)
+    if (result.major) {
+      info.value.major = result.major
     }
   } catch (err) {
+    if (err instanceof Error && err.message === 'TOKEN_EXPIRED') {
+      alert("登录凭证已过期或失效（服务器可能已重置数据库），请重新参加入学考试！")
+      localStorage.removeItem('zju_token')
+      localStorage.removeItem('zju_username')
+      store.setPhase('login')
+      return
+    }
     console.error("分配专业网络异常:", err)
   } finally {
     loading.value = false

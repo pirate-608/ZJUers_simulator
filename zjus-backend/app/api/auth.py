@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from pydantic import BaseModel
-from typing import Dict, Optional
+from typing import Dict, List, Optional
 from app.game.access import grade_entrance_exam, get_questions_for_frontend
 from app.api import deps
 from app.models.user import User
@@ -39,6 +39,13 @@ class ExamResponse(BaseModel):
     token: str = None
     message: str = None
 
+
+class ExamQuestion(BaseModel):
+    id: str
+    content: str
+    score: int
+    options: Optional[List[str]] = None
+
 # 恶意关键词黑名单
 BLACKLIST = [
     "SYSTEM MODE", "系统提示", "IGNORE START",
@@ -59,7 +66,7 @@ def is_username_safe(username: str) -> bool:
     return True
 
 
-@router.get("/exam/questions")
+@router.get("/exam/questions", response_model=List[ExamQuestion])
 async def get_exam_questions():
     """
     获取入学考试题目
@@ -154,7 +161,14 @@ class AssignMajorRequest(BaseModel):
     token: str
 
 
-@router.post("/assign_major")
+class AssignMajorResponse(BaseModel):
+    success: bool
+    major: str
+    major_abbr: str
+    courses: List[Dict[str, str]]
+
+
+@router.post("/assign_major", response_model=AssignMajorResponse)
 async def assign_major(
     req: AssignMajorRequest, db: AsyncSession = Depends(deps.get_db)
 ):
@@ -184,8 +198,14 @@ async def assign_major(
     }
 
 
+class AdmissionInfoResponse(BaseModel):
+    username: str
+    assigned_major: str
+    token: str
+
+
 # 获取当前用户 admission 信息
-@router.get("/admission_info")
+@router.get("/admission_info", response_model=AdmissionInfoResponse)
 async def get_admission_info(request: Request, db: AsyncSession = Depends(deps.get_db)):
     """
     获取当前用户的用户名和分配专业（tier）。需前端携带 Authorization: Bearer <token>
@@ -232,8 +252,16 @@ class QuickLoginRequest(BaseModel):
     custom_llm_provider: Optional[str] = None
 
 
+class QuickLoginResponse(BaseModel):
+    status: str
+    token: Optional[str] = None
+    username: Optional[str] = None
+    assigned_major: Optional[str] = None
+    message: Optional[str] = None
+
+
 # POST /exam/quick_login
-@router.post("/exam/quick_login")
+@router.post("/exam/quick_login", response_model=QuickLoginResponse)
 async def quick_login(data: QuickLoginRequest, db: AsyncSession = Depends(deps.get_db)):
     if not is_username_safe(data.username):
         return {"status": "error", "message": "用户名包含不允许的内容或过长"}

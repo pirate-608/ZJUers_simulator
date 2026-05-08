@@ -143,7 +143,7 @@
               class="mb-4"
             >
               <!-- 兼容 json 中的 content 字段 -->
-              <label class="form-label fw-bold mb-2">{{ index + 1 }}. {{ q.content || q.question }}</label>
+              <label class="form-label fw-bold mb-2">{{ index + 1 }}. {{ q.content }}</label>
               <input
                 v-model="examAnswers[index]"
                 type="text" 
@@ -260,7 +260,8 @@
 <script setup lang="ts">
 import { ref, reactive, computed, onMounted, onUnmounted } from 'vue'
 import { useGameStore } from '../stores/gameStore.ts'
-import type { ExamQuestion } from '@/types/api'
+import type { ExamQuestion, ExamSubmission, QuickLoginRequest } from '@/api/client'
+import { fetchExamQuestions, submitExam as submitExamApi, quickLogin as quickLoginApi } from '@/api/client'
 
 const store = useGameStore()
 
@@ -356,22 +357,11 @@ onUnmounted(() => {
 const startExam = async () => {
   viewState.value = 'loading'
   loadingText.value = '正在为您生成专属考卷...'
-  
+
   try {
-    const response = await fetch('/api/exam/questions', { method: 'GET' })
-    if (!response.ok) throw new Error('网络响应异常')
-    
-    const data: unknown = await response.json()
-    if (Array.isArray(data)) {
-      examQuestions.value = data as ExamQuestion[]
-    } else if (typeof data === 'object' && data !== null && 'questions' in data) {
-      examQuestions.value = (data as { questions: ExamQuestion[] }).questions || []
-    } else {
-      examQuestions.value = []
-    }
+    examQuestions.value = await fetchExamQuestions()
     examAnswers.value = {}
     viewState.value = 'exam'
-
   } catch (error) {
     console.error("Fetch exam error:", error)
     alert('获取考卷失败，请检查网络！')
@@ -390,7 +380,7 @@ const submitExam = async () => {
       formattedAnswers[questionId] = ans.trim()
     })
 
-    const payload: Record<string, unknown> = { 
+    const payload: ExamSubmission = {
       username: form.username.trim(),
       answers: formattedAnswers
     }
@@ -401,27 +391,11 @@ const submitExam = async () => {
       if (form.llmKey) payload.custom_llm_api_key = form.llmKey.trim()
     }
 
-    const response = await fetch('/api/exam/submit', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
-    })
-
-    if (response.status === 422) {
-      const errData = await response.json()
-      console.error("422 Error:", errData.detail)
-      alert('参数校验失败，请检查输入格式！')
-      viewState.value = 'login'
-      return
-    }
-
-    if (!response.ok) throw new Error(`HTTP 异常: ${response.status}`)
-
-    const data = (await response.json()) as { status: string; token?: string; message?: string }
+    const data = await submitExamApi(payload)
 
     if (data.status === 'success') {
       saveTokenAndConfig(data.token ?? '', form.username.trim())
-      store.setPhase('admission') 
+      store.setPhase('admission')
     } else {
       alert(`❌ 判卷结果：${data.message}`)
       viewState.value = 'login'
@@ -439,23 +413,18 @@ const quickLogin = async () => {
   loadingText.value = '正在验证学生凭证...'
 
   try {
-    const payload: Record<string, unknown> = {
+    const payload: QuickLoginRequest = {
       username: form.username.trim() || localStorage.getItem('zju_username') || "折大人",
       token: form.token,
       custom_llm_provider: form.useCustomLlm ? form.llmProvider : null,
       custom_llm_model: form.useCustomLlm ? form.llmModel : null,
-      custom_llm_api_key: form.useCustomLlm ? form.llmKey : null
+      custom_llm_api_key: form.useCustomLlm ? form.llmKey : null,
     }
 
-    const response = await fetch('/api/exam/quick_login', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
-    })
-    const data = (await response.json()) as { status: string; token?: string; message?: string }
+    const data = await quickLoginApi(payload)
 
     if (data.status === 'success') {
-      saveTokenAndConfig(data.token ?? '', payload.username as string)
+      saveTokenAndConfig(data.token ?? '', payload.username)
       store.setPhase('admission')
     } else {
       alert(`登录失败：${data.message}`)

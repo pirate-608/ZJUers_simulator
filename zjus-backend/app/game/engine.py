@@ -864,6 +864,9 @@ class GameEngine:
 
     async def _next_semester(self):
         """进入下一学期逻辑"""
+        was_running = self.is_running
+        self.stop()  # 先暂停游戏循环，防止过渡期间 tick 继续消耗精力
+
         async with self.db_factory() as db:
             transition = await self.game_service.process_semester_transition(
                 db,
@@ -890,7 +893,7 @@ class GameEngine:
                     }
                 },
             )
-            self.stop()
+            # self.stop() 已在函数开头调用，毕业后无需重启
             return
 
         # 获取新学期的最新快照（含新课程数据）
@@ -908,6 +911,8 @@ class GameEngine:
             },
         )
         await self._push_update("新学期开始了，加油！")
+        if was_running:
+            asyncio.create_task(self.run_loop())
 
     async def _push_update(self, msg: str = None):
         """统一数据推送接口"""

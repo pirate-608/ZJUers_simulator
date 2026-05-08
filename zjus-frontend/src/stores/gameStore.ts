@@ -108,15 +108,20 @@ export const useGameStore = defineStore('game', () => {
     courseMetadata.value = Array.isArray(data) ? (data as CourseMetadata[]) : []
   }
 
+  function resetForNewSemester(newCourseMetadata: CourseMetadata[]) {
+    setCourseMetadata(newCourseMetadata)
+    // 清空课程进度 (currentStats.courses)
+    for (const key in currentStats.courses) {
+      delete currentStats.courses[key]
+    }
+    // 清空课程策略 (currentCourseStates)
+    for (const key in currentCourseStates) {
+      delete currentCourseStates[key]
+    }
+  }
+
   function updateCourseProgress(progressMap: Record<string, unknown> | null | undefined) {
     if (!progressMap) return
-    // 空对象表示新学期：清空旧课程进度
-    if (Object.keys(progressMap).length === 0) {
-      for (const key in currentStats.courses) {
-        delete currentStats.courses[key]
-      }
-      return
-    }
     for (const courseId in progressMap) {
       if (!currentStats.courses[courseId]) currentStats.courses[courseId] = {}
       currentStats.courses[courseId].progress = Number(progressMap[courseId]) || 0
@@ -203,6 +208,7 @@ export const useGameStore = defineStore('game', () => {
     triggerEndGame,
     courseMetadata,
     setCourseMetadata,
+    resetForNewSemester,
     updateCourseProgress,
     updateCourseStatesRaw,
     currentCourseStates,

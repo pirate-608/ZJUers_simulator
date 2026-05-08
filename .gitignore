@@ -90,3 +90,6 @@ site/
 
 # 回收站
 __recycle_bin/
+
+# Claude Code 相关  
+CLAUDE.md

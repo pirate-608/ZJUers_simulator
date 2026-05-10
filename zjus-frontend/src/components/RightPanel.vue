@@ -143,6 +143,45 @@
         </div>
       </div>
     </div>
+
+    <div class="card border-0 shadow-sm">
+      <div
+        class="card-header section-header section-header-info text-white py-1 text-center fw-bold"
+        style="font-size: 0.85rem;"
+      >
+        🔧 内容生成模式
+      </div>
+      <div class="card-body p-2">
+        <div
+          class="btn-group w-100"
+          role="group"
+        >
+          <button
+            class="btn btn-sm"
+            :class="store.gameMode === 'library' ? 'btn-primary' : 'btn-outline-secondary'"
+            @click="setMode('library')"
+          >
+            📚 算法
+          </button>
+          <button
+            class="btn btn-sm"
+            :class="store.gameMode === 'hybrid' ? 'btn-primary' : 'btn-outline-secondary'"
+            @click="setMode('hybrid')"
+          >
+            🔀 混合
+          </button>
+          <button
+            class="btn btn-sm"
+            :class="store.gameMode === 'ai' ? 'btn-primary' : 'btn-outline-secondary'"
+            :disabled="!store.llmAvailable"
+            :title="!store.llmAvailable ? 'LLM API 不可用' : '直接调用 AI 生成事件'"
+            @click="setMode('ai')"
+          >
+            🤖 AI
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -155,6 +194,11 @@ const store = useGameStore()
 const emit = defineEmits<{
   'send-action': [payload: WsClientAction]
 }>()
+
+function setMode(mode: 'library' | 'ai' | 'hybrid') {
+  store.gameMode = mode
+  emit('send-action', { action: 'set_mode', mode })
+}
 
 // ✨ 本地虚拟时间，用于丝滑渲染
 const internalTime = ref(0)

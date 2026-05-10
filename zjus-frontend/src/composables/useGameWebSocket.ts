@@ -78,6 +78,8 @@ export function useGameWebSocket() {
         'dingtalk_message',
         'graduation',
         'new_semester',
+        'mode_changed',
+        'toast',
         'save_result',
         'exit_confirmed',
       ]
@@ -251,6 +253,22 @@ export function useGameWebSocket() {
           gameStore.clearEventLogs()
           const semesterName = extractNewSemesterName(wsMsg)
           gameStore.addLog('系统', `=== 欢迎来到 ${semesterName} ===`, 'text-success fw-bold')
+          break
+        }
+
+        case 'mode_changed': {
+          const mode = typeof wsMsg.mode === 'string' ? wsMsg.mode : 'hybrid'
+          gameStore.gameMode = mode as 'library' | 'ai' | 'hybrid'
+          gameStore.llmAvailable = typeof wsMsg.llm_available === 'boolean' ? wsMsg.llm_available : true
+          break
+        }
+
+        case 'toast': {
+          const message = typeof wsMsg.message === 'string' ? wsMsg.message : ''
+          const level = typeof (wsMsg as Record<string, unknown>).level === 'string'
+            ? (wsMsg as Record<string, unknown>).level as string
+            : 'info'
+          gameStore.showToast(message, level as 'success' | 'danger' | 'warning' | 'info')
           break
         }
 

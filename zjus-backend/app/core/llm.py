@@ -36,6 +36,20 @@ def _get_client(api_key: Optional[str], base_url: Optional[str]):
     return AsyncOpenAI(api_key=api_key, base_url=base_url)
 
 
+async def check_llm_availability(llm_override: Optional[Dict] = None) -> bool:
+    """探测 LLM API 是否可用（轻量调用，不消耗 token）"""
+    try:
+        api_key, base_url, model = _resolve_llm_config(llm_override)
+        if not api_key:
+            return False
+        client = _get_client(api_key, base_url)
+        await client.models.list()
+        return True
+    except Exception as e:
+        logger.warning(f"LLM availability check failed: {e}")
+        return False
+
+
 CC98_CACHE_MAX_LEN = 200
 CC98_CACHE_TTL_SECONDS = 6 * 60 * 60
 EVENTS_CACHE_MAX_LEN = 100

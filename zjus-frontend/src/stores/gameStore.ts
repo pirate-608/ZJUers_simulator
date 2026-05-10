@@ -79,6 +79,9 @@ export const useGameStore = defineStore('game', () => {
   const activeModal = ref<ActiveModalName>(null)
   const modalData = ref<ModalData | Record<string, unknown>>({})
 
+  const gameMode = ref<'library' | 'ai' | 'hybrid'>('hybrid')
+  const llmAvailable = ref<boolean>(true)
+
   const isPendingExit = ref<boolean>(false)
 
   // --- 动作与方法 ---
@@ -229,6 +232,8 @@ export const useGameStore = defineStore('game', () => {
     modalData,
     showModal,
     closeModal,
+    gameMode,
+    llmAvailable,
     isPendingExit,
   }
 })

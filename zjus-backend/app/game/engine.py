@@ -27,6 +27,21 @@ from app.services.game_service import GameService
 logger = logging.getLogger(__name__)
 
 
+class GameMode:
+    LIBRARY = "library"
+    AI = "ai"
+    HYBRID = "hybrid"
+
+    @classmethod
+    def from_str(cls, s: str):
+        s = s.lower()
+        if s == "ai":
+            return cls.AI
+        if s == "library":
+            return cls.LIBRARY
+        return cls.HYBRID
+
+
 class GameEngine:
     async def emit(self, event_type: str, data: dict, msg: str = None):
         if msg:
@@ -76,6 +91,11 @@ class GameEngine:
         self._last_ttl_refresh = 0.0
         # ✨ 新增：倍速乘数，默认为 1.0
         self.speed_multiplier = 1.0
+
+        # 内容生成模式
+        self.mode: str = GameMode.HYBRID
+        self.llm_available: bool = True
+        self._llm_probed: bool = False
 
         # 预设成就路径
         self.achievement_path = Path("/app/world/achievements.json")
@@ -392,6 +412,27 @@ class GameEngine:
             self.speed_multiplier = max(0.5, min(5.0, speed))
             return
 
+        # 切换内容生成模式
+        if action == "set_mode":
+            raw = action_data.get("mode", "hybrid")
+            new_mode = GameMode.from_str(raw)
+            if new_mode == GameMode.AI and not self.llm_available:
+                await self.emit(
+                    "toast",
+                    {"message": "LLM API 不可用，已保持在当前模式", "level": "warning"},
+                )
+            else:
+                self.mode = new_mode
+                await self.emit(
+                    "mode_changed",
+                    {"mode": self.mode, "llm_available": self.llm_available},
+                )
+            # 首次收到 mode 相关请求时触发后台探测
+            if not self._llm_probed:
+                self._llm_probed = True
+                asyncio.create_task(self._probe_llm())
+            return
+
         # [新增] 切换课程状态指令
         if action == "change_course_state":
             if target and value is not None:
@@ -676,15 +717,22 @@ class GameEngine:
                 ]
 
             trigger = random.choice(trigger_words)
-            # 优先从预编译帖子库获取（零 token 消耗）
-            post_content = pick_cc98_post(effect=effect_type, trigger=trigger)
-            if not post_content:
-                # 帖子库为空，fallback 到 LLM
+            if self.mode == GameMode.AI:
+                # AI 模式：跳过帖子库，直接走 LLM（含 Redis 缓存）
+                post_content = None
+            else:
+                # Hybrid / Library 模式：优先从预编译帖子库获取（零 token 消耗）
+                post_content = pick_cc98_post(effect=effect_type, trigger=trigger)
+            if not post_content and self.mode != GameMode.LIBRARY:
+                # 库未命中且非纯算法模式：fallback 到 LLM
                 snapshot = await self.repo.get_snapshot()
                 stats = snapshot.stats.model_dump()
                 post_content, feedback = await generate_cc98_post(
                     stats, effect_type, trigger, llm_override=self.llm_override
                 )
+            elif not post_content:
+                # Library 模式库耗尽：跳过本次 cc98
+                post_content, feedback = "服务器繁忙，论坛暂时打不开...", ""
             else:
                 # 帖子库命中，用固定 feedback
                 feedback_map = {
@@ -710,18 +758,27 @@ class GameEngine:
             snapshot = await self.repo.get_snapshot()
             stats = snapshot.stats.model_dump()
 
-            # 优先从预编译事件库检索（零 token 消耗）
-            event_data = pick_random_event(
-                sanity=int(stats.get("sanity", 50)),
-                stress=int(stats.get("stress", 0)),
-                seen_ids=set(history) if history else None,
-            )
-
-            # 事件库耗尽时 fallback 到 LLM
-            if not event_data:
+            if self.mode == GameMode.AI:
+                # AI 模式：跳过事件库，直接走 LLM（含 Redis 缓存）
                 event_data = await generate_random_event(
                     stats, history, llm_override=self.llm_override
                 )
+            else:
+                # Hybrid / Library 模式：优先从预编译事件库检索（零 token 消耗）
+                event_data = pick_random_event(
+                    sanity=int(stats.get("sanity", 50)),
+                    stress=int(stats.get("stress", 0)),
+                    seen_ids=set(history) if history else None,
+                )
+                # Hybrid 模式下库耗尽时 fallback 到 LLM；Library 模式直接跳过
+                if (
+                    not event_data
+                    and self.mode == GameMode.HYBRID
+                    and self.llm_available
+                ):
+                    event_data = await generate_random_event(
+                        stats, history, llm_override=self.llm_override
+                    )
 
             if event_data:
                 # 统一按 event_id 去重：库事件直接使用 id；LLM 兜底生成稳定 id
@@ -773,8 +830,11 @@ class GameEngine:
 
     async def _trigger_dingtalk_message(self):
         """触发钉钉消息推送（优先使用 M2-her RP 模型）"""
-        # 再次检查游戏是否暂停
         if not self.is_running:
+            return
+
+        # 纯算法模式：跳过钉钉消息（暂未建设 dingtalk_library）
+        if self.mode == GameMode.LIBRARY:
             return
 
         try:
@@ -913,6 +973,26 @@ class GameEngine:
         await self._push_update("新学期开始了，加油！")
         if was_running:
             asyncio.create_task(self.run_loop())
+
+    async def _probe_llm(self):
+        """后台探测 LLM API 是否可用"""
+        try:
+            from app.core.llm import check_llm_availability
+
+            available = await check_llm_availability(self.llm_override)
+            self.llm_available = available
+            if not available and self.mode == GameMode.AI:
+                self.mode = GameMode.HYBRID
+                await self.emit(
+                    "mode_changed",
+                    {"mode": self.mode, "llm_available": False},
+                )
+                await self.emit(
+                    "toast",
+                    {"message": "LLM API 连接失败，已自动切换到混合模式", "level": "warning"},
+                )
+        except Exception as e:
+            logger.warning(f"LLM probe failed: {e}")
 
     async def _push_update(self, msg: str = None):
         """统一数据推送接口"""

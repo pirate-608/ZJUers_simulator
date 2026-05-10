@@ -46,6 +46,8 @@ export type WsMessage =
       }
     }
   | { type: 'new_semester'; data?: { semester_name?: string; course_info_json?: string }; semester_name?: string }
+  | { type: 'mode_changed'; mode: string; llm_available: boolean }
+  | { type: 'toast'; message: string; level: string }
   | { type: 'save_result'; message?: string; success?: boolean }
   | { type: 'exit_confirmed' }
 
@@ -91,6 +93,7 @@ export type WsClientAction =
   | { action: 'save_game' }
   | { action: 'save_and_exit' }
   | { action: 'exit_without_save' }
+  | { action: 'set_mode'; mode: 'library' | 'ai' | 'hybrid' }
   | { action: 'restart' }
 
 // ─── 运行时类型守卫 ───

@@ -1,0 +1,4 @@
+interface:
+  display_name: "ZJUS Compose OpenAPI"
+  short_description: "Keep Docker backend and API types in sync"
+  default_prompt: "Use $zjus-compose-openapi to rebuild the backend and regenerate frontend OpenAPI types."

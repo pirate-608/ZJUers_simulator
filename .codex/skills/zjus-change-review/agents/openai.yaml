@@ -1,0 +1,4 @@
+interface:
+  display_name: "ZJUS Change Review"
+  short_description: "Review large frontend/backend changes for breakage"
+  default_prompt: "Use $zjus-change-review to review a large commit touching frontend and backend behavior."

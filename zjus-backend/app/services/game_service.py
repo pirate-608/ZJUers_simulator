@@ -1,7 +1,6 @@
 # app/services/game_service.py
 import json
 import logging
-import random
 import time
 from typing import Dict, Any, Optional
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -22,93 +21,56 @@ class GameService:
         self.world = world
 
     async def prepare_game_context(
-        self, username: str, tier: str, db: AsyncSession = None
+        self, username: str, db: AsyncSession = None
     ) -> Dict[str, Any]:
         """初始化或恢复游戏上下文"""
-        # 1. 检查 Redis
         if await self.repo.exists():
-            snapshot = await self.repo.get_snapshot()
-            stats = snapshot.stats.model_dump()
-            await self._ensure_base_fields(stats, username)
-            repaired = False
-            if (
-                not stats.get("course_info_json")
-                or stats.get("course_info_json") == "[]"
-            ):
-                logger.warning(f"Repairing save for {username}")
-                await self._repair_save(tier)
-                repaired = True
             return {
                 "data": await self.repo.get_all_game_data(),
-                "status": "repaired" if repaired else "existing",
+                "status": "existing",
             }
 
-        # 2. 尝试从 DB 加载
         if db:
             loaded = await SaveService.load_from_db(self.user_id, self.repo, db)
             if loaded:
-                snapshot = await self.repo.get_snapshot()
-                stats = snapshot.stats.model_dump()
-                await self._ensure_base_fields(stats, username)
-                repaired = False
-                if (
-                    not stats.get("course_info_json")
-                    or stats.get("course_info_json") == "[]"
-                ):
-                    logger.warning(f"Repairing save for {username}")
-                    await self._repair_save(tier)
-                    repaired = True
                 return {
                     "data": await self.repo.get_all_game_data(),
-                    "status": "repaired" if repaired else "loaded",
+                    "status": "loaded",
                 }
 
-        # 3. 全新初始化
-        logger.info(f"Creating new game for {username}")
-        initial_stats = self._build_initial_stats(username)
-        await self.repo.set_game_data(initial_stats)
-        await self.assign_major_and_init(tier)
-        return {
-            "data": await self.repo.get_all_game_data(),
-            "status": "new",
-        }
+        return {"data": None, "status": "new"}
 
-    async def _repair_save(self, tier: str):
-        """坏档修复逻辑"""
-        await self.assign_major_and_init(tier)
+    async def assign_major_and_init(
+        self, major_abbr: str, stat_overrides: Optional[Dict[str, int]] = None
+    ) -> Dict[str, Any]:
+        """按指定专业和属性初始化游戏状态"""
+        assignment = await self.world.get_major_by_abbr(major_abbr)
+        if not assignment:
+            raise ValueError(f"专业 {major_abbr} 不存在")
 
-    async def assign_major_and_init(self, tier: str) -> Dict[str, Any]:
-        """替代原 state.assign_major 方法"""
-        assignment = await self.world.get_random_major_assignment(tier)
         major_info = assignment["major_info"]
-
-        snapshot = await self.repo.get_snapshot()
-        current_stats = snapshot.stats.model_dump() or {}
-        try:
-            current_iq = int(current_stats.get("iq"))
-        except (TypeError, ValueError):
-            current_iq = None
-        if not current_iq or current_iq <= 0:
-            current_iq = random.randint(80, 100)
+        overrides = stat_overrides or {}
 
         update_fields = {
             "elapsed_game_time": 0,
             "major": major_info["name"],
             "major_abbr": major_info["abbr"],
-            "stress": current_stats.get("stress", major_info.get("stress_base", 0)),
-            "iq": current_iq + major_info.get("iq_buff", 0),
+            "iq": overrides.get("iq", 100) + major_info.get("iq_buff", 0),
+            "eq": overrides.get("eq", 100),
+            "luck": overrides.get("luck", 50),
+            "stress": major_info.get("stress_base", 0),
+            "energy": 100,
+            "sanity": 80,
+            "gpa": "0.0",
+            "reputation": 0,
+            "semester": "大一秋冬",
+            "semester_idx": 1,
             "course_plan_json": json.dumps(
                 assignment["course_plan"], ensure_ascii=False
             ),
             "course_info_json": json.dumps(
                 assignment["initial_courses"], ensure_ascii=False
             ),
-            "energy": current_stats.get("energy", 100),
-            "sanity": current_stats.get("sanity", 80),
-            "eq": current_stats.get("eq", random.randint(60, 90)),
-            "luck": current_stats.get("luck", random.randint(0, 100)),
-            "gpa": current_stats.get("gpa", "0.0"),
-            "reputation": current_stats.get("reputation", 0),
         }
 
         courses_mastery = {str(c["id"]): 0 for c in assignment["initial_courses"]}
@@ -133,14 +95,8 @@ class GameService:
         my_courses = await self.world.get_semester_courses(major_abbr, semester_idx)
 
         sem_names = [
-            "大一秋冬",
-            "大一春夏",
-            "大二秋冬",
-            "大二春夏",
-            "大三秋冬",
-            "大三春夏",
-            "大四秋冬",
-            "大四春夏",
+            "大一秋冬", "大一春夏", "大二秋冬", "大二春夏",
+            "大三秋冬", "大三春夏", "大四秋冬", "大四春夏",
         ]
         term_name = (
             sem_names[semester_idx - 1]
@@ -164,9 +120,7 @@ class GameService:
         )
 
     async def process_semester_transition(
-        self,
-        db: AsyncSession,
-        holiday_event_factory=None,
+        self, db: AsyncSession, holiday_event_factory=None,
     ) -> Dict[str, Any]:
         current_semester_idx = await self.repo.increment_semester()
 
@@ -174,15 +128,7 @@ class GameService:
         try:
             autosave_ok = await SaveService.persist_to_db(self.repo, db)
             if autosave_ok:
-                logger.info(
-                    "Auto-save triggered at end of semester for user %s",
-                    self.user_id,
-                )
-            else:
-                logger.warning(
-                    "Auto-save skipped at end of semester for user %s",
-                    self.user_id,
-                )
+                logger.info("Auto-save at end of semester for user %s", self.user_id)
         except Exception as e:
             logger.error("Auto-save failed for user %s: %s", self.user_id, e)
 
@@ -211,14 +157,3 @@ class GameService:
             "holiday_event": holiday_event,
             "autosave_ok": autosave_ok,
         }
-
-    async def _ensure_base_fields(self, stats: Dict[str, Any], username: str):
-        ps = PlayerStats.from_redis(stats)
-        repair_fields = ps.get_repair_fields()
-        if not stats.get("username"):
-            repair_fields["username"] = username
-        if repair_fields:
-            await self.repo.update_courses_and_states(stats_update=repair_fields)
-
-    def _build_initial_stats(self, username: str) -> Dict[str, Any]:
-        return PlayerStats.build_initial(username=username).model_dump()

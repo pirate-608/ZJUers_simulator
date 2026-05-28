@@ -44,7 +44,6 @@ async def get_current_user_info(token: str) -> dict:
         return {
             "user_id": user_id,
             "username": payload.get("username"),
-            "tier": payload.get("tier"),
         }
     except JWTError:
         raise HTTPException(

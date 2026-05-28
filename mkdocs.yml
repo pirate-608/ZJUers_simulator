@@ -20,6 +20,7 @@ nav:
     - 折姜大学招生减章: user/notice.md
     - 折姜大学校规: user/rules.md
     - 在线游戏: user/online_guide.md
+    - 内容生成模式: user/content_modes.md
     - 本地部署: user/local_deploy.md
     - 原生本地部署: user/local_deploy_bare.md
     - 模型配置: user/models.md

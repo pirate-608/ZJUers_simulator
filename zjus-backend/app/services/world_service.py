@@ -1,7 +1,6 @@
 # app/services/world_service.py
 import json
 import asyncio
-import random
 import logging
 from typing import Dict, Any, List, Optional
 from pathlib import Path
@@ -48,36 +47,32 @@ class WorldService:
                 logger.error(f"Failed to parse {path}: {e}")
                 return {}
 
-    async def get_random_major_assignment(self, tier: str) -> Dict[str, Any]:
-        """[核心逻辑迁移] 根据 Tier 随机分配专业及对应的初始课表"""
+    async def get_all_majors(self) -> List[Dict[str, Any]]:
+        """返回所有专业（扁平列表，不按 tier 分组）"""
         majors_config = await self._load_json(self.majors_path)
-        # 获取对应阶级的专业列表，兜底 TIER_4
-        available = majors_config.get(tier, majors_config.get("TIER_4", []))
+        result: List[Dict[str, Any]] = []
+        for tier_majors in majors_config.values():
+            if isinstance(tier_majors, list):
+                result.extend(tier_majors)
+        return result
 
-        if not available:
-            major_info = {
-                "name": "未知专业",
-                "abbr": "UNK",
-                "stress_base": 0,
-                "iq_buff": 0,
-            }
-        else:
-            major_info = random.choice(available)
-
-        # 加载对应专业的课程培养方案
-        course_plan = await self._load_json(
-            self.courses_dir / f"{major_info['abbr']}.json"
-        )
-
-        # 提取第一学期课程
-        plan_data = course_plan.get("semesters") or course_plan.get("plan", [])
-        initial_courses = plan_data[0].get("courses", []) if plan_data else []
-
-        return {
-            "major_info": major_info,
-            "course_plan": course_plan,
-            "initial_courses": initial_courses,
-        }
+    async def get_major_by_abbr(self, abbr: str) -> Optional[Dict[str, Any]]:
+        """按缩写查找单个专业并加载课程"""
+        all_majors = await self.get_all_majors()
+        for m in all_majors:
+            if m.get("abbr") == abbr:
+                # 加载对应专业的课程培养方案
+                course_plan = await self._load_json(
+                    self.courses_dir / f"{abbr}.json"
+                )
+                plan_data = course_plan.get("semesters") or course_plan.get("plan", [])
+                initial_courses = plan_data[0].get("courses", []) if plan_data else []
+                return {
+                    "major_info": m,
+                    "course_plan": course_plan,
+                    "initial_courses": initial_courses,
+                }
+        return None
 
     async def get_semester_courses(
         self, major_abbr: str, semester_idx: int

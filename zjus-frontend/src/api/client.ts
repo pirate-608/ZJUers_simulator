@@ -1,73 +1,87 @@
 /**
  * 类型安全的 HTTP API 客户端
- * 使用从 OpenAPI schema 生成的类型，与后端 Pydantic response_model 保持一致。
  */
 import type { components } from '@/types/api.generated'
 
-export type ExamQuestion = components['schemas']['ExamQuestion']
-export type ExamSubmission = components['schemas']['ExamSubmission']
-export type ExamResponse = components['schemas']['ExamResponse']
-export type QuickLoginRequest = components['schemas']['QuickLoginRequest']
-export type QuickLoginResponse = components['schemas']['QuickLoginResponse']
-export type AssignMajorResponse = components['schemas']['AssignMajorResponse']
-export type AdmissionInfoResponse = components['schemas']['AdmissionInfoResponse']
-
-// ─── 考试相关 ───
-
-export async function fetchExamQuestions(): Promise<ExamQuestion[]> {
-  const res = await fetch('/api/exam/questions')
-  if (!res.ok) throw new Error(`HTTP ${res.status}`)
-  return (await res.json()) as ExamQuestion[]
+export type AuthRequest = {
+  username: string
+  invite_code: string
+  token?: string | null
+  custom_llm_model?: string | null
+  custom_llm_api_key?: string | null
+  custom_llm_provider?: string | null
 }
 
-export async function submitExam(payload: ExamSubmission): Promise<ExamResponse> {
-  const res = await fetch('/api/exam/submit', {
+export type AuthResponse = {
+  status: string
+  jwt?: string | null
+  user_token?: string | null
+  username: string
+  user_id?: number | null
+  message?: string | null
+}
+
+export type MajorOption = {
+  name: string
+  abbr: string
+  iq_buff: number
+  stress_base: number
+  desc: string
+}
+
+export type InitCharacterRequest = {
+  token: string
+  major_abbr: string
+  iq: number
+  eq: number
+  luck: number
+}
+
+export type InitCharacterResponse = {
+  success: boolean
+  major: string
+  major_abbr: string
+  courses: Record<string, string>[]
+}
+
+// ─── 认证 ───
+
+export async function auth(payload: AuthRequest): Promise<AuthResponse> {
+  const res = await fetch('/api/auth', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
   })
-  if (res.status === 422) {
-    const errData = await res.json()
-    console.error('422 Validation Error:', errData.detail)
-    throw new Error('参数校验失败')
-  }
   if (!res.ok) throw new Error(`HTTP ${res.status}`)
-  return (await res.json()) as ExamResponse
+  return (await res.json()) as AuthResponse
 }
 
-export async function quickLogin(payload: QuickLoginRequest): Promise<QuickLoginResponse> {
-  const res = await fetch('/api/exam/quick_login', {
+// ─── 专业列表 ───
+
+export async function fetchMajors(): Promise<MajorOption[]> {
+  const res = await fetch('/api/majors')
+  if (!res.ok) throw new Error(`HTTP ${res.status}`)
+  return (await res.json()) as MajorOption[]
+}
+
+// ─── 初始化角色 ───
+
+export async function initCharacter(payload: InitCharacterRequest): Promise<InitCharacterResponse> {
+  const res = await fetch('/api/init_character', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
   })
-  if (!res.ok) throw new Error(`HTTP ${res.status}`)
-  return (await res.json()) as QuickLoginResponse
-}
-
-// ─── 专业分配 ───
-
-export async function assignMajor(token: string): Promise<AssignMajorResponse> {
-  const res = await fetch('/api/assign_major', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${token}`,
-    },
-    body: JSON.stringify({ token }),
-  })
-
   if (!res.ok) {
-    if (res.status === 401 || res.status === 404) {
-      throw new Error('TOKEN_EXPIRED')
-    }
+    if (res.status === 401) throw new Error('TOKEN_EXPIRED')
     throw new Error(`HTTP ${res.status}`)
   }
-
-  return (await res.json()) as AssignMajorResponse
+  return (await res.json()) as InitCharacterResponse
 }
 
 // ─── 入学信息 ───
+
+export type AdmissionInfoResponse = components['schemas']['AdmissionInfoResponse']
 
 export async function getAdmissionInfo(token: string): Promise<AdmissionInfoResponse> {
   const res = await fetch('/api/admission_info', {

@@ -71,7 +71,6 @@ class PlayerStats(BaseModel):
     @classmethod
     def build_initial(cls, username: str = "", **overrides) -> "PlayerStats":
         """全局唯一的玩家初始状态工厂方法（Single Source of Truth）"""
-        import random as _random
         import time as _time
 
         defaults = cls(
@@ -84,9 +83,9 @@ class PlayerStats(BaseModel):
             energy=100,
             sanity=80,
             stress=0,
-            iq=0,
-            eq=_random.randint(60, 90),
-            luck=_random.randint(0, 100),
+            iq=100,
+            eq=100,
+            luck=50,
             gpa="0.0",
             highest_gpa="0.0",
             reputation=0,

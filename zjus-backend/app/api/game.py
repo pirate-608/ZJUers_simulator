@@ -50,13 +50,12 @@ async def get_current_user_id(token: str):
             token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM]
         )
         user_id: str = payload.get("sub")
-        tier: str = payload.get("tier")
         username: str = payload.get("username")
         if user_id is None:
-            return None, None, None
-        return user_id, username, tier
+            return None, None
+        return user_id, username
     except JWTError:
-        return None, None, None
+        return None, None
 
 
 def _parse_token(token: str) -> dict:
@@ -71,7 +70,6 @@ def _parse_token(token: str) -> dict:
         return {
             "user_id": user_id,
             "username": payload.get("username"),
-            "tier": payload.get("tier"),
         }
     except JWTError:
         return {}
@@ -137,7 +135,6 @@ async def websocket_endpoint(websocket: WebSocket):
     user_info = _parse_token(token)
     user_id = user_info.get("user_id")
     username = user_info.get("username")
-    tier = user_info.get("tier")
 
     if not user_id:
         logger.warning("Invalid token in first WS message")
@@ -210,7 +207,7 @@ async def websocket_endpoint(websocket: WebSocket):
     try:
         # 初始化游戏（使用短生命周期 DB Session）
         async with AsyncSessionLocal() as db:
-            game_context = await game_service.prepare_game_context(username, tier, db)
+            game_context = await game_service.prepare_game_context(username, db)
 
         snapshot = await repo.get_snapshot()
         final_stats = snapshot.stats.model_dump()

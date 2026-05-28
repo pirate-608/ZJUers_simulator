@@ -31,7 +31,7 @@ type EventLog = {
 
 export const useGameStore = defineStore('game', () => {
   // --- 核心状态 ---
-  const currentPhase = ref<GamePhase>('login') // login, admission, loading, playing, ended
+  const currentPhase = ref<GamePhase>('login') // login, character_create, loading, playing, ended
   const userInfo = ref<Record<string, unknown>>({})
 
   // toast：供 App.vue 顶部提示使用

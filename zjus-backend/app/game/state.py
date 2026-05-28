@@ -81,7 +81,7 @@ class RedisState:
     # ==========================================
     # 游戏初始化逻辑
     # ==========================================
-    async def init_game(self, username: str, tier: str) -> Dict[str, Any]:
+    async def init_game(self, username: str) -> Dict[str, Any]:
         initial_stats = PlayerStats.build_initial(username=username).model_dump()
         await self.repo.set_game_data(initial_stats)
         return initial_stats

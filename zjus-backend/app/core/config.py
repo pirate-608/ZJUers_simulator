@@ -52,6 +52,7 @@ class Settings(BaseSettings):
         "MINIMAX_BASE_URL",
         "https://api.minimaxi.com/v1/text/chatcompletion_v2",
     )
+    INVITE_CODES: str = ""  # 逗号分隔的邀请码列表，如 "CODE1,CODE2,CODE3"
 
     class Config:
         env_file = ".env"

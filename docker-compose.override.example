@@ -1,0 +1,41 @@
+version: '3.8'
+
+# 这是专门用于本地开发的覆盖文件。
+# 当你在本地运行 `docker-compose up -d` 时，Docker 会自动将此文件与基础的 docker-compose.yml 进行合并。
+# 这里的 `build` 指令会覆盖掉原文件中的 `image` 指令，从而实现本地从源码构建镜像，而不是拉取线上镜像。
+
+services:
+  backend:
+    build:
+      context: ./zjus-backend
+      dockerfile: Dockerfile
+    # 本地开发时挂载代码以实现热更新
+    volumes:
+      - ./zjus-backend/app:/app/app
+      - ./zjus-backend/world:/app/world
+
+  migrate:
+    build:
+      context: ./zjus-backend
+      dockerfile: Dockerfile
+
+  seed_embeddings:
+    build:
+      context: ./zjus-backend
+      dockerfile: Dockerfile
+    volumes:
+      - ./zjus-backend/world:/app/world
+
+  nginx:
+    # 覆盖掉线上的只读前端镜像，重新在本地构建
+    build:
+      context: ./zjus-frontend
+      dockerfile: Dockerfile
+    # 覆盖端口：本地只用 HTTP 80，不暴露 443
+    ports:
+      - "80:80"
+    # 覆盖 volumes：去掉 SSL 证书挂载，使用本地专用 HTTP 配置
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/conf.d/local.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./zjus-backend/world:/usr/share/nginx/world

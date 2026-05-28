@@ -4,6 +4,7 @@ import { useGameStore } from '@/stores/gameStore.ts'
 import { useGameWebSocket } from '@/composables/useGameWebSocket.ts'
 import { useGameGuide } from '@/composables/useGameGuide.ts'
 import LoginView from './components/LoginView.vue'
+import SaveSelect from './components/SaveSelect.vue'
 import CharacterCreate from './components/CharacterCreate.vue'
 import HudBar from './components/HudBar.vue'
 import MidPanel from './components/MidPanel.vue'
@@ -31,12 +32,23 @@ watch(
 )
 
 onMounted(() => {
-  const existingToken = localStorage.getItem('zju_token')
+  const storedJwt = localStorage.getItem('zju_jwt')
+  if (storedJwt) localStorage.setItem('zju_token', storedJwt)
+
+  let existingToken = localStorage.getItem('zju_token')
+  if (!storedJwt && existingToken && existingToken.split('.').length !== 3) {
+    localStorage.setItem('zju_user_token', existingToken)
+    localStorage.removeItem('zju_token')
+    existingToken = null
+  }
   const gameStarted = localStorage.getItem('game_started')
+  const savedChoices = localStorage.getItem('zju_saves')
 
   if (existingToken) {
     if (gameStarted) {
       handleEnterGame(existingToken)
+    } else if (savedChoices) {
+      store.setPhase('save_select')
     } else {
       store.setPhase('character_create')
     }
@@ -93,6 +105,10 @@ const handleEnterGame = (_token: string) => {
   </div>
   
   <LoginView v-if="store.currentPhase === 'login'" />
+
+  <SaveSelect
+    v-else-if="store.currentPhase === 'save_select'"
+  />
 
   <CharacterCreate
     v-else-if="store.currentPhase === 'character_create'"

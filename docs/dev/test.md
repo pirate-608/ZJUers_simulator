@@ -9,6 +9,7 @@
 | [test_game_state.py](file:///d:/projects/ZJUers_simulator/zjus-backend/tests/unit/test_game_state.py)     | PlayerStats: build_initial / from_redis / get_repair_fields / GameStateSnapshot | 20     |
 | [test_balance.py](file:///d:/projects/ZJUers_simulator/zjus-backend/tests/unit/test_balance.py)           | GameBalance: 加载/属性/默认值/热重载                                            | 12     |
 | [test_dingtalk_llm.py](file:///d:/projects/ZJUers_simulator/zjus-backend/tests/unit/test_dingtalk_llm.py) | M2-her: 消息构建/API mock/缓存/fallback                                         | 29     |
+| [test_auth_validation.py](file:///d:/projects/ZJUers_simulator/zjus-backend/tests/unit/test_auth_validation.py) | 角色初始化 IQ/EQ/Luck 预算校验                                            | 5      |
 
 ## 测试依赖
 
@@ -37,7 +38,7 @@ python -m ruff check --fix .    # 运行静态检查并修复
 ## 运行结果示例
 
 ```
-======================== 61 passed, 1 warning in 0.38s ========================
+======================== 66 passed, 2 warnings in 1.21s ========================
 ```
 
-这代表61个测试用例全部通过，1个测试用例有警告。这种情况是可接受的。如果想看具体是哪个测试用例有警告，可以使用 `python -m pytest tests/ -v` 命令。
+这代表 66 个测试用例全部通过，警告不影响当前测试结果。如果想看具体是哪个测试用例有警告，可以使用 `python -m pytest tests/ -v` 命令。

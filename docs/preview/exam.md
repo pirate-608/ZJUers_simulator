@@ -1,1 +1,0 @@
-![exam](../assets/images/exam.png)

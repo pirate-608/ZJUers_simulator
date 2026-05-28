@@ -13,8 +13,8 @@
 	- `app/services`：业务编排（存档、世界、游戏流程）。
 	- `world`：静态世界数据（专业/课程/角色/规则等）。
 - 前端主要目录：
-	- `src/components`：Vue 组件 (如 `LoginView.vue`, `GameView.vue`)。
-	- `src/composables`：WebSocket 通信逻辑 (`useGameWebSocket.js`)。
+	- `src/components`：Vue 组件，如 `LoginView.vue`、`SaveSelect.vue`、`CharacterCreate.vue`。
+	- `src/composables`：WebSocket 通信逻辑 (`useGameWebSocket.ts`)。
 	- `src/stores`：Pinia 状态管理。
 
 ### 2. 本地运行的最小步骤？
@@ -37,7 +37,8 @@
 - WebSocket 层只负责转发事件，异常不会中断循环。
 
 ### 6. 游戏初始化与“开局数据”从哪里来？
-- 开局流程由 `GameService` 负责（初始化 stats/major 等）。
+- 开局流程由 `GameService` 负责（初始化 stats/major/courses 等）。
+- 新玩家通过 `POST /api/init_character` 选择专业并分配 IQ/EQ/Luck；服务端会校验三项总和为 250。
 - 读取世界数据使用 `WorldService`，可做缓存优化。
 
 ### 7. 课程/专业/规则数据如何维护？
@@ -46,12 +47,13 @@
 
 ### 8. 存档数据是如何保存与恢复的？
 - `SaveService` 负责从 Redis 快照生成 DB 存档与恢复。
+- 老玩家登录时 `POST /api/auth` 会返回存档摘要；WebSocket 首条消息可带 `load_save_slot` 加载指定存档。
 - 如果更改 stats/courses 结构，需同步更新快照与迁移逻辑。
 
 ### 9. 如何添加新的事件或推送字段？
 - 事件结构定义在 `GameEvent`（`zjus-backend/app/core/events.py`）。
 - 引擎中统一通过 `emit()` 推送事件。
-- 前端接收字段需同步更新 Vue 源码，主要在 `zjus-frontend/src/composables/useGameWebSocket.js` 中解析。
+- 前端接收字段需同步更新 Vue 源码，主要在 `zjus-frontend/src/composables/useGameWebSocket.ts` 中解析。
 
 ### 10. 依赖注入 (DI) 入口在哪里？
 - 所有 FastAPI 依赖集中在 [app/api/deps.py](https://github.com/pirate-608/ZJUers_simulator/tree/main/app/api/deps.py)。
@@ -68,6 +70,7 @@
 ### 13. 如何添加新配置或环境变量？
 - 配置统一在 [app/core/config.py](https://github.com/pirate-608/ZJUers_simulator/tree/main/app/core/config.py)。
 - README 中同步补充使用说明。
+- 若变更 HTTP API，请通过 Docker Compose 启动后端并重新生成 `src/types/api.generated.ts`。
 
 ### 14. 什么时候需要更新 requirements.txt？
 - 新增第三方依赖或版本变更时。

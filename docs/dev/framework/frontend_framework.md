@@ -1,273 +1,185 @@
 # ZJUers Simulator 前端项目结构与逻辑总览
 
-> **项目概览**：基于 Vue 3 + Vite + Pinia 构建的单页应用 (SPA)。前端负责呈现入学考试、录取通知、实时游戏界面（课程管理、事件日志、属性面板）以及毕业结算等全部玩家交互。通过 WebSocket 与后端游戏引擎保持实时数据同步，采用渐进式 TypeScript 迁移策略。
+> **项目概览**：基于 Vue 3 + Vite + Pinia 构建的单页应用。前端负责邀请码登录、存档选择、角色创建、实时游戏界面和结局展示，通过 WebSocket 与后端游戏引擎同步状态。
 
 ---
 
 ## 目录结构
 
-```
+```text
 zjus-frontend/src/
-├── main.js                  # 应用入口，挂载 Vue + Pinia
-├── App.vue                  # 根组件，Phase 路由中枢 + 全局 Toast
-├── style.css                # 全局样式
-├── env.d.ts                 # TypeScript 模块声明（.vue shim）
-├── types/                   # 📦 TypeScript 类型定义层
-│   ├── index.ts             # Barrel export
+├── App.vue                  # Phase 路由中枢 + 全局 Toast
+├── api/
+│   └── client.ts            # HTTP API 薄封装，类型来自 OpenAPI
+├── types/
+│   ├── api.generated.ts     # 从后端 /openapi.json 生成
 │   ├── game.ts              # GamePhase, PlayerStats
-│   ├── course.ts            # CoursesMap, CourseMetadata
-│   ├── modal.ts             # TranscriptModalData, RandomEventModalData, DingTalkMessage
-│   └── websocket.ts         # WsMessage(可辨识联合类型) + 解构工具函数
+│   ├── course.ts            # 课程类型
+│   ├── modal.ts             # 弹窗数据类型
+│   └── websocket.ts         # WsMessage + 工具函数
 ├── stores/
-│   └── gameStore.ts         # 🔥 Pinia 全局状态中枢
+│   └── gameStore.ts         # Pinia 全局状态
 ├── composables/
-│   └── useGameWebSocket.ts  # 🔥 WebSocket 连接管理 + 消息分发
-├── components/
-│   ├── LoginView.vue        # 入学考试 + 登录界面
-│   ├── AdmissionScreen.vue  # 录取通知书 + 专业分配
-│   ├── TopNav.vue           # 顶部导航（保存/退出）
-│   ├── HudBar.vue           # HUD 状态栏（精力/心态/IQ/EQ/GPA）
-│   ├── CourseList.vue        # 左栏：课程列表 + 策略切换（摆/摸/卷）
-│   ├── MidPanel.vue         # 中栏：事件日志 + 钉钉消息
-│   ├── RightPanel.vue       # 右栏：属性面板 + 摸鱼动作
-│   ├── EndScreen.vue        # 结局界面（Game Over / 毕业）
-│   └── modals/
-│       ├── TranscriptModal.vue   # 期末成绩单弹窗
-│       ├── RandomEventModal.vue  # 随机事件弹窗
-│       └── ExitConfirmModal.vue  # 退出确认弹窗
-└── assets/                  # 静态资源（由 Vite 处理）
+│   └── useGameWebSocket.ts  # WebSocket 连接、鉴权、消息分发
+└── components/
+    ├── LoginView.vue        # 邀请码登录 + 自定义 LLM 配置
+    ├── SaveSelect.vue       # 老玩家存档选择 / 新游戏入口
+    ├── CharacterCreate.vue  # 专业选择 + 初始属性分配
+    ├── TopNav.vue           # 保存/退出
+    ├── HudBar.vue           # 顶部属性栏
+    ├── CourseList.vue       # 课程列表 + 策略切换
+    ├── MidPanel.vue         # 事件日志 + 钉钉消息
+    ├── RightPanel.vue       # 属性面板 + 摸鱼动作 + 内容模式
+    ├── EndScreen.vue        # 结局界面
+    └── modals/              # 成绩单、随机事件、退出确认
 ```
 
 ---
 
-## 核心架构
+## Phase 流程
+
+`GamePhase` 当前为：
+
+```ts
+login | save_select | character_create | loading | playing | ended
+```
 
 ```mermaid
 graph TD
-    Entry["main.js<br/>创建 Vue App + Pinia"] --> App["App.vue<br/>Phase 路由中枢"]
-
-    subgraph "状态层"
-        Store["gameStore.ts<br/>全局状态管理"]
-        Types["types/<br/>TypeScript 接口定义"]
-    end
-
-    subgraph "通信层"
-        WS["useGameWebSocket.ts<br/>WebSocket 管理"]
-    end
-
-    subgraph "视图层 — 按 Phase 切换"
-        Login["LoginView.vue<br/>考试/登录"]
-        Admission["AdmissionScreen.vue<br/>录取通知"]
-        Game["游戏主界面"]
-        End["EndScreen.vue<br/>结局"]
-    end
-
-    subgraph "游戏主界面组件"
-        TopNav["TopNav.vue"]
-        HudBar["HudBar.vue"]
-        CourseList["CourseList.vue"]
-        MidPanel["MidPanel.vue"]
-        RightPanel["RightPanel.vue"]
-        Modals["Modals<br/>成绩单/事件/退出"]
-    end
-
-    App --> Login
-    App --> Admission
-    App --> Game
-    App --> End
-    Game --> TopNav
-    Game --> HudBar
-    Game --> CourseList
-    Game --> MidPanel
-    Game --> RightPanel
-    Game --> Modals
-
-    App --> Store
-    App --> WS
-    WS --> Store
-    WS -->|"send(action)"| Backend["后端 /ws/game"]
-    Backend -->|"tick/event/..."| WS
-    Login -->|"HTTP /api/exam/*"| Backend
-    Admission -->|"HTTP /api/assign_major"| Backend
+    Login["login<br>邀请码登录"] -->|"new_user"| Create["character_create<br>选择专业/分配属性"]
+    Login -->|"returning"| Saves["save_select<br>加载存档/新游戏"]
+    Saves -->|"加载存档"| Loading["loading<br>WebSocket 连接"]
+    Saves -->|"开始新游戏"| Create
+    Create --> Loading
+    Loading --> Playing["playing<br>游戏主界面"]
+    Playing --> Ended["ended<br>毕业/Game Over"]
 ```
 
+### `App.vue`
+
+- 启动时读取 `localStorage`：
+  - `zju_jwt` / `zju_token`：JWT，用于 HTTP/WS 鉴权。
+  - `zju_user_token`：长期学生凭证，用于老玩家登录。
+  - `zju_saves`：老玩家登录返回的存档摘要。
+  - `game_started`：是否可以直接连接游戏。
+  - `selected_save_slot`：选择加载的存档槽位。
+- 当阶段进入 `loading` 时建立 WebSocket。
+- 如果旧版本误把长期凭证写入 `zju_token`，启动时会迁移到 `zju_user_token` 并要求重新登录。
+
 ---
 
-## 状态管理 — [gameStore.ts](file:///d:/projects/ZJUers_simulator/zjus-frontend/src/stores/gameStore.ts)
+## HTTP API 层
 
-Pinia Composition API 风格的全局状态中枢，管理整个游戏的核心数据流。
+### `api.generated.ts`
 
-### 核心状态
+- 从后端 OpenAPI 自动生成。
+- 作为后端契约类型来源。
+- 不手写修改。
 
-| 状态 | 类型 | 说明 |
+### `client.ts`
+
+- 手写薄封装，负责 `fetch()` 调用。
+- 类型别名引用 `components['schemas']`：
+  - `AuthRequest` / `AuthResponse`
+  - `SaveSummary`
+  - `MajorOption`
+  - `InitCharacterRequest` / `InitCharacterResponse`
+  - `AdmissionInfoResponse`
+
+主要函数：
+
+| 函数 | 端点 | 用途 |
 |---|---|---|
-| `currentPhase` | `ref<GamePhase>` | 当前阶段：`login` → `admission` → `loading` → `playing` → `ended` |
-| `currentStats` | `reactive<PlayerStats>` | 玩家全部属性（energy/sanity/stress/iq/eq/gpa/efficiency 等） |
-| `courseMetadata` | `ref<CourseMetadata[]>` | 静态课程信息（名称/学分） |
-| `currentCourseStates` | `reactive<Record>` | 课程策略状态（0:摆 / 1:摸 / 2:卷） |
-| `semesterTimeLeft` | `ref<number>` | 学期剩余秒数（后端 tick 推送） |
-| `eventLogs` | `ref<EventLog[]>` | 事件日志（最多保留 50 条） |
-| `dingMessages` | `ref<DingTalkMessage[]>` | 钉钉消息列表 |
-| `activeModal` / `modalData` | `ref` | 当前激活的弹窗及其数据 |
-| `endType` / `endData` | `ref` | 结局类型（game_over/graduation）和结局数据 |
-
-### 关键方法
-
-| 方法 | 作用 |
-|---|---|
-| `updateStats(newStats)` | 合并后端推送的属性（跳过 `courses` 字段防覆盖） |
-| `updateCourseStates(updates)` | 响应式合并课程进度和策略 |
-| `setCourseState(courseId, state)` | 本地立即切换课程策略 |
-| `showModal(name, data)` | 打开弹窗（成绩单/随机事件/退出确认） |
-| `triggerEndGame(type, data)` | 触发结局（暂停引擎 + 切换到 ended 阶段） |
+| `auth()` | `POST /api/auth` | 邀请码认证，新用户返回学生凭证，老用户返回存档列表 |
+| `fetchMajors()` | `GET /api/majors` | 获取全部可选专业 |
+| `initCharacter()` | `POST /api/init_character` | 创建新游戏角色 |
+| `getAdmissionInfo()` | `GET /api/admission_info` | 兼容查询入学信息/学生凭证 |
 
 ---
 
-## WebSocket 通信 — [useGameWebSocket.ts](file:///d:/projects/ZJUers_simulator/zjus-frontend/src/composables/useGameWebSocket.ts)
+## 关键组件
 
-### 连接生命周期
+### `LoginView.vue`
 
-1. **建立连接** → `ws://host/ws/game`
-2. **发送鉴权** → `{ token, custom_llm_provider?, custom_llm_model?, custom_llm_api_key? }`
-3. **收到 `auth_ok`** → 启动心跳（25s 间隔）→ 发送 `start` + `resume` + `get_state`
-4. **消息循环** → 根据 `WsMessage` 可辨识联合类型分发到 Store
-5. **断线重连** → 最多 3 次，间隔 3 秒
+- 表单字段：昵称、邀请码、老玩家学生凭证。
+- 可选自定义 LLM 配置，用户确认安全提示后保存到 `sessionStorage`。
+- 新玩家成功后：
+  - 保存 JWT 到 `zju_token` / `zju_jwt`。
+  - 保存长期学生凭证到 `zju_user_token`。
+  - 进入 `character_create`。
+- 老玩家成功后：
+  - 保存 JWT 和存档摘要。
+  - 清除 `game_started` / `selected_save_slot`。
+  - 进入 `save_select`。
 
-### 消息类型与处理
+### `SaveSelect.vue`
 
-| 消息类型 | 处理逻辑 |
-|---|---|
-| `auth_ok` | 标记连接成功，启动心跳，请求初始状态 |
-| `init` | 设置 Phase 为 playing，解析课程元数据，初始化属性 |
-| `tick` | 更新属性、课程进度、学期倒计时（核心高频消息） |
-| `state` | 全量状态同步（恢复游戏时使用） |
-| `paused` / `resumed` | 切换暂停状态 |
-| `event` | 追加事件日志 |
-| `game_over` | 触发 Game Over 结局 |
-| `semester_summary` | 打开成绩单弹窗 |
-| `random_event` | 打开随机事件弹窗 |
-| `dingtalk_message` | 追加钉钉消息 |
-| `graduation` | 解构毕业数据（使用 `extractGraduationFinalStats` 工具函数），触发毕业结局 |
-| `new_semester` | 清空课程/日志，显示新学期提示 |
-| `save_result` | Toast 提示保存结果 |
-| `exit_confirmed` | 清除 Token，刷新页面 |
+- 从 `localStorage.zju_saves` 读取存档摘要。
+- 加载存档：写入 `selected_save_slot`，设置 `game_started=1`，进入 `loading`。
+- 开始新游戏：清除 `selected_save_slot` / `game_started`，进入 `character_create`。
 
----
+### `CharacterCreate.vue`
 
-## 类型系统 — `src/types/`
+- 调 `fetchMajors()` 展示专业。
+- `IQ` / `EQ` / `Luck` 三个 slider：
+  - 每项范围 50-150。
+  - 总和必须等于 250。
+- 调 `initCharacter()` 后设置 `game_started=1` 并进入 `loading`。
 
-采用渐进式 TypeScript 迁移策略（`tsconfig.json` 中 `allowJs: true`），核心类型已抽离：
+### `useGameWebSocket.ts`
 
-- **[game.ts](file:///d:/projects/ZJUers_simulator/zjus-frontend/src/types/game.ts)**：`GamePhase`（5 阶段枚举）、`PlayerStats`（与后端 `PlayerStats` Pydantic 模型对齐，包含索引签名兼容新增字段）
-- **[course.ts](file:///d:/projects/ZJUers_simulator/zjus-frontend/src/types/course.ts)**：`CourseProgressUpdate`、`CoursesMap`、`CourseMetadata`
-- **[modal.ts](file:///d:/projects/ZJUers_simulator/zjus-frontend/src/types/modal.ts)**：各弹窗数据结构（`TranscriptModalData`、`RandomEventModalData`、`DingTalkMessage`）
-- **[websocket.ts](file:///d:/projects/ZJUers_simulator/zjus-frontend/src/types/websocket.ts)**：`WsMessage` 可辨识联合类型（涵盖全部 14 种消息），附带 `extractGraduationFinalStats` / `extractNewSemesterName` 解构工具函数
+WebSocket 首条消息包含：
 
----
-
-## 各组件详解
-
-### [App.vue](file:///d:/projects/ZJUers_simulator/zjus-frontend/src/App.vue) — 根组件
-
-- 根据 `currentPhase` 条件渲染不同视图（`v-if` / `v-else-if` 链）
-- `onMounted` 时检查 `localStorage` 中的 Token 决定初始阶段
-- `handleEnterGame(token)` 动态拼接 WebSocket URL（自动适配 `ws://` 和 `wss://`）
-- 全局 Toast 提示渲染
-
-### [LoginView.vue](file:///d:/projects/ZJUers_simulator/zjus-frontend/src/components/LoginView.vue) — 登录与考试
-
-- 三种视图状态：`login`（登录表单） / `examStarted`（答题中） / `examFinished`（出分）
-- HTTP API 调用：`GET /api/exam/questions`、`POST /api/exam/submit`、`POST /api/exam/quick_login`
-- 支持自定义 LLM 配置（Provider/Model/API Key），通过 `sessionStorage` 传递
-
-### [AdmissionScreen.vue](file:///d:/projects/ZJUers_simulator/zjus-frontend/src/components/AdmissionScreen.vue) — 录取通知
-
-- 调用 `POST /api/assign_major` 分配专业
-- 调用 `GET /api/admission_info` 获取入学信息
-- 展示录取通知书动画，emit `enter-game` 事件进入 WebSocket 游戏
-
-### 游戏主界面组件
-
-| 组件 | 位置 | 职责 |
-|---|---|---|
-| [TopNav.vue](file:///d:/projects/ZJUers_simulator/zjus-frontend/src/components/TopNav.vue) | 顶部 | 保存游戏 / 退出按钮 |
-| [HudBar.vue](file:///d:/projects/ZJUers_simulator/zjus-frontend/src/components/HudBar.vue) | 顶部下方 | 实时属性条（精力/心态/IQ/EQ/GPA），带 `safeNumber` 防御性渲染 |
-| [CourseList.vue](file:///d:/projects/ZJUers_simulator/zjus-frontend/src/components/CourseList.vue) | 左栏 | 课程进度 + 策略切换按钮组（摆/摸/卷），通过 computed 缝合三方数据 |
-| [MidPanel.vue](file:///d:/projects/ZJUers_simulator/zjus-frontend/src/components/MidPanel.vue) | 中栏 | 双 Tab：事件日志 + 钉钉消息，自动滚底 |
-| [RightPanel.vue](file:///d:/projects/ZJUers_simulator/zjus-frontend/src/components/RightPanel.vue) | 右栏 | 效率/运气/声望面板 + 摸鱼动作按钮（健身/游戏/散步/CC98）+ 倍速/暂停控制 |
-
-### 弹窗组件 (`modals/`)
-
-| 组件 | 触发条件 | 功能 |
-|---|---|---|
-| [TranscriptModal.vue](file:///d:/projects/ZJUers_simulator/zjus-frontend/src/components/modals/TranscriptModal.vue) | `semester_summary` 消息 | 期末成绩单，展示各科分数/绩点，点击进入下学期 |
-| [RandomEventModal.vue](file:///d:/projects/ZJUers_simulator/zjus-frontend/src/components/modals/RandomEventModal.vue) | `random_event` 消息 | 随机事件选择，emit 选择结果给后端 |
-| [ExitConfirmModal.vue](file:///d:/projects/ZJUers_simulator/zjus-frontend/src/components/modals/ExitConfirmModal.vue) | 用户点击退出 | 确认保存并退出 / 不保存退出 |
-
----
-
-## 数据流示意
-
-```mermaid
-sequenceDiagram
-    participant U as 用户操作
-    participant C as Vue 组件
-    participant S as gameStore.ts
-    participant W as useGameWebSocket.ts
-    participant B as 后端 WebSocket
-
-    Note over U,B: 考试/登录阶段（HTTP）
-    U->>C: 开始考试
-    C->>B: GET /api/exam/questions
-    B-->>C: 题目列表
-    U->>C: 提交答案
-    C->>B: POST /api/exam/submit
-    B-->>C: JWT Token
-    C->>S: setPhase('admission')
-
-    Note over U,B: 进入游戏（WebSocket）
-    C->>W: connect(token, wsUrl)
-    W->>B: WebSocket 连接 + 鉴权
-    B-->>W: auth_ok
-    W->>S: addLog('已连接')
-
-    Note over U,B: 实时游戏循环
-    loop 每 Tick
-        B-->>W: tick { stats, courses, semester_time_left }
-        W->>S: updateStats() + updateCourseStates()
-        S-->>C: 响应式更新 UI
-    end
-
-    U->>C: 切换课程策略（摆→卷）
-    C->>S: setCourseState()
-    C->>W: send({ action: 'change_course_state' })
-    W->>B: 转发动作
-
-    U->>C: 点击摸鱼
-    C->>W: send({ action: 'relax', target: 'cc98' })
-    W->>B: 转发动作
-    B-->>W: event { desc: '...' }
-    W->>S: addLog()
+```ts
+{
+  token,
+  load_save_slot?,
+  custom_llm_provider?,
+  custom_llm_model?,
+  custom_llm_api_key?
+}
 ```
 
+- `auth_ok` 后启动心跳，并发送 `start` / `resume` / `get_state`。
+- `auth_error` 会清理当前游戏标记；若是存档错误则回到 `save_select`，否则回到 `login`。
+- `init` 将阶段切到 `playing` 并初始化课程、属性、剩余时间。
+- `save_result` / `exit_confirmed` 负责退出时清理 JWT 和本局标记。
+
 ---
 
-## 构建与开发工具链
+## 状态管理
 
-| 工具 | 配置文件 | 用途 |
-|---|---|---|
-| Vite | `vite.config.js` | 构建 + 开发服务器（端口 3000），代理 `/api`、`/ws`、`/world` 到后端 8000 |
-| TypeScript | `tsconfig.json` | `allowJs: true` 渐进式迁移，`strict: true` |
-| ESLint | `eslint.config.js` | Flat Config，覆盖 `.vue/.js/.ts` |
-| Vitest | `vitest.config.js` | `jsdom` 环境，`globals: true` |
-| vue-tsc | `npm run type-check` | Vue SFC 类型检查 |
+`gameStore.ts` 管理：
 
-### NPM Scripts
+| 状态 | 说明 |
+|---|---|
+| `currentPhase` | 当前页面阶段 |
+| `currentStats` | 玩家属性 |
+| `courseMetadata` | 当前学期课程元数据 |
+| `currentCourseStates` | 课程策略 |
+| `semesterTimeLeft` | 学期剩余秒数 |
+| `eventLogs` | 事件日志 |
+| `dingMessages` | 钉钉消息 |
+| `gameMode` / `llmAvailable` | 内容生成模式状态 |
+| `activeModal` / `modalData` | 当前弹窗 |
+| `endType` / `endData` | 结局数据 |
+
+---
+
+## 开发命令
 
 ```bash
-npm run dev        # 启动开发服务器 (localhost:3000)
-npm run build      # 生产构建
-npm run lint       # ESLint 检查 + 自动修复
-npm run type-check # TypeScript 类型检查
-npm test           # 运行 Vitest 测试
+npm run dev
+npm run build
+npm run type-check
+npm run lint
+npm test
+```
+
+OpenAPI 类型生成需在根目录通过 Docker Compose 启动后端后执行：
+
+```bash
+docker compose up -d --build backend
+cd zjus-frontend
+npx openapi-typescript http://127.0.0.1:8000/openapi.json -o src/types/api.generated.ts
 ```

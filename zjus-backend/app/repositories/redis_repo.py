@@ -43,6 +43,8 @@ class RedisRepository:
             "eq",
             "luck",
             "reputation",
+            "efficiency",
+            "elapsed_game_time",
         }
         str_fields = {
             "username",

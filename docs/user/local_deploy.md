@@ -32,13 +32,16 @@ POSTGRES_PASSWORD=你的数据库密码
 ADMIN_USERNAME=你的管理员用户名
 ADMIN_PASSWORD=你的管理员密码
 ADMIN_SESSION_SECRET=你的管理员会话密钥
-LLM_API_KEY=你的大模型API密钥
+INVITE_CODES=本地测试邀请码1,本地测试邀请码2
+LLM_API_KEY=你的大模型API密钥（可选）
 LLM_BASE_URL=https://dashscope.aliyuncs.com/compatible-mode/v1
 LLM=你的模型名称
 MINIMAX_API_KEY=你的MiniMax API密钥（可选，留空则回退到默认LLM）
 MINIMAX_MODEL=minimax-m2-her
 MINIMAX_BASE_URL=https://api.minimax.chat/v1/text/chatcompletion_v2
 ```
+
+`INVITE_CODES` 为逗号分隔的邀请码列表。在线/本地登录都需要填写其中一个邀请码；新玩家登录后会进入角色创建页，老玩家登录还需要提供学生凭证。
 
 2. 复制 Docker Compose 本地覆写模板：
 

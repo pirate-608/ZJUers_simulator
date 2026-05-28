@@ -4,7 +4,27 @@
  */
 
 export interface paths {
-    "/api/exam/questions": {
+    "/api/auth": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Auth
+         * @description 邀请码认证：验证用户名+邀请码，返回 JWT 和持久凭证
+         */
+        post: operations["auth_api_auth_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/majors": {
         parameters: {
             query?: never;
             header?: never;
@@ -12,10 +32,10 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Get Exam Questions
-         * @description 获取入学考试题目
+         * Get Majors
+         * @description 返回 majors.json 中所有可选专业
          */
-        get: operations["get_exam_questions_api_exam_questions_get"];
+        get: operations["get_majors_api_majors_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -24,7 +44,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/exam/submit": {
+    "/api/init_character": {
         parameters: {
             query?: never;
             header?: never;
@@ -33,25 +53,11 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Submit Exam */
-        post: operations["submit_exam_api_exam_submit_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/assign_major": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Assign Major */
-        post: operations["assign_major_api_assign_major_post"];
+        /**
+         * Init Character
+         * @description 初始化角色：选择专业并分配初始属性
+         */
+        post: operations["init_character_api_init_character_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -67,28 +73,11 @@ export interface paths {
         };
         /**
          * Get Admission Info
-         * @description 获取当前用户的用户名和分配专业（tier）。需前端携带 Authorization: Bearer <token>
+         * @description 查询当前用户的用户名和已分配专业
          */
         get: operations["get_admission_info_api_admission_info_get"];
         put?: never;
         post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/exam/quick_login": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Quick Login */
-        post: operations["quick_login_api_exam_quick_login_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -128,64 +117,48 @@ export interface components {
             /** Token */
             token: string;
         };
-        /** AssignMajorRequest */
-        AssignMajorRequest: {
-            /** Token */
-            token: string;
-        };
-        /** AssignMajorResponse */
-        AssignMajorResponse: {
-            /** Success */
-            success: boolean;
-            /** Major */
-            major: string;
-            /** Major Abbr */
-            major_abbr: string;
-            /** Courses */
-            courses: {
-                [key: string]: string;
-            }[];
-        };
-        /** ExamQuestion */
-        ExamQuestion: {
-            /** Id */
-            id: string;
-            /** Content */
-            content: string;
-            /** Score */
-            score: number;
-            /** Options */
-            options?: string[] | null;
-        };
-        /** ExamResponse */
-        ExamResponse: {
-            /** Status */
-            status: string;
-            /** Score */
-            score?: number;
-            /** Tier */
-            tier?: string;
-            /** Token */
-            token?: string;
-            /** Message */
-            message?: string;
-        };
-        /** ExamSubmission */
-        ExamSubmission: {
+        /** AuthRequest */
+        AuthRequest: {
             /** Username */
             username: string;
-            /** Answers */
-            answers: {
-                [key: string]: string;
-            };
+            /** Invite Code */
+            invite_code: string;
             /** Token */
-            token?: string;
+            token?: string | null;
             /** Custom Llm Model */
             custom_llm_model?: string | null;
             /** Custom Llm Api Key */
             custom_llm_api_key?: string | null;
             /** Custom Llm Provider */
             custom_llm_provider?: string | null;
+        };
+        /** AuthResponse */
+        AuthResponse: {
+            /** Status */
+            status: string;
+            /** Jwt */
+            jwt?: string | null;
+            /** User Token */
+            user_token?: string | null;
+            /** Username */
+            username: string;
+            /** User Id */
+            user_id?: number | null;
+            /** Message */
+            message?: string | null;
+            /** Saves */
+            saves?: components["schemas"]["SaveSummary"][];
+        };
+        /** CourseOption */
+        CourseOption: {
+            /** Id */
+            id: string;
+            /** Name */
+            name: string;
+            /** Credits */
+            credits: number;
+            /** Difficulty */
+            difficulty: number;
         };
         /** GameConfigResponse */
         GameConfigResponse: {
@@ -212,31 +185,73 @@ export interface components {
             /** Detail */
             detail?: components["schemas"]["ValidationError"][];
         };
-        /** QuickLoginRequest */
-        QuickLoginRequest: {
-            /** Username */
-            username: string;
+        /** InitCharacterRequest */
+        InitCharacterRequest: {
             /** Token */
-            token?: string;
-            /** Custom Llm Model */
-            custom_llm_model?: string | null;
-            /** Custom Llm Api Key */
-            custom_llm_api_key?: string | null;
-            /** Custom Llm Provider */
-            custom_llm_provider?: string | null;
+            token: string;
+            /** Major Abbr */
+            major_abbr: string;
+            /**
+             * Iq
+             * @default 100
+             */
+            iq: number;
+            /**
+             * Eq
+             * @default 100
+             */
+            eq: number;
+            /**
+             * Luck
+             * @default 50
+             */
+            luck: number;
         };
-        /** QuickLoginResponse */
-        QuickLoginResponse: {
-            /** Status */
-            status: string;
-            /** Token */
-            token?: string | null;
-            /** Username */
-            username?: string | null;
-            /** Assigned Major */
-            assigned_major?: string | null;
-            /** Message */
-            message?: string | null;
+        /** InitCharacterResponse */
+        InitCharacterResponse: {
+            /** Success */
+            success: boolean;
+            /** Major */
+            major: string;
+            /** Major Abbr */
+            major_abbr: string;
+            /** Courses */
+            courses: components["schemas"]["CourseOption"][];
+        };
+        /** MajorOption */
+        MajorOption: {
+            /** Name */
+            name: string;
+            /** Abbr */
+            abbr: string;
+            /** Iq Buff */
+            iq_buff: number;
+            /** Stress Base */
+            stress_base: number;
+            /** Desc */
+            desc: string;
+        };
+        /** SaveSummary */
+        SaveSummary: {
+            /** Save Slot */
+            save_slot: number;
+            /** Major */
+            major: string;
+            /** Major Abbr */
+            major_abbr: string;
+            /** Semester */
+            semester: string;
+            /** Semester Idx */
+            semester_idx: number;
+            /** Gpa */
+            gpa: string;
+            /** Saved At */
+            saved_at?: string | null;
+            /**
+             * Total Play Time
+             * @default 0
+             */
+            total_play_time: number;
         };
         /** SemesterConfigResponse */
         SemesterConfigResponse: {
@@ -273,7 +288,40 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
-    get_exam_questions_api_exam_questions_get: {
+    auth_api_auth_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AuthRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AuthResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_majors_api_majors_get: {
         parameters: {
             query?: never;
             header?: never;
@@ -288,12 +336,12 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ExamQuestion"][];
+                    "application/json": components["schemas"]["MajorOption"][];
                 };
             };
         };
     };
-    submit_exam_api_exam_submit_post: {
+    init_character_api_init_character_post: {
         parameters: {
             query?: never;
             header?: never;
@@ -302,7 +350,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["ExamSubmission"];
+                "application/json": components["schemas"]["InitCharacterRequest"];
             };
         };
         responses: {
@@ -312,40 +360,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ExamResponse"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    assign_major_api_assign_major_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["AssignMajorRequest"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["AssignMajorResponse"];
+                    "application/json": components["schemas"]["InitCharacterResponse"];
                 };
             };
             /** @description Validation Error */
@@ -363,7 +378,7 @@ export interface operations {
         parameters: {
             query?: never;
             header: {
-                /** @description Bearer <token> */
+                /** @description Bearer <JWT> */
                 authorization: string;
             };
             path?: never;
@@ -378,39 +393,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AdmissionInfoResponse"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    quick_login_api_exam_quick_login_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["QuickLoginRequest"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["QuickLoginResponse"];
                 };
             };
             /** @description Validation Error */

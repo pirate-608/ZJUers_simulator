@@ -155,6 +155,7 @@ const confirmCreate = async () => {
       luck: stats.luck,
     })
     localStorage.setItem('game_started', '1')
+    localStorage.removeItem('selected_save_slot')
     store.setPhase('loading')
   } catch (err) {
     console.error('Init character error:', err)

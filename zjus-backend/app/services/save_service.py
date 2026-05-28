@@ -1,5 +1,7 @@
 # app/services/save_service.py
 import logging
+from typing import Any, Dict, List
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from app.models.game_save import GameSave
@@ -13,7 +15,9 @@ class SaveService:
     """处理 Redis 与 PostgreSQL 之间的持久化同步"""
 
     @staticmethod
-    async def persist_to_db(repo: RedisRepository, db: AsyncSession) -> bool:
+    async def persist_to_db(
+        repo: RedisRepository, db: AsyncSession, save_slot: int = 1
+    ) -> bool:
         """将 Redis 数据同步至数据库"""
         try:
             snapshot = await repo.get_snapshot()
@@ -24,7 +28,7 @@ class SaveService:
 
             save_values = {
                 "user_id": int(repo.user_id),
-                "save_slot": 1,
+                "save_slot": save_slot,
                 "stats_data": stats_dict,
                 "courses_data": snapshot.courses,
                 "course_states_data": snapshot.course_states,
@@ -51,14 +55,12 @@ class SaveService:
 
     @staticmethod
     async def load_from_db(
-        user_id: str, repo: RedisRepository, db: AsyncSession
+        user_id: str, repo: RedisRepository, db: AsyncSession, save_slot: int = 1
     ) -> bool:
         """从数据库加载存档写回 Redis"""
         try:
-            from sqlalchemy import select
-
             stmt = select(GameSave).where(
-                GameSave.user_id == int(user_id), GameSave.save_slot == 1
+                GameSave.user_id == int(user_id), GameSave.save_slot == save_slot
             )
             result = await db.execute(stmt)
             save = result.scalars().first()
@@ -78,3 +80,31 @@ class SaveService:
             logger.error(f"Load failed: {e}")
             await db.rollback()
             return False
+
+    @staticmethod
+    async def list_saves(user_id: str, db: AsyncSession) -> List[Dict[str, Any]]:
+        """列出用户可加载的存档摘要，供前端选择。"""
+        stmt = (
+            select(GameSave)
+            .where(GameSave.user_id == int(user_id))
+            .order_by(GameSave.save_slot.asc())
+        )
+        result = await db.execute(stmt)
+        saves = result.scalars().all()
+
+        summaries: List[Dict[str, Any]] = []
+        for save in saves:
+            stats = save.stats_data or {}
+            summaries.append(
+                {
+                    "save_slot": save.save_slot,
+                    "major": stats.get("major") or "未分配专业",
+                    "major_abbr": stats.get("major_abbr") or "",
+                    "semester": stats.get("semester") or "未知学期",
+                    "semester_idx": int(stats.get("semester_idx") or 1),
+                    "gpa": str(stats.get("gpa") or "0.0"),
+                    "saved_at": save.saved_at.isoformat() if save.saved_at else None,
+                    "total_play_time": save.total_play_time or 0,
+                }
+            )
+        return summaries

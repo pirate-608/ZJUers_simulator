@@ -21,9 +21,24 @@ class GameService:
         self.world = world
 
     async def prepare_game_context(
-        self, username: str, db: AsyncSession = None
+        self,
+        username: str,
+        db: AsyncSession = None,
+        save_slot: int = 1,
+        force_load_save: bool = False,
     ) -> Dict[str, Any]:
         """初始化或恢复游戏上下文"""
+        if force_load_save and db:
+            loaded = await SaveService.load_from_db(
+                self.user_id, self.repo, db, save_slot=save_slot
+            )
+            if loaded:
+                return {
+                    "data": await self.repo.get_all_game_data(),
+                    "status": "loaded",
+                }
+            return {"data": None, "status": "missing_save"}
+
         if await self.repo.exists():
             return {
                 "data": await self.repo.get_all_game_data(),
@@ -31,7 +46,9 @@ class GameService:
             }
 
         if db:
-            loaded = await SaveService.load_from_db(self.user_id, self.repo, db)
+            loaded = await SaveService.load_from_db(
+                self.user_id, self.repo, db, save_slot=save_slot
+            )
             if loaded:
                 return {
                     "data": await self.repo.get_all_game_data(),
@@ -41,7 +58,10 @@ class GameService:
         return {"data": None, "status": "new"}
 
     async def assign_major_and_init(
-        self, major_abbr: str, stat_overrides: Optional[Dict[str, int]] = None
+        self,
+        major_abbr: str,
+        stat_overrides: Optional[Dict[str, int]] = None,
+        username: str = "",
     ) -> Dict[str, Any]:
         """按指定专业和属性初始化游戏状态"""
         assignment = await self.world.get_major_by_abbr(major_abbr)
@@ -51,6 +71,7 @@ class GameService:
         major_info = assignment["major_info"]
         overrides = stat_overrides or {}
 
+        initial_stats = PlayerStats.build_initial(username=username).model_dump()
         update_fields = {
             "elapsed_game_time": 0,
             "major": major_info["name"],
@@ -72,14 +93,16 @@ class GameService:
                 assignment["initial_courses"], ensure_ascii=False
             ),
         }
+        initial_stats.update(update_fields)
 
         courses_mastery = {str(c["id"]): 0 for c in assignment["initial_courses"]}
         course_states = {str(c["id"]): 1 for c in assignment["initial_courses"]}
 
-        await self.repo.update_courses_and_states(
-            stats_update=update_fields,
+        await self.repo.set_game_data(
+            stats=initial_stats,
             courses=courses_mastery,
             states=course_states,
+            achievements=[],
         )
 
         return {

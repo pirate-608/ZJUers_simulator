@@ -77,6 +77,8 @@ const exitWithoutSave = () => {
   store.closeModal()
   // 直接销毁 Token 并强刷网页，断开的 WS 会让后端自动清理连接
   localStorage.removeItem('zju_token')
+  localStorage.removeItem('zju_jwt')
+  localStorage.removeItem('selected_save_slot')
   window.location.reload()
 }
 

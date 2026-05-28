@@ -1,151 +1,226 @@
 # API 文档
 
-## 认证与考试 (app/api/auth.py)
+当前后端入口分为两类：
 
-### GET /api/exam/questions
-- 作用：获取入学考试题库。
-- 请求参数：无。
-- 响应类型：`ExamQuestion[]`
-- 响应示例：
-  ```json
-  [
-    {"id": "1", "content": "题目内容", "score": 10, "options": ["A", "B", "C", "D"]},
-    ...
+- HTTP API：认证、角色初始化、配置查询。
+- WebSocket：实时游戏循环、保存/退出、动作指令。
+
+前端类型来源为后端 OpenAPI：`zjus-frontend/src/types/api.generated.ts`。该文件应从运行中的后端 `/openapi.json` 生成，不手写维护。
+
+## 认证与角色初始化 (`app/api/auth.py`)
+
+### POST `/api/auth`
+
+作用：使用昵称 + 邀请码认证用户，并返回 WebSocket/HTTP 使用的 JWT。新用户会额外获得长期学生凭证；老用户需提供学生凭证。
+
+请求体：
+
+```json
+{
+  "username": "折大人",
+  "invite_code": "INVITE_CODE",
+  "token": "老玩家学生凭证，可选",
+  "custom_llm_provider": "openai",
+  "custom_llm_model": "gpt-4o-mini",
+  "custom_llm_api_key": "sk-..."
+}
+```
+
+新用户响应：
+
+```json
+{
+  "status": "new_user",
+  "jwt": "<JWT>",
+  "user_token": "<长期学生凭证>",
+  "username": "折大人",
+  "user_id": 1,
+  "saves": []
+}
+```
+
+老用户响应：
+
+```json
+{
+  "status": "returning",
+  "jwt": "<JWT>",
+  "username": "折大人",
+  "user_id": 1,
+  "saves": [
+    {
+      "save_slot": 1,
+      "major": "计算机科学与技术",
+      "major_abbr": "CS",
+      "semester": "大二春夏",
+      "semester_idx": 4,
+      "gpa": "3.7",
+      "saved_at": "2026-05-28T16:30:00",
+      "total_play_time": 0
+    }
   ]
-  ```
-- 备注：`options` 为可选的选项列表；若题库加载失败，返回兜底题目，避免前端报错。
+}
+```
 
-### POST /api/exam/submit
-- 作用：提交考试答案，判分并颁发登录凭证。
-- 请求体 (application/json)：
-  ```json
+错误以 `status: "error"` 和 `message` 返回。常见原因包括邀请码无效、昵称被占用但未提供正确学生凭证、用户或凭证被黑名单限制。
+
+### GET `/api/majors`
+
+作用：返回 `world/majors.json` 中所有可选专业，供角色创建页展示。
+
+响应：
+
+```json
+[
   {
-    "username": "用户昵称",
-    "answers": {"1": "A", "2": "B"},
-    "token": "可选，老用户凭证",
-    "custom_llm_provider": "可选，自定义模型提供商(如 openai, deepseek 等)",
-    "custom_llm_model": "可选，会话级自定义模型",
-    "custom_llm_api_key": "可选，会话级自定义 API Key"
+    "name": "计算机科学与技术",
+    "abbr": "CS",
+    "iq_buff": 15,
+    "stress_base": 25,
+    "desc": "头发与薪资成反比，紫金港卷王聚集地"
   }
-  ```
-- 响应 (success)：
-  ```json
-  {"status": "success", "score": 90, "tier": "TIER_1", "token": "<JWT>"}
-  ```
-- 错误场景：用户名被占用且未提供正确 token、黑名单、分数未达标、凭证错误等。
+]
+```
 
-### POST /api/exam/quick_login
-- 作用：老用户免试登录，验证用户名 + 凭证。
-- 请求体：
-  ```json
-  {"username": "用户昵称", "token": "可选，老用户凭证", "custom_llm_provider": "可选", "custom_llm_model": "可选", "custom_llm_api_key": "可选"}
-  ```
-- 响应：
-  ```json
-  {"status": "success", "token": "<JWT>", "username": "...", "assigned_major": "..."}
-  ```
-- 备注：黑名单/限制用户将被拒绝。
+### POST `/api/init_character`
 
-### POST /api/assign_major
-- 作用：考试通过后分配专业并初始化游戏存档。
-- 请求体：
-  ```json
-  {"token": "<JWT>"}
-  ```
-- 响应：
-  ```json
-  {"success": true, "major": "计算机科学", "major_abbr": "CS", "courses": [...]} 
-  ```
-- 备注：若 Redis 中不存在存档，将创建初始存档后再分配专业。
+作用：新游戏初始化。玩家选择专业并分配 `IQ` / `EQ` / `Luck` 基础属性。
 
-### GET /api/admission_info
-- 作用：查询当前用户用户名与已分配专业。
-- 认证：`Authorization: Bearer <JWT>`（header 参数，required）
-- 响应类型：`AdmissionInfoResponse`
-- 响应：
-  ```json
-  {"username": "...", "assigned_major": "...", "token": "老用户凭证"}
-  ```
+请求体：
 
-## 游戏配置 (app/api/game.py)
+```json
+{
+  "token": "<JWT>",
+  "major_abbr": "CS",
+  "iq": 100,
+  "eq": 100,
+  "luck": 50
+}
+```
 
-### GET /config
-- 作用：获取前端所需的游戏平衡参数。
-- 请求参数：无。
-- 响应类型：`GameConfigResponse`
-- 响应示例：
-  ```json
-  {
-    "version": "1.0",
-    "semester": {
-      "durations": {"1": 360, "2": 420, "3": 480, "4": 540},
-      "default_duration": 360,
-      "speed_modes": {"normal": 1.0, "fast": 2.0, "ultra": 5.0}
-    },
-    "course_states": {
-      "0": {"name": "摆烂", "description": "彻底放弃"},
-      "1": {"name": "摸鱼", "description": "略尽人事"},
-      "2": {"name": "卷王", "description": "全力以赴"}
-    },
-    "cooldowns": {"sleep": 120, "exercise": 60, "club": 30},
-    "tick_interval": 1.0,
-    "base_drain": 5
-  }
-  ```
-- 备注：`course_states` 为策略枚举（0/1/2 → 摆/摸/卷）；`cooldowns` 为各放松动作的冷却秒数。
+服务端约束：
 
-## 游戏 WebSocket (app/api/game.py)
+- `iq`、`eq`、`luck` 每项必须在 `50-150`。
+- 三项总和必须等于 `250`。
+- 专业 IQ 增益在 `GameService.assign_major_and_init()` 中额外叠加，不计入 250 点预算。
 
-### 路径：/ws/game
-- 握手：先 `accept()`，10s 内首条消息需提供鉴权信息。
-- 首条消息 JSON：
-  ```json
-  {
-    "token": "<JWT>",
-    "custom_llm_provider": "可选，自定义模型提供商",
-    "custom_llm_model": "可选，会话级自定义模型",
-    "custom_llm_api_key": "可选，会话级自定义 Key"
-  }
-  ```
-- 鉴权失败：返回 `{"type": "auth_error", "message": "无效凭证"}` 并关闭。
-- 账号受限：返回 `auth_error` 并关闭。
-- 连接管理：同一用户重复连接会踢掉旧连接；心跳超时会清理。
-- 消息频率：最小间隔 0.05s。
+响应：
 
-#### 服务端推送消息类型
-- `auth_ok`：鉴权通过。
-- `init`：初始状态包，包含玩家统计、课程等。
-- `event` / `random_event` / `tick` / `save_result` / `exit_confirmed` 等（详见游戏引擎）。
+```json
+{
+  "success": true,
+  "major": "计算机科学与技术",
+  "major_abbr": "CS",
+  "courses": []
+}
+```
 
-#### 客户端发送动作
-- 心跳：`{"action": "ping"}` → 返回 `pong` 并刷新 TTL。
-- 保存并退出：`{"action": "save_and_exit"}` → 返回 `save_result`，清理 Redis 后断开。
-- 仅保存：`{"action": "save_game"}` → 返回 `save_result`。
-- 不保存退出：`{"action": "exit_without_save"}` → 返回 `exit_confirmed`，清理后断开。
-- 其他游戏动作：`engine.process_action` 处理（如 relax/event_choice/next_semester 等）。
+### GET `/api/admission_info`
 
-## 公共/依赖 (app/api/deps.py)
-- `get_db()`：注入异步数据库会话。
-- `get_redis()`：获取 Redis 客户端。
-- `get_current_user_info(token)`：解析 JWT，失败抛 403。
-- `get_world_service()`：世界数据服务。
-- `get_redis_repo(user_info, redis)`：按用户构造 Redis 仓库。
-- `get_game_service(user_info, repo, world)`：构造游戏业务服务。
-- `get_save_service()`：构造存档服务。
+保留兼容接口，用于查询当前用户昵称、已分配专业和长期学生凭证。
 
-## Redis 工具 (app/api/cache.py)
-- `RedisCache.get_client()`：获取共享连接池。
-- 列表操作：`lpop`、`rpush`、`rpush_with_limit`、`rpush_many_with_limit`、`llen`。
-- KV 操作：`set/get/delete/exists/expire`。
-- TTL 刷新：`touch_ttl(keys, ttl_seconds)`。
-- 玩家 key 构造：`build_player_keys(user_id)`。
+认证：`Authorization: Bearer <JWT>`
 
-## 认证方式说明
-- 登录成功后获取 JWT；所有受保护接口/WS 首消息需携带 JWT。
-- `get_current_user_info` 在 HTTP 路由中可作为依赖；WS 中由首条消息手动解析。
-- 黑名单/限制用户会在各入口被拒绝。
+响应：
+
+```json
+{
+  "username": "折大人",
+  "assigned_major": "计算机科学与技术",
+  "token": "<长期学生凭证>"
+}
+```
+
+## 游戏配置 (`app/api/game.py`)
+
+### GET `/config`
+
+作用：返回前端所需的数值平衡配置，包括学期时长、课程状态、冷却、tick 间隔等。
+
+## WebSocket (`app/api/game.py`)
+
+### 路径 `/ws/game`
+
+连接建立后，客户端必须在 10 秒内发送首条鉴权消息。
+
+新游戏/继续当前 Redis 状态：
+
+```json
+{
+  "token": "<JWT>",
+  "custom_llm_provider": "openai",
+  "custom_llm_model": "gpt-4o-mini",
+  "custom_llm_api_key": "sk-..."
+}
+```
+
+加载指定持久化存档：
+
+```json
+{
+  "token": "<JWT>",
+  "load_save_slot": 1
+}
+```
+
+鉴权通过后服务端会：
+
+1. 检查账号限制。
+2. 踢掉同用户旧连接。
+3. 若提供 `load_save_slot`，从 `game_saves` 指定槽位恢复到 Redis。
+4. 启动 `GameEngine` 与事件转发协程。
+5. 推送 `auth_ok` 和 `init`。
+
+### 服务端消息
+
+| 类型 | 说明 |
+|---|---|
+| `auth_ok` | 鉴权通过 |
+| `auth_error` | JWT 无效、账号受限或选择的存档不存在 |
+| `init` | 初始状态包：玩家属性、课程进度、课程策略、学期剩余时间 |
+| `tick` | 高频状态更新 |
+| `event` | 事件日志 |
+| `random_event` | 随机事件弹窗 |
+| `semester_summary` | 期末成绩单 |
+| `dingtalk_message` | 钉钉消息 |
+| `new_semester` | 新学期课程载入 |
+| `graduation` | 毕业结算 |
+| `save_result` | 保存结果 |
+| `exit_confirmed` | 不保存退出确认 |
+| `mode_changed` / `toast` | 内容生成模式和提示 |
+
+### 客户端动作
+
+| 动作 | 说明 |
+|---|---|
+| `ping` | 心跳，刷新 Redis TTL |
+| `start` / `pause` / `resume` | 游戏运行状态 |
+| `get_state` | 请求当前状态 |
+| `set_speed` | 调整倍速 |
+| `change_course_state` | 切换课程策略 |
+| `relax` | 健身、打游戏、散步、CC98 |
+| `exam` | 期末考试结算 |
+| `next_semester` | 进入下一学期 |
+| `event_choice` | 随机事件选项 |
+| `save_game` | 保存但不退出 |
+| `save_and_exit` | 保存并退出，持久化后清 Redis |
+| `exit_without_save` | 不保存退出，清 Redis |
+| `set_mode` | 内容生成模式：`library` / `hybrid` / `ai` |
+
+## OpenAPI 类型生成
+
+后端必须通过根目录 Docker Compose 启动后再生成前端 API 类型：
+
+```bash
+docker compose up -d --build backend
+cd zjus-frontend
+npx openapi-typescript http://127.0.0.1:8000/openapi.json -o src/types/api.generated.ts
+```
+
+`api.generated.ts` 只保存后端契约类型；`src/api/client.ts` 是手写薄封装，负责调用 `fetch()` 并引用生成类型。
 
 ## 会话级自定义 LLM
-- 前端可在登录页/免试登录/WebSocket 建联时提供 `custom_llm_provider` / `custom_llm_model` / `custom_llm_api_key`。
-- 这些配置仅在当次会话传递，存于前端内存与后端临时 `llm_override` 字典中，不落库。
-- 后端会自动根据 `custom_llm_provider` 映射到真实的 `LLM_BASE_URL`。若无效或 API 调用失败，通常会记录警告并可能导致游戏体验降级。
+
+- 前端登录时可传 `custom_llm_provider` / `custom_llm_model` / `custom_llm_api_key`。
+- 配置保存在浏览器 `sessionStorage`，WebSocket 首条消息再次传给后端。
+- 后端只在当前 `GameEngine` 会话中使用 `llm_override`，不落库。

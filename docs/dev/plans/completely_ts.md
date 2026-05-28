@@ -36,8 +36,9 @@ All components migrated to `<script setup lang="ts">`:
 | MidPanel | `ref<HTMLDivElement \| null>`, `getRoleConfig(role: string)`, `setSpeed(speed: number)` |
 | RightPanel | `animationFrameId: number \| null`, `sendRelax(activity: RelaxTarget)` |
 | App | `handleEnterGame(token: string)` |
-| LoginView | `ref<ExamQuestion[]>`, `ref<Record<number, string>>`, typed `viewState` union |
-| AdmissionScreen | `ref<{username: string; major: string}>`, `defineEmits<{enter-game: [string]}>` |
+| LoginView | typed invite-code auth form and LLM safety confirmation state |
+| SaveSelect | `SaveSummary[]` from generated OpenAPI schema |
+| CharacterCreate | `MajorOption[]`, typed stat allocation and init payload |
 
 ## Config Fixes
 

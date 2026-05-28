@@ -11,8 +11,7 @@ nav:
   - 首页: index.md
   - 游戏预览: 
     - 开始页面: preview/start.md
-    - 入学考试: preview/exam.md
-    - 录取通知书: preview/admission.md
+    - 角色创建: preview/character_create.md
     - 主循环控制台: preview/dashboard.md
     - 随机事件: preview/event.md
     - 钉钉消息: preview/dingtalk.md

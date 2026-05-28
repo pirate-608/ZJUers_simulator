@@ -128,6 +128,7 @@ async def websocket_endpoint(websocket: WebSocket):
         auth_text = await asyncio.wait_for(websocket.receive_text(), timeout=10.0)
         auth_data = json.loads(auth_text)
         token = auth_data.get("token", "")
+        load_save_slot = auth_data.get("load_save_slot")
     except (asyncio.TimeoutError, json.JSONDecodeError, Exception):
         await websocket.close(code=1008, reason="auth_timeout")
         return
@@ -206,8 +207,27 @@ async def websocket_endpoint(websocket: WebSocket):
 
     try:
         # 初始化游戏（使用短生命周期 DB Session）
+        selected_save_slot = None
+        if load_save_slot is not None:
+            try:
+                selected_save_slot = int(load_save_slot)
+            except (TypeError, ValueError):
+                selected_save_slot = None
+
         async with AsyncSessionLocal() as db:
-            game_context = await game_service.prepare_game_context(username, db)
+            game_context = await game_service.prepare_game_context(
+                username,
+                db,
+                save_slot=selected_save_slot or 1,
+                force_load_save=selected_save_slot is not None,
+            )
+
+        if game_context["status"] == "missing_save":
+            await manager.send_personal_message(
+                {"type": "auth_error", "message": "选择的存档不存在"},
+                user_id,
+            )
+            return
 
         snapshot = await repo.get_snapshot()
         final_stats = snapshot.stats.model_dump()

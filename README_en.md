@@ -28,7 +28,6 @@ zjus-backend/world/
 │   └── ... (40 course JSON files in total, such as CS.json, AI.json, etc.)
 ├── achievements.json  # Achievement system
 ├── characters.json    # Character system
-├── entrance_exam.json # Entrance exam
 ├── game_balance.json  # Game balance
 ├── keywords.json      # Keywords
 ├── majors.json        # Major system
@@ -52,16 +51,16 @@ We need you! Please don’t hesitate to share your keyword inspirations, suggest
 </details>
 
 <details>
-<summary>📝 Entrance Exam</summary>
+<summary>🧑‍🎓 Character Creation</summary>
 
-![Entrance Exam](https://docs.67656.fun/assets/images/exam.png)
+New players sign in with an invite code, choose a major, and allocate IQ / EQ / Luck.
 
 </details>
 
 <details>
-<summary>📜 Admission Letter</summary>
+<summary>💾 Save Selection</summary>
 
-![Admission Letter](https://docs.67656.fun/assets/images/admission.png)
+Returning players can load an existing save or start a new game.
 
 </details>
 

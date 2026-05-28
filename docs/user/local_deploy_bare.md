@@ -10,7 +10,6 @@
 - **后端**：Python (建议 3.10+)
 - **数据库**：PostgreSQL 14+ 
 - **缓存**：Redis 6+ (Windows 宿主机建议安装在 WSL 中)
-- **底层 C 库环境**：GCC / MinGW (用于编译并加载判卷用的 C 动态链接库，当然，判题逻辑完全可以直接用python实现，之所以用C是为了隐藏源码防作弊)
 
 ---
 
@@ -118,16 +117,15 @@ REDIS_URL=redis://localhost:6379/0
 # LLM 密钥（如果需要测试对话，必须配置）
 LLM_API_KEY=sk-xxxxxx
 LLM_BASE_URL=https://api.openai.com/v1
+LLM=your-model
+
+# 登录邀请码（逗号分隔，至少配置一个）
+INVITE_CODES=LOCAL_TEST_CODE
 # 游戏防沉迷/管理员等配置...
 ```
 *(注意：请确保 `ENVIRONMENT` 设置为 `development`，这会启用彩色结构化日志和快速热重载。)*
 
-### 2.3 关于底层 C 库的说明 (重要)
-本项目入学考试环节调用了 C 语言编写的动态链接库（源码位于 `access` 目录下）。
-- 如果你使用的是纯 Windows，必须确保存在编译好的 `.dll` 文件（如 `zju_admission.dll`）。
-- 如果没有，你需要使用 MinGW-w64 或者 GCC 将 C 源码编译为动态库。如果运行在 WSL 则需要 `.so` 文件。
-
-### 2.4 启动后端服务
+### 2.3 启动后端服务
 在 `zjus-backend` 根目录下运行（确保你的 `.venv` 已激活）：
 ```bash
 python -m main
@@ -166,7 +164,7 @@ Vite 本地开发服务器默认已经在 `vite.config.js` 中配置了代理规
    - 检查该服务是否已启动。如果跑在 WSL 中，WSL 的 localhost 和 Windows 本机的 localhost 端口映射默认互通，但如果有代理软件或者防火墙，可能会拦截。
 2. **PostgreSQL 身份验证失败 (`password authentication failed`)**：
    - 检查 `.env` 中的用户名、密码，或者尝试将 pg_hba.conf 中本地访问模式改为 `trust` 或 `md5`。
-3. **C 库调用报错 (`OSError: [WinError 126] The specified module could not be found`)**：
-   - 这是因为 python 的 ctypes 找不到 dll，检查 dll 文件是否存在于后端正确的目录下，并且你的 Python 和 DLL 都是同一架构（比如都是 64位）。
+3. **邀请码无效**：
+   - 检查 `.env` 中的 `INVITE_CODES` 是否包含你在登录页填写的邀请码；多个邀请码用英文逗号分隔。
 4. **LLM 不能正常对话**：
    - 绝大多数是 API Key 或者网络问题。也可直接在前端登录界面的高级选项里指定自定义模型做临时调试。

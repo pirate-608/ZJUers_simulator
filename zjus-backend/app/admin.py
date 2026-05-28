@@ -41,13 +41,12 @@ class UserAdmin(ModelView, model=User):
     column_list = [
         User.id,
         User.username,
-        User.tier,
-        User.exam_score,
+        User.token,
         User.highest_gpa,
         User.created_at,
     ]
     column_searchable_list = [User.username]
-    column_sortable_list = [User.id, User.created_at, User.exam_score, User.highest_gpa]
+    column_sortable_list = [User.id, User.created_at, User.highest_gpa]
 
 
 class GameSaveAdmin(ModelView, model=GameSave):

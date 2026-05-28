@@ -76,19 +76,19 @@ class TestBuildInitial:
         assert ps.energy == 100
         assert ps.sanity == 80
         assert ps.stress == 0
-        assert ps.iq == 0
+        assert ps.iq == 100
+        assert ps.eq == 100
+        assert ps.luck == 50
         assert ps.gpa == "0.0"
         assert ps.highest_gpa == "0.0"
         assert ps.reputation == 0
         assert ps.course_plan_json == ""
         assert ps.course_info_json == ""
 
-    def test_random_fields_in_range(self):
-        """eq 和 luck 是随机值，验证范围"""
-        for _ in range(20):
-            ps = PlayerStats.build_initial()
-            assert 60 <= ps.eq <= 90, f"eq={ps.eq} out of range [60, 90]"
-            assert 0 <= ps.luck <= 100, f"luck={ps.luck} out of range [0, 100]"
+    def test_manual_allocation_defaults(self):
+        """角色创建前的默认点数与前端预算一致"""
+        ps = PlayerStats.build_initial()
+        assert ps.iq + ps.eq + ps.luck == 250
 
     def test_semester_start_time_is_recent(self):
         before = int(time.time())
@@ -119,7 +119,7 @@ class TestBuildInitial:
             "username", "major", "major_abbr", "semester", "semester_idx",
             "semester_start_time", "energy", "sanity", "stress", "iq", "eq",
             "luck", "gpa", "highest_gpa", "reputation", "efficiency", "course_plan_json",
-            "course_info_json",
+            "course_info_json", "elapsed_game_time",
         }
         assert set(d.keys()) == expected_keys
 

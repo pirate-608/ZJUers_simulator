@@ -3,46 +3,12 @@
  */
 import type { components } from '@/types/api.generated'
 
-export type AuthRequest = {
-  username: string
-  invite_code: string
-  token?: string | null
-  custom_llm_model?: string | null
-  custom_llm_api_key?: string | null
-  custom_llm_provider?: string | null
-}
-
-export type AuthResponse = {
-  status: string
-  jwt?: string | null
-  user_token?: string | null
-  username: string
-  user_id?: number | null
-  message?: string | null
-}
-
-export type MajorOption = {
-  name: string
-  abbr: string
-  iq_buff: number
-  stress_base: number
-  desc: string
-}
-
-export type InitCharacterRequest = {
-  token: string
-  major_abbr: string
-  iq: number
-  eq: number
-  luck: number
-}
-
-export type InitCharacterResponse = {
-  success: boolean
-  major: string
-  major_abbr: string
-  courses: Record<string, string>[]
-}
+export type AuthRequest = components['schemas']['AuthRequest']
+export type AuthResponse = components['schemas']['AuthResponse']
+export type MajorOption = components['schemas']['MajorOption']
+export type InitCharacterRequest = components['schemas']['InitCharacterRequest']
+export type InitCharacterResponse = components['schemas']['InitCharacterResponse']
+export type SaveSummary = components['schemas']['SaveSummary']
 
 // ─── 认证 ───
 

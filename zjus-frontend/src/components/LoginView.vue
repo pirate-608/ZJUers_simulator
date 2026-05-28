@@ -204,10 +204,10 @@ const doLogin = async () => {
       return
     }
 
-    // 保存凭证
-    const userToken = result.user_token || result.jwt || ''
-    if (userToken) localStorage.setItem('zju_token', userToken)
+    // zju_token is the short-lived JWT used by HTTP/WS auth.
+    if (result.jwt) localStorage.setItem('zju_token', result.jwt)
     if (result.jwt) localStorage.setItem('zju_jwt', result.jwt)
+    if (result.user_token) localStorage.setItem('zju_user_token', result.user_token)
     localStorage.setItem('zju_username', result.username || form.username.trim())
 
     // 保存 LLM 配置
@@ -217,7 +217,17 @@ const doLogin = async () => {
       sessionStorage.setItem('custom_llm_key', form.llmKey)
     }
 
-    store.setPhase('character_create')
+    if (result.status === 'returning') {
+      localStorage.setItem('zju_saves', JSON.stringify(result.saves || []))
+      localStorage.removeItem('game_started')
+      localStorage.removeItem('selected_save_slot')
+      store.setPhase('save_select')
+    } else {
+      localStorage.removeItem('zju_saves')
+      localStorage.removeItem('selected_save_slot')
+      localStorage.removeItem('game_started')
+      store.setPhase('character_create')
+    }
   } catch (err) {
     console.error('Auth error:', err)
     alert('连接服务器失败，请检查网络')
@@ -248,6 +258,8 @@ const switchBg = () => {
 }
 
 onMounted(() => {
+  form.username = localStorage.getItem('zju_username') || ''
+  form.token = localStorage.getItem('zju_user_token') || ''
   bgImages.forEach((src) => { const img = new Image(); img.src = src })
   bgSwitchInterval = setInterval(switchBg, 10000)
 })

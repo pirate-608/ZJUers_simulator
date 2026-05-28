@@ -47,11 +47,15 @@ export function useGameWebSocket() {
       const llmProvider = sessionStorage.getItem('custom_llm_provider')
       const llmModel = sessionStorage.getItem('custom_llm_model')
       const llmKey = sessionStorage.getItem('custom_llm_key')
+      const selectedSaveSlot = localStorage.getItem('selected_save_slot')
 
       const payload: Record<string, unknown> = { token }
       if (llmProvider) payload.custom_llm_provider = llmProvider
       if (llmModel && llmModel.trim() !== '') payload.custom_llm_model = llmModel.trim()
       if (llmKey && llmKey.trim() !== '') payload.custom_llm_api_key = llmKey.trim()
+      if (selectedSaveSlot && selectedSaveSlot.trim() !== '') {
+        payload.load_save_slot = Number(selectedSaveSlot)
+      }
 
       ws.value?.send(JSON.stringify(payload))
     }
@@ -102,6 +106,16 @@ export function useGameWebSocket() {
         case 'auth_error': {
           const message = typeof wsMsg.message === 'string' ? wsMsg.message : '认证失败'
           gameStore.addLog('系统', message, 'text-danger')
+          gameStore.showToast(message, 'danger')
+          localStorage.removeItem('game_started')
+          localStorage.removeItem('selected_save_slot')
+          if (message.includes('存档') && localStorage.getItem('zju_saves')) {
+            gameStore.setPhase('save_select')
+          } else {
+            localStorage.removeItem('zju_token')
+            localStorage.removeItem('zju_jwt')
+            gameStore.setPhase('login')
+          }
           break
         }
 
@@ -279,7 +293,9 @@ export function useGameWebSocket() {
 
           if (gameStore.isPendingExit && success) {
             localStorage.removeItem('zju_token')
+            localStorage.removeItem('zju_jwt')
             localStorage.removeItem('game_started')
+            localStorage.removeItem('selected_save_slot')
             window.location.reload()
           } else if (gameStore.isPendingExit && !success) {
             gameStore.isPendingExit = false
@@ -290,7 +306,9 @@ export function useGameWebSocket() {
 
         case 'exit_confirmed': {
           localStorage.removeItem('zju_token')
+          localStorage.removeItem('zju_jwt')
           localStorage.removeItem('game_started')
+          localStorage.removeItem('selected_save_slot')
           window.location.reload()
           break
         }

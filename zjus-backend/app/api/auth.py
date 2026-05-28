@@ -3,7 +3,7 @@ from app.core.config import settings
 from fastapi import APIRouter, Depends, Header, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import Dict, List, Optional
 from app.api import deps
 from app.models.user import User
@@ -29,6 +29,17 @@ class AuthRequest(BaseModel):
     custom_llm_provider: Optional[str] = None
 
 
+class SaveSummary(BaseModel):
+    save_slot: int
+    major: str
+    major_abbr: str
+    semester: str
+    semester_idx: int
+    gpa: str
+    saved_at: Optional[str] = None
+    total_play_time: int = 0
+
+
 class AuthResponse(BaseModel):
     status: str  # "new_user" | "returning"
     jwt: Optional[str] = None
@@ -36,6 +47,7 @@ class AuthResponse(BaseModel):
     username: str
     user_id: Optional[int] = None
     message: Optional[str] = None
+    saves: List[SaveSummary] = Field(default_factory=list)
 
 
 class MajorOption(BaseModel):
@@ -54,11 +66,18 @@ class InitCharacterRequest(BaseModel):
     luck: int = 50
 
 
+class CourseOption(BaseModel):
+    id: str
+    name: str
+    credits: float
+    difficulty: int
+
+
 class InitCharacterResponse(BaseModel):
     success: bool
     major: str
     major_abbr: str
-    courses: List[Dict[str, str]]
+    courses: List[CourseOption]
 
 
 class AdmissionInfoResponse(BaseModel):
@@ -95,6 +114,21 @@ def _validate_invite_code(code: str) -> bool:
     return code.strip() in codes
 
 
+def _validate_initial_stats(req: InitCharacterRequest):
+    stats = {"iq": req.iq, "eq": req.eq, "luck": req.luck}
+    invalid = [name for name, value in stats.items() if value < 50 or value > 150]
+    if invalid:
+        raise HTTPException(
+            status_code=422,
+            detail="IQ/EQ/Luck 必须都在 50 到 150 之间",
+        )
+    if sum(stats.values()) != 250:
+        raise HTTPException(
+            status_code=422,
+            detail="IQ/EQ/Luck 初始总点数必须等于 250",
+        )
+
+
 # ─── 路由 ───
 
 
@@ -111,6 +145,11 @@ async def auth(data: AuthRequest, db: AsyncSession = Depends(deps.get_db)):
         return AuthResponse(
             status="error", username=data.username,
             message="该用户名已被拉黑",
+        )
+    if data.token and await RestrictionService.is_blacklisted(db, data.token, "token"):
+        return AuthResponse(
+            status="error", username=data.username,
+            message="该凭证已被拉黑",
         )
 
     if not _validate_invite_code(data.invite_code):
@@ -151,6 +190,14 @@ async def auth(data: AuthRequest, db: AsyncSession = Depends(deps.get_db)):
 
     # 老用户
     if data.token and user.token == data.token:
+        restriction = await RestrictionService.get_active_restriction(db, user.id)
+        if restriction:
+            return AuthResponse(
+                status="error",
+                username=data.username,
+                message=f"账号受限：{restriction.restriction_type}",
+            )
+        saves = await SaveService.list_saves(str(user.id), db)
         jwt_token = create_access_token(
             data={"sub": str(user.id), "username": user.username}
         )
@@ -159,6 +206,7 @@ async def auth(data: AuthRequest, db: AsyncSession = Depends(deps.get_db)):
             jwt=jwt_token,
             username=user.username,
             user_id=user.id,
+            saves=[SaveSummary(**s) for s in saves],
         )
 
     return AuthResponse(
@@ -180,6 +228,7 @@ async def init_character(
     req: InitCharacterRequest, db: AsyncSession = Depends(deps.get_db)
 ):
     """初始化角色：选择专业并分配初始属性"""
+    _validate_initial_stats(req)
     # 解码 JWT
     try:
         payload = jwt.decode(
@@ -210,14 +259,12 @@ async def init_character(
     repo = RedisRepository(user_id, redis_client)
     game_service = GameService(str(user_id), repo, world)
 
-    stat_overrides = {
-        "iq": max(0, min(200, req.iq)),
-        "eq": max(0, min(200, req.eq)),
-        "luck": max(0, min(200, req.luck)),
-    }
+    stat_overrides = {"iq": req.iq, "eq": req.eq, "luck": req.luck}
 
     result = await game_service.assign_major_and_init(
-        major_abbr=req.major_abbr, stat_overrides=stat_overrides
+        major_abbr=req.major_abbr,
+        stat_overrides=stat_overrides,
+        username=username or "",
     )
 
     return InitCharacterResponse(

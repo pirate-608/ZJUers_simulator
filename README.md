@@ -28,7 +28,6 @@ zjus-backend/world/
 │   └── ... (共 40 个课程 JSON 文件，如 CS.json, AI.json 等)
 ├── achievements.json  # 成就系统
 ├── characters.json    # 角色系统
-├── entrance_exam.json # 入学考试
 ├── game_balance.json  # 游戏平衡
 ├── keywords.json      # 关键词
 ├── majors.json        # 专业系统
@@ -52,16 +51,16 @@ zjus-backend/world/
 </details>
 
 <details>
-<summary>📝 入学考试</summary>
+<summary>🧑‍🎓 角色创建</summary>
 
-![入学考试](https://zjusim-docs.67656.fun/assets/images/exam.png)
+新玩家通过邀请码登录后选择专业，并分配 IQ / EQ / Luck 初始属性。
 
 </details>
 
 <details>
-<summary>📜 录取通知书</summary>
+<summary>💾 存档选择</summary>
 
-![录取通知书](https://zjusim-docs.67656.fun/assets/images/admission.png)
+老玩家登录后可以加载已有存档，或开始新游戏重新创建角色。
 
 </details>
 

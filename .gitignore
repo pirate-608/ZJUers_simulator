@@ -90,3 +90,7 @@ site/
 
 # 回收站
 __recycle_bin/
+
+# 其他
+
+zjus-frontend/public/images/admission.png

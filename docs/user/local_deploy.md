@@ -16,27 +16,37 @@
     ```
 
 #### 环境与配置
-1. 环境变量：创建`.env` 文件，并按照根目录下的环境变量模版（`.env.template`）进行配置，有以下字段：
+
+1. 复制环境变量模板并编辑：
 
 ```bash
-ENVIRONMENT=development # 本地部署时请使用开发模式
-SECRET_KEY=YOUR_SECRET_KEY_HERE # 随机字符串，用于加密会话
-DATABASE_URL=YOUR_DATABASE_URL_HERE # 数据库连接字符串
-POSTGRES_PASSWORD=YOUR_POSTGRES_PASSWORD_HERE # 数据库密码
-ADMIN_USERNAME=YOUR_ADMIN_USERNAME_HERE # 管理员用户名
-ADMIN_PASSWORD=YOUR_ADMIN_PASSWORD_HERE # 管理员密码
-ADMIN_SESSION_SECRET=YOUR_ADMIN_SESSION_SECRET_HERE # 管理员会话密钥
-LLM_API_KEY=YOUR_LLM_API_KEY_HERE # 大模型API密钥
-LLM_BASE_URL=https://dashscope.aliyuncs.com/compatible-mode/v1 # 大模型Base URL，以阿里云为例
-LLM=YOUR_LLM_HERE # 大模型名称
-MINIMAX_API_KEY=YOUR_MINIMAX_API_KEY_HERE # MiniMax API密钥
-MINIMAX_MODEL=minimax-m2-her # MiniMax模型名称
-MINIMAX_BASE_URL=https://api.minimax.chat/v1/text/chatcompletion_v2 # MiniMax Base URL
+cp .env.template .env
 ```
 
-*注：MiniMax-M2-Her是一款专为角色扮演（RP）优化的模型，如果你不想使用或没有API key，可以将MiniMax相关的字段留空，游戏会回退为默认的LLM*
+按需修改 `.env` 中的配置，必须填写的字段：
 
-模型配置请查看[游戏LLM配置](./models.md)
+```bash
+SECRET_KEY=你的随机字符串
+DATABASE_URL=postgresql+asyncpg://zju:你的数据库密码@db:5432/zjus
+POSTGRES_PASSWORD=你的数据库密码
+ADMIN_USERNAME=你的管理员用户名
+ADMIN_PASSWORD=你的管理员密码
+ADMIN_SESSION_SECRET=你的管理员会话密钥
+LLM_API_KEY=你的大模型API密钥
+LLM_BASE_URL=https://dashscope.aliyuncs.com/compatible-mode/v1
+LLM=你的模型名称
+MINIMAX_API_KEY=你的MiniMax API密钥（可选，留空则回退到默认LLM）
+MINIMAX_MODEL=minimax-m2-her
+MINIMAX_BASE_URL=https://api.minimax.chat/v1/text/chatcompletion_v2
+```
+
+2. 复制 Docker Compose 本地覆写模板：
+
+```bash
+cp docker-compose.override.example docker-compose.override.yml
+```
+
+该文件将 Docker 镜像拉取替换为本地源码构建，是本地开发必需的。
 
 #### 宿主机
 
@@ -84,30 +94,25 @@ sudo docker run hello-world
 在项目根目录执行：
 
 ```bash
-docker-compose up -d --build # 这会在本地构建镜像并拉起所有服务，包括数据库、后端、前端，且会自动执行数据库迁移
+docker compose up -d --build
 ```
 
-拉起前端：
+这会构建所有服务的本地镜像并拉起容器：数据库（PostgreSQL + pgvector）、缓存（Redis）、后端（FastAPI :8000）、前端（Nginx :80），并自动执行数据库迁移和向量数据导入。
 
-```bash
-cd zjus-frontend
-npm run dev
-```
+访问 [http://localhost](http://localhost) 即可开始游戏。
 
-访问[http://localhost:3000](http://localhost:3000)即可开始游戏
-
-*注：如果你想要直接将游戏跑在8000端口，需要给nginx配置证书。*
+*注：`docker compose`（无连字符）是 Docker Compose V2 的命令格式。如果你还在使用旧版 `docker-compose`，替换即可。*
 
 如果要停止服务，执行：
 
 ```bash
-docker-compose down
+docker compose down
 ```
 
 如果要停止服务并删除数据，执行：
 
 ```bash
-docker-compose down -v
+docker compose down -v
 ```
 
 

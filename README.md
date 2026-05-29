@@ -53,14 +53,8 @@ zjus-backend/world/
 <details>
 <summary>🧑‍🎓 角色创建</summary>
 
+![角色创建](https://zjusim-docs.67656.fun/assets/images/create.png)
 新玩家通过邀请码登录后选择专业，并分配 IQ / EQ / Luck 初始属性。
-
-</details>
-
-<details>
-<summary>💾 存档选择</summary>
-
-老玩家登录后可以加载已有存档，或开始新游戏重新创建角色。
 
 </details>
 
@@ -72,16 +66,18 @@ zjus-backend/world/
 </details>
 
 <details>
-<summary>🎛️ 游戏控制台 2</summary>
+<summary>🎛️ 校园日志 </summary>
 
-![游戏控制台2](https://zjusim-docs.67656.fun/assets/images/dashboard2.png)
+![校园日志](https://zjusim-docs.67656.fun/assets/images/events.png)
 
 </details>
 
 <details>
 <summary>✨ 随机事件</summary>
 
-![随机事件](https://zjusim-docs.67656.fun/assets/images/event.png)
+![随机事件](https://zjusim-docs.67656.fun/assets/images/random.png)
+![随机事件2](https://zjusim-docs.67656.fun/assets/images/random2.png)
+![随机事件3](https://zjusim-docs.67656.fun/assets/images/random3.png)
 
 </details>
 
@@ -91,6 +87,42 @@ zjus-backend/world/
 ![钉钉消息](https://zjusim-docs.67656.fun/assets/images/dingtalk.png)
 
 </details>
+
+## 快速开始
+
+```bash
+# 克隆源代码
+git clone https://github.com/pirate-608/ZJUers_simulator.git
+cd ZJUers_simulator
+# 配置环境变量
+cp .env.template .env
+```
+环境变量模版
+```bash
+SECRET_KEY=你的随机字符串
+DATABASE_URL=postgresql+asyncpg://zju:你的数据库密码@db:5432/zjus
+POSTGRES_PASSWORD=你的数据库密码
+ADMIN_USERNAME=你的管理员用户名
+ADMIN_PASSWORD=你的管理员密码
+ADMIN_SESSION_SECRET=你的管理员会话密钥
+INVITE_CODES=本地测试邀请码1,本地测试邀请码2
+LLM_API_KEY=你的大模型API密钥（可选）
+LLM_BASE_URL=https://dashscope.aliyuncs.com/compatible-mode/v1
+LLM=你的模型名称
+MINIMAX_API_KEY=你的MiniMax API密钥（可选，留空则回退到默认LLM）
+MINIMAX_MODEL=minimax-m2-her
+MINIMAX_BASE_URL=https://api.minimax.chat/v1/text/chatcompletion_v2
+```
+
+```bash
+# 复制 Docker Compose 本地覆写模板
+cp docker-compose.override.example docker-compose.override.yml
+
+# 构建并启动
+docker compose up -d --build
+
+# 访问 http://localhost 即可开始游戏
+```
 
 ## 内容同步
 

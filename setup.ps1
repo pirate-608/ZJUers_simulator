@@ -17,17 +17,23 @@ try {
     if ($LASTEXITCODE -ne 0) { throw }
 }
 catch {
-    Write-Host "错误: Docker 未启动（或者是由于权限不足）。请先打开 Docker Desktop 并确保其运行正常。" -ForegroundColor Red
+    Write-Host "错误: Docker 未启动。请先打开 Docker Desktop 并确保其运行正常。" -ForegroundColor Red
     Pause
     exit
 }
 
-# 2. Check if .env exists
+# 2. Copy docker-compose override template (required for local build)
+if (!(Test-Path "docker-compose.override.yml")) {
+    Copy-Item docker-compose.override.example docker-compose.override.yml
+    Write-Host "已创建 docker-compose.override.yml（本地构建配置）" -ForegroundColor Green
+}
+
+# 3. Check if .env exists
 if (Test-Path ".env") {
     $useExisting = Read-Host "检测到已存在配置文件 (.env)。是否直接使用已有配置启动？(y/n, 默认 y)"
     if ([string]::IsNullOrWhiteSpace($useExisting) -or $useExisting.ToLower() -eq 'y') {
         Write-Host "使用已有配置启动..." -ForegroundColor Green
-        docker compose up -d
+        docker compose up -d --build
         if ($?) {
             Write-Host "启动成功！即将为您在浏览器中打开游戏。" -ForegroundColor Green
             Start-Sleep -Seconds 3
@@ -40,7 +46,12 @@ if (Test-Path ".env") {
     }
 }
 
-# 3. LLM Configuration Prompt
+# 4. Invite Code Configuration
+Write-Host "`n=== 邀请码配置 ===" -ForegroundColor Yellow
+Write-Host "游戏使用邀请码进行入学认证，请设置至少一个邀请码。"
+$inviteCodes = Read-Host "请输入邀请码（多个用逗号分隔，如 CODE1,CODE2）"
+
+# 5. LLM Configuration Prompt
 Write-Host "`n=== 大模型配置 ===" -ForegroundColor Yellow
 Write-Host "游戏核心依赖大模型服务，请选择您在平台已申请密钥的服务商："
 Write-Host "1. OpenAI (支持自建代理中转源)"
@@ -50,6 +61,7 @@ Write-Host "4. 智谱清言 (GLM)"
 Write-Host "5. 月之暗面 (Moonshot/Kimi)"
 Write-Host "6. MiniMax"
 Write-Host "7. 其他 (自定义)"
+Write-Host "8. 跳过（离线模式，仅使用预编译事件库）"
 
 $providerChoice = Read-Host "请输入对应数字 (默认 1)"
 switch ($providerChoice) {
@@ -59,13 +71,19 @@ switch ($providerChoice) {
     "5" { $baseUrl = "https://api.moonshot.cn/v1" }
     "6" { $baseUrl = "https://api.minimax.chat/v1" }
     "7" { $baseUrl = Read-Host "请输入自定义大模型 API 基础URL (例如 https://api.aigc.com/v1)" }
+    "8" { $baseUrl = "" }
     default { $baseUrl = "https://api.openai.com/v1" }
 }
 
-$apiKey = Read-Host "请输入您的大模型 API Key"
-$modelName = Read-Host "请输入使用的模型代号 (如 gpt-4o-mini, deepseek-chat 等)"
+if ($providerChoice -eq "8") {
+    $apiKey = ""
+    $modelName = ""
+} else {
+    $apiKey = Read-Host "请输入您的大模型 API Key"
+    $modelName = Read-Host "请输入使用的模型代号 (如 gpt-4o-mini, deepseek-chat 等)"
+}
 
-# Generate Random keys silently
+# Generate Random keys
 function New-RandomString($length) {
     $chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
     $bytes = New-Object byte[] $length
@@ -78,16 +96,19 @@ function New-RandomString($length) {
     return $result
 }
 
-$secretKey = Generate-RandomString 32
-$adminPwd = Generate-RandomString 16
-$sessionSecret = Generate-RandomString 32
-$dbPwd = Generate-RandomString 24
+$secretKey = New-RandomString 32
+$adminPwd = New-RandomString 16
+$sessionSecret = New-RandomString 32
+$dbPwd = New-RandomString 24
 
 Write-Host "`n正在后台为您生成安全配置及密钥环境..." -ForegroundColor Yellow
 
 $envContent = @"
 # 自动生成的环境配置 - 本地启动向导
-ENVIRONMENT=production
+ENVIRONMENT=development
+
+# 邀请码
+INVITE_CODES=$inviteCodes
 
 # 数据库
 DATABASE_URL=postgresql+asyncpg://zju:$dbPwd@db:5432/zjus
@@ -97,6 +118,11 @@ POSTGRES_PASSWORD=$dbPwd
 LLM_API_KEY=$apiKey
 LLM_BASE_URL=$baseUrl
 LLM=$modelName
+
+# MiniMax M2-her 配置（钉钉消息 RP 生成，可选）
+MINIMAX_API_KEY=
+MINIMAX_MODEL=minimax-m2-her
+MINIMAX_BASE_URL=https://api.minimax.chat/v1/text/chatcompletion_v2
 
 # 安全配置 (随机生成)
 SECRET_KEY=$secretKey
@@ -108,7 +134,7 @@ ADMIN_SESSION_SECRET=$sessionSecret
 Set-Content -Path ".env" -Value $envContent -Encoding UTF8
 
 Write-Host "环境配置文件已落盘！开始拉起底层服务 (首次可能需要稍长下载时间)..." -ForegroundColor Green
-docker compose up -d
+docker compose up -d --build
 
 if ($?) {
     Write-Host "`n启动成功！即将为您自动弹起网页。" -ForegroundColor Green

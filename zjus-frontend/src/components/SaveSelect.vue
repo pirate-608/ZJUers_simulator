@@ -67,6 +67,10 @@ function formatSavedAt(value?: string | null): string {
 }
 
 function loadSave(slot: number) {
+  if (!Number.isInteger(slot) || slot <= 0) {
+    store.showToast('存档槽位无效，请重新登录刷新列表', 'warning')
+    return
+  }
   localStorage.setItem('selected_save_slot', String(slot))
   localStorage.setItem('game_started', '1')
   store.setPhase('loading')
@@ -74,6 +78,7 @@ function loadSave(slot: number) {
 
 function startNewGame() {
   localStorage.removeItem('selected_save_slot')
+  localStorage.removeItem('zju_saves')
   localStorage.removeItem('game_started')
   store.setPhase('character_create')
 }

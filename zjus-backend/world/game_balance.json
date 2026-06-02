@@ -97,11 +97,11 @@
   
   "events": {
     "random_event": {
-      "check_interval_ticks": 20,
+      "check_interval_ticks": 10,
       "trigger_probability": 0.5
     },
     "dingtalk": {
-      "check_interval_ticks": 20,
+      "check_interval_ticks": 10,
       "trigger_probability": 0.5
     }
   },

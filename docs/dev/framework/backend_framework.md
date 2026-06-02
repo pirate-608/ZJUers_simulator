@@ -186,8 +186,16 @@ graph TD
 - 课程成长和精力消耗。
 - 期末考试/GPA。
 - 随机事件、CC98、钉钉消息。
+- 休闲动作冷却计算和结果反馈弹窗消息。
 - 内容生成模式切换：`library` / `hybrid` / `ai`。
 - 学期推进、毕业、Game Over。
+
+`api/game.py` 通过 `engine.start()` 启动单一主循环；`pause` 会停止 tick，`resume` 会重新启动。WebSocket 断开时调用 `engine.shutdown()` 取消主循环和仍在挂起的后台内容生成任务。
+
+`_push_update()` 会在 `init` / `tick` 中带上 `relax_cooldowns`，前端据此锁定休闲按钮并显示剩余秒数。随机事件选择结果和休闲动作结果会同时通过 `event` 写入日志，并通过 `feedback` 推送弹窗：
+
+- 随机事件结果：`auto_close_ms=5000`
+- 休闲动作结果：`auto_close_ms=3000`
 
 常用动作：
 
@@ -278,7 +286,7 @@ sequenceDiagram
     W->>E: 启动引擎
     loop Tick
         E->>R: 读写实时状态
-        E-->>C: tick/event
+        E-->>C: tick/event/feedback
     end
     C->>W: save_game / save_and_exit
     W->>D: 持久化存档

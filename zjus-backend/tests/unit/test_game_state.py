@@ -119,7 +119,7 @@ class TestBuildInitial:
             "username", "major", "major_abbr", "semester", "semester_idx",
             "semester_start_time", "energy", "sanity", "stress", "iq", "eq",
             "luck", "gpa", "highest_gpa", "reputation", "efficiency", "course_plan_json",
-            "course_info_json", "elapsed_game_time",
+            "course_info_json", "elapsed_game_time", "exam_completed",
         }
         assert set(d.keys()) == expected_keys
 

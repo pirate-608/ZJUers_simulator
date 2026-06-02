@@ -1,4 +1,6 @@
 import secrets
+from typing import Any
+
 from sqlalchemy import create_engine
 from sqlalchemy.engine import make_url
 from sqlalchemy.orm import sessionmaker
@@ -15,11 +17,13 @@ from app.models.admin import UserRestriction, UserBlacklist, AdminAuditLog
 class AdminAuth(AuthenticationBackend):
     async def login(self, request: Request) -> bool:
         form = await request.form()
-        username = form.get("username")
-        password = form.get("password")
-        if not username or not password:
+        username_value = form.get("username")
+        password_value = form.get("password")
+        if not isinstance(username_value, str) or not isinstance(password_value, str):
             return False
 
+        username = username_value
+        password = password_value
         if not secrets.compare_digest(username, settings.ADMIN_USERNAME):
             return False
         if not secrets.compare_digest(password, settings.ADMIN_PASSWORD):
@@ -149,14 +153,18 @@ def _build_sync_engine():
 
 
 def _log_admin_action(
-    request: Request, action: str, target_type: str, target_id: str, details
+    request: Request,
+    action: str,
+    target_type: str,
+    target_id: str | None,
+    details: dict[str, Any],
 ):
     engine = _build_sync_engine()
     SessionLocal = sessionmaker(bind=engine)
     with SessionLocal() as session:
         session.add(
             AdminAuditLog(
-                admin_username=request.session.get("admin_user") or "admin",
+                admin_username=str(request.session.get("admin_user") or "admin"),
                 action=action,
                 target_type=target_type,
                 target_id=target_id,

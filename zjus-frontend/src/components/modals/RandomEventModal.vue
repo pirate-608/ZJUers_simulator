@@ -28,7 +28,7 @@
             v-for="(opt, idx) in data.options"
             :key="idx" 
             class="btn btn-outline-primary text-start p-3"
-            @click="makeChoice(opt.effects)"
+            @click="makeChoice(opt.id || String.fromCharCode(65 + idx))"
           >
             <strong>选项 {{ idx + 1 }}:</strong> {{ opt.text }}
           </button>
@@ -50,10 +50,9 @@ const emit = defineEmits<{
 }>()
 const data = computed(() => store.modalData as RandomEventModalData)
 
-const makeChoice = (effects: unknown) => {
+const makeChoice = (optionId: string) => {
   store.closeModal()
-  // 完全对齐旧版逻辑和后端的 _handle_event_choice 需求
-  emit('send-action', { action: 'event_choice', effects: effects })
+  emit('send-action', { action: 'event_choice', option_id: optionId })
   
   if (store.isPaused) {
     emit('send-action', { action: 'resume' })

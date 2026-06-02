@@ -259,7 +259,8 @@ async def generate_dingtalk_via_m2her(
     cached = await RedisCache.lpop(_CACHE_KEY)
     if cached:
         try:
-            return json.loads(cached)
+            cached_data = json.loads(cached) if isinstance(cached, str) else cached
+            return cached_data if isinstance(cached_data, dict) else None
         except (json.JSONDecodeError, TypeError):
             pass
 

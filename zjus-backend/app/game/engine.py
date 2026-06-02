@@ -3,9 +3,10 @@ import random
 import json
 import logging
 import hashlib
+import math
 from pathlib import Path
 from sqlalchemy import update
-from typing import Callable, Optional
+from typing import Any, Callable, Coroutine, Optional
 
 import time
 
@@ -43,7 +44,7 @@ class GameMode:
 
 
 class GameEngine:
-    async def emit(self, event_type: str, data: dict, msg: str = None):
+    async def emit(self, event_type: str, data: dict, msg: str | None = None):
         if msg:
             await self.event_queue.put(
                 GameEvent(
@@ -56,11 +57,28 @@ class GameEngine:
             GameEvent(user_id=self.user_id, event_type=event_type, data=data)
         )
 
+    async def _emit_feedback(
+        self,
+        title: str,
+        message: str,
+        kind: str = "info",
+        auto_close_ms: int = 3000,
+    ):
+        await self.emit(
+            "feedback",
+            {
+                "data": {
+                    "title": title,
+                    "message": message,
+                    "kind": kind,
+                    "auto_close_ms": auto_close_ms,
+                }
+            },
+        )
+
     def resume(self):
         if not self.is_running:
-            # 注意：不要提前设置 is_running = True，让 run_loop() 自己设置
-            # 否则 run_loop() 第一行检查会直接返回
-            asyncio.create_task(self.run_loop())
+            self.start()
             # 推送最新状态和通知消息
             asyncio.create_task(self._push_update())
             asyncio.create_task(self.emit("resumed", {"msg": "游戏已继续。"}))
@@ -76,8 +94,9 @@ class GameEngine:
         repo: RedisRepository,
         save_service: SaveService,
         game_service: GameService,
-        db_factory: Callable = AsyncSessionLocal,
-        llm_override: Optional[dict] = None,
+        db_factory: Callable[[], Any] = AsyncSessionLocal,
+        llm_override: Optional[dict[str, Any]] = None,
+        save_slot: int = 1,
     ):
         self.user_id = user_id
         self.repo = repo
@@ -85,8 +104,13 @@ class GameEngine:
         self.game_service = game_service
         self.db_factory = db_factory
         self.llm_override = llm_override
+        self.save_slot = save_slot
         self.event_queue: asyncio.Queue[GameEvent] = asyncio.Queue()
         self.is_running = False
+        self._run_task: asyncio.Task | None = None
+        self._background_tasks: set[asyncio.Task] = set()
+        self._random_event_inflight = False
+        self._dingtalk_inflight = False
         self._ttl_refresh_interval_seconds = 600
         self._last_ttl_refresh = 0.0
         # ✨ 新增：倍速乘数，默认为 1.0
@@ -111,6 +135,20 @@ class GameEngine:
         self.COURSE_STATE_COEFFS = balance.get_course_state_coeffs()
         self.BASE_ENERGY_DRAIN = balance.base_energy_drain
         self.BASE_MASTERY_GROWTH = balance.base_mastery_growth
+
+    def _track_task(self, coro: Coroutine[Any, Any, Any]) -> asyncio.Task[Any]:
+        task = asyncio.create_task(coro)
+        self._background_tasks.add(task)
+        task.add_done_callback(self._background_tasks.discard)
+        return task
+
+    def start(self):
+        if self.is_running and self._run_task and not self._run_task.done():
+            return
+        if self._run_task and not self._run_task.done():
+            self._run_task.cancel()
+        self.is_running = True
+        self._run_task = asyncio.create_task(self.run_loop())
 
     async def check_and_trigger_gameover(self) -> bool:
         """检测精力/心态是否归零并触发game over"""
@@ -224,9 +262,6 @@ class GameEngine:
 
     async def run_loop(self):
         """核心循环：基于状态的资源分配计算"""
-        if self.is_running:
-            return
-        self.is_running = True
         logger.info(f"State-based Game loop started for {self.user_id}")
 
         tick_count = 0
@@ -235,6 +270,8 @@ class GameEngine:
                 # ✨ 核心：真实的睡眠时间被倍速缩短！
                 # 例如 2.0 倍速下，真实世界只睡 1.5 秒
                 await asyncio.sleep(3.0 / self.speed_multiplier)
+                if not self.is_running:
+                    break
                 tick_count += 1
 
                 # ✨ 核心：但游戏内的虚拟时间，永远坚定地往前走 3 秒！
@@ -351,8 +388,6 @@ class GameEngine:
                     await self.repo.update_stat_safe("stress", -2)  # 摆烂降压
                 else:
                     # 向上取整，确保至少消耗1点精力
-                    import math
-
                     final_energy_cost = max(1, math.ceil(final_energy_cost_float))
                     await self.repo.update_stat_safe("energy", -final_energy_cost)
                     # 卷多了压力大：如果消耗系数高，增加压力
@@ -367,7 +402,8 @@ class GameEngine:
 
                     if tick_count % event_interval == 0:
                         if random.random() < event_probability:
-                            asyncio.create_task(self._trigger_random_event())
+                            if not self._random_event_inflight:
+                                self._track_task(self._trigger_random_event())
                         await self._check_achievements()
 
                     # [新增] 6. 钉钉消息 (从配置读取频率) - 仅在游戏运行时触发
@@ -379,7 +415,8 @@ class GameEngine:
                         tick_count % dingtalk_interval == 0
                         and random.random() < dingtalk_probability
                     ):
-                        asyncio.create_task(self._trigger_dingtalk_message())
+                        if not self._dingtalk_inflight:
+                            self._track_task(self._trigger_dingtalk_message())
 
                 await self._push_update()
 
@@ -391,6 +428,9 @@ class GameEngine:
         action = action_data.get("action")
         target = action_data.get("target")  # 通常是 course_id
         value = action_data.get("value")  # 新增: 状态值 0/1/2
+        if action in {"start", "get_state"}:
+            await self._push_update()
+            return
         if action == "pause":
             self.pause()
             return
@@ -402,21 +442,25 @@ class GameEngine:
             initial_stats = self._build_initial_stats("ZJUer")
             await self.repo.set_game_data(initial_stats)
             await self.emit("init", {"data": initial_stats})
-            asyncio.create_task(self.run_loop())
+            self.start()
             return
 
         # ✨ 新增：真正接管全局倍速
         if action == "set_speed":
-            speed = float(action_data.get("speed", 1.0))
-            # 限制在合理范围内，防止过快导致服务器 CPU 飙升
-            self.speed_multiplier = max(0.5, min(5.0, speed))
+            try:
+                speed = float(action_data.get("speed", 1.0))
+            except (TypeError, ValueError):
+                return
+            if speed < 0.5 or speed > 5.0:
+                return
+            self.speed_multiplier = speed
             return
 
         # 切换内容生成模式
         if action == "set_mode":
             raw = action_data.get("mode", "hybrid")
             new_mode = GameMode.from_str(raw)
-            if new_mode == GameMode.AI and not self.llm_available:
+            if new_mode == GameMode.AI and self._llm_probed and not self.llm_available:
                 await self.emit(
                     "toast",
                     {"message": "LLM API 不可用，已保持在当前模式", "level": "warning"},
@@ -430,7 +474,7 @@ class GameEngine:
             # 首次收到 mode 相关请求时触发后台探测
             if not self._llm_probed:
                 self._llm_probed = True
-                asyncio.create_task(self._probe_llm())
+                self._track_task(self._probe_llm())
             return
 
         # [新增] 切换课程状态指令
@@ -445,6 +489,9 @@ class GameEngine:
         # [保留] 其它一次性动作 (Relax/Event)
         try:
             if action == "relax":
+                if not isinstance(target, str) or not target:
+                    await self._push_update("请选择一个有效的休闲动作。")
+                    return
                 await self._handle_relax(target)
             elif action == "exam":
                 await self._handle_final_exam()
@@ -461,6 +508,12 @@ class GameEngine:
         """期末考试结算逻辑"""
         snapshot = await self.repo.get_snapshot()
         stats = snapshot.stats.model_dump()
+        if int(stats.get("exam_completed", 0) or 0):
+            await self._push_update("本学期已经结算过期末考试，请开启新学期。")
+            return
+        self.stop()
+        await self.repo.update_stats({"exam_completed": 1})
+        stats["exam_completed"] = 1
         course_mastery = snapshot.courses
         logger.info(
             f"[{self.user_id}] EXAM: course_mastery from Redis = {course_mastery}"
@@ -574,6 +627,7 @@ class GameEngine:
         snapshot = await self.repo.get_snapshot()
         stats = snapshot.stats.model_dump()
         iq = int(stats.get("iq", 90))
+        msg = "你暂时没有采取有效的学习动作。"
 
         try:
             course_info = json.loads(stats.get("course_info_json", "[]"))
@@ -730,6 +784,23 @@ class GameEngine:
                 post_content, feedback = await generate_cc98_post(
                     stats, effect_type, trigger, llm_override=self.llm_override
                 )
+                if post_content == "CC98 服务器维护中..." and self.mode == GameMode.AI:
+                    self.llm_available = False
+                    self.mode = GameMode.HYBRID
+                    await self.emit(
+                        "mode_changed",
+                        {"mode": self.mode, "llm_available": False},
+                    )
+                    await self.emit(
+                        "toast",
+                        {
+                            "message": "AI 内容生成暂不可用，已自动切换到混合模式",
+                            "level": "warning",
+                        },
+                    )
+                    fallback_post = pick_cc98_post(effect=effect_type, trigger=trigger)
+                    if fallback_post:
+                        post_content = fallback_post
             elif not post_content:
                 # Library 模式库耗尽：跳过本次 cc98
                 post_content, feedback = "服务器繁忙，论坛暂时打不开...", ""
@@ -745,6 +816,19 @@ class GameEngine:
             msg = f"你在CC98刷到了：\n{post_content}\n{feedback}"
 
         await self._push_update(msg)
+        if msg:
+            title_map = {
+                "gym": "健身结果",
+                "game": "游戏结果",
+                "walk": "散步结果",
+                "cc98": "CC98 新帖",
+            }
+            await self._emit_feedback(
+                title_map.get(target, "休闲结果"),
+                msg,
+                kind="relax",
+                auto_close_ms=3000,
+            )
 
     # app/game/engine.py
 
@@ -752,17 +836,41 @@ class GameEngine:
         """触发随机事件（优先事件库，LLM 兜底）"""
         if not self.is_running:
             return
+        if self._random_event_inflight:
+            return
 
+        self._random_event_inflight = True
         try:
             history = await self.repo.get_event_history()
             snapshot = await self.repo.get_snapshot()
             stats = snapshot.stats.model_dump()
+            event_data = None
 
             if self.mode == GameMode.AI:
                 # AI 模式：跳过事件库，直接走 LLM（含 Redis 缓存）
-                event_data = await generate_random_event(
-                    stats, history, llm_override=self.llm_override
-                )
+                if self.llm_available:
+                    event_data = await generate_random_event(
+                        stats, history, llm_override=self.llm_override
+                    )
+                if not event_data:
+                    self.llm_available = False
+                    self.mode = GameMode.HYBRID
+                    await self.emit(
+                        "mode_changed",
+                        {"mode": self.mode, "llm_available": False},
+                    )
+                    await self.emit(
+                        "toast",
+                        {
+                            "message": "AI 内容生成暂不可用，已自动切换到混合模式",
+                            "level": "warning",
+                        },
+                    )
+                    event_data = pick_random_event(
+                        sanity=int(stats.get("sanity", 50)),
+                        stress=int(stats.get("stress", 0)),
+                        seen_ids=set(history) if history else None,
+                    )
             else:
                 # Hybrid / Library 模式：优先从预编译事件库检索（零 token 消耗）
                 event_data = pick_random_event(
@@ -791,9 +899,12 @@ class GameEngine:
                     event_data["id"] = event_id
 
                 await self.repo.add_event_to_history(event_id)
+                await self.repo.set_current_event(event_data)
                 await self.emit("random_event", {"data": event_data})
         except Exception as e:
             logger.error(f"Random event error: {e}", exc_info=True)
+        finally:
+            self._random_event_inflight = False
 
     # 事件效果允许修改的属性白名单及每次最大变化量
     _ALLOWED_EFFECT_FIELDS = {
@@ -806,8 +917,31 @@ class GameEngine:
     }
 
     async def _handle_event_choice(self, data):
-        """处理随机事件的选择结果（带白名单校验）"""
-        effects = data.get("effects", {})
+        """处理随机事件的选择结果（只接受当前服务端事件的选项 id）。"""
+        option_id = str(data.get("option_id", "")).strip()
+        current_event = await self.repo.pop_current_event()
+        if not current_event:
+            msg = "事件已经过期。"
+            await self._push_update(msg)
+            await self._emit_feedback("事件结果", msg, kind="event", auto_close_ms=5000)
+            return
+
+        selected_option = None
+        for option in current_event.get("options", []) or []:
+            candidate_id = str(option.get("id", "")).strip()
+            legacy_candidate_id = str(option.get(" id", "")).strip()
+            if option_id and option_id in {candidate_id, legacy_candidate_id}:
+                selected_option = option
+                break
+        if selected_option is None:
+            msg = "无效的事件选项。"
+            await self._push_update(msg)
+            await self._emit_feedback("事件结果", msg, kind="event", auto_close_ms=5000)
+            return
+
+        effects = selected_option.get("effects", {})
+        if not isinstance(effects, dict):
+            effects = {}
         desc = effects.get("desc", "")
         for key, val in effects.items():
             if key == "desc":
@@ -826,17 +960,27 @@ class GameEngine:
                 await self.repo.update_stat_safe(key, delta)
             except (ValueError, TypeError):
                 continue
-        await self._push_update(f"事件：{desc}")
+        result_msg = f"事件：{desc}"
+        await self._push_update(result_msg)
+        await self._emit_feedback(
+            "事件结果",
+            str(desc or "你的选择已经生效。"),
+            kind="event",
+            auto_close_ms=5000,
+        )
 
     async def _trigger_dingtalk_message(self):
         """触发钉钉消息推送（优先使用 M2-her RP 模型）"""
         if not self.is_running:
             return
-
-        # 纯算法模式：跳过钉钉消息（暂未建设 dingtalk_library）
-        if self.mode == GameMode.LIBRARY:
+        if self._dingtalk_inflight:
             return
 
+        # 纯算法模式：跳过钉钉消息（暂未建设 dingtalk_library）
+        if self.mode == GameMode.LIBRARY or not self.llm_available:
+            return
+
+        self._dingtalk_inflight = True
         try:
             snapshot = await self.repo.get_snapshot()
             stats = snapshot.stats.model_dump()
@@ -875,9 +1019,25 @@ class GameEngine:
                     "dingtalk_message",
                     {"data": msg_data},
                 )
+            elif self.mode == GameMode.AI:
+                self.llm_available = False
+                self.mode = GameMode.HYBRID
+                await self.emit(
+                    "mode_changed",
+                    {"mode": self.mode, "llm_available": False},
+                )
+                await self.emit(
+                    "toast",
+                    {
+                        "message": "AI 内容生成暂不可用，已自动切换到混合模式",
+                        "level": "warning",
+                    },
+                )
 
         except Exception as e:
             logger.error(f"DingTalk trigger error: {e}", exc_info=True)
+        finally:
+            self._dingtalk_inflight = False
 
     async def _check_achievements(self):
         """成就系统判定逻辑"""
@@ -931,6 +1091,7 @@ class GameEngine:
             transition = await self.game_service.process_semester_transition(
                 db,
                 holiday_event_factory=generate_random_event,
+                save_slot=self.save_slot,
             )
 
         current_semester_idx = transition.get("semester_idx")
@@ -940,9 +1101,12 @@ class GameEngine:
             # 调用AI生成文言文结业总结
             from app.core.llm import generate_wenyan_report
 
-            wenyan_report = await generate_wenyan_report(
-                stats, llm_override=self.llm_override
-            )
+            if self.mode == GameMode.LIBRARY:
+                wenyan_report = "学业既成，前程似锦。"
+            else:
+                wenyan_report = await generate_wenyan_report(
+                    stats, llm_override=self.llm_override
+                )
             await self.emit(
                 "graduation",
                 {
@@ -972,7 +1136,7 @@ class GameEngine:
         )
         await self._push_update("新学期开始了，加油！")
         if was_running:
-            asyncio.create_task(self.run_loop())
+            self.start()
 
     async def _probe_llm(self):
         """后台探测 LLM API 是否可用"""
@@ -989,18 +1153,22 @@ class GameEngine:
                 )
                 await self.emit(
                     "toast",
-                    {"message": "LLM API 连接失败，已自动切换到混合模式", "level": "warning"},
+                    {
+                        "message": "LLM API 连接失败，已自动切换到混合模式",
+                        "level": "warning",
+                    },
                 )
         except Exception as e:
             logger.warning(f"LLM probe failed: {e}")
 
-    async def _push_update(self, msg: str = None):
+    async def _push_update(self, msg: str | None = None):
         """统一数据推送接口"""
         try:
             snapshot = await self.repo.get_snapshot()
             new_stats = snapshot.stats.model_dump()
             course_mastery = snapshot.courses
             course_states = snapshot.course_states
+            relax_cooldowns = await self._get_relax_cooldowns()
 
             # 计算学期剩余时间
             semester_idx = int(new_stats.get("semester_idx", 1))
@@ -1024,6 +1192,7 @@ class GameEngine:
                     "courses": course_mastery,
                     "course_states": course_states,
                     "semester_time_left": semester_time_left,
+                    "relax_cooldowns": relax_cooldowns,
                 },
                 msg,
             )
@@ -1033,6 +1202,21 @@ class GameEngine:
     def stop(self):
         """安全停止游戏循环"""
         self.is_running = False
+        current_task = asyncio.current_task()
+        if (
+            self._run_task
+            and not self._run_task.done()
+            and self._run_task is not current_task
+        ):
+            self._run_task.cancel()
+        self._run_task = None
+
+    def shutdown(self):
+        """停止游戏循环并取消挂起的后台生成任务。"""
+        self.stop()
+        for task in list(self._background_tasks):
+            task.cancel()
+        self._background_tasks.clear()
 
     def _get_semester_time_left(
         self, elapsed_game_time: int, duration_seconds: int
@@ -1062,4 +1246,10 @@ class GameEngine:
         elapsed = time.time() - float(last_use)
         cd_time = balance.get_cooldown(action_type)
         remaining = max(0, cd_time - elapsed)
-        return int(remaining)
+        return math.ceil(remaining)
+
+    async def _get_relax_cooldowns(self) -> dict[str, int]:
+        cooldowns: dict[str, int] = {}
+        for action in balance.relax_actions.keys():
+            cooldowns[action] = await self._check_cooldown(action)
+        return cooldowns

@@ -2,7 +2,8 @@ import { defineStore } from 'pinia'
 import { ref, reactive } from 'vue'
 import type { GamePhase, PlayerStats } from '../types/game'
 import type { CoursesMap, CourseMetadata, CourseProgressUpdate } from '../types/course'
-import type { DingTalkMessage, ModalData } from '../types/modal'
+import type { DingTalkMessage, FeedbackModalData, ModalData } from '../types/modal'
+import type { RelaxTarget } from '../types/websocket'
 
 type ToastType = 'success' | 'danger' | 'warning' | 'info'
 type ToastState = { message: string; type: ToastType }
@@ -70,7 +71,14 @@ export const useGameStore = defineStore('game', () => {
 
   const semesterTimeLeft = ref<number>(0)
   const isPaused = ref<boolean>(false)
+  const isGuideActive = ref<boolean>(false)
   const gameSpeed = ref<number>(1)
+  const relaxCooldowns = reactive<Record<RelaxTarget, number>>({
+    gym: 0,
+    game: 0,
+    walk: 0,
+    cc98: 0,
+  })
 
   const eventLogs = ref<EventLog[]>([])
   const dingMessages = ref<DingTalkMessage[]>([])
@@ -78,6 +86,8 @@ export const useGameStore = defineStore('game', () => {
 
   const activeModal = ref<ActiveModalName>(null)
   const modalData = ref<ModalData | Record<string, unknown>>({})
+  const feedbackModal = ref<FeedbackModalData | null>(null)
+  let feedbackTimer: ReturnType<typeof setTimeout> | null = null
 
   const gameMode = ref<'library' | 'ai' | 'hybrid'>('hybrid')
   const llmAvailable = ref<boolean>(true)
@@ -152,8 +162,26 @@ export const useGameStore = defineStore('game', () => {
     isPaused.value = val
   }
 
+  function setGuideActive(val: boolean) {
+    isGuideActive.value = val
+  }
+
   function setGameSpeed(speed: number) {
     gameSpeed.value = speed
+  }
+
+  function setRelaxCooldowns(cooldowns: Record<string, unknown> | null | undefined) {
+    if (!cooldowns) return
+    for (const target of Object.keys(relaxCooldowns) as RelaxTarget[]) {
+      const value = Number(cooldowns[target])
+      relaxCooldowns[target] = Number.isFinite(value) ? Math.max(0, Math.ceil(value)) : 0
+    }
+  }
+
+  function tickRelaxCooldowns(seconds: number = 1) {
+    for (const target of Object.keys(relaxCooldowns) as RelaxTarget[]) {
+      relaxCooldowns[target] = Math.max(0, relaxCooldowns[target] - seconds)
+    }
   }
 
   let logSeq = 0
@@ -191,6 +219,24 @@ export const useGameStore = defineStore('game', () => {
     modalData.value = {}
   }
 
+  function showFeedback(data: FeedbackModalData) {
+    feedbackModal.value = data
+    if (feedbackTimer) clearTimeout(feedbackTimer)
+    const timeout = data.autoCloseMs ?? 3000
+    if (timeout > 0) {
+      feedbackTimer = setTimeout(() => {
+        feedbackModal.value = null
+        feedbackTimer = null
+      }, timeout)
+    }
+  }
+
+  function closeFeedback() {
+    if (feedbackTimer) clearTimeout(feedbackTimer)
+    feedbackTimer = null
+    feedbackModal.value = null
+  }
+
   function triggerEndGame(type: EndType, data: EndData | Record<string, unknown> = {}) {
     endType.value = type
     endData.value = data as EndData
@@ -219,8 +265,13 @@ export const useGameStore = defineStore('game', () => {
     semesterTimeLeft,
     isPaused,
     setPaused,
+    isGuideActive,
+    setGuideActive,
     gameSpeed,
     setGameSpeed,
+    relaxCooldowns,
+    setRelaxCooldowns,
+    tickRelaxCooldowns,
     eventLogs,
     addLog,
     clearEventLogs,
@@ -232,6 +283,9 @@ export const useGameStore = defineStore('game', () => {
     modalData,
     showModal,
     closeModal,
+    feedbackModal,
+    showFeedback,
+    closeFeedback,
     gameMode,
     llmAvailable,
     isPendingExit,

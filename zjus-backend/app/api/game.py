@@ -2,7 +2,7 @@ from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Depends, Query
 from jose import JWTError, jwt
 from sqlalchemy.ext.asyncio import AsyncSession
 from pydantic import BaseModel
-from typing import Dict
+from typing import Any, Dict
 import asyncio
 import json
 import logging
@@ -27,6 +27,7 @@ logger = logging.getLogger(__name__)
 
 # WebSocket 消息限流：最小间隔（秒）
 _WS_MIN_MSG_INTERVAL = 0.05
+_VALID_COURSE_STATES = {0, 1, 2}
 
 # 1. 必须先实例化 router
 router = APIRouter()
@@ -43,36 +44,54 @@ async def cleanup_redis_data(repo: RedisRepository):
 
 
 # 3. 辅助函数
-async def get_current_user_id(token: str):
+async def get_current_user_id(token: str) -> tuple[str | None, str | None]:
     """从 Token 解析 User ID"""
     try:
         payload = jwt.decode(
             token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM]
         )
-        user_id: str = payload.get("sub")
-        username: str = payload.get("username")
-        if user_id is None:
+        user_id_raw = payload.get("sub")
+        username_raw = payload.get("username")
+        if not user_id_raw:
             return None, None
-        return user_id, username
+        return str(user_id_raw), str(username_raw) if username_raw else None
     except JWTError:
         return None, None
 
 
-def _parse_token(token: str) -> dict:
+def _parse_token(token: str) -> dict[str, str]:
     """解析 JWT token，返回用户信息字典，失败返回空字典"""
     try:
         payload = jwt.decode(
             token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM]
         )
-        user_id = payload.get("sub")
-        if not user_id:
+        user_id_raw = payload.get("sub")
+        if not user_id_raw:
             return {}
+        user_id = str(user_id_raw)
+        username_raw = payload.get("username")
         return {
             "user_id": user_id,
-            "username": payload.get("username"),
+            "username": str(username_raw) if username_raw else user_id,
         }
     except JWTError:
         return {}
+
+
+def _safe_int(value, default=None):
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return default
+
+
+def _is_initialized_stats(stats: dict) -> bool:
+    return bool(stats.get("major_abbr") and stats.get("course_info_json"))
+
+
+def _string_field(data: dict[str, Any], key: str) -> str:
+    value = data.get(key)
+    return value if isinstance(value, str) else ""
 
 
 class SemesterConfigResponse(BaseModel):
@@ -126,16 +145,19 @@ async def websocket_endpoint(websocket: WebSocket):
     # 等待客户端发送 auth 消息（10 秒超时）
     try:
         auth_text = await asyncio.wait_for(websocket.receive_text(), timeout=10.0)
-        auth_data = json.loads(auth_text)
-        token = auth_data.get("token", "")
+        auth_payload = json.loads(auth_text)
+        if not isinstance(auth_payload, dict):
+            raise ValueError("auth payload must be an object")
+        auth_data: dict[str, Any] = auth_payload
+        token_value = auth_data.get("token", "")
+        token = token_value if isinstance(token_value, str) else ""
         load_save_slot = auth_data.get("load_save_slot")
-    except (asyncio.TimeoutError, json.JSONDecodeError, Exception):
+    except (asyncio.TimeoutError, json.JSONDecodeError, ValueError):
         await websocket.close(code=1008, reason="auth_timeout")
         return
 
     user_info = _parse_token(token)
     user_id = user_info.get("user_id")
-    username = user_info.get("username")
 
     if not user_id:
         logger.warning("Invalid token in first WS message")
@@ -144,12 +166,13 @@ async def websocket_endpoint(websocket: WebSocket):
         )
         await websocket.close(code=1008, reason="invalid_token")
         return
+    username = user_info.get("username") or user_id
 
     # 鉴权通过后检查是否被限制（短生命周期 DB Session）
     llm_override = None
-    custom_model = (auth_data.get("custom_llm_model") or "").strip()
-    custom_key = (auth_data.get("custom_llm_api_key") or "").strip()
-    custom_provider = (auth_data.get("custom_llm_provider") or "").strip()
+    custom_model = _string_field(auth_data, "custom_llm_model").strip()
+    custom_key = _string_field(auth_data, "custom_llm_api_key").strip()
+    custom_provider = _string_field(auth_data, "custom_llm_provider").strip()
     
     if custom_model or custom_key:
         llm_override = {
@@ -181,7 +204,7 @@ async def websocket_endpoint(websocket: WebSocket):
             await old_ws.close(code=4001, reason="duplicate_session")
         except Exception:
             pass
-        manager._remove(user_id)
+        manager._remove(user_id, old_ws)
 
     manager.active_connections[user_id] = websocket
     manager.heartbeat_timestamps[user_id] = time.time()
@@ -202,7 +225,6 @@ async def websocket_endpoint(websocket: WebSocket):
     save_service = SaveService()
 
     engine = None
-    loop_task = None
     forwarder_task = None
 
     try:
@@ -210,15 +232,25 @@ async def websocket_endpoint(websocket: WebSocket):
         selected_save_slot = None
         if load_save_slot is not None:
             try:
-                selected_save_slot = int(load_save_slot)
+                parsed_save_slot = int(load_save_slot)
+                selected_save_slot = parsed_save_slot if parsed_save_slot > 0 else None
             except (TypeError, ValueError):
                 selected_save_slot = None
+
+            if selected_save_slot is None:
+                await manager.send_personal_message(
+                    {"type": "auth_error", "message": "无效的存档槽位"},
+                    user_id,
+                )
+                return
+
+        active_save_slot = selected_save_slot or 1
 
         async with AsyncSessionLocal() as db:
             game_context = await game_service.prepare_game_context(
                 username,
                 db,
-                save_slot=selected_save_slot or 1,
+                save_slot=active_save_slot,
                 force_load_save=selected_save_slot is not None,
             )
 
@@ -231,6 +263,15 @@ async def websocket_endpoint(websocket: WebSocket):
 
         snapshot = await repo.get_snapshot()
         final_stats = snapshot.stats.model_dump()
+        if not _is_initialized_stats(final_stats):
+            await manager.send_personal_message(
+                {
+                    "type": "auth_error",
+                    "message": "角色尚未初始化，请先创建角色",
+                },
+                user_id,
+            )
+            return
 
         if game_context["status"] == "new":
             await manager.send_personal_message(
@@ -253,11 +294,23 @@ async def websocket_endpoint(websocket: WebSocket):
                 user_id,
             )
 
+        # --- 启动游戏引擎 ---
+        engine = GameEngine(
+            user_id,
+            repo=repo,
+            save_service=save_service,
+            game_service=game_service,
+            db_factory=AsyncSessionLocal,
+            llm_override=llm_override,
+            save_slot=active_save_slot,
+        )
+
         # 计算学期剩余时间（init 时就下发，避免前端等 tick 才拿到）
         semester_idx = int(final_stats.get("semester_idx", 1))
         base_duration = balance.get_semester_duration(semester_idx)
         elapsed = int(final_stats.get("elapsed_game_time", 0))
         semester_time_left = max(0, base_duration - elapsed)
+        relax_cooldowns = await engine._get_relax_cooldowns()
 
         # 发送初始化数据包（携带完整的课程进度 + 策略 + 倒计时）
         await manager.send_personal_message(
@@ -267,18 +320,9 @@ async def websocket_endpoint(websocket: WebSocket):
                 "courses": snapshot.courses,
                 "course_states": snapshot.course_states,
                 "semester_time_left": semester_time_left,
+                "relax_cooldowns": relax_cooldowns,
             },
             user_id,
-        )
-
-        # --- 启动游戏引擎 ---
-        engine = GameEngine(
-            user_id,
-            repo=repo,
-            save_service=save_service,
-            game_service=game_service,
-            db_factory=AsyncSessionLocal,
-            llm_override=llm_override,
         )
 
         async def event_forwarder():
@@ -305,7 +349,7 @@ async def websocket_endpoint(websocket: WebSocket):
 
         forwarder_task = asyncio.create_task(event_forwarder())
         await engine._push_update()
-        loop_task = asyncio.create_task(engine.run_loop())
+        engine.start()
 
         # ========================================
         # 阶段 4：消息接收循环（带限流）
@@ -335,7 +379,9 @@ async def websocket_endpoint(websocket: WebSocket):
                 elif action == "save_and_exit":
                     logger.info("User %s requested save_and_exit", username)
                     async with AsyncSessionLocal() as db:
-                        success = await save_service.persist_to_db(repo, db)
+                        success = await save_service.persist_to_db(
+                            repo, db, save_slot=active_save_slot
+                        )
                     await manager.send_personal_message(
                         {
                             "type": "save_result",
@@ -351,7 +397,9 @@ async def websocket_endpoint(websocket: WebSocket):
                 elif action == "save_game":
                     logger.info("User %s requested save_game", username)
                     async with AsyncSessionLocal() as db:
-                        success = await save_service.persist_to_db(repo, db)
+                        success = await save_service.persist_to_db(
+                            repo, db, save_slot=active_save_slot
+                        )
                     await manager.send_personal_message(
                         {
                             "type": "save_result",
@@ -371,6 +419,66 @@ async def websocket_endpoint(websocket: WebSocket):
                     break
 
                 else:
+                    if action == "change_course_state":
+                        course_id = data_json.get("target")
+                        state_val = _safe_int(data_json.get("value"))
+                        current_snapshot = await repo.get_snapshot()
+                        if (
+                            not course_id
+                            or state_val not in _VALID_COURSE_STATES
+                            or str(course_id) not in current_snapshot.courses
+                        ):
+                            await manager.send_personal_message(
+                                {
+                                    "type": "toast",
+                                    "message": "无效的课程策略",
+                                    "level": "warning",
+                                },
+                                user_id,
+                            )
+                            continue
+                    elif action == "set_speed":
+                        speed = data_json.get("speed")
+                        if (
+                            not isinstance(speed, (int, float))
+                            or isinstance(speed, bool)
+                            or speed < 0.5
+                            or speed > 5.0
+                        ):
+                            await manager.send_personal_message(
+                                {
+                                    "type": "toast",
+                                    "message": "无效的游戏速度，请选择 0.5 到 5.0 之间的倍率",
+                                    "level": "warning",
+                                },
+                                user_id,
+                            )
+                            continue
+                    elif action == "set_mode":
+                        mode = data_json.get("mode")
+                        if mode not in {"library", "ai", "hybrid"}:
+                            await manager.send_personal_message(
+                                {
+                                    "type": "toast",
+                                    "message": "无效的内容生成模式",
+                                    "level": "warning",
+                                },
+                                user_id,
+                            )
+                            continue
+                    elif action == "next_semester":
+                        current_snapshot = await repo.get_snapshot()
+                        current_stats = current_snapshot.stats.model_dump()
+                        if not int(current_stats.get("exam_completed", 0) or 0):
+                            await manager.send_personal_message(
+                                {
+                                    "type": "toast",
+                                    "message": "请先完成本学期期末考试",
+                                    "level": "warning",
+                                },
+                                user_id,
+                            )
+                            continue
                     await engine.process_action(data_json)
 
             except json.JSONDecodeError:
@@ -383,9 +491,7 @@ async def websocket_endpoint(websocket: WebSocket):
     finally:
         # --- 资源清理 ---
         if engine:
-            engine.stop()
-        if loop_task:
-            loop_task.cancel()
+            engine.shutdown()
         if forwarder_task:
             forwarder_task.cancel()
-        manager.disconnect(user_id)
+        manager.disconnect(user_id, websocket)

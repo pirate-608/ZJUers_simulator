@@ -112,18 +112,13 @@ const selectedMajor = ref<string | null>(null)
 
 const stats = reactive({ iq: 100, eq: 100, luck: 50 })
 
-const totalUsed = computed(() => stats.iq + stats.eq + stats.luck)
+const totalUsed = computed(() => Number(stats.iq) + Number(stats.eq) + Number(stats.luck))
 const remainingPoints = computed(() => STAT_BUDGET - totalUsed.value)
 
-let adjusting = false
 function onSliderChange() {
-  if (adjusting) return
-  adjusting = true
-  const total = totalUsed.value
-  const diff = STAT_BUDGET - total
-  // auto-adjust: distribute excess to the other two sliders proportionally
-  // 简化处理：不自动调整，让用户自由调节，只是按钮不可用
-  adjusting = false
+  stats.iq = Math.min(150, Math.max(50, Number(stats.iq) || 50))
+  stats.eq = Math.min(150, Math.max(50, Number(stats.eq) || 50))
+  stats.luck = Math.min(150, Math.max(50, Number(stats.luck) || 50))
 }
 
 onMounted(async () => {
@@ -138,6 +133,11 @@ onMounted(async () => {
 
 const confirmCreate = async () => {
   if (!selectedMajor.value) return
+  onSliderChange()
+  if (remainingPoints.value !== 0) {
+    alert('IQ/EQ/Luck 初始总点数必须等于 250')
+    return
+  }
   const jwt = localStorage.getItem('zju_jwt')
   if (!jwt) {
     alert('认证凭据已过期，请重新登录')

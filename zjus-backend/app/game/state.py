@@ -1,13 +1,19 @@
 import logging
-import random
-from typing import Optional, Dict, Any, Set, List
-from redis import asyncio as aioredis
-from app.core.config import settings
+import inspect
+from typing import Any, Awaitable, Dict, TypeVar
+
 from app.api.cache import RedisCache
 from app.schemas.game_state import PlayerStats
 from app.repositories.redis_repo import RedisRepository
 
 logger = logging.getLogger(__name__)
+T = TypeVar("T")
+
+
+async def _await_if_needed(value: T | Awaitable[T]) -> T:
+    if inspect.isawaitable(value):
+        return await value
+    return value
 
 
 class RedisState:
@@ -44,16 +50,18 @@ class RedisState:
         fixed = 0
 
         while True:
-            cursor, keys = await redis.scan(cursor=cursor, match="player:*", count=200)
+            cursor, keys = await _await_if_needed(
+                redis.scan(cursor=cursor, match="player:*", count=200)
+            )
             if keys:
                 scanned += len(keys)
                 for key in keys:
-                    ttl = await redis.ttl(key)
+                    ttl = await _await_if_needed(redis.ttl(key))
                     if ttl == -1:
                         if delete:
-                            await redis.delete(key)
+                            await _await_if_needed(redis.delete(key))
                         else:
-                            await redis.expire(key, ttl_seconds)
+                            await _await_if_needed(redis.expire(key, ttl_seconds))
                         fixed += 1
             if cursor == 0:
                 break
@@ -76,7 +84,7 @@ class RedisState:
         pass
 
     async def exists(self) -> bool:
-        return await self.redis.exists(self.key) > 0
+        return await _await_if_needed(self.redis.exists(self.key)) > 0
 
     # ==========================================
     # 游戏初始化逻辑
@@ -90,8 +98,8 @@ class RedisState:
     # 便捷查询接口（auth.py 等少量外部引用）
     # ==========================================
     async def get_stats(self) -> Dict[str, str]:
-        return await self.redis.hgetall(self.key)
+        return await _await_if_needed(self.redis.hgetall(self.key))
 
     async def get_stats_typed(self) -> Dict[str, Any]:
-        raw = await self.redis.hgetall(self.key)
+        raw = await _await_if_needed(self.redis.hgetall(self.key))
         return PlayerStats.from_redis(raw).model_dump()

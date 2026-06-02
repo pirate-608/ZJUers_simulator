@@ -75,18 +75,14 @@ const emit = defineEmits<{
 
 const exitWithoutSave = () => {
   store.closeModal()
-  // 直接销毁 Token 并强刷网页，断开的 WS 会让后端自动清理连接
-  localStorage.removeItem('zju_token')
-  localStorage.removeItem('zju_jwt')
-  localStorage.removeItem('selected_save_slot')
-  window.location.reload()
+  emit('send-action', { action: 'exit_without_save' })
 }
 
 const saveAndExit = () => {
   // 🌟 修复：不再使用 setTimeout，而是设置等待标记，发送保存指令
   // 配合 useGameWebSocket.ts 里的 save_result 拦截，实现完美闭环
   store.isPendingExit = true
-  emit('send-action', { action: 'save_game' })
+  emit('send-action', { action: 'save_and_exit' })
 }
 </script>
 

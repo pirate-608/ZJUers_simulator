@@ -171,15 +171,18 @@
 4. 启动 `GameEngine` 与事件转发协程。
 5. 推送 `auth_ok` 和 `init`。
 
+`auth_ok` 只表示连接可用；后端会在 WebSocket 上下文初始化后启动 `GameEngine`。前端不应在 `auth_ok` 后主动发送 `resume`，否则可能破坏新手引导或手动暂停状态。
+
 ### 服务端消息
 
 | 类型 | 说明 |
 |---|---|
 | `auth_ok` | 鉴权通过 |
 | `auth_error` | JWT 无效、账号受限或选择的存档不存在 |
-| `init` | 初始状态包：玩家属性、课程进度、课程策略、学期剩余时间 |
-| `tick` | 高频状态更新 |
+| `init` | 初始状态包：玩家属性、课程进度、课程策略、学期剩余时间、休闲动作冷却 |
+| `tick` | 高频状态更新，包含 `relax_cooldowns` |
 | `event` | 事件日志 |
+| `feedback` | 结果反馈弹窗，包含 `title`、`message`、`kind`、`auto_close_ms` |
 | `random_event` | 随机事件弹窗 |
 | `semester_summary` | 期末成绩单 |
 | `dingtalk_message` | 钉钉消息 |
@@ -188,6 +191,19 @@
 | `save_result` | 保存结果 |
 | `exit_confirmed` | 不保存退出确认 |
 | `mode_changed` / `toast` | 内容生成模式和提示 |
+
+`relax_cooldowns` 为动作到剩余秒数的映射，例如：
+
+```json
+{
+  "gym": 12,
+  "game": 0,
+  "walk": 0,
+  "cc98": 7
+}
+```
+
+`feedback` 用于随机事件结果和休闲动作结果。日志仍由 `event` 消息保留；前端应同时展示日志和弹窗。
 
 ### 客户端动作
 

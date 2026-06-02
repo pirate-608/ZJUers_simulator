@@ -42,6 +42,7 @@ class PlayerStats(BaseModel):
     course_plan_json: str = ""
     course_info_json: str = ""
     elapsed_game_time: int = 0
+    exam_completed: int = 0
 
     @classmethod
     def from_redis(cls, raw: Dict[str, Any]) -> "PlayerStats":
@@ -66,6 +67,7 @@ class PlayerStats(BaseModel):
             course_plan_json=_to_str(raw.get("course_plan_json"), ""),
             course_info_json=_to_str(raw.get("course_info_json"), ""),
             elapsed_game_time=_to_int(raw.get("elapsed_game_time"), 0),
+            exam_completed=_to_int(raw.get("exam_completed"), 0),
         )
 
     @classmethod
@@ -92,6 +94,7 @@ class PlayerStats(BaseModel):
             efficiency=100,
             course_plan_json="",
             course_info_json="",
+            exam_completed=0,
         )
         if overrides:
             defaults = defaults.model_copy(update=overrides)

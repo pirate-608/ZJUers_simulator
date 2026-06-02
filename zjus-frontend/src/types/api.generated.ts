@@ -125,12 +125,6 @@ export interface components {
             invite_code: string;
             /** Token */
             token?: string | null;
-            /** Custom Llm Model */
-            custom_llm_model?: string | null;
-            /** Custom Llm Api Key */
-            custom_llm_api_key?: string | null;
-            /** Custom Llm Provider */
-            custom_llm_provider?: string | null;
         };
         /** AuthResponse */
         AuthResponse: {

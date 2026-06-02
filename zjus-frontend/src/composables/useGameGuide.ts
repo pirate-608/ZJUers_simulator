@@ -1,6 +1,7 @@
 import { driver } from 'driver.js'
 import 'driver.js/dist/driver.css'
 import { useGameStore } from '@/stores/gameStore'
+import type { WsClientAction } from '@/types/websocket'
 
 const GUIDE_FLAG = 'zjus_guide_shown'
 
@@ -74,14 +75,18 @@ const STEPS: GuideStep[] = [
 export function useGameGuide() {
   const store = useGameStore()
 
-  function startGuide() {
+  function startGuide(sendAction?: (payload: WsClientAction) => void) {
     // 仅首次进入 playing 时展示
     if (localStorage.getItem(GUIDE_FLAG)) return
     localStorage.setItem(GUIDE_FLAG, '1')
 
-    // 游戏可能暂停中，引导期间暂停以冻结 tick
+    // 引导期间显式锁住前端倒计时，并通知后端暂停 tick。
     const wasPaused = store.isPaused
-    if (!wasPaused) store.setPaused(true)
+    store.setGuideActive(true)
+    if (!wasPaused) {
+      store.setPaused(true)
+      sendAction?.({ action: 'pause' })
+    }
 
     const driverObj = driver({
       showProgress: true,
@@ -99,7 +104,11 @@ export function useGameGuide() {
         },
       })),
       onDestroyed: () => {
-        if (!wasPaused) store.setPaused(false)
+        store.setGuideActive(false)
+        if (!wasPaused) {
+          store.setPaused(false)
+          sendAction?.({ action: 'resume' })
+        }
       },
     })
 

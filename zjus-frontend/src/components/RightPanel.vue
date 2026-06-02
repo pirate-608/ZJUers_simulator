@@ -56,38 +56,42 @@
           <!-- 🌟 修复：全部绑定 :disabled="store.isPaused" -->
           <div class="col-6">
             <button
-              class="btn btn-sm btn-outline-primary w-100"
-              :disabled="store.isPaused"
+              class="btn btn-sm btn-outline-primary w-100 relax-btn"
+              :disabled="isRelaxDisabled('gym')"
+              :title="relaxButtonTitle('gym')"
               @click="sendRelax('gym')"
             >
-              🏋️‍♂️ 健身
+              {{ relaxButtonLabel('gym') }}
             </button>
           </div>
           <div class="col-6">
             <button
-              class="btn btn-sm btn-outline-success w-100"
-              :disabled="store.isPaused"
+              class="btn btn-sm btn-outline-success w-100 relax-btn"
+              :disabled="isRelaxDisabled('game')"
+              :title="relaxButtonTitle('game')"
               @click="sendRelax('game')"
             >
-              🎮 游戏
+              {{ relaxButtonLabel('game') }}
             </button>
           </div>
           <div class="col-6">
             <button
-              class="btn btn-sm btn-outline-info w-100"
-              :disabled="store.isPaused"
+              class="btn btn-sm btn-outline-info w-100 relax-btn"
+              :disabled="isRelaxDisabled('cc98')"
+              :title="relaxButtonTitle('cc98')"
               @click="sendRelax('cc98')"
             >
-              🌊 CC98
+              {{ relaxButtonLabel('cc98') }}
             </button>
           </div>
           <div class="col-6">
             <button
-              class="btn btn-sm btn-outline-secondary w-100"
-              :disabled="store.isPaused"
+              class="btn btn-sm btn-outline-secondary w-100 relax-btn"
+              :disabled="isRelaxDisabled('walk')"
+              :title="relaxButtonTitle('walk')"
               @click="sendRelax('walk')"
             >
-              🚶 散步
+              {{ relaxButtonLabel('walk') }}
             </button>
           </div>
         </div>
@@ -203,6 +207,7 @@ function setMode(mode: 'library' | 'ai' | 'hybrid') {
 // ✨ 本地虚拟时间，用于丝滑渲染
 const internalTime = ref(0)
 let animationFrameId: number | null = null
+let cooldownIntervalId: ReturnType<typeof setInterval> | null = null
 let lastTick = performance.now()
 
 // 监听后端推送过来的绝对准确时间，消除任何前端误差
@@ -218,7 +223,7 @@ const updateFrame = () => {
   const deltaMs = now - lastTick
   lastTick = now
 
-  if (!store.isPaused && store.currentPhase === 'playing') {
+  if (!store.isPaused && !store.isGuideActive && store.currentPhase === 'playing') {
     // 根据当前的倍速，扣减对应流逝的秒数
     // 如果是 2.0x，真实世界过去 16ms，游戏里就流逝 32ms
     internalTime.value -= (deltaMs / 1000) * store.gameSpeed
@@ -230,11 +235,17 @@ const updateFrame = () => {
 onMounted(() => {
   lastTick = performance.now()
   animationFrameId = requestAnimationFrame(updateFrame)
+  cooldownIntervalId = setInterval(() => {
+    store.tickRelaxCooldowns(1)
+  }, 1000)
 })
 
 onUnmounted(() => {
   if (animationFrameId !== null) {
     cancelAnimationFrame(animationFrameId)
+  }
+  if (cooldownIntervalId !== null) {
+    clearInterval(cooldownIntervalId)
   }
 })
 
@@ -277,7 +288,34 @@ const canTakeExam = computed(() => {
 
 // --- 发送指令逻辑 ---
 
+const relaxLabels: Record<RelaxTarget, string> = {
+  gym: '🏋️‍♂️ 健身',
+  game: '🎮 游戏',
+  walk: '🚶 散步',
+  cc98: '🌊 CC98',
+}
+
+const cooldownRemaining = (activity: RelaxTarget) => store.relaxCooldowns[activity] ?? 0
+
+const isRelaxDisabled = (activity: RelaxTarget) => {
+  return store.isPaused || cooldownRemaining(activity) > 0
+}
+
+const relaxButtonLabel = (activity: RelaxTarget) => {
+  const remaining = cooldownRemaining(activity)
+  if (remaining > 0) return `${relaxLabels[activity]} ${remaining}s`
+  return relaxLabels[activity]
+}
+
+const relaxButtonTitle = (activity: RelaxTarget) => {
+  const remaining = cooldownRemaining(activity)
+  if (remaining > 0) return `冷却中，还剩 ${remaining} 秒`
+  if (store.isPaused) return '游戏暂停中'
+  return ''
+}
+
 const sendRelax = (activity: RelaxTarget) => {
+  if (isRelaxDisabled(activity)) return
   emit('send-action', { action: 'relax', target: activity }) 
 }
 const takeExam = () => {
@@ -301,6 +339,11 @@ const takeExam = () => {
 
 .section-header-danger {
   background: linear-gradient(120deg, #8d3f3f 0%, #724040 100%) !important;
+}
+
+.relax-btn {
+  min-height: 31px;
+  white-space: nowrap;
 }
 
 @media (max-width: 430px) {

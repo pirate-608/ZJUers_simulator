@@ -112,8 +112,7 @@ async def search_by_vector(
         [{"char": <原始 character dict>, "similarity": float}, ...]
     """
     own_session = db is None
-    if own_session:
-        db = AsyncSessionLocal()
+    session = db or AsyncSessionLocal()
 
     try:
         vec_str = "[" + ",".join(str(v) for v in query_vec) + "]"
@@ -125,20 +124,21 @@ async def search_by_vector(
             LIMIT :k
             """
         )
-        result = await db.execute(sql, {"vec": vec_str, "k": top_k})
+        result = await session.execute(sql, {"vec": vec_str, "k": top_k})
         rows = result.fetchall()
 
         results = []
         for row in rows:
             char_data = json.loads(row[0])
-            results.append({
-                "char": char_data,
-                "similarity": float(row[1]),
-            })
+            if isinstance(char_data, dict):
+                results.append({
+                    "char": char_data,
+                    "similarity": float(row[1]),
+                })
         return results
     except Exception as e:
         logger.error("Vector search failed: %s", e)
         return []
     finally:
         if own_session:
-            await db.close()
+            await session.close()

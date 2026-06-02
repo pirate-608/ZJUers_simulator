@@ -1,51 +1,55 @@
-from sqlalchemy import (
-    Column,
-    Integer,
-    String,
-    DateTime,
-    Boolean,
-    ForeignKey,
-    Text,
-    JSON,
-)
+from datetime import datetime
+from typing import Any
+
+from sqlalchemy import JSON, Boolean, DateTime, ForeignKey, String, Text
+from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.sql import func
+
 from app.core.database import Base
 
 
 class UserRestriction(Base):
     __tablename__ = "user_restrictions"
 
-    id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(
-        Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+    id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), nullable=False
     )
-    restriction_type = Column(String(20), nullable=False)  # BAN, FREEZE
-    reason = Column(Text, nullable=True)
-    expires_at = Column(DateTime(timezone=True), nullable=True)
-    is_active = Column(Boolean, default=True, nullable=False)
-    created_by = Column(String(64), nullable=True)
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    restriction_type: Mapped[str] = mapped_column(String(20))  # BAN, FREEZE
+    reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+    expires_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    created_by: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
 
 
 class UserBlacklist(Base):
     __tablename__ = "user_blacklist"
 
-    id = Column(Integer, primary_key=True, index=True)
-    identifier = Column(String(255), nullable=False)  # username/token/ip
-    identifier_type = Column(String(20), nullable=False)  # username, token, ip
-    reason = Column(Text, nullable=True)
-    is_active = Column(Boolean, default=True, nullable=False)
-    created_by = Column(String(64), nullable=True)
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    identifier: Mapped[str] = mapped_column(String(255))  # username/token/ip
+    identifier_type: Mapped[str] = mapped_column(String(20))  # username, token, ip
+    reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    created_by: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
 
 
 class AdminAuditLog(Base):
     __tablename__ = "admin_audit_logs"
 
-    id = Column(Integer, primary_key=True, index=True)
-    admin_username = Column(String(64), nullable=False)
-    action = Column(String(64), nullable=False)
-    target_type = Column(String(64), nullable=True)
-    target_id = Column(String(64), nullable=True)
-    details = Column(JSON, nullable=True)
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    admin_username: Mapped[str] = mapped_column(String(64))
+    action: Mapped[str] = mapped_column(String(64))
+    target_type: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    target_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    details: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )

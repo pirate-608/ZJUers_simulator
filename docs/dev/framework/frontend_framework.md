@@ -8,7 +8,7 @@
 
 ```text
 zjus-frontend/src/
-├── App.vue                  # Phase 路由中枢 + 全局 Toast
+├── App.vue                  # Phase 路由中枢 + 全局 Toast/反馈弹窗挂载
 ├── api/
 │   └── client.ts            # HTTP API 薄封装，类型来自 OpenAPI
 ├── types/
@@ -31,7 +31,7 @@ zjus-frontend/src/
     ├── MidPanel.vue         # 事件日志 + 钉钉消息
     ├── RightPanel.vue       # 属性面板 + 摸鱼动作 + 内容模式
     ├── EndScreen.vue        # 结局界面
-    └── modals/              # 成绩单、随机事件、退出确认
+    └── modals/              # 成绩单、随机事件、反馈、退出确认
 ```
 
 ---
@@ -64,6 +64,7 @@ graph TD
   - `game_started`：是否可以直接连接游戏。
   - `selected_save_slot`：选择加载的存档槽位。
 - 当阶段进入 `loading` 时建立 WebSocket。
+- 首次进入 `playing` 且 WebSocket 已连接后启动新手引导；引导期间通过 `pause` / `resume` 冻结后端 tick，并用 `isGuideActive` 冻结前端本地倒计时。
 - 如果旧版本误把长期凭证写入 `zju_token`，启动时会迁移到 `zju_user_token` 并要求重新登录。
 
 ---
@@ -126,6 +127,19 @@ graph TD
   - 总和必须等于 250。
 - 调 `initCharacter()` 后设置 `game_started=1` 并进入 `loading`。
 
+### `RightPanel.vue`
+
+- 渲染学习效率、休闲动作、学期倒计时、期末考试和内容生成模式。
+- 从 `gameStore.relaxCooldowns` 读取 `gym` / `game` / `walk` / `cc98` 剩余冷却。
+- 冷却中或暂停时锁定休闲按钮；冷却中按钮文案显示剩余秒数。
+- 本地倒计时只在 `!isPaused && !isGuideActive && currentPhase === 'playing'` 时流逝，后端 `semester_time_left` 到达时会校准。
+
+### `FeedbackModal.vue`
+
+- 展示服务端 `feedback` 消息。
+- 随机事件结果默认 5 秒自动关闭；休闲动作结果默认 3 秒自动关闭。
+- 用户可以点击按钮、关闭图标或背景手动关闭。
+
 ### `useGameWebSocket.ts`
 
 WebSocket 首条消息包含：
@@ -140,9 +154,11 @@ WebSocket 首条消息包含：
 }
 ```
 
-- `auth_ok` 后启动心跳，并发送 `start` / `resume` / `get_state`。
+- `auth_ok` 后只启动心跳并记录连接日志；后端负责启动引擎，避免自动 `resume` 干扰引导或暂停。
 - `auth_error` 会清理当前游戏标记；若是存档错误则回到 `save_select`，否则回到 `login`。
-- `init` 将阶段切到 `playing` 并初始化课程、属性、剩余时间。
+- `init` 将阶段切到 `playing` 并初始化课程、属性、剩余时间和 `relax_cooldowns`。
+- `tick` 持续同步课程、属性、剩余时间和 `relax_cooldowns`。
+- `feedback` 调用 `gameStore.showFeedback()` 展示结果弹窗。
 - `save_result` / `exit_confirmed` 负责退出时清理 JWT 和本局标记。
 
 ---
@@ -158,10 +174,13 @@ WebSocket 首条消息包含：
 | `courseMetadata` | 当前学期课程元数据 |
 | `currentCourseStates` | 课程策略 |
 | `semesterTimeLeft` | 学期剩余秒数 |
+| `isPaused` / `isGuideActive` | 后端暂停状态 / 前端引导冻结状态 |
+| `relaxCooldowns` | 休闲动作剩余冷却秒数 |
 | `eventLogs` | 事件日志 |
 | `dingMessages` | 钉钉消息 |
 | `gameMode` / `llmAvailable` | 内容生成模式状态 |
 | `activeModal` / `modalData` | 当前弹窗 |
+| `feedbackModal` | 结果反馈弹窗 |
 | `endType` / `endData` | 结局数据 |
 
 ---

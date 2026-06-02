@@ -1,39 +1,39 @@
-from sqlalchemy import (
-    Column,
-    Integer,
-    String,
-    Text,
-    TIMESTAMP,
-    ForeignKey,
-    UniqueConstraint,
-    JSON,
-)
+from datetime import datetime
+from typing import Any
+
+from sqlalchemy import JSON, TIMESTAMP, ForeignKey, String, UniqueConstraint
+from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.sql import func
+
 from app.core.database import Base
 
 
 class GameSave(Base):
     __tablename__ = "game_saves"
 
-    id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(
-        Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+    id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), nullable=False
     )
-    save_slot = Column(Integer, default=1, nullable=False)
+    save_slot: Mapped[int] = mapped_column(default=1)
 
     # 游戏状态数据（JSON格式）
-    stats_data = Column(JSON, nullable=False)
-    courses_data = Column(JSON)
-    course_states_data = Column(JSON)
-    achievements_data = Column(JSON)
+    stats_data: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False)
+    courses_data: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
+    course_states_data: Mapped[dict[str, Any] | None] = mapped_column(
+        JSON, nullable=True
+    )
+    achievements_data: Mapped[list[Any] | None] = mapped_column(JSON, nullable=True)
 
     # 元数据
-    game_version = Column(String(20), default="1.0.0")
-    semester_index = Column(Integer)
-    total_play_time = Column(Integer, default=0)  # 总游玩时间（秒）
+    game_version: Mapped[str] = mapped_column(String(20), default="1.0.0")
+    semester_index: Mapped[int | None] = mapped_column(nullable=True)
+    total_play_time: Mapped[int] = mapped_column(default=0)  # 总游玩时间（秒）
 
-    created_at = Column(TIMESTAMP, server_default=func.now())
-    saved_at = Column(TIMESTAMP, server_default=func.now(), onupdate=func.now())
+    created_at: Mapped[datetime] = mapped_column(TIMESTAMP, server_default=func.now())
+    saved_at: Mapped[datetime] = mapped_column(
+        TIMESTAMP, server_default=func.now(), onupdate=func.now()
+    )
 
     __table_args__ = (
         UniqueConstraint("user_id", "save_slot", name="uq_user_save_slot"),

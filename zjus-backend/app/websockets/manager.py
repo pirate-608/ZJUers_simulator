@@ -64,17 +64,23 @@ class ConnectionManager:
             "User %s connected. Total: %d", user_id, len(self.active_connections)
         )
 
-    def disconnect(self, user_id: str):
-        """从管理器中移除连接（不负责关闭 WebSocket 本身）"""
-        self._remove(user_id)
+    def disconnect(self, user_id: str, websocket: Optional[WebSocket] = None):
+        """从管理器中移除连接（不负责关闭 WebSocket 本身）。
 
-    def _remove(self, user_id: str):
+        When websocket is provided, only remove the active record if it still
+        points to that same connection. This prevents an old duplicate session
+        from deleting a newer connection in its cleanup block.
+        """
+        self._remove(user_id, websocket)
+
+    def _remove(self, user_id: str, websocket: Optional[WebSocket] = None):
         """内部清理方法"""
         removed = False
-        if user_id in self.active_connections:
+        current = self.active_connections.get(user_id)
+        if current is not None and (websocket is None or current is websocket):
             del self.active_connections[user_id]
             removed = True
-        self.heartbeat_timestamps.pop(user_id, None)
+            self.heartbeat_timestamps.pop(user_id, None)
         if removed:
             logger.info(
                 "User %s removed. Remaining: %d", user_id, len(self.active_connections)

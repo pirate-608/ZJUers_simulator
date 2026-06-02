@@ -72,8 +72,8 @@
                   <select v-model="form.llmProvider" class="form-select form-select-sm">
                     <option value="openai">OpenAI (默认)</option>
                     <option value="deepseek">DeepSeek</option>
-                    <option value="qwen">阿里通义千问 (Qwen)</option>
-                    <option value="glm">智谱清言 (GLM)</option>
+                    <option value="qwen">阿里云百炼 (Qwen)</option>
+                    <option value="glm">智谱 (GLM)</option>
                     <option value="moonshot">月之暗面 (Kimi)</option>
                     <option value="minimax">MiniMax</option>
                   </select>
@@ -193,9 +193,6 @@ const doLogin = async () => {
       username: form.username.trim(),
       invite_code: form.inviteCode.trim(),
       token: form.token || null,
-      custom_llm_provider: form.useCustomLlm ? form.llmProvider : null,
-      custom_llm_model: form.useCustomLlm ? form.llmModel || null : null,
-      custom_llm_api_key: form.useCustomLlm ? form.llmKey || null : null,
     })
 
     if (result.status === 'error') {

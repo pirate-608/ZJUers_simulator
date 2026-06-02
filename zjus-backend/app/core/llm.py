@@ -1,8 +1,10 @@
 import json
 import os
 import logging
-from typing import Optional, Dict
+from typing import Any, Dict, List, Optional, Tuple
+
 from openai import AsyncOpenAI
+
 from app.api.cache import RedisCache
 from app.content.state_vector import PlayerStateVector
 
@@ -18,28 +20,63 @@ PROVIDER_BASE_URLS = {
     "minimax": "https://api.minimax.chat/v1",
 }
 
-def _resolve_llm_config(llm_override: Optional[Dict] = None):
+DEFAULT_LLM_MODEL = "gpt-4o-mini"
+
+
+def _resolve_llm_config(
+    llm_override: Optional[Dict[str, Any]] = None,
+) -> Tuple[str | None, str | None, str]:
     """根据用户配置或环境变量确定 LLM 配置"""
-    model = (llm_override or {}).get("model") or os.getenv("LLM")
-    api_key = (llm_override or {}).get("api_key") or os.getenv("LLM_API_KEY")
-    
-    provider = (llm_override or {}).get("provider")
+    override = llm_override or {}
+    model = str(override.get("model") or os.getenv("LLM") or DEFAULT_LLM_MODEL)
+    api_key_value = override.get("api_key") or os.getenv("LLM_API_KEY")
+    api_key = str(api_key_value) if api_key_value else None
+
+    provider = override.get("provider")
     if provider and provider in PROVIDER_BASE_URLS:
         base_url = PROVIDER_BASE_URLS[provider]
     else:
         base_url = os.getenv("LLM_BASE_URL")
-        
+
     return api_key, base_url, model
 
 
-def _get_client(api_key: Optional[str], base_url: Optional[str]):
+def _get_client(api_key: Optional[str], base_url: Optional[str]) -> AsyncOpenAI:
     return AsyncOpenAI(api_key=api_key, base_url=base_url)
 
 
-async def check_llm_availability(llm_override: Optional[Dict] = None) -> bool:
+def _json_from_text(content: object) -> dict[str, Any]:
+    if not isinstance(content, str) or not content.strip():
+        return {}
+    try:
+        parsed = json.loads(content)
+    except json.JSONDecodeError:
+        return {}
+    return parsed if isinstance(parsed, dict) else {}
+
+
+def _coerce_cached_json(content: object) -> dict[str, Any] | None:
+    if isinstance(content, dict):
+        return content
+    return _json_from_text(content) or None
+
+
+def _string_list(value: object) -> list[str]:
+    if not isinstance(value, list):
+        return []
+    return [item for item in value if isinstance(item, str) and item.strip()]
+
+
+def _dict_list(value: object) -> list[dict[str, Any]]:
+    if not isinstance(value, list):
+        return []
+    return [item for item in value if isinstance(item, dict)]
+
+
+async def check_llm_availability(llm_override: Optional[Dict[str, Any]] = None) -> bool:
     """探测 LLM API 是否可用（轻量调用，不消耗 token）"""
     try:
-        api_key, base_url, model = _resolve_llm_config(llm_override)
+        api_key, base_url, _model = _resolve_llm_config(llm_override)
         if not api_key:
             return False
         client = _get_client(api_key, base_url)
@@ -75,9 +112,11 @@ def _load_keywords():
         return []
 
 
-
 async def generate_cc98_post(
-    player_stats: dict, effect: str, trigger: str, llm_override: Optional[Dict] = None
+    player_stats: dict,
+    effect: str,
+    trigger: str,
+    llm_override: Optional[Dict[str, Any]] = None,
 ):
     """生成 CC98 帖子内容和反馈（批量缓存优化版）"""
     feedback_map = {
@@ -108,11 +147,11 @@ async def generate_cc98_post(
 
     # 2. LLM 补货 (状态浓缩: ~50 tok 代替 ~300 tok)
     state = PlayerStateVector.from_stats(player_stats)
-    messages = []
+    messages: List[Any] = []
     prompt = (
         f"玩家状态：{state.to_prompt_fragment()}\n"
         f"模拟浙江大学CC98论坛，生成 5 条帖子。\n"
-        f"1. 第一条与\"{trigger}\"相关（{effect}效果）。\n"
+        f'1. 第一条与"{trigger}"相关（{effect}效果）。\n'
         f"2. 其余 4 条随机校园话题。\n"
         f'\n严格输出 JSON：{{ "posts": ["帖1", "帖2", "帖3", "帖4", "帖5"] }}'
     )
@@ -128,8 +167,8 @@ async def generate_cc98_post(
             max_tokens=300,
         )
 
-        data = json.loads(response.choices[0].message.content)
-        posts = data.get("posts", [])
+        data = _json_from_text(response.choices[0].message.content)
+        posts = _string_list(data.get("posts"))
 
         if not posts:
             return "CC98 现在只有烂坑和吐槽...", feedback
@@ -153,7 +192,9 @@ async def generate_cc98_post(
 
 
 async def generate_random_event(
-    player_stats: dict, history: list = None, llm_override: Optional[Dict] = None
+    player_stats: dict,
+    history: list | None = None,
+    llm_override: Optional[Dict[str, Any]] = None,
 ):  # [修复] 增加了 history 参数
     """
     生成随机事件（批量缓存版）
@@ -163,11 +204,11 @@ async def generate_random_event(
     # 1. 尝试从缓存获取
     cached_event = await RedisCache.lpop(event_key)
     if cached_event:
-        return json.loads(cached_event)
+        return _coerce_cached_json(cached_event)
 
     # 2. LLM 补货 (状态浓缩: ~50 tok 代替 ~300 tok + keywords ~800 tok)
     state = PlayerStateVector.from_stats(player_stats)
-    messages = []
+    messages: List[Any] = []
     history_hint = ""
     if history:
         history_hint = f"\n已发生事件（勿重复）：{', '.join(history[-5:])}"
@@ -189,8 +230,8 @@ async def generate_random_event(
             messages=messages,
             max_tokens=800,
         )
-        data = json.loads(response.choices[0].message.content)
-        events = data.get("events", [])
+        data = _json_from_text(response.choices[0].message.content)
+        events = _dict_list(data.get("events"))
 
         if not events:
             return None
@@ -212,7 +253,9 @@ async def generate_random_event(
 
 
 async def generate_dingtalk_message(
-    player_stats: dict, context: str = "random", llm_override: Optional[Dict] = None
+    player_stats: dict,
+    context: str = "random",
+    llm_override: Optional[Dict[str, Any]] = None,
 ):
     """
     生成钉钉消息（批量缓存版）
@@ -222,11 +265,11 @@ async def generate_dingtalk_message(
     # 1. 尝试从缓存获取
     cached_msg = await RedisCache.lpop(msg_key)
     if cached_msg:
-        return json.loads(cached_msg)
+        return _coerce_cached_json(cached_msg)
 
     # 2. LLM 补货 (状态浓缩: ~50 tok 代替 ~2300 tok)
     state = PlayerStateVector.from_stats(player_stats)
-    messages = []
+    request_messages: List[Any] = []
     prompt = (
         f"玩家状态：{state.to_prompt_fragment()}\n"
         f"场景：{context}。\n"
@@ -235,24 +278,26 @@ async def generate_dingtalk_message(
         f'{{ "sender": "发送人", "role": "counselor/student/system/teacher", '
         f'"content": "30字内", "is_urgent": false }}] }}'
     )
-    messages.append({"role": "user", "content": prompt})
+    request_messages.append({"role": "user", "content": prompt})
     try:
         api_key, base_url, model = _resolve_llm_config(llm_override)
         llm_client = _get_client(api_key, base_url)
 
         response = await llm_client.chat.completions.create(
             model=model,
-            messages=messages,
+            messages=request_messages,
             max_tokens=500,
         )
-        data = json.loads(response.choices[0].message.content)
-        messages = data.get("messages", [])
+        data = _json_from_text(response.choices[0].message.content)
+        generated_messages = _dict_list(data.get("messages"))
 
-        if not messages:
+        if not generated_messages:
             return None
 
-        current_msg = messages[0]
-        remaining_msgs = [json.dumps(m, ensure_ascii=False) for m in messages[1:]]
+        current_msg = generated_messages[0]
+        remaining_msgs = [
+            json.dumps(m, ensure_ascii=False) for m in generated_messages[1:]
+        ]
         await RedisCache.rpush_many_with_limit(
             msg_key,
             remaining_msgs,
@@ -267,13 +312,13 @@ async def generate_dingtalk_message(
 
 
 async def generate_wenyan_report(
-    final_stats: dict, llm_override: Optional[Dict] = None
+    final_stats: dict, llm_override: Optional[Dict[str, Any]] = None
 ) -> str:
     """
     根据玩家final_stats生成一段文言文风格的结业总结。
     """
     keywords = _load_keywords()
-    messages = []
+    messages: List[Any] = []
     if keywords:
         messages.append(
             {
@@ -302,7 +347,10 @@ async def generate_wenyan_report(
             messages=messages,
             max_tokens=200,
         )
-        return response.choices[0].message.content.strip()
+        content = response.choices[0].message.content
+        if not isinstance(content, str) or not content.strip():
+            return "学业既成，前程似锦。"
+        return content.strip()
     except Exception as e:
         print(f"[LLM Wenyan Error] {e}")
         return "学业既成，前程似锦。"

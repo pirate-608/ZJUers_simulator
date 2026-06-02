@@ -12,14 +12,14 @@ import logging
 import json
 import sys
 from datetime import datetime, timezone
-from typing import Optional
+from typing import Any, Optional
 
 
 class JSONFormatter(logging.Formatter):
     """JSON 结构化日志格式器（生产环境）"""
 
     def format(self, record: logging.LogRecord) -> str:
-        log_entry = {
+        log_entry: dict[str, Any] = {
             "timestamp": datetime.fromtimestamp(
                 record.created, tz=timezone.utc
             ).isoformat(),
@@ -30,16 +30,17 @@ class JSONFormatter(logging.Formatter):
 
         # 附加上下文字段（通过 extra 传入）
         if hasattr(record, "user_id"):
-            log_entry["user_id"] = record.user_id
+            log_entry["user_id"] = getattr(record, "user_id")
         if hasattr(record, "action"):
-            log_entry["action"] = record.action
+            log_entry["action"] = getattr(record, "action")
         if hasattr(record, "duration_ms"):
-            log_entry["duration_ms"] = record.duration_ms
+            log_entry["duration_ms"] = getattr(record, "duration_ms")
 
         # 异常信息
         if record.exc_info and record.exc_info[1]:
+            exc_type = record.exc_info[0]
             log_entry["exception"] = {
-                "type": record.exc_info[0].__name__,
+                "type": exc_type.__name__ if exc_type else "Exception",
                 "message": str(record.exc_info[1]),
             }
             if record.exc_text:

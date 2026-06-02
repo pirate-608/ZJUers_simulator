@@ -16,6 +16,7 @@ export interface TranscriptModalData {
 }
 
 export interface RandomEventOption {
+  id?: string
   text: string
   effects: unknown
 }
@@ -35,5 +36,13 @@ export interface DingTalkMessage {
   [k: string]: unknown
 }
 
-export type ModalData = TranscriptModalData | RandomEventModalData | DingTalkMessage | Record<string, unknown>
+export interface FeedbackModalData {
+  title: string
+  message: string
+  kind?: 'event' | 'relax' | 'info' | 'warning'
+  autoCloseMs?: number
+  [k: string]: unknown
+}
+
+export type ModalData = TranscriptModalData | RandomEventModalData | DingTalkMessage | FeedbackModalData | Record<string, unknown>
 

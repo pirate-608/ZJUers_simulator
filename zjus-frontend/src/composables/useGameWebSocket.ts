@@ -1,6 +1,6 @@
 import { ref, onUnmounted } from 'vue'
 import { useGameStore } from '../stores/gameStore.ts'
-import type { CoursesMap } from '../types/course'
+import type { CourseMetadata } from '../types/course'
 import type { WsMessage, WsClientAction } from '../types/websocket'
 import { extractGraduationFinalStats, extractNewSemesterName } from '../types/websocket'
 
@@ -17,6 +17,20 @@ function parseWsJson(data: unknown): unknown {
   }
 }
 
+function parseCourseMetadataArray(data: unknown): CourseMetadata[] {
+  if (typeof data !== 'string' || data.trim() === '') return []
+  try {
+    const parsed = JSON.parse(data)
+    return Array.isArray(parsed) ? parsed as CourseMetadata[] : []
+  } catch {
+    return []
+  }
+}
+
+function readCooldowns(data: unknown): Record<string, unknown> | null {
+  return isRecord(data) ? data : null
+}
+
 export function useGameWebSocket() {
   const ws = ref<WebSocket | null>(null)
   const isConnected = ref(false)
@@ -26,6 +40,7 @@ export function useGameWebSocket() {
   const maxReconnectAttempts = 3
   const reconnectDelay = 3000
   let heartbeatInterval: ReturnType<typeof setInterval> | null = null
+  let shouldReconnect = true
 
   const send = (data: WsClientAction) => {
     if (ws.value && ws.value.readyState === WebSocket.OPEN) {
@@ -41,6 +56,7 @@ export function useGameWebSocket() {
   }
 
   const connect = (token: string = 'test_token', baseUrl: string = 'ws://localhost:8000') => {
+    shouldReconnect = true
     ws.value = new WebSocket(`${baseUrl}/ws/game`)
 
     ws.value.onopen = () => {
@@ -54,7 +70,10 @@ export function useGameWebSocket() {
       if (llmModel && llmModel.trim() !== '') payload.custom_llm_model = llmModel.trim()
       if (llmKey && llmKey.trim() !== '') payload.custom_llm_api_key = llmKey.trim()
       if (selectedSaveSlot && selectedSaveSlot.trim() !== '') {
-        payload.load_save_slot = Number(selectedSaveSlot)
+        const slot = Number(selectedSaveSlot)
+        if (Number.isInteger(slot) && slot > 0) {
+          payload.load_save_slot = slot
+        }
       }
 
       ws.value?.send(JSON.stringify(payload))
@@ -76,6 +95,7 @@ export function useGameWebSocket() {
         'paused',
         'resumed',
         'event',
+        'feedback',
         'game_over',
         'semester_summary',
         'random_event',
@@ -97,13 +117,11 @@ export function useGameWebSocket() {
           reconnectAttempts = 0
           startHeartbeat()
           gameStore.addLog('系统', '已连接服务器...', 'text-success')
-          send({ action: 'start' })
-          send({ action: 'resume' })
-          send({ action: 'get_state' })
           break
         }
 
         case 'auth_error': {
+          shouldReconnect = false
           const message = typeof wsMsg.message === 'string' ? wsMsg.message : '认证失败'
           gameStore.addLog('系统', message, 'text-danger')
           gameStore.showToast(message, 'danger')
@@ -127,7 +145,7 @@ export function useGameWebSocket() {
           // 静态元数据
           const courseInfoJson = data.course_info_json
           if (typeof courseInfoJson === 'string') {
-            gameStore.setCourseMetadata(JSON.parse(courseInfoJson))
+            gameStore.setCourseMetadata(parseCourseMetadataArray(courseInfoJson))
           }
 
           // 基础属性
@@ -147,6 +165,10 @@ export function useGameWebSocket() {
           if (typeof stl === 'number') {
             gameStore.semesterTimeLeft = stl
           }
+          gameStore.setRelaxCooldowns(
+            readCooldowns(wsMsg.relax_cooldowns) ||
+            (isRecord(data.relax_cooldowns) ? data.relax_cooldowns : null),
+          )
           break
         }
 
@@ -166,6 +188,7 @@ export function useGameWebSocket() {
           if (wsMsg.semester_time_left !== undefined && typeof wsMsg.semester_time_left === 'number') {
             gameStore.semesterTimeLeft = wsMsg.semester_time_left
           }
+          gameStore.setRelaxCooldowns(readCooldowns(wsMsg.relax_cooldowns))
           break
         }
 
@@ -183,6 +206,10 @@ export function useGameWebSocket() {
             if (isRecord(data.course_states)) {
               gameStore.updateCourseStatesRaw(data.course_states as Record<string, unknown>)
             }
+            gameStore.setRelaxCooldowns(
+              readCooldowns(wsMsg.relax_cooldowns) ||
+              (isRecord(data.relax_cooldowns) ? data.relax_cooldowns : null),
+            )
           }
           break
         }
@@ -207,6 +234,29 @@ export function useGameWebSocket() {
             (typeof wsMsg.desc === 'string' ? wsMsg.desc : undefined) ||
             '发生了未知事件'
           gameStore.addLog('事件', desc, 'text-primary')
+          break
+        }
+
+        case 'feedback': {
+          const data = isRecord(wsMsg.data) ? wsMsg.data : {}
+          const title = typeof data.title === 'string' && data.title.trim() !== ''
+            ? data.title
+            : '结果反馈'
+          const message = typeof data.message === 'string' && data.message.trim() !== ''
+            ? data.message
+            : '操作已完成。'
+          const kind = typeof data.kind === 'string' ? data.kind : 'info'
+          const autoCloseMs = typeof data.auto_close_ms === 'number'
+            ? data.auto_close_ms
+            : typeof data.autoCloseMs === 'number'
+              ? data.autoCloseMs
+              : 3000
+          gameStore.showFeedback({
+            title,
+            message,
+            kind: kind as 'event' | 'relax' | 'info' | 'warning',
+            autoCloseMs,
+          })
           break
         }
 
@@ -262,8 +312,8 @@ export function useGameWebSocket() {
         case 'new_semester': {
           const nsData = isRecord(wsMsg.data) ? wsMsg.data : {}
           const newCourseJson = typeof nsData.course_info_json === 'string' ? nsData.course_info_json as string : '[]'
-          const courses = JSON.parse(newCourseJson)
-          gameStore.resetForNewSemester(Array.isArray(courses) ? courses : [])
+          const courses = parseCourseMetadataArray(newCourseJson)
+          gameStore.resetForNewSemester(courses)
           gameStore.clearEventLogs()
           const semesterName = extractNewSemesterName(wsMsg)
           gameStore.addLog('系统', `=== 欢迎来到 ${semesterName} ===`, 'text-success fw-bold')
@@ -271,16 +321,37 @@ export function useGameWebSocket() {
         }
 
         case 'mode_changed': {
-          const mode = typeof wsMsg.mode === 'string' ? wsMsg.mode : 'hybrid'
+          const data = isRecord((wsMsg as Record<string, unknown>).data)
+            ? (wsMsg as Record<string, unknown>).data as Record<string, unknown>
+            : {}
+          const rawMode = typeof wsMsg.mode === 'string'
+            ? wsMsg.mode
+            : typeof data.mode === 'string'
+              ? data.mode
+              : 'hybrid'
+          const mode = ['library', 'ai', 'hybrid'].includes(rawMode) ? rawMode : 'hybrid'
           gameStore.gameMode = mode as 'library' | 'ai' | 'hybrid'
-          gameStore.llmAvailable = typeof wsMsg.llm_available === 'boolean' ? wsMsg.llm_available : true
+          gameStore.llmAvailable = typeof wsMsg.llm_available === 'boolean'
+            ? wsMsg.llm_available
+            : typeof data.llm_available === 'boolean'
+              ? data.llm_available
+              : true
           break
         }
 
         case 'toast': {
-          const message = typeof wsMsg.message === 'string' ? wsMsg.message : ''
+          const data = isRecord((wsMsg as Record<string, unknown>).data)
+            ? (wsMsg as Record<string, unknown>).data as Record<string, unknown>
+            : {}
+          const message = typeof wsMsg.message === 'string'
+            ? wsMsg.message
+            : typeof data.message === 'string'
+              ? data.message
+              : ''
           const level = typeof (wsMsg as Record<string, unknown>).level === 'string'
             ? (wsMsg as Record<string, unknown>).level as string
+            : typeof data.level === 'string'
+              ? data.level
             : 'info'
           gameStore.showToast(message, level as 'success' | 'danger' | 'warning' | 'info')
           break
@@ -292,6 +363,7 @@ export function useGameWebSocket() {
           gameStore.showToast(message, success ? 'success' : 'danger')
 
           if (gameStore.isPendingExit && success) {
+            shouldReconnect = false
             localStorage.removeItem('zju_token')
             localStorage.removeItem('zju_jwt')
             localStorage.removeItem('game_started')
@@ -305,6 +377,7 @@ export function useGameWebSocket() {
         }
 
         case 'exit_confirmed': {
+          shouldReconnect = false
           localStorage.removeItem('zju_token')
           localStorage.removeItem('zju_jwt')
           localStorage.removeItem('game_started')
@@ -322,7 +395,8 @@ export function useGameWebSocket() {
       isConnected.value = false
       if (heartbeatInterval) clearInterval(heartbeatInterval)
 
-      if (event.code !== 1000 && reconnectAttempts < maxReconnectAttempts) {
+      const retryableCloseCodes = new Set([1001, 1006])
+      if (shouldReconnect && retryableCloseCodes.has(event.code) && reconnectAttempts < maxReconnectAttempts) {
         reconnectAttempts += 1
         gameStore.addLog('系统', `断开连接，准备重连 (${reconnectAttempts}/${maxReconnectAttempts})...`, 'text-warning')
         setTimeout(() => connect(token, baseUrl), reconnectDelay)

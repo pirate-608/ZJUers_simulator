@@ -130,6 +130,7 @@ class GameService:
         update_fields = {
             "semester": term_name,
             "elapsed_game_time": 0,
+            "exam_completed": 0,
             "course_info_json": json.dumps(my_courses, ensure_ascii=False),
         }
 
@@ -143,13 +144,18 @@ class GameService:
         )
 
     async def process_semester_transition(
-        self, db: AsyncSession, holiday_event_factory=None,
+        self,
+        db: AsyncSession,
+        holiday_event_factory=None,
+        save_slot: int = 1,
     ) -> Dict[str, Any]:
         current_semester_idx = await self.repo.increment_semester()
 
         autosave_ok = False
         try:
-            autosave_ok = await SaveService.persist_to_db(self.repo, db)
+            autosave_ok = await SaveService.persist_to_db(
+                self.repo, db, save_slot=save_slot
+            )
             if autosave_ok:
                 logger.info("Auto-save at end of semester for user %s", self.user_id)
         except Exception as e:

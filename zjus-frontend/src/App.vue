@@ -12,6 +12,7 @@ import RightPanel from './components/RightPanel.vue'
 import CourseList from './components/CourseList.vue'
 import TranscriptModal from './components/modals/TranscriptModal.vue'
 import RandomEventModal from './components/modals/RandomEventModal.vue'
+import FeedbackModal from './components/modals/FeedbackModal.vue'
 import TopNav from './components/TopNav.vue'
 import ExitConfirmModal from './components/modals/ExitConfirmModal.vue'
 import EndScreen from './components/EndScreen.vue'
@@ -23,10 +24,10 @@ const { startGuide } = useGameGuide()
 
 // 首次进入 playing 阶段后触发引导
 watch(
-  () => store.currentPhase,
-  (phase) => {
-    if (phase === 'playing') {
-      requestAnimationFrame(() => startGuide())
+  () => [store.currentPhase, isConnected.value] as const,
+  ([phase, connected]) => {
+    if (phase === 'playing' && connected) {
+      requestAnimationFrame(() => startGuide(send))
     }
   },
 )
@@ -45,10 +46,10 @@ onMounted(() => {
   const savedChoices = localStorage.getItem('zju_saves')
 
   if (existingToken) {
-    if (gameStarted) {
-      handleEnterGame(existingToken)
-    } else if (savedChoices) {
+    if (savedChoices && !gameStarted) {
       store.setPhase('save_select')
+    } else if (gameStarted) {
+      handleEnterGame()
     } else {
       store.setPhase('character_create')
     }
@@ -70,7 +71,7 @@ watch(
   },
 )
 
-const handleEnterGame = (_token: string) => {
+const handleEnterGame = () => {
   store.setPhase('loading')
 }
 </script>
@@ -162,6 +163,7 @@ const handleEnterGame = (_token: string) => {
 
     <TranscriptModal @send-action="send" />
     <RandomEventModal @send-action="send" />
+    <FeedbackModal />
     <ExitConfirmModal @send-action="send" />
   </div>
 

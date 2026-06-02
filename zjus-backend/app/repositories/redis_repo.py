@@ -1,11 +1,21 @@
+import json
 import logging
-from typing import Dict, Any, List, Optional, Set
+import inspect
+from typing import Any, Awaitable, Dict, List, Optional, Set, TypeVar
+
 from redis import asyncio as aioredis
 from app.core.config import settings
 from app.api.cache import RedisCache
 from app.schemas.game_state import GameStateSnapshot
 
 logger = logging.getLogger(__name__)
+T = TypeVar("T")
+
+
+async def _await_if_needed(value: T | Awaitable[T]) -> T:
+    if inspect.isawaitable(value):
+        return await value
+    return value
 
 
 class RedisRepository:
@@ -22,6 +32,7 @@ class RedisRepository:
             "achievements": f"player:{user_id}:achievements",
             "history": f"player:{user_id}:event_history",
             "cooldowns": f"player:{user_id}:cooldowns",
+            "current_event": f"player:{user_id}:current_event",
         }
         self.ttl = RedisCache.normalize_ttl(
             getattr(settings, "REDIS_PLAYER_TTL_SECONDS", 86400)
@@ -45,6 +56,7 @@ class RedisRepository:
             "reputation",
             "efficiency",
             "elapsed_game_time",
+            "exam_completed",
         }
         str_fields = {
             "username",
@@ -79,7 +91,7 @@ class RedisRepository:
         return normalized
 
     async def exists(self) -> bool:
-        return await self.redis.exists(self.keys["stats"]) > 0
+        return await _await_if_needed(self.redis.exists(self.keys["stats"])) > 0
 
     async def get_all_game_data(self) -> Dict[str, Any]:
         """批量获取玩家所有核心数据"""
@@ -111,17 +123,19 @@ class RedisRepository:
         )
 
     async def get_action_counts(self) -> Dict[str, str]:
-        return await self.redis.hgetall(self.keys["actions"])
+        return await _await_if_needed(self.redis.hgetall(self.keys["actions"]))
 
     async def get_unlocked_achievements(self) -> Set[str]:
-        res = await self.redis.smembers(self.keys["achievements"])
+        res = await _await_if_needed(self.redis.smembers(self.keys["achievements"]))
         return set(res) if res else set()
 
     async def get_event_history(self) -> List[str]:
-        return await self.redis.lrange(self.keys["history"], 0, -1)
+        return await _await_if_needed(self.redis.lrange(self.keys["history"], 0, -1))
 
     async def get_cooldown_timestamp(self, action_type: str) -> Optional[float]:
-        value = await self.redis.hget(self.keys["cooldowns"], action_type)
+        value = await _await_if_needed(
+            self.redis.hget(self.keys["cooldowns"], action_type)
+        )
         if value is None:
             return None
         try:
@@ -154,7 +168,7 @@ class RedisRepository:
             await pipe.execute()
 
     async def delete_all(self):
-        await self.redis.delete(*self.keys.values())
+        await _await_if_needed(self.redis.delete(*self.keys.values()))
 
     async def touch_ttl(self):
         await RedisCache.touch_ttl(self.all_keys(), self.ttl)
@@ -202,16 +216,20 @@ class RedisRepository:
         redis.call('HSET', KEYS[1], ARGV[1], new_val)
         return new_val
         """
-        result = await self.redis.eval(
-            script, 1, self.keys["stats"], field, delta, min_val, max_val
+        result = await _await_if_needed(
+            self.redis.eval(script, 1, self.keys["stats"], field, delta, min_val, max_val)
         )
         return int(result)
 
     async def update_stat(self, field: str, delta: int) -> int:
-        return await self.redis.hincrby(self.keys["stats"], field, delta)
+        return await _await_if_needed(
+            self.redis.hincrby(self.keys["stats"], field, delta)
+        )
 
     async def update_course_mastery(self, course_id: str, delta: float) -> float:
-        return await self.redis.hincrbyfloat(self.keys["courses"], course_id, delta)
+        return await _await_if_needed(
+            self.redis.hincrbyfloat(self.keys["courses"], course_id, delta)
+        )
 
     async def batch_update_course_mastery(self, updates: Dict[str, float]):
         if not updates:
@@ -222,16 +240,22 @@ class RedisRepository:
             await pipe.execute()
 
     async def set_course_state(self, course_id: str, state_val: int):
-        await self.redis.hset(self.keys["course_states"], course_id, state_val)
+        await _await_if_needed(
+            self.redis.hset(self.keys["course_states"], course_id, str(state_val))
+        )
 
     async def increment_action_count(self, action_type: str) -> int:
-        return await self.redis.hincrby(self.keys["actions"], action_type, 1)
+        return await _await_if_needed(
+            self.redis.hincrby(self.keys["actions"], action_type, 1)
+        )
 
     async def unlock_achievement(self, code: str) -> int:
-        return await self.redis.sadd(self.keys["achievements"], code)
+        return await _await_if_needed(self.redis.sadd(self.keys["achievements"], code))
 
     async def set_cooldown(self, action_type: str, timestamp: float):
-        await self.redis.hset(self.keys["cooldowns"], action_type, timestamp)
+        await _await_if_needed(
+            self.redis.hset(self.keys["cooldowns"], action_type, str(timestamp))
+        )
 
     async def add_event_to_history(self, event_id: str, limit: int = 10):
         async with self.redis.pipeline() as pipe:
@@ -240,4 +264,24 @@ class RedisRepository:
             await pipe.execute()
 
     async def increment_semester(self) -> int:
-        return await self.redis.hincrby(self.keys["stats"], "semester_idx", 1)
+        return await _await_if_needed(
+            self.redis.hincrby(self.keys["stats"], "semester_idx", 1)
+        )
+
+    async def set_current_event(self, event_data: Dict[str, Any]):
+        await _await_if_needed(
+            self.redis.set(
+                self.keys["current_event"],
+                json.dumps(event_data, ensure_ascii=False),
+                ex=self.ttl,
+            )
+        )
+
+    async def pop_current_event(self) -> Optional[Dict[str, Any]]:
+        raw = await _await_if_needed(self.redis.getdel(self.keys["current_event"]))
+        if not raw:
+            return None
+        try:
+            return json.loads(raw)
+        except (TypeError, ValueError, json.JSONDecodeError):
+            return None

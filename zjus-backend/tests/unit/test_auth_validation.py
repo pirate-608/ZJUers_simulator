@@ -1,7 +1,12 @@
 import pytest
 from fastapi import HTTPException
 
-from app.api.auth import CourseOption, InitCharacterRequest, InitCharacterResponse, _validate_initial_stats
+from app.api.auth import (
+    CourseOption,
+    InitCharacterRequest,
+    InitCharacterResponse,
+    _validate_initial_stats,
+)
 
 
 def test_validate_initial_stats_accepts_budgeted_values():
@@ -43,3 +48,9 @@ def test_validate_initial_stats_rejects_invalid_allocations(iq, eq, luck):
 
     with pytest.raises(HTTPException):
         _validate_initial_stats(req)
+
+
+def test_validate_initial_stats_preserves_major_bonus_budget_boundary():
+    req = InitCharacterRequest(token="jwt", major_abbr="CS", iq=150, eq=50, luck=50)
+
+    _validate_initial_stats(req)

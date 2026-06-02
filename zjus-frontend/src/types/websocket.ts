@@ -1,6 +1,6 @@
 import type { CoursesMap } from './course'
 import type { PlayerStats } from './game'
-import type { DingTalkMessage, RandomEventModalData, TranscriptModalData } from './modal'
+import type { DingTalkMessage, FeedbackModalData, RandomEventModalData, TranscriptModalData } from './modal'
 
 export type WsMessage =
   | { type: 'auth_ok' }
@@ -14,6 +14,7 @@ export type WsMessage =
       courses?: CoursesMap
       course_states?: CoursesMap
       semester_time_left?: number
+      relax_cooldowns?: Record<RelaxTarget, number>
     }
   | {
       type: 'tick'
@@ -21,14 +22,17 @@ export type WsMessage =
       courses?: CoursesMap
       course_states?: CoursesMap
       semester_time_left?: number
+      relax_cooldowns?: Record<RelaxTarget, number>
     }
   | {
       type: 'state'
       data?: Partial<PlayerStats> & { courses?: CoursesMap }
+      relax_cooldowns?: Record<RelaxTarget, number>
     }
   | { type: 'paused'; msg?: string }
   | { type: 'resumed'; msg?: string }
   | { type: 'event'; data?: { desc?: string }; desc?: string }
+  | { type: 'feedback'; data?: FeedbackModalData | unknown }
   | { type: 'game_over'; data?: { reason?: string }; reason?: string }
   | { type: 'semester_summary'; data?: TranscriptModalData | unknown }
   | { type: 'random_event'; data?: RandomEventModalData | unknown }
@@ -46,8 +50,8 @@ export type WsMessage =
       }
     }
   | { type: 'new_semester'; data?: { semester_name?: string; course_info_json?: string }; semester_name?: string }
-  | { type: 'mode_changed'; mode: string; llm_available: boolean }
-  | { type: 'toast'; message: string; level: string }
+  | { type: 'mode_changed'; mode?: string; llm_available?: boolean; data?: { mode?: string; llm_available?: boolean } }
+  | { type: 'toast'; message?: string; level?: string; data?: { message?: string; level?: string } }
   | { type: 'save_result'; message?: string; success?: boolean }
   | { type: 'exit_confirmed' }
 
@@ -89,7 +93,7 @@ export type WsClientAction =
   | { action: 'relax'; target: RelaxTarget }
   | { action: 'exam' }
   | { action: 'next_semester' }
-  | { action: 'event_choice'; effects: unknown }
+  | { action: 'event_choice'; option_id: string }
   | { action: 'save_game' }
   | { action: 'save_and_exit' }
   | { action: 'exit_without_save' }

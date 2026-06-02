@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, Header, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from pydantic import BaseModel, Field
-from typing import Dict, List, Optional
+from typing import List, Optional
 from app.api import deps
 from app.models.user import User
 from app.core.security import create_access_token
@@ -12,6 +12,7 @@ from app.game.state import RedisState
 from app.api.cache import RedisCache
 from app.repositories.redis_repo import RedisRepository
 from app.services.game_service import GameService
+from app.services.save_service import SaveService
 from app.services.world_service import WorldService
 from app.services.restriction_service import RestrictionService
 
@@ -24,9 +25,6 @@ class AuthRequest(BaseModel):
     username: str
     invite_code: str
     token: Optional[str] = None  # 老玩家凭证
-    custom_llm_model: Optional[str] = None
-    custom_llm_api_key: Optional[str] = None
-    custom_llm_provider: Optional[str] = None
 
 
 class SaveSummary(BaseModel):
@@ -170,8 +168,6 @@ async def auth(data: AuthRequest, db: AsyncSession = Depends(deps.get_db)):
         user = User(
             username=data.username,
             token=user_token,
-            custom_llm_model=data.custom_llm_model,
-            custom_llm_api_key=data.custom_llm_api_key,
         )
         db.add(user)
         await db.commit()
@@ -234,13 +230,22 @@ async def init_character(
         payload = jwt.decode(
             req.token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM]
         )
-        user_id = payload.get("sub")
-        username = payload.get("username")
+        user_id_raw = payload.get("sub")
+        username_raw = payload.get("username")
     except JWTError:
         raise HTTPException(status_code=401, detail="Invalid token")
 
-    if not user_id:
+    if not user_id_raw:
         raise HTTPException(status_code=401, detail="Invalid token payload")
+
+    user_id = str(user_id_raw)
+    username = str(username_raw) if username_raw else None
+
+    stmt = select(User).where(User.id == int(user_id))
+    result = await db.execute(stmt)
+    user = result.scalars().first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
 
     restriction = await RestrictionService.get_active_restriction(db, int(user_id))
     if restriction:
@@ -264,7 +269,7 @@ async def init_character(
     result = await game_service.assign_major_and_init(
         major_abbr=req.major_abbr,
         stat_overrides=stat_overrides,
-        username=username or "",
+        username=username or user.username,
     )
 
     return InitCharacterResponse(
@@ -291,12 +296,15 @@ async def get_admission_info(
         payload = jwt.decode(
             token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM]
         )
-        username = payload.get("username")
-        user_id = payload.get("sub")
+        username_raw = payload.get("username")
+        user_id_raw = payload.get("sub")
     except JWTError:
         raise HTTPException(status_code=401, detail="Invalid token")
-    if not user_id:
+    if not user_id_raw:
         raise HTTPException(status_code=401, detail="Invalid token payload")
+
+    user_id = str(user_id_raw)
+    username = str(username_raw) if username_raw else None
 
     state = RedisState(user_id)
     stats = await state.get_stats()
@@ -308,8 +316,9 @@ async def get_admission_info(
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
+    response_username = username or user.username
     return AdmissionInfoResponse(
-        username=username or user.username,
+        username=response_username,
         assigned_major=major or "未分配专业",
-        token=user.token,
+        token=user.token or "",
     )

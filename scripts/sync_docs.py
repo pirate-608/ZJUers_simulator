@@ -80,7 +80,7 @@ class DocSync:
             return config
             
         except FileNotFoundError:
-            print(f"{Colors.RED}错误: 配置文件不存在: {config_path}{Colors.END}")
+            print(f"{Colors.RED}错误: 配置文件不存在: {self.config_path}{Colors.END}")
             sys.exit(1)
         except json.JSONDecodeError as e:
             print(f"{Colors.RED}错误: 配置文件格式错误: {e}{Colors.END}")
@@ -364,7 +364,7 @@ class DocSync:
     
     def _show_summary(self):
         """显示摘要"""
-        duration = self.end_time - self.start_time
+        duration = self.end_time - self.start_time # type: ignore
         
         print(f"\n{Colors.CYAN}{'='*60}{Colors.END}")
         if self.stats['failed'] == 0:

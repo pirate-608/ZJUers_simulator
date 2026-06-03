@@ -18,12 +18,10 @@ This directory contains GitHub-specific configuration for this repository.
 
 ### For GitHub Actions (Workflows)
 
-> **TODO:** Workflow configurations go here when added.
-
 - `workflows/` – CI/CD pipeline definitions
 - `workflows/deploy_docs.yml` - Auto build and deploy documentations（View them in `docs/` and [mkdocs.yml](../mkdocs.yml)）
-- `workflows/docker-release.yml` - Build and release Docker Images of game modules（`zjus-backend` and `zjus-frontend`） when pushing tags.
-- `workflows/mirror-to-gitee.yml` - Auto mirror this repo to [gitee repo](https://gitee.com/huang-youran/ZJUers_simulator)
+- `workflows/docker-release.yml` - Build and publish Docker Images of game modules（`zjus-backend` and `zjus-frontend`）to [Docker Hub](https://hub.docker.com/) when pushing tags.
+- `workflows/mirror-to-gitee.yml` - Auto mirror this repo to [Gitee repo](https://gitee.com/huang-youran/ZJUers_simulator)
 ---
 
 ## For contributors

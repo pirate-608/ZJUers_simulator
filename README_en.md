@@ -7,6 +7,17 @@
 [![中文](https://img.shields.io/badge/🇨🇳_中文-Available-green)](README.md)
 [![English](https://img.shields.io/badge/🇺🇸_English-Current-blue)](README_en.md)
 
+![Python](https://img.shields.io/badge/Python-3.11-3776AB?logo=python)
+![FastAPI](https://img.shields.io/badge/FastAPI-0.109+-009688?logo=fastapi)
+![Vue.js](https://img.shields.io/badge/Vue.js-3.x-4FC08D?logo=vuedotjs)
+![TypeScript](https://img.shields.io/badge/TypeScript-5.x-3178C6?logo=typescript)
+![Redis](https://img.shields.io/badge/Redis-7.x-DC382D?logo=redis&logoColor=white)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-15+pgvector-4169E1?logo=postgresql)
+![Nginx](https://img.shields.io/badge/Nginx-1.24+-009639?logo=nginx&logoColor=white)
+![OpenAI](https://img.shields.io/badge/OpenAI_python_SDK-1.12+-412991)
+![Docker](https://img.shields.io/badge/Docker-2496ED?logo=docker&logoColor=white)
+![Docker Compose](https://img.shields.io/badge/Docker_Compose-2496ED?logo=docker&logoColor=white)
+
 ## **Disclaimer**
 This project is for entertainment purposes only. It does not provide any educational, examination, administrative, or management functions. All rights regarding specific information about the university are reserved by [@Zhejiang University](https://www.zju.edu.cn).
 

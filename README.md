@@ -7,6 +7,7 @@
 [![简体中文](https://img.shields.io/badge/🇨🇳_简体中文-当前-blue)](README.md)
 [![English](https://img.shields.io/badge/🇺🇸_English-Available-green)](README.en.md)
 
+<!-- 技术栈 -->
 ![Python](https://img.shields.io/badge/Python-3.11-3776AB?logo=python)
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.109+-009688?logo=fastapi)
 ![Vue.js](https://img.shields.io/badge/Vue.js-3.x-4FC08D?logo=vuedotjs)
@@ -18,6 +19,10 @@
 ![Docker](https://img.shields.io/badge/Docker-2496ED?logo=docker&logoColor=white)
 ![Docker Compose](https://img.shields.io/badge/Docker_Compose-2496ED?logo=docker&logoColor=white)
 
+<!-- CI 状态 -->
+[![Docs](https://img.shields.io/github/actions/workflow/status/pirate-608/ZJUers_simulator/deploy_docs.yml?label=docs&logo=readthedocs)](https://github.com/pirate-608/ZJUers_simulator/actions/workflows/deploy_docs.yml)
+[![Docker Build](https://img.shields.io/github/actions/workflow/status/pirate-608/ZJUers_simulator/docker-release.yml?label=docker%20build&logo=docker)](https://github.com/pirate-608/ZJUers_simulator/actions/workflows/docker-release.yml)
+[![Mirror to Gitee](https://img.shields.io/github/actions/workflow/status/pirate-608/ZJUers_simulator/mirror-to-gitee.yml?label=gitee%20mirror&logo=github)](https://github.com/pirate-608/ZJUers_simulator/actions/workflows/mirror-to-gitee.yml)
 ## **声明**
 该项目仅供娱乐，不提供任何教学、考试、行政、管理方面的其他功能，一切有关学校具体信息的内容，由[@浙江大学](https://www.zju.edu.cn) 保留一切权利。
 

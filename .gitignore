@@ -1,6 +1,7 @@
 # 版本控制系统
 README.myself.md
 ChangeLog.md
+!.claude/Changelog.md
 
 # Python 缓存和编译文件
 __pycache__/

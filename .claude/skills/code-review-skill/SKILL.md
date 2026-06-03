@@ -1,55 +1,114 @@
 ---
 name: code-review-skill
-description: 一个智能的全栈代码审查技能，能够根据修改的文件路径自动判断是前端还是后端代码发生了变更，并按需执行对应的静态检查和单元测试。
+description: Path-aware full-stack review workflow for ZJUers Simulator. Use when reviewing changes, running checks, triaging regressions, validating frontend/backend edits, or deciding which focused tests/type checks to run.
 ---
 
-# Smart Full-Stack Code Review Skill
+# ZJUS Code Review Skill
 
-## Description
-触发条件（满足任一即触发）：
-- 用户明确要求"审查代码"、"跑一下检查"、"lint"、"format"等。
-- Agent 修改了项目中任意文件，且变更行数 ≥ 5 行（仅统计新增/修改行，不含删除行）。
-- Agent 修改了核心模块（`app/game/`、`app/services/`、`src/stores/`、`src/api/`），不受行数限制。
+## Purpose
 
-该技能具备路径感知能力，能够自动判断是前端还是后端代码发生了变更，并按需执行对应的静态检查和单元测试。
+Review changes without wasting time on unrelated stacks. Prefer focused checks first, then widen only when the touched code affects shared contracts, gameplay state, auth, saves, or generated API types.
 
-## Instructions
-执行 Code Review 时，必须严格遵循以下步骤：
+## Scope Detection
 
-### 步骤 1：变更范围侦测 (Scope Detection)
-检查本次对话中被修改、新增或审查的文件路径：
-- 变更包含 `zjus-backend/` → 标记 `RUN_BACKEND = true`
-- 变更包含 `zjus-frontend/` → 标记 `RUN_FRONTEND = true`
-- 两端均有变更 → 两者均标记为 true，按先 Backend 后 Frontend 的顺序依次执行
-- **核心规则：未被标记的端，绝对不执行对应的检查和测试。**
+Inspect changed or discussed file paths:
 
-### 步骤 2：执行审查流水线
-根据步骤 1 的标记，仅执行被标记的流水线。两端均标记时，先执行 Backend 流水线，完成后再执行 Frontend 流水线。
+- `zjus-backend/` -> set `RUN_BACKEND = true`.
+- `zjus-frontend/` -> set `RUN_FRONTEND = true`.
+- `docs/`, `mkdocs.yml`, `.claude/`, `.codex/skills/` -> set `RUN_DOCS = true`.
+- Backend HTTP schema/route changes in `zjus-backend/app/api/*.py`, Pydantic models, auth/init-character responses, or endpoint fields -> set `RUN_OPENAPI = true`.
 
-#### 后端审查流水线 (RUN_BACKEND = true)
-| 顺序 | 操作 | 命令 | 失败处理 |
-|------|------|------|----------|
-| 1 | 切换目录 | `cd zjus-backend` | — |
-| 2 | 格式化 | `python -m ruff format .` | — |
-| 3 | 静态检查 | `python -m ruff check --fix .` | 阅读错误，修改代码直到通过 |
-| 4 | 单元测试 | `python -m pytest tests/ -v` | 修复至多 2 次，仍失败则询问用户 |
+When both frontend and backend changed, check backend first, then OpenAPI if needed, then frontend.
 
-#### 前端审查流水线 (RUN_FRONTEND = true)
-| 顺序 | 操作 | 命令 | 失败处理 |
-|------|------|------|----------|
-| 1 | 切换目录 | `cd zjus-frontend` | — |
-| 2 | Lint + 类型检查 | `npm run lint && npm run type-check` | ESLint Error 级别必须修复 |
-| 3 | 组件类型检查 | `vue-tsc --noEmit` | 修复类型错误 |
-| 4 | 单元测试 | `npm run test` | 修复至多 2 次，仍失败则询问用户 |
+## Backend Pipeline
 
-4. **结果汇报 (Reporting)：**
-   - 检查完成后，向用户提供一份简报。
-   - 明确指出刚才执行了哪一端的检查（例如：“检测到仅修改了 FastAPI 路由，已跳过前端检查”），并汇报最终的通过情况。
+Run from `zjus-backend/`. Use the workspace virtual environment:
+
+```powershell
+..\.venv\Scripts\python.exe -m py_compile app\path\changed_file.py
+..\.venv\Scripts\python.exe -m ruff check .
+..\.venv\Scripts\python.exe -m pytest tests\unit\test_relevant_file.py
+```
+
+Choose focused tests based on risk:
+
+- Auth, invite codes, returning users, character creation, stat budget, save selection: `tests\unit\test_onboarding_flow.py` and `tests\unit\test_auth_validation.py`.
+- Redis state and snapshot logic: `tests\unit\test_game_state.py`.
+- Broad service/API changes: run `..\.venv\Scripts\python.exe -m pytest`.
+
+For Pylance-only cleanup, a `py_compile` check is usually enough unless logic changed.
+
+## Frontend Pipeline
+
+Run from `zjus-frontend/`. Prefer local binaries, not global npm tooling:
+
+```powershell
+.\node_modules\.bin\vue-tsc.cmd --noEmit
+.\node_modules\.bin\vitest.cmd run
+.\node_modules\.bin\vite.cmd build
+```
+
+Use `vue-tsc` for component/store/composable/type changes. Run Vitest when behavior, state transitions, API wrappers, or WebSocket handling changed. Build when routing, bundling, or production assets may be affected.
+
+If `npm run ...` fails only because of the agent sandbox, do not diagnose the user's npm installation; retry with project-local binaries or report the sandbox limitation.
+
+## OpenAPI Pipeline
+
+Use only when backend HTTP contracts changed or generated frontend types may be stale.
+
+Run from the repository root:
+
+```powershell
+docker compose up -d --build backend
+Invoke-WebRequest -UseBasicParsing http://127.0.0.1:8000/openapi.json
+```
+
+Then run from `zjus-frontend/`:
+
+```powershell
+.\node_modules\.bin\openapi-typescript.cmd http://127.0.0.1:8000/openapi.json -o src/types/api.generated.ts
+```
+
+Rules:
+
+- Do not start a bare local `uvicorn` server for OpenAPI.
+- Do not hand-edit `src/types/api.generated.ts`.
+- Keep `src/api/client.ts` as the hand-written thin wrapper.
+
+## Docs Pipeline
+
+Run from the repository root when docs or handoff files changed:
+
+```powershell
+.\.venv\Scripts\python.exe -m mkdocs build --strict
+```
+
+If MkDocs reports existing unnaved planning files and the build still succeeds, mention them as pre-existing noise only if relevant.
+
+## Review Focus
+
+Prioritize findings in this order:
+
+1. Real user-facing regressions.
+2. Auth, token, save-slot, or character-state corruption.
+3. Client/server contract drift.
+4. WebSocket lifecycle, pause/resume, guide, cooldown, or feedback bugs.
+5. Performance leaks such as duplicate engine loops, unbounded background tasks, repeated LLM calls, or Redis TTL churn.
+6. Missing focused tests for risky behavior.
 
 ## Constraints
-独立步骤（按顺序执行）：
-1) 目录：命令必须在对应目录执行；后端仅在 `zjus-backend`，前端仅在 `zjus-frontend`。
-2) 工具：若工具缺失或命令无法执行，告知用户并给出安装/修复建议，停止。
-3) 静态检查：ESLint Error 必须修复；后端 ruff Warning 视为通过。
-4) 测试触发：仅在函数/方法实现逻辑、数据库查询或写入逻辑、API 路由或请求/响应字段、数据模型或状态流转变更时运行测试；仅格式化/注释/类型注解变更跳过测试。
-5) 测试禁令：禁止为通过测试而删除/注释测试用例断言。
+
+- Preserve unrelated dirty worktree changes.
+- Never delete or weaken tests to pass checks.
+- Do not remove runtime validation to satisfy static typing.
+- Do not remove `await` from Redis/DB/LLM calls just because a stub says a method is non-awaitable.
+- Avoid full test suites for tiny docs or type-only edits unless the change touches shared behavior.
+
+## Reporting
+
+Report:
+
+1. Changed scope detected.
+2. Checks run and results.
+3. Findings ordered by severity with file/line references when reviewing.
+4. Residual risks or skipped checks.

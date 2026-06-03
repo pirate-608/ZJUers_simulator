@@ -1,134 +1,165 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+This file is the handoff guide for Claude Code when working in this repository.
 
-## Project Overview
+## Project Snapshot
 
-ZJUers Simulator (折姜大学模拟器) - A Zhejiang University simulation game with LLM-powered content generation.
+ZJUers Simulator (折姜大学模拟器) is a Vue 3 + FastAPI campus simulation game.
 
-- **Frontend**: Vue 3 + TypeScript + Vite + Pinia @[docs/dev/framework/frontend_framework.md]
-- **Backend**: Python/FastAPI + SQLAlchemy + PostgreSQL + Redis @[docs/dev/framework/backend_framework.md]
-- **World Data**: JSON files (courses, characters, achievements, majors) in `zjus-backend/world/`
+- Frontend: `zjus-frontend/`, Vue 3, TypeScript, Vite, Pinia.
+- Backend: `zjus-backend/`, FastAPI, WebSocket, SQLAlchemy async, PostgreSQL, Redis.
+- Runtime data: `zjus-backend/world/`, including courses, majors, achievements, balance, event libraries, and CC98 libraries.
+- Docs: MkDocs under `docs/`, wired by `mkdocs.yml`.
 
-## Quick Commands
+Current player entry flow:
 
-### Setup
-```bash
-./setup.sh              # Linux/macOS quick start
-./setup.ps1             # Windows quick start
-docker compose up -d    # Docker deployment
-```
-See @[docs/dev/setup.md] for full setup details.
-
-### Backend (zjus-backend/)
-```bash
-pip install -r requirements.txt
-uvicorn app.main:app --reload   # Dev server on :8000
-python -m pytest tests/ -v      # Run tests
-alembic upgrade head            # Apply migrations
-ruff check . --fix && ruff format .  # Lint & format
-```
-See @[docs/dev/test.md] for testing details.
-
-### Frontend (zjus-frontend/)
-```bash
-npm install
-npm run dev              # Dev server on :3000 (proxies API to :8000)
-npm run build            # Production build
-npm run test             # Run Vitest
-npm run type-check       # TypeScript check
-npm run gen:api          # Generate API types from OpenAPI spec
+```text
+login -> save_select -> character_create -> loading -> playing -> ended
 ```
 
-### Docs
-```bash
-mkdocs serve             # Local server on :8080
-mkdocs build
+There is no entrance-exam/admission-test flow anymore. New players authenticate with invite code, save their long-lived student credential, choose a major, allocate stats, then enter the game. Returning players authenticate with nickname + invite code + student credential, then choose a save slot or start a new game.
+
+## Hard Rules
+
+- Do not start a bare local backend with `uvicorn` for integration work or OpenAPI generation. Use Docker Compose from the repository root.
+- Do not hand-edit `zjus-frontend/src/types/api.generated.ts`; fix backend Pydantic/FastAPI models and regenerate from `/openapi.json`.
+- Keep `zjus-frontend/src/api/client.ts` as a hand-written thin fetch wrapper that imports generated schema types.
+- Do not remove `await` or weaken runtime validation just to silence Pylance; many Redis/OpenAI/SQLAlchemy diagnostics are stub or narrowing issues.
+- The user's local npm is fine. If npm commands fail only inside an agent sandbox, prefer project-local binaries or explain the sandbox limitation instead of diagnosing the user's machine.
+- Preserve unrelated dirty worktree changes.
+
+## Compose-First Backend
+
+Use Docker Compose for backend services, migrations, Redis, Postgres, embeddings seed, and API contract generation:
+
+```powershell
+docker compose up -d --build backend
+docker compose logs --tail=200 backend
 ```
 
-## Architecture Overview
+OpenAPI regeneration path:
 
-### Backend Structure
-```
-app/
-├── api/           # Route handlers (auth, game, deps)
-├── core/          # Config, database, LLM, security
-├── models/        # SQLAlchemy ORM models
-├── services/      # Business logic (game_service, world_service)
-├── game/          # Engine (engine.py), state, balance, access
-├── websockets/    # Connection manager with heartbeat
-└── admin.py       # SQLAdmin panel
+```powershell
+docker compose up -d --build backend
+Invoke-WebRequest -UseBasicParsing http://127.0.0.1:8000/openapi.json
+cd zjus-frontend
+.\node_modules\.bin\openapi-typescript.cmd http://127.0.0.1:8000/openapi.json -o src/types/api.generated.ts
 ```
 
-**Key Patterns**:
-- FastAPI dependency injection @[app/api/deps.py]
-- Async SQLAlchemy with `asyncpg`
-- Redis for active game state (TTL: 24h)
-- PostgreSQL with pgvector for embeddings
+## Useful Commands
 
-See @[docs/dev/framework/backend_framework.md] for detailed backend architecture.
+Backend checks from `zjus-backend/`:
 
-### Frontend Structure
-```
-src/
-├── api/client.ts              # API client
-├── stores/gameStore.ts        # Pinia state management
-├── composables/               # useGameWebSocket.ts
-├── components/                # Vue components by game phase
-└── types/                     # TypeScript definitions
+```powershell
+..\.venv\Scripts\python.exe -m py_compile app\game\engine.py
+..\.venv\Scripts\python.exe -m pytest tests\unit\test_onboarding_flow.py
+..\.venv\Scripts\python.exe -m pytest
+..\.venv\Scripts\python.exe -m ruff check .
+..\.venv\Scripts\python.exe -m ruff format .
 ```
 
-**Key Patterns**:
-- Pinia single store for game state
-- Options API (not Composition API)
-- WebSocket real-time sync
-- Phase-based view switching: login → admission → playing → ended
+Frontend checks from `zjus-frontend/`:
 
-See @[docs/dev/framework/frontend_framework.md] for detailed frontend architecture.
+```powershell
+.\node_modules\.bin\vue-tsc.cmd --noEmit
+.\node_modules\.bin\vitest.cmd run
+.\node_modules\.bin\vite.cmd build
+```
 
-### World Data System
-Game content lives in `zjus-backend/world/`:
-- `courses/` - 40 course JSON files by major/tier
-- `characters.json`, `majors.json`, `achievements.json`
-- `game_balance.json` - Numerical parameters
-- `event_library.json`, `cc98_library.json` - Pre-generated content
-- `query_embeddings.json`, `character_embeddings.csv` - Vector assets
+Docs checks from the repository root:
 
-Loaded at startup by `WorldService` and mounted at `/world` endpoint.
+```powershell
+.\.venv\Scripts\python.exe -m mkdocs build --strict
+```
 
-### Pre-built Content Pipeline
-The game uses offline pre-built assets + runtime retrieval (not LLM-every-request):
-1. **Generate**: `scripts/generate_content_library.py` → JSON libraries
-2. **Embed**: `scripts/embed_world_data.py --csv-only` → vectors
-3. **Import**: `scripts/import_character_embeddings.py` → pgvector
-4. **Runtime**: Engine retrieves from local JSON/vectors first, LLM fallback only when needed
+## Architecture Pointers
 
-See @[docs/dev/setup.md] "本地预构建资产流程" section.
+Backend:
 
-## Environment Variables
+- `zjus-backend/app/api/auth.py`: invite-code auth, returning-user save list, majors, character initialization.
+- `zjus-backend/app/api/game.py`: WebSocket entry, config API, engine lifecycle.
+- `zjus-backend/app/game/engine.py`: tick loop, actions, final exams, random events, relax cooldowns, feedback messages, content mode switching.
+- `zjus-backend/app/services/game_service.py`: character/major initialization, semester transitions.
+- `zjus-backend/app/services/save_service.py`: Redis/Postgres save load and persistence.
+- `zjus-backend/app/repositories/redis_repo.py`: active game state, TTL, cooldowns, event history.
+- `zjus-backend/app/core/llm.py` and `dingtalk_llm.py`: LLM-backed content generation and fallbacks.
 
-Critical vars in `.env` (see `.env.template`):
-- `DATABASE_URL`, `REDIS_URL` - Data stores
-- `LLM_API_KEY`, `LLM_BASE_URL`, `LLM` - LLM provider
-- `SECRET_KEY` - JWT signing
-- `ADMIN_USERNAME`, `ADMIN_PASSWORD` - Admin panel
+Frontend:
 
-## Deployment
+- `zjus-frontend/src/App.vue`: phase routing, global modals, guide startup.
+- `zjus-frontend/src/components/LoginView.vue`: invite-code login and optional session-scoped custom LLM config.
+- `zjus-frontend/src/components/SaveSelect.vue`: returning-user save selection or new game.
+- `zjus-frontend/src/components/CharacterCreate.vue`: major selection and stat budget UI.
+- `zjus-frontend/src/composables/useGameWebSocket.ts`: auth handshake, heartbeat, message dispatch.
+- `zjus-frontend/src/stores/gameStore.ts`: global game state, feedback modal, pause/guide flags, cooldowns.
+- `zjus-frontend/src/components/RightPanel.vue`: relax actions, cooldown lockout, content generation mode switch.
+- `zjus-frontend/src/components/modals/FeedbackModal.vue`: random-event and relax-result feedback.
 
-- Production: `docker compose up -d` (pulls pre-built images)
-- Local dev: `docker compose up -d --build` (builds locally with hot-reload)
-- Bare metal: See @[docs/user/local_deploy_bare.md]
+Docs:
 
-See @[docs/user/local_deploy.md] for deployment details.
+- User docs: `docs/user/*`
+- Developer docs: `docs/dev/*`
+- UI preview docs: `docs/preview/*`
+- World/balance docs: `docs/world/*`
 
-## Key Files
+## Current Behavior Contracts
 
-| Purpose | Path |
-|---------|------|
-| Backend entry | `zjus-backend/app/main.py` |
-| Game engine | `zjus-backend/app/game/engine.py` |
-| WebSocket handler | `zjus-backend/app/api/game.py` |
-| Frontend entry | `zjus-frontend/src/main.js` |
-| Game store | `zjus-frontend/src/stores/gameStore.ts` |
-| API client | `zjus-frontend/src/api/client.ts` |
-| Docker compose | `docker-compose.yml` |
+Character creation:
+
+- `IQ`, `EQ`, and `Luck` each range from 50 to 150.
+- The client and server both enforce a total base budget of 250.
+- Major IQ bonus is added after the base-budget check and is intentionally retained.
+
+Returning users:
+
+- `POST /api/auth` returns `status: "returning"` with save summaries when a valid student credential is supplied.
+- The frontend shows `SaveSelect`, where the player loads a listed save slot or starts a new game.
+
+WebSocket:
+
+- First message sends `token`, optional `load_save_slot`, and optional custom LLM fields.
+- `auth_ok` means the connection is usable. The frontend must not automatically send `resume`; backend owns startup through `engine.start()`.
+- `init` and `tick` include `relax_cooldowns`.
+- `feedback` messages show user-facing result popups while `event` logs remain in "求是园动态".
+
+Guide/pause:
+
+- The first-play guide pauses backend ticking and freezes frontend local countdown through `isGuideActive`.
+- Resume only after the guide finishes or the user explicitly resumes.
+
+Relax actions:
+
+- `gym`, `game`, `walk`, and `cc98` have server-side cooldowns.
+- Cooldown buttons are disabled and display remaining seconds.
+- Relax results show a feedback modal for 3 seconds and still append logs.
+
+Random events:
+
+- Event choices are validated against the current server-side event.
+- Results show a feedback modal for 5 seconds and still append logs.
+
+Content generation:
+
+- Modes are `library`, `hybrid`, and `ai`.
+- When AI/LLM becomes unavailable, AI mode falls back toward hybrid/library behavior and emits mode/toast updates.
+
+## Pylance Notes
+
+Common backend noise should be fixed by narrowing types rather than suppressing:
+
+- Use `Coroutine[Any, Any, Any]` for helpers that pass coroutine objects into `asyncio.create_task`.
+- Use SQLAlchemy async types (`AsyncSession`, `async_sessionmaker`) for async DB code.
+- Normalize optional strings before `.strip()`, `json.loads`, `compare_digest`, or service calls.
+- Keep Redis calls async; fix imports/types instead of deleting `await`.
+- Convert numeric Redis hash values to strings if stubs require string values.
+- Guard OpenAI response `content` because SDK types allow `None` and mixed content shapes.
+
+## Related Project Skills
+
+Claude Code can use `.claude/skills/code-review-skill/SKILL.md` for path-aware checks. The Codex-side workflows in `.codex/skills/` are also useful references:
+
+- `zjus-compose-openapi`: Docker Compose backend + OpenAPI regeneration.
+- `zjus-docs-sync`: docs synchronization after product/API changes.
+- `zjus-player-onboarding`: auth, saves, character creation, and stat-budget flow.
+- `zjus-pylance-noise`: project-specific Pylance/Pyright cleanup.
+- `zjus-change-review`: broad frontend/backend regression review.

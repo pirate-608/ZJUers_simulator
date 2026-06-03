@@ -1,0 +1,4 @@
+interface:
+  display_name: "ZJUS Pylance Noise"
+  short_description: "Clean backend Pylance noise safely"
+  default_prompt: "Use $zjus-pylance-noise to triage this ZJUers Simulator Pylance diagnostic and apply the narrowest safe fix."

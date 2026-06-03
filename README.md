@@ -4,8 +4,8 @@
   <p><strong>我在这里放了67656颗星星，希望每个折大人都能找到属于自己的一颗</strong></p>
 </div>
 
-[![中文](https://img.shields.io/badge/🇨🇳_简体中文-当前-blue)](README.md)
-[![English](https://img.shields.io/badge/🇺🇸_English-Available-green)](README_en.md)
+[![简体中文](https://img.shields.io/badge/🇨🇳_简体中文-当前-blue)](README.md)
+[![English](https://img.shields.io/badge/🇺🇸_English-Available-green)](README.en.md)
 
 ![Python](https://img.shields.io/badge/Python-3.12+-3776AB?logo=python)
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.115+-009688?logo=fastapi)

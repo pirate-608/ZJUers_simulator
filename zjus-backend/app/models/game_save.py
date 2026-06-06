@@ -24,6 +24,7 @@ class GameSave(Base):
         JSON, nullable=True
     )
     achievements_data: Mapped[list[Any] | None] = mapped_column(JSON, nullable=True)
+    dingtalk_data: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
 
     # 元数据
     game_version: Mapped[str] = mapped_column(String(20), default="1.0.0")

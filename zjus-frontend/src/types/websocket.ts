@@ -1,6 +1,6 @@
 import type { CoursesMap } from './course'
 import type { PlayerStats } from './game'
-import type { DingTalkMessage, FeedbackModalData, RandomEventModalData, TranscriptModalData } from './modal'
+import type { DingTalkContact, DingTalkMessage, DingTalkState, FeedbackModalData, RandomEventModalData, TranscriptModalData } from './modal'
 
 export type WsMessage =
   | { type: 'auth_ok' }
@@ -15,6 +15,7 @@ export type WsMessage =
       course_states?: CoursesMap
       semester_time_left?: number
       relax_cooldowns?: Record<RelaxTarget, number>
+      dingtalk_state?: DingTalkState | unknown
     }
   | {
       type: 'tick'
@@ -37,6 +38,9 @@ export type WsMessage =
   | { type: 'semester_summary'; data?: TranscriptModalData | unknown }
   | { type: 'random_event'; data?: RandomEventModalData | unknown }
   | { type: 'dingtalk_message'; data?: DingTalkMessage | unknown }
+  | { type: 'dingtalk_state'; state?: DingTalkState | unknown; data?: DingTalkState | unknown }
+  | { type: 'dingtalk_thread_update'; contact?: DingTalkContact | unknown; data?: { contact?: DingTalkContact } | unknown }
+  | { type: 'dingtalk_effect'; contact_id?: string; summary?: string; effects?: unknown }
   | {
       type: 'graduation'
       data?: {
@@ -98,6 +102,8 @@ export type WsClientAction =
   | { action: 'save_and_exit' }
   | { action: 'exit_without_save' }
   | { action: 'set_mode'; mode: 'library' | 'ai' | 'hybrid' }
+  | { action: 'dingtalk_mark_read'; contact_id: string }
+  | { action: 'dingtalk_reply'; contact_id: string; option_id: string }
   | { action: 'restart' }
 
 // ─── 运行时类型守卫 ───

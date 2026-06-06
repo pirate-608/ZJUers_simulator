@@ -150,7 +150,7 @@ graph TD
 
 ### Redis Key
 
-每个玩家 7 个核心 Key，均带 TTL：
+每个玩家 9 个核心 Key，均带 TTL：
 
 - `player:{id}:stats`
 - `player:{id}:courses`
@@ -159,8 +159,10 @@ graph TD
 - `player:{id}:achievements`
 - `player:{id}:event_history`
 - `player:{id}:cooldowns`
+- `player:{id}:current_event`
+- `player:{id}:dingtalk_state`
 
-`RedisRepository` 负责字段归一化、批量写入、TTL 刷新和安全数值更新。`efficiency`、`elapsed_game_time` 等运行时字段也在归一化层维护。
+`RedisRepository` 负责字段归一化、批量写入、TTL 刷新、安全数值更新和钉钉私聊状态读写。`efficiency`、`elapsed_game_time` 等运行时字段也在归一化层维护。
 
 ### PlayerStats 初始值
 
@@ -186,6 +188,7 @@ graph TD
 - 课程成长和精力消耗。
 - 期末考试/GPA。
 - 随机事件、CC98、钉钉消息。
+- 钉钉联系人私聊、回复选项和三次回复一轮的数值结算。
 - 休闲动作冷却计算和结果反馈弹窗消息。
 - 内容生成模式切换：`library` / `hybrid` / `ai`。
 - 学期推进、毕业、Game Over。
@@ -218,6 +221,7 @@ graph TD
 
 - 事件/CC98：优先本地预构建 JSON 库。
 - 钉钉：优先角色向量检索 + M2-her；失败时回退通用 LLM。
+- 钉钉私聊状态保存在 Redis，并随存档写入 `game_saves.dingtalk_data`；学期切换不会清空联系人或历史。
 - 文言文结业总结：仍使用 LLM。
 
 Docker 启动顺序：
@@ -232,8 +236,8 @@ db -> migrate -> seed_embeddings -> backend
 
 ## 数据库模型
 
-- `users`：昵称、长期学生凭证、自定义 LLM 配置、最高 GPA。
-- `game_saves`：存档快照 JSON，按 `(user_id, save_slot)` 唯一。
+- `users`：昵称、长期学生凭证、最高 GPA。
+- `game_saves`：存档快照 JSON，含钉钉私聊状态，按 `(user_id, save_slot)` 唯一。
 - `user_restrictions`：账号限制。
 - `user_blacklist`：黑名单，支持 username/token/ip。
 - `admin_audit_logs`：后台操作审计。

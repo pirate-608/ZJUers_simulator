@@ -1,11 +1,14 @@
 # app/services/save_service.py
 import logging
 from typing import Any, Dict, List
+
 from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.dialects.postgresql import insert as pg_insert
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from app.models.game_save import GameSave
 from app.repositories.redis_repo import RedisRepository
+from app.schemas.dingtalk import DingTalkState
 from app.schemas.game_state import PlayerStats
 
 logger = logging.getLogger(__name__)
@@ -25,6 +28,7 @@ class SaveService:
                 return False
 
             stats_dict = snapshot.stats.model_dump()
+            dingtalk_state = await repo.get_dingtalk_state()
 
             save_values = {
                 "user_id": int(repo.user_id),
@@ -33,6 +37,7 @@ class SaveService:
                 "courses_data": snapshot.courses,
                 "course_states_data": snapshot.course_states,
                 "achievements_data": snapshot.achievements,
+                "dingtalk_data": dingtalk_state.compact().model_dump(),
                 "semester_index": int(stats_dict.get("semester_idx", 1)),
             }
 
@@ -74,6 +79,9 @@ class SaveService:
                 courses=save.courses_data or {},
                 states=save.course_states_data or {},
                 achievements=save.achievements_data or [],
+            )
+            await repo.set_dingtalk_state(
+                DingTalkState.from_raw(getattr(save, "dingtalk_data", None))
             )
             return True
         except Exception as e:

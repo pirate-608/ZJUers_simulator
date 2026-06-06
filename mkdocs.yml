@@ -19,6 +19,7 @@ nav:
     - 折姜大学招生减章: user/notice.md
     - 折姜大学校规: user/rules.md
     - 在线游戏: user/online_guide.md
+    - 钉钉私聊: user/dingtalk.md
     - 内容生成模式: user/content_modes.md
     - 本地部署: user/local_deploy.md
     - 原生本地部署: user/local_deploy_bare.md
@@ -83,6 +84,7 @@ nav:
       - 前端: dev/framework/frontend_framework.md
     - 开发环境搭建: dev/setup.md
     - API文档: dev/api.md
+    - 接手研究报告: dev/handoff.md
     - 开发计划: 
       - 总览: dev/plans/index.md
       - ZJUers模拟器前端计划迁移至TypeScript: dev/plans/migrate_js_to_ts.md

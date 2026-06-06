@@ -1,11 +1,13 @@
+import inspect
 import json
 import logging
-import inspect
 from typing import Any, Awaitable, Dict, List, Optional, Set, TypeVar
 
 from redis import asyncio as aioredis
-from app.core.config import settings
+
 from app.api.cache import RedisCache
+from app.core.config import settings
+from app.schemas.dingtalk import DingTalkState
 from app.schemas.game_state import GameStateSnapshot
 
 logger = logging.getLogger(__name__)
@@ -33,6 +35,7 @@ class RedisRepository:
             "history": f"player:{user_id}:event_history",
             "cooldowns": f"player:{user_id}:cooldowns",
             "current_event": f"player:{user_id}:current_event",
+            "dingtalk": f"player:{user_id}:dingtalk_state",
         }
         self.ttl = RedisCache.normalize_ttl(
             getattr(settings, "REDIS_PLAYER_TTL_SECONDS", 86400)
@@ -132,6 +135,34 @@ class RedisRepository:
     async def get_event_history(self) -> List[str]:
         return await _await_if_needed(self.redis.lrange(self.keys["history"], 0, -1))
 
+    async def get_dingtalk_state(self) -> DingTalkState:
+        raw = await _await_if_needed(self.redis.get(self.keys["dingtalk"]))
+        if not raw:
+            return DingTalkState()
+        try:
+            parsed = json.loads(raw) if isinstance(raw, str) else raw
+        except (TypeError, ValueError, json.JSONDecodeError):
+            parsed = {}
+        return DingTalkState.from_raw(parsed)
+
+    async def set_dingtalk_state(self, state: DingTalkState | Dict[str, Any]):
+        normalized = DingTalkState.from_raw(state).compact()
+        await _await_if_needed(
+            self.redis.set(
+                self.keys["dingtalk"],
+                json.dumps(normalized.model_dump(), ensure_ascii=False),
+                ex=self.ttl,
+            )
+        )
+
+    async def mark_dingtalk_read(self, contact_id: str) -> DingTalkState:
+        state = await self.get_dingtalk_state()
+        contact = state.contacts.get(contact_id)
+        if contact:
+            contact.unread_count = 0
+            await self.set_dingtalk_state(state)
+        return state
+
     async def get_cooldown_timestamp(self, action_type: str) -> Optional[float]:
         value = await _await_if_needed(
             self.redis.hget(self.keys["cooldowns"], action_type)
@@ -217,7 +248,15 @@ class RedisRepository:
         return new_val
         """
         result = await _await_if_needed(
-            self.redis.eval(script, 1, self.keys["stats"], field, delta, min_val, max_val)
+            self.redis.eval(
+                script,
+                1,
+                self.keys["stats"],
+                field,
+                delta,
+                min_val,
+                max_val,
+            )
         )
         return int(result)
 

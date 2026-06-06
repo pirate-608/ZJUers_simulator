@@ -2,7 +2,7 @@ import { defineStore } from 'pinia'
 import { ref, reactive } from 'vue'
 import type { GamePhase, PlayerStats } from '../types/game'
 import type { CoursesMap, CourseMetadata, CourseProgressUpdate } from '../types/course'
-import type { DingTalkMessage, FeedbackModalData, ModalData } from '../types/modal'
+import type { DingTalkContact, DingTalkMessage, DingTalkState, FeedbackModalData, ModalData } from '../types/modal'
 import type { RelaxTarget } from '../types/websocket'
 
 type ToastType = 'success' | 'danger' | 'warning' | 'info'
@@ -82,6 +82,7 @@ export const useGameStore = defineStore('game', () => {
 
   const eventLogs = ref<EventLog[]>([])
   const dingMessages = ref<DingTalkMessage[]>([])
+  const dingtalkContacts = reactive<Record<string, DingTalkContact>>({})
   const unreadDingtalk = ref<number>(0)
 
   const activeModal = ref<ActiveModalName>(null)
@@ -202,11 +203,80 @@ export const useGameStore = defineStore('game', () => {
 
   function addDingMessage(msg: DingTalkMessage | Record<string, unknown>) {
     dingMessages.value.push(msg as DingTalkMessage)
-    unreadDingtalk.value++
+    const role = typeof msg.role === 'string' ? msg.role : 'unknown'
+    const sender = typeof msg.sender === 'string' ? msg.sender : role
+    const contactId = typeof msg.contact_id === 'string'
+      ? msg.contact_id
+      : `legacy_${role}_${sender}`.replace(/[^\w-]+/g, '_')
+    const existing = dingtalkContacts[contactId]
+    const createdAt = Math.floor(Date.now() / 1000)
+    const contact: DingTalkContact = existing || {
+      contact_id: contactId,
+      sender,
+      role,
+      is_replyable: false,
+      is_urgent: Boolean(msg.is_urgent),
+      unread_count: 0,
+      last_message_at: 0,
+      messages: [],
+      pending_options: [],
+      round: { round_id: '', status: 'closed', player_reply_count: 0 },
+    }
+    contact.messages.push({
+      message_id: `legacy_${createdAt}_${contact.messages.length}`,
+      speaker: 'npc',
+      content: typeof msg.content === 'string' ? msg.content : '',
+      created_at: createdAt,
+      round_id: null,
+    })
+    contact.unread_count += 1
+    contact.last_message_at = createdAt
+    dingtalkContacts[contactId] = contact
+    recalcUnreadDingtalk()
   }
 
   function clearUnreadDingtalk() {
+    for (const contact of Object.values(dingtalkContacts)) {
+      contact.unread_count = 0
+    }
     unreadDingtalk.value = 0
+  }
+
+  function recalcUnreadDingtalk() {
+    unreadDingtalk.value = Object.values(dingtalkContacts).reduce(
+      (sum, contact) => sum + Number(contact.unread_count || 0),
+      0,
+    )
+  }
+
+  function setDingTalkState(state: DingTalkState | Record<string, unknown> | null | undefined) {
+    for (const key in dingtalkContacts) {
+      delete dingtalkContacts[key]
+    }
+    const contacts = state && typeof state === 'object' && 'contacts' in state
+      ? (state as DingTalkState).contacts
+      : {}
+    if (contacts && typeof contacts === 'object') {
+      for (const [id, contact] of Object.entries(contacts)) {
+        dingtalkContacts[id] = contact as DingTalkContact
+      }
+    }
+    recalcUnreadDingtalk()
+  }
+
+  function upsertDingTalkContact(contact: DingTalkContact | Record<string, unknown> | null | undefined) {
+    if (!contact || typeof contact !== 'object') return
+    const contactId = (contact as DingTalkContact).contact_id
+    if (!contactId) return
+    dingtalkContacts[contactId] = contact as DingTalkContact
+    recalcUnreadDingtalk()
+  }
+
+  function markDingContactReadLocal(contactId: string) {
+    const contact = dingtalkContacts[contactId]
+    if (!contact) return
+    contact.unread_count = 0
+    recalcUnreadDingtalk()
   }
 
   function showModal(modalName: Exclude<ActiveModalName, null>, data: ModalData | Record<string, unknown> = {}) {
@@ -277,6 +347,10 @@ export const useGameStore = defineStore('game', () => {
     clearEventLogs,
     dingMessages,
     addDingMessage,
+    dingtalkContacts,
+    setDingTalkState,
+    upsertDingTalkContact,
+    markDingContactReadLocal,
     unreadDingtalk,
     clearUnreadDingtalk,
     activeModal,

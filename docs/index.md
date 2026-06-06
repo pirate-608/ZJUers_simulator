@@ -14,6 +14,7 @@ hide:
 
 [游戏说明](user/notice.md){ .md-button }
 [游戏规则](user/rules.md){ .md-button }
+[钉钉私聊](user/dingtalk.md){ .md-button }
 [开始游戏](https://67656.fun){ .md-button }
 [相关设定](./world/majors.md){ .md-button }
 [开发人员指南](./dev/api.md){ .md-button }

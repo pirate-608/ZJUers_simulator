@@ -141,7 +141,7 @@ Random events:
 Content generation:
 
 - Modes are `library`, `hybrid`, and `ai`.
-- When AI/LLM becomes unavailable, AI mode falls back toward hybrid/library behavior and emits mode/toast updates.
+- When AI/LLM becomes unavailable, AI mode falls back toward hybrid mode(if still have issues, then fall back to library mode) behavior and emits mode/toast updates.
 
 ## Pylance Notes
 
@@ -163,3 +163,9 @@ Claude Code can use `.claude/skills/code-review-skill/SKILL.md` for path-aware c
 - `zjus-player-onboarding`: auth, saves, character creation, and stat-budget flow.
 - `zjus-pylance-noise`: project-specific Pylance/Pyright cleanup.
 - `zjus-change-review`: broad frontend/backend regression review.
+
+## Rule for maintaining up-to-date documentation (.claude\CLAUDE.md & AGENTS.md):
+
+- Trigger: After any modification or refactoring (e.g., backend API, database schema, logic migration).
+- Action: Update or supplement the file to match the new state.
+- Goal: To provide accurate, current information for current agent or other agents taking over development.

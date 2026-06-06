@@ -1,29 +1,38 @@
 import asyncio
-import random
+import hashlib
 import json
 import logging
-import hashlib
 import math
+import random
+import time
 from pathlib import Path
-from sqlalchemy import update
 from typing import Any, Callable, Coroutine, Optional
 
-import time
+from sqlalchemy import update
 
-from app.content.event_library import pick_random_event, pick_cc98_post
-
+from app.content.event_library import pick_cc98_post, pick_random_event
+from app.core.database import AsyncSessionLocal
+from app.core.events import GameEvent
 from app.core.llm import (
     generate_cc98_post,
-    generate_random_event,
     generate_dingtalk_message,
+    generate_random_event,
 )
-from app.models.user import User
-from app.core.database import AsyncSessionLocal
 from app.game.balance import balance  # 游戏数值配置
-from app.core.events import GameEvent
+from app.models.user import User
 from app.repositories.redis_repo import RedisRepository
-from app.services.save_service import SaveService
+from app.schemas.dingtalk import (
+    DingTalkContact,
+    DingTalkMessage,
+    DingTalkReplyOption,
+    DingTalkRoundState,
+    build_contact_id,
+    is_replyable_role,
+    new_message_id,
+    now_ts,
+)
 from app.services.game_service import GameService
+from app.services.save_service import SaveService
 
 logger = logging.getLogger(__name__)
 
@@ -111,6 +120,7 @@ class GameEngine:
         self._background_tasks: set[asyncio.Task] = set()
         self._random_event_inflight = False
         self._dingtalk_inflight = False
+        self._dingtalk_state_lock = asyncio.Lock()
         self._ttl_refresh_interval_seconds = 600
         self._last_ttl_refresh = 0.0
         # ✨ 新增：倍速乘数，默认为 1.0
@@ -135,6 +145,232 @@ class GameEngine:
         self.COURSE_STATE_COEFFS = balance.get_course_state_coeffs()
         self.BASE_ENERGY_DRAIN = balance.base_energy_drain
         self.BASE_MASTERY_GROWTH = balance.base_mastery_growth
+
+    def _make_dingtalk_message(
+        self, speaker: str, content: str, round_id: str | None = None
+    ) -> DingTalkMessage:
+        return DingTalkMessage(
+            message_id=new_message_id(),
+            speaker=speaker,
+            content=str(content or "").strip(),
+            created_at=now_ts(),
+            round_id=round_id,
+        )
+
+    def _coerce_dingtalk_options(
+        self, raw_options: Any, role: str
+    ) -> list[DingTalkReplyOption]:
+        if not is_replyable_role(role):
+            return []
+        options: list[DingTalkReplyOption] = []
+        if isinstance(raw_options, list):
+            for idx, item in enumerate(raw_options[:3]):
+                if isinstance(item, DingTalkReplyOption):
+                    options.append(item)
+                    continue
+                if isinstance(item, str):
+                    text = item.strip()
+                elif isinstance(item, dict):
+                    text = str(item.get("text") or item.get("content") or "").strip()
+                else:
+                    text = ""
+                if text:
+                    option_id = (
+                        str(item.get("option_id"))
+                        if isinstance(item, dict) and item.get("option_id")
+                        else f"opt_{idx + 1}"
+                    )
+                    options.append(
+                        DingTalkReplyOption(option_id=option_id, text=text[:80])
+                    )
+        if options:
+            return options
+        fallback = {
+            "roommate": ["哈哈收到", "我马上看看", "你先别急"],
+            "classmate": ["可以，我看一下", "等我整理一下资料", "我也有点懵"],
+            "friend": ["晚上再说？", "可以啊", "你这也太会了"],
+            "teaching_assistant": ["谢谢助教提醒", "我有个问题想问", "我会尽快完成"],
+            "teacher": ["谢谢老师", "我会提前准备", "我还有一个问题"],
+            "crush": ["还好，你呢？", "我也在想这个", "要不要一起去？"],
+        }.get(role, ["好的收到", "我想想怎么回", "可以再说详细点吗"])
+        return [
+            DingTalkReplyOption(option_id=f"opt_{idx + 1}", text=text)
+            for idx, text in enumerate(fallback[:3])
+        ]
+
+    def _normalize_dingtalk_payload(
+        self, msg_data: dict[str, Any]
+    ) -> tuple[dict[str, Any], str, list[DingTalkReplyOption]]:
+        contact_raw = msg_data.get("contact")
+        contact = contact_raw if isinstance(contact_raw, dict) else {}
+        sender = str(contact.get("sender") or msg_data.get("sender") or "未知")
+        role = str(contact.get("role") or msg_data.get("role") or "unknown")
+        contact_id = str(
+            contact.get("contact_id") or build_contact_id(sender, role)
+        )
+        is_urgent = bool(contact.get("is_urgent", msg_data.get("is_urgent", False)))
+        content = ""
+        message_raw = msg_data.get("message")
+        if isinstance(message_raw, dict):
+            content = str(message_raw.get("content") or "").strip()
+        if not content:
+            content = str(msg_data.get("content") or "").strip()
+        options = self._coerce_dingtalk_options(msg_data.get("reply_options"), role)
+        if not is_replyable_role(role):
+            options = []
+        return (
+            {
+                "contact_id": contact_id,
+                "sender": sender,
+                "role": role,
+                "is_replyable": is_replyable_role(role),
+                "is_urgent": is_urgent,
+            },
+            content,
+            options,
+        )
+
+    async def _emit_dingtalk_contact_update(self, contact: DingTalkContact):
+        await self.emit(
+            "dingtalk_thread_update",
+            {"contact": contact.model_dump()},
+        )
+
+    async def _store_dingtalk_npc_message(
+        self, msg_data: dict[str, Any]
+    ) -> DingTalkContact | None:
+        contact_meta, content, options = self._normalize_dingtalk_payload(msg_data)
+        if not content:
+            return None
+        async with self._dingtalk_state_lock:
+            state = await self.repo.get_dingtalk_state()
+            contact = state.contacts.get(contact_meta["contact_id"])
+            if contact and contact.round.status == "open":
+                return None
+            if not contact:
+                contact = DingTalkContact(**contact_meta)
+            else:
+                contact.sender = contact_meta["sender"]
+                contact.role = contact_meta["role"]
+                contact.is_replyable = bool(contact_meta["is_replyable"])
+                contact.is_urgent = bool(contact_meta["is_urgent"])
+
+            round_id = None
+            if contact.is_replyable and options:
+                contact.round = DingTalkRoundState(
+                    round_id=f"dtr_{new_message_id()[4:]}",
+                    status="open",
+                    player_reply_count=0,
+                )
+                round_id = contact.round.round_id
+                contact.pending_options = options
+            else:
+                contact.pending_options = []
+                contact.round = DingTalkRoundState()
+
+            message = self._make_dingtalk_message("npc", content, round_id=round_id)
+            contact.messages.append(message)
+            contact.unread_count += 1
+            contact.last_message_at = message.created_at
+            contact.trim_messages()
+            state.contacts[contact.contact_id] = contact
+            await self.repo.set_dingtalk_state(state)
+            return contact
+
+    def _fallback_dingtalk_reply_result(
+        self, contact: DingTalkContact, reply_count: int
+    ) -> dict[str, Any]:
+        if reply_count >= 3:
+            return {
+                "content": "嗯嗯，那这事先这样。之后有情况再和你说。",
+                "settlement": {
+                    "desc": f"你和{contact.sender}聊了一会儿，心情有些变化。",
+                    "effects": {"sanity": 1},
+                },
+            }
+        return {
+            "content": "收到，我懂你的意思了。",
+            "reply_options": self._coerce_dingtalk_options([], contact.role),
+        }
+
+    async def _generate_dingtalk_reply_result(
+        self,
+        contact: DingTalkContact,
+        player_reply: str,
+        reply_count: int,
+        stats: dict[str, Any],
+    ) -> dict[str, Any]:
+        if not self.llm_override:
+            try:
+                from app.core.dingtalk_llm import (
+                    generate_dingtalk_reply_via_m2her,
+                    get_character_by_contact_id,
+                )
+
+                character = get_character_by_contact_id(contact.contact_id) or {
+                    "name": contact.sender,
+                    "role": contact.role,
+                    "content": f"你是{contact.sender}。",
+                    "examples": [],
+                }
+                history = [m.model_dump() for m in contact.messages]
+                generated = await generate_dingtalk_reply_via_m2her(
+                    character, stats, history, player_reply, reply_count
+                )
+                if generated:
+                    return generated
+            except Exception as e:
+                logger.warning("M2-her dingtalk reply fallback: %s", e)
+        return self._fallback_dingtalk_reply_result(contact, reply_count)
+
+    def _sanitize_dingtalk_effects(
+        self, settlement: Any
+    ) -> tuple[str, dict[str, int]]:
+        if not isinstance(settlement, dict):
+            return "这轮对话没有产生明显影响。", {}
+        desc = str(settlement.get("desc") or "这轮对话产生了一些影响。").strip()
+        effects_raw = settlement.get("effects")
+        effects_raw = effects_raw if isinstance(effects_raw, dict) else {}
+        effects: dict[str, int] = {}
+        for key, value in effects_raw.items():
+            max_delta = self._ALLOWED_EFFECT_FIELDS.get(str(key))
+            if max_delta is None:
+                continue
+            try:
+                delta = int(value)
+            except (TypeError, ValueError):
+                continue
+            effects[str(key)] = max(-max_delta, min(max_delta, delta))
+        return desc, effects
+
+    async def _apply_dingtalk_settlement(
+        self, contact: DingTalkContact, settlement: Any
+    ) -> dict[str, Any]:
+        desc, effects = self._sanitize_dingtalk_effects(settlement)
+        applied: dict[str, dict[str, int]] = {}
+        for field, delta in effects.items():
+            if delta == 0:
+                continue
+            new_value = await self.repo.update_stat_safe(field, delta)
+            applied[field] = {"delta": delta, "value": new_value}
+        message = desc if applied else "这轮对话平静结束，没有明显数值变化。"
+        await self.emit("event", {"data": {"desc": f"钉钉：{message}"}})
+        await self._emit_feedback(
+            "钉钉对话",
+            message,
+            kind="info",
+            auto_close_ms=3500,
+        )
+        await self.emit(
+            "dingtalk_effect",
+            {
+                "contact_id": contact.contact_id,
+                "summary": message,
+                "effects": applied,
+            },
+        )
+        await self._push_update()
+        return {"summary": message, "effects": applied}
 
     def _track_task(self, coro: Coroutine[Any, Any, Any]) -> asyncio.Task[Any]:
         task = asyncio.create_task(coro)
@@ -275,7 +511,8 @@ class GameEngine:
                 tick_count += 1
 
                 # ✨ 核心：但游戏内的虚拟时间，永远坚定地往前走 3 秒！
-                # 注意：不能用 update_stat_safe，因为它的 max_val 默认值 200 会截断计时器
+                # 注意：不能用 update_stat_safe，
+                # 因为它的 max_val 默认值 200 会截断计时器
                 elapsed = await self.repo.update_stat("elapsed_game_time", 3)
 
                 # 动态获取当前学期时长上限
@@ -284,7 +521,8 @@ class GameEngine:
                 sem_duration = balance.get_semester_duration(sem_idx)
                 if elapsed >= sem_duration:
                     logger.info(
-                        f"Semester time exceeded for {self.user_id}, triggering final exam."
+                        "Semester time exceeded for %s, triggering final exam.",
+                        self.user_id,
                     )
                     self.stop()
                     await self._handle_final_exam()
@@ -311,13 +549,14 @@ class GameEngine:
                 # 解析课程信息
                 try:
                     course_info = json.loads(stats.get("course_info_json", "[]"))
-                except:
+                except (TypeError, json.JSONDecodeError):
                     course_info = []
 
                 # 如果没有课程（如假期），只自然恢复或轻微消耗
                 if not course_info:
                     logger.warning(
-                        f"[{self.user_id}] course_info is EMPTY, skipping mastery growth"
+                        "[%s] course_info is EMPTY, skipping mastery growth",
+                        self.user_id,
                     )
                     await self.repo.update_stat_safe("energy", 1)  # 假期回血
                     await self._push_update()
@@ -369,12 +608,17 @@ class GameEngine:
                     await self.repo.batch_update_course_mastery(mastery_updates)
                     if tick_count <= 3:  # 只在前几个 tick 打印诊断信息
                         logger.info(
-                            f"[{self.user_id}] tick#{tick_count} mastery_updates: {mastery_updates}"
+                            "[%s] tick#%s mastery_updates: %s",
+                            self.user_id,
+                            tick_count,
+                            mastery_updates,
                         )
                 else:
                     if tick_count <= 3:
                         logger.warning(
-                            f"[{self.user_id}] tick#{tick_count} mastery_updates is EMPTY"
+                            "[%s] tick#%s mastery_updates is EMPTY",
+                            self.user_id,
+                            tick_count,
                         )
 
                 # 结算总精力消耗
@@ -486,6 +730,20 @@ class GameEngine:
                 await self._push_update()
             return
 
+        if action == "dingtalk_mark_read":
+            contact_id = str(action_data.get("contact_id") or "").strip()
+            if not contact_id:
+                return
+            state = await self.repo.mark_dingtalk_read(contact_id)
+            contact = state.contacts.get(contact_id)
+            if contact:
+                await self._emit_dingtalk_contact_update(contact)
+            return
+
+        if action == "dingtalk_reply":
+            await self._handle_dingtalk_reply(action_data)
+            return
+
         # [保留] 其它一次性动作 (Relax/Event)
         try:
             if action == "relax":
@@ -503,6 +761,92 @@ class GameEngine:
             await self.check_and_trigger_gameover()
         except Exception as e:
             logger.error(f"Action Error {action}: {e}")
+
+    async def _handle_dingtalk_reply(self, data: dict[str, Any]):
+        contact_id = str(data.get("contact_id") or "").strip()
+        option_id = str(data.get("option_id") or "").strip()
+        if not contact_id or not option_id:
+            await self.emit(
+                "toast",
+                {"message": "无效的钉钉回复", "level": "warning"},
+            )
+            return
+
+        async with self._dingtalk_state_lock:
+            state = await self.repo.get_dingtalk_state()
+            contact = state.contacts.get(contact_id)
+            if not contact or not contact.is_replyable:
+                await self.emit(
+                    "toast",
+                    {"message": "该联系人暂不支持回复", "level": "warning"},
+                )
+                return
+            if contact.round.status != "open":
+                await self.emit(
+                    "toast",
+                    {"message": "当前没有可回复的钉钉消息", "level": "warning"},
+                )
+                return
+
+            option = next(
+                (opt for opt in contact.pending_options if opt.option_id == option_id),
+                None,
+            )
+            if option is None:
+                await self.emit(
+                    "toast",
+                    {"message": "回复选项已过期", "level": "warning"},
+                )
+                return
+
+            round_id = contact.round.round_id or f"dtr_{new_message_id()[4:]}"
+            contact.round.round_id = round_id
+            contact.round.status = "open"
+            contact.round.player_reply_count += 1
+            contact.pending_options = []
+            player_message = self._make_dingtalk_message(
+                "player", option.text, round_id=round_id
+            )
+            contact.messages.append(player_message)
+            contact.last_message_at = player_message.created_at
+            contact.trim_messages()
+            state.contacts[contact_id] = contact
+            await self.repo.set_dingtalk_state(state)
+
+        snapshot = await self.repo.get_snapshot()
+        stats = snapshot.stats.model_dump()
+        reply_count = contact.round.player_reply_count
+        result = await self._generate_dingtalk_reply_result(
+            contact, option.text, reply_count, stats
+        )
+
+        async with self._dingtalk_state_lock:
+            state = await self.repo.get_dingtalk_state()
+            contact = state.contacts.get(contact_id)
+            if contact is None:
+                return
+            npc_content = str(result.get("content") or "").strip()
+            if npc_content:
+                npc_message = self._make_dingtalk_message(
+                    "npc", npc_content, round_id=contact.round.round_id
+                )
+                contact.messages.append(npc_message)
+                contact.unread_count += 1
+                contact.last_message_at = npc_message.created_at
+            if reply_count >= 3:
+                contact.pending_options = []
+                contact.round.status = "closed"
+            else:
+                contact.pending_options = self._coerce_dingtalk_options(
+                    result.get("reply_options"), contact.role
+                )
+            contact.trim_messages()
+            state.contacts[contact_id] = contact
+            await self.repo.set_dingtalk_state(state)
+
+        await self._emit_dingtalk_contact_update(contact)
+        if reply_count >= 3:
+            await self._apply_dingtalk_settlement(contact, result.get("settlement"))
 
     async def _handle_final_exam(self):
         """期末考试结算逻辑"""
@@ -631,7 +975,7 @@ class GameEngine:
 
         try:
             course_info = json.loads(stats.get("course_info_json", "[]"))
-        except:
+        except (TypeError, json.JSONDecodeError):
             course_info = []
 
         difficulty = 1.0
@@ -1015,10 +1359,9 @@ class GameEngine:
                 )
 
             if msg_data:
-                await self.emit(
-                    "dingtalk_message",
-                    {"data": msg_data},
-                )
+                contact = await self._store_dingtalk_npc_message(msg_data)
+                if contact:
+                    await self._emit_dingtalk_contact_update(contact)
             elif self.mode == GameMode.AI:
                 self.llm_available = False
                 self.mode = GameMode.HYBRID

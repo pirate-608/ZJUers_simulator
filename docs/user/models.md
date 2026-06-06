@@ -1,10 +1,12 @@
 ## 游戏LLM配置
 
-ZJUers 模拟器本身不依赖大模型运行，即其本质不是通过agent能力驱动的，而是由一个名为`engine.py`的游戏引擎和若干状态机驱动的，但在随机事件、cc98帖子和钉钉消息部分，我们使用了大模型来丰富游戏体验，你可以自由选择是否使用大模型，以及使用哪种大模型。
+ZJUers 模拟器本身不依赖大模型运行，即其本质不是通过 agent 能力驱动的，而是由一个名为 `engine.py` 的游戏引擎和若干状态机驱动的。但在随机事件、CC98 帖子、钉钉消息和可回复私聊部分，我们使用大模型来丰富游戏体验。你可以自由选择是否使用大模型，以及使用哪种大模型。
 
 ### 默认模型
 
-默认情况下，游戏使用的模型是不固定的，通常情况下，我们使用的是[阿里云的百炼平台](https://help.aliyun.com/zh/model-studio/get-api-key)，也可能是[DeepSeek](https://api-docs.deepseek.com/)。而对于钉钉消息，我们特别地使用[MiniMax-M2-Her](https://www.minimaxi.com/news/minimax-m2-her-%E6%8A%80%E6%9C%AF%E6%B7%B1%E5%BA%A6%E8%A7%A3%E6%9E%90)来生成，因为M2-Her是一款专门对于角色扮演（RP）优化的模型。当然，你也可以选择用自己的模型。
+默认情况下，游戏使用的模型是不固定的，通常情况下，我们使用的是[阿里云的百炼平台](https://help.aliyun.com/zh/model-studio/get-api-key)，也可能是[DeepSeek](https://api-docs.deepseek.com/)。而对于钉钉消息、NPC 私聊回复和回复选项，我们特别地使用 [MiniMax-M2-Her](https://www.minimaxi.com/news/minimax-m2-her-%E6%8A%80%E6%9C%AF%E6%B7%B1%E5%BA%A6%E8%A7%A3%E6%9E%90) 来生成，因为 M2-Her 是一款专门对于角色扮演（RP）优化的模型。当然，你也可以选择用自己的模型。
+
+钉钉私聊状态本身会随游戏存档保存；模型只负责生成新消息、回复选项和一轮对话后的轻量结算。若模型不可用，游戏会尽量降级处理，但新钉钉内容可能减少。
 
 ## 4.自定义大模型与API_KEY
 

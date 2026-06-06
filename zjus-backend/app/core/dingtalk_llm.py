@@ -6,15 +6,19 @@ MiniMax M2-her 钉钉消息生成模块
 """
 
 import json
-import random
 import logging
+import random
 from pathlib import Path
-from typing import Optional, Dict, List, Any
+from typing import Any, Dict, List, Optional
 
 import httpx
 
-from app.core.config import settings
 from app.api.cache import RedisCache
+from app.core.config import settings
+from app.schemas.dingtalk import (
+    build_contact_id,
+    is_replyable_role,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -22,6 +26,15 @@ logger = logging.getLogger(__name__)
 _CACHE_KEY = "game:dingtalk_m2her"
 _CACHE_MAX_LEN = 100
 _CACHE_TTL_SECONDS = 6 * 60 * 60  # 6 小时
+
+_FALLBACK_REPLY_OPTIONS = {
+    "roommate": ["哈哈收到", "我马上看看", "你先别急"],
+    "classmate": ["可以，我看一下", "等我整理一下资料", "我也有点懵"],
+    "friend": ["晚上再说？", "可以啊", "你这也太会了"],
+    "teaching_assistant": ["谢谢助教提醒", "我有个问题想问", "我会尽快完成"],
+    "teacher": ["谢谢老师", "我会提前准备", "我还有一个问题"],
+    "crush": ["还好，你呢？", "我也在想这个", "要不要一起去？"],
+}
 
 
 # ==========================================
@@ -42,6 +55,88 @@ def _load_characters() -> List[Dict[str, Any]]:
     except Exception:
         logger.error("Failed to load characters.json")
         return []
+
+
+def get_character_by_contact_id(contact_id: str) -> Optional[Dict[str, Any]]:
+    for character in _load_characters():
+        sender = str(character.get("name") or "未知")
+        role = str(character.get("role") or "unknown")
+        if build_contact_id(sender, role) == contact_id:
+            return character
+    return None
+
+
+def _json_from_text(content: object) -> dict[str, Any]:
+    if not isinstance(content, str):
+        return {}
+    text = content.strip()
+    if text.startswith("```"):
+        text = text.strip("`")
+        if text.lower().startswith("json"):
+            text = text[4:].strip()
+    try:
+        parsed = json.loads(text)
+    except json.JSONDecodeError:
+        return {}
+    return parsed if isinstance(parsed, dict) else {}
+
+
+def _fallback_reply_options(role: str) -> list[dict[str, str]]:
+    options = _FALLBACK_REPLY_OPTIONS.get(
+        role, ["好的收到", "我想想怎么回", "可以再说详细点吗"]
+    )
+    return [
+        {"option_id": f"opt_{idx + 1}", "text": text}
+        for idx, text in enumerate(options[:3])
+    ]
+
+
+def _coerce_reply_options(value: object, role: str) -> list[dict[str, str]]:
+    if not isinstance(value, list):
+        return _fallback_reply_options(role)
+    options: list[dict[str, str]] = []
+    for idx, item in enumerate(value[:3]):
+        if isinstance(item, str):
+            text = item.strip()
+        elif isinstance(item, dict):
+            text = str(item.get("text") or item.get("content") or "").strip()
+        else:
+            text = ""
+        if text:
+            options.append({"option_id": f"opt_{idx + 1}", "text": text[:80]})
+    return options or _fallback_reply_options(role)
+
+
+async def _generate_reply_options_via_m2her(
+    character: Dict[str, Any],
+    player_stats: dict,
+    npc_message: str,
+    context: str,
+) -> list[dict[str, str]]:
+    role = str(character.get("role") or "unknown")
+    if not is_replyable_role(role):
+        return []
+
+    messages = _build_m2her_messages(character, player_stats, context)
+    messages.append(
+        {
+            "role": "assistant",
+            "name": character.get("name", "未知"),
+            "content": npc_message,
+        }
+    )
+    messages.append(
+        {
+            "role": "user",
+            "content": (
+                "请为玩家生成 2-3 个自然、短句式的回复选项。"
+                '严格返回 JSON：{"reply_options":["选项1","选项2","选项3"]}'
+            ),
+        }
+    )
+    raw = await _call_m2her_api(messages, max_completion_tokens=180)
+    data = _json_from_text(raw)
+    return _coerce_reply_options(data.get("reply_options"), role)
 
 
 # ==========================================
@@ -139,7 +234,9 @@ def _build_m2her_messages(
 # API 调用
 # ==========================================
 
-async def _call_m2her_api(messages: List[Dict]) -> Optional[str]:
+async def _call_m2her_api(
+    messages: List[Dict], max_completion_tokens: int = 200
+) -> Optional[str]:
     """调用 MiniMax M2-her 原生 API"""
     api_key = settings.MINIMAX_API_KEY
     base_url = settings.MINIMAX_BASE_URL
@@ -160,7 +257,7 @@ async def _call_m2her_api(messages: List[Dict]) -> Optional[str]:
                     "messages": messages,
                     "temperature": 1.0,
                     "top_p": 0.95,
-                    "max_completion_tokens": 200,
+                    "max_completion_tokens": max_completion_tokens,
                 },
                 timeout=15.0,
             )
@@ -281,11 +378,29 @@ async def generate_dingtalk_via_m2her(
         messages = _build_m2her_messages(char, player_stats, context)
         content = await _call_m2her_api(messages)
         if content:
+            sender = str(char.get("name") or "未知")
+            role = str(char.get("role") or "unknown")
+            reply_options = await _generate_reply_options_via_m2her(
+                char, player_stats, content, context
+            )
+            contact_id = build_contact_id(sender, role)
+            is_urgent = role in ("counselor", "system", "teacher")
             return {
-                "sender": char.get("name", "未知"),
-                "role": char.get("role", "unknown"),
+                # 兼容旧前端/旧测试字段
+                "sender": sender,
+                "role": role,
                 "content": content,
-                "is_urgent": char.get("role") in ("counselor", "system", "teacher"),
+                "is_urgent": is_urgent,
+                # 新私聊机制字段
+                "contact": {
+                    "contact_id": contact_id,
+                    "sender": sender,
+                    "role": role,
+                    "is_replyable": is_replyable_role(role),
+                    "is_urgent": is_urgent,
+                },
+                "message": {"speaker": "npc", "content": content},
+                "reply_options": reply_options,
             }
         return None
 
@@ -315,3 +430,69 @@ async def generate_dingtalk_via_m2her(
         )
 
     return current_msg
+
+
+async def generate_dingtalk_reply_via_m2her(
+    character: Dict[str, Any],
+    player_stats: dict,
+    history: list[dict[str, Any]],
+    player_reply: str,
+    reply_count: int,
+) -> Optional[Dict[str, Any]]:
+    """根据玩家选择生成 NPC 回复；第三次玩家回复后返回一轮结算。"""
+    if not settings.MINIMAX_API_KEY:
+        return None
+
+    sender = str(character.get("name") or "未知")
+    role = str(character.get("role") or "unknown")
+    if not is_replyable_role(role):
+        return None
+
+    history_lines = []
+    for msg in history[-8:]:
+        speaker = "玩家" if msg.get("speaker") == "player" else sender
+        content = str(msg.get("content") or "").strip()
+        if content:
+            history_lines.append(f"{speaker}: {content}")
+    history_text = "\n".join(history_lines)
+    should_settle = reply_count >= 3
+
+    messages = _build_m2her_messages(character, player_stats, "random")
+    if should_settle:
+        request = (
+            "以下是当前私聊历史：\n"
+            f"{history_text}\n玩家刚回复：{player_reply}\n"
+            "请生成 NPC 的下一条回复，并对这一轮三次往返对话"
+            "产生的游戏数值影响做轻量结算。"
+            "影响只能包含 energy/sanity/stress/eq/luck/reputation，"
+            "数值为整数，幅度要克制。"
+            '严格返回 JSON：{"npc_reply":"...",'
+            '"settlement":{"desc":"...","effects":{"sanity":1}}}'
+        )
+    else:
+        request = (
+            "以下是当前私聊历史：\n"
+            f"{history_text}\n玩家刚回复：{player_reply}\n"
+            "请生成 NPC 的下一条回复，并为玩家生成 2-3 个后续回复选项。"
+            '严格返回 JSON：{"npc_reply":"...","reply_options":["选项1","选项2"]}'
+        )
+
+    messages.append({"role": "user", "content": request})
+    raw = await _call_m2her_api(messages, max_completion_tokens=420)
+    if not raw:
+        return None
+
+    data = _json_from_text(raw)
+    npc_reply = str(data.get("npc_reply") or raw).strip()
+    if not npc_reply:
+        return None
+
+    result: Dict[str, Any] = {"content": npc_reply[:500]}
+    if should_settle:
+        settlement = data.get("settlement")
+        result["settlement"] = settlement if isinstance(settlement, dict) else None
+    else:
+        result["reply_options"] = _coerce_reply_options(
+            data.get("reply_options"), role
+        )
+    return result

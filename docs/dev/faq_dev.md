@@ -18,11 +18,12 @@
 	- `src/stores`：Pinia 状态管理。
 
 ### 2. 本地运行的最小步骤？
-极速开发推荐混合模式：
-1. 根目录起底座：`docker compose up -d db redis`
-2. 前端目录：`npm install` -> `npm run dev`
-3. 后端目录：配置 `.env` -> `pip install -r requirements.txt` -> `uvicorn app.main:app --reload`
-*对于想纯 Docker 搞定的，使用 `docker compose up -d --build` 即可利用 `docker-compose.override.yml` 实现本地代码挂载。*
+推荐优先使用 Compose-first 开发：
+1. 根目录准备 `.env` 和 `docker-compose.override.yml`。
+2. 运行 `docker compose up -d --build`，启动数据库、Redis、迁移、向量导入、后端和前端 Nginx。
+3. 若只调试前端热更新，可保持后端底座运行，再到 `zjus-frontend` 执行 `npm install` 和 `npm run dev`。
+
+裸 `uvicorn` 仅适合纯宿主机调试。做集成验证、迁移或 OpenAPI 类型生成时使用 Docker Compose 后端。
 
 ### 3. Redis 数据在哪里定义？如何保证结构一致？
 - 所有 Redis 读写都集中在 [app/repositories/redis_repo.py](https://github.com/pirate-608/ZJUers_simulator/tree/main/app/repositories/redis_repo.py)。

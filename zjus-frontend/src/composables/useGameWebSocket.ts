@@ -100,6 +100,9 @@ export function useGameWebSocket() {
         'semester_summary',
         'random_event',
         'dingtalk_message',
+        'dingtalk_state',
+        'dingtalk_thread_update',
+        'dingtalk_effect',
         'graduation',
         'new_semester',
         'mode_changed',
@@ -169,6 +172,9 @@ export function useGameWebSocket() {
             readCooldowns(wsMsg.relax_cooldowns) ||
             (isRecord(data.relax_cooldowns) ? data.relax_cooldowns : null),
           )
+          if ('dingtalk_state' in wsMsg && isRecord(wsMsg.dingtalk_state)) {
+            gameStore.setDingTalkState(wsMsg.dingtalk_state)
+          }
           break
         }
 
@@ -281,6 +287,34 @@ export function useGameWebSocket() {
 
         case 'dingtalk_message': {
           gameStore.addDingMessage(isRecord(wsMsg.data) ? wsMsg.data : wsMsg)
+          break
+        }
+
+        case 'dingtalk_state': {
+          const state = isRecord(wsMsg.state)
+            ? wsMsg.state
+            : isRecord(wsMsg.data)
+              ? wsMsg.data
+              : null
+          gameStore.setDingTalkState(state)
+          break
+        }
+
+        case 'dingtalk_thread_update': {
+          const data = isRecord(wsMsg.data) ? wsMsg.data : {}
+          const contact = isRecord(wsMsg.contact)
+            ? wsMsg.contact
+            : isRecord(data.contact)
+              ? data.contact
+              : null
+          gameStore.upsertDingTalkContact(contact)
+          break
+        }
+
+        case 'dingtalk_effect': {
+          if (typeof wsMsg.summary === 'string' && wsMsg.summary.trim() !== '') {
+            gameStore.addLog('钉钉', wsMsg.summary, 'text-info')
+          }
           break
         }
 

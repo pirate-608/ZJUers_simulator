@@ -28,7 +28,7 @@ zjus-frontend/src/
     ├── TopNav.vue           # 保存/退出
     ├── HudBar.vue           # 顶部属性栏
     ├── CourseList.vue       # 课程列表 + 策略切换
-    ├── MidPanel.vue         # 事件日志 + 钉钉消息
+    ├── MidPanel.vue         # 事件日志 + 钉钉联系人/私聊
     ├── RightPanel.vue       # 属性面板 + 摸鱼动作 + 内容模式
     ├── EndScreen.vue        # 结局界面
     └── modals/              # 成绩单、随机事件、反馈、退出确认
@@ -94,7 +94,7 @@ graph TD
 | `auth()` | `POST /api/auth` | 邀请码认证，新用户返回学生凭证，老用户返回存档列表 |
 | `fetchMajors()` | `GET /api/majors` | 获取全部可选专业 |
 | `initCharacter()` | `POST /api/init_character` | 创建新游戏角色 |
-| `getAdmissionInfo()` | `GET /api/admission_info` | 兼容查询入学信息/学生凭证 |
+| `getAdmissionInfo()` | `GET /api/admission_info` | 兼容查询用户信息/学生凭证 |
 
 ---
 
@@ -159,6 +159,8 @@ WebSocket 首条消息包含：
 - `init` 将阶段切到 `playing` 并初始化课程、属性、剩余时间和 `relax_cooldowns`。
 - `tick` 持续同步课程、属性、剩余时间和 `relax_cooldowns`。
 - `feedback` 调用 `gameStore.showFeedback()` 展示结果弹窗。
+- `dingtalk_state` 恢复钉钉联系人、私聊历史、未读数和回复选项。
+- `dingtalk_thread_update` 更新单个联系人线程；旧 `dingtalk_message` 会兼容映射到联系人线程。
 - `save_result` / `exit_confirmed` 负责退出时清理 JWT 和本局标记。
 
 ---
@@ -177,7 +179,7 @@ WebSocket 首条消息包含：
 | `isPaused` / `isGuideActive` | 后端暂停状态 / 前端引导冻结状态 |
 | `relaxCooldowns` | 休闲动作剩余冷却秒数 |
 | `eventLogs` | 事件日志 |
-| `dingMessages` | 钉钉消息 |
+| `dingtalkContacts` / `unreadDingtalk` | 钉钉联系人线程和未读数 |
 | `gameMode` / `llmAvailable` | 内容生成模式状态 |
 | `activeModal` / `modalData` | 当前弹窗 |
 | `feedbackModal` | 结果反馈弹窗 |

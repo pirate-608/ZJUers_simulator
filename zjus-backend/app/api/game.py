@@ -1,26 +1,25 @@
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Depends, Query
-from jose import JWTError, jwt
-from sqlalchemy.ext.asyncio import AsyncSession
-from pydantic import BaseModel
-from typing import Any, Dict
 import asyncio
 import json
 import logging
 import time
+from typing import Any, Dict
 
+from fastapi import APIRouter, WebSocket, WebSocketDisconnect
+from jose import JWTError, jwt
+from pydantic import BaseModel
+
+from app.api import deps
+from app.api.cache import RedisCache
 from app.core.config import settings
 from app.core.database import AsyncSessionLocal
-from app.api import deps
-from app.websockets.manager import manager
-from app.game.engine import GameEngine
+from app.core.events import GameEvent
 from app.game.balance import balance  # 修复: 原缺失导致 get_game_config NameError
-from app.api.cache import RedisCache
+from app.game.engine import GameEngine
 from app.repositories.redis_repo import RedisRepository
-from app.services.save_service import SaveService
 from app.services.game_service import GameService
 from app.services.restriction_service import RestrictionService
-from app.core.events import GameEvent
-from app.models.user import User
+from app.services.save_service import SaveService
+from app.websockets.manager import manager
 
 # 配置日志
 logger = logging.getLogger(__name__)
@@ -173,7 +172,7 @@ async def websocket_endpoint(websocket: WebSocket):
     custom_model = _string_field(auth_data, "custom_llm_model").strip()
     custom_key = _string_field(auth_data, "custom_llm_api_key").strip()
     custom_provider = _string_field(auth_data, "custom_llm_provider").strip()
-    
+
     if custom_model or custom_key:
         llm_override = {
             "model": custom_model or None,
@@ -274,11 +273,12 @@ async def websocket_endpoint(websocket: WebSocket):
             return
 
         if game_context["status"] == "new":
+            major_name = final_stats.get("major", "未知专业")
             await manager.send_personal_message(
                 {
                     "type": "event",
                     "data": {
-                        "desc": f"欢迎来到折姜大学！你被分配到了【{final_stats.get('major', '未知专业')}】专业。"
+                        "desc": f"欢迎来到折姜大学！你被分配到了【{major_name}】专业。"
                     },
                 },
                 user_id,
@@ -311,6 +311,7 @@ async def websocket_endpoint(websocket: WebSocket):
         elapsed = int(final_stats.get("elapsed_game_time", 0))
         semester_time_left = max(0, base_duration - elapsed)
         relax_cooldowns = await engine._get_relax_cooldowns()
+        dingtalk_state = await repo.get_dingtalk_state()
 
         # 发送初始化数据包（携带完整的课程进度 + 策略 + 倒计时）
         await manager.send_personal_message(
@@ -321,7 +322,12 @@ async def websocket_endpoint(websocket: WebSocket):
                 "course_states": snapshot.course_states,
                 "semester_time_left": semester_time_left,
                 "relax_cooldowns": relax_cooldowns,
+                "dingtalk_state": dingtalk_state.model_dump(),
             },
+            user_id,
+        )
+        await manager.send_personal_message(
+            {"type": "dingtalk_state", "state": dingtalk_state.model_dump()},
             user_id,
         )
 
@@ -448,7 +454,10 @@ async def websocket_endpoint(websocket: WebSocket):
                             await manager.send_personal_message(
                                 {
                                     "type": "toast",
-                                    "message": "无效的游戏速度，请选择 0.5 到 5.0 之间的倍率",
+                                    "message": (
+                                        "无效的游戏速度，请选择 0.5 到 5.0 "
+                                        "之间的倍率"
+                                    ),
                                     "level": "warning",
                                 },
                                 user_id,

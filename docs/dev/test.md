@@ -6,10 +6,12 @@
 | --------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------- | ------ |
 | [pyproject.toml](file:///d:/projects/ZJUers_simulator/zjus-backend/pyproject.toml)                        | pytest 配置（pythonpath、asyncio_mode）                                         | —      |
 | [conftest.py](file:///d:/projects/ZJUers_simulator/zjus-backend/tests/conftest.py)                        | 环境变量、sample data fixtures、mock Redis                                      | —      |
-| [test_game_state.py](file:///d:/projects/ZJUers_simulator/zjus-backend/tests/unit/test_game_state.py)     | PlayerStats: build_initial / from_redis / get_repair_fields / GameStateSnapshot | 20     |
-| [test_balance.py](file:///d:/projects/ZJUers_simulator/zjus-backend/tests/unit/test_balance.py)           | GameBalance: 加载/属性/默认值/热重载                                            | 12     |
-| [test_dingtalk_llm.py](file:///d:/projects/ZJUers_simulator/zjus-backend/tests/unit/test_dingtalk_llm.py) | M2-her: 消息构建/API mock/缓存/fallback                                         | 29     |
-| [test_auth_validation.py](file:///d:/projects/ZJUers_simulator/zjus-backend/tests/unit/test_auth_validation.py) | 角色初始化 IQ/EQ/Luck 预算校验                                            | 5      |
+| [test_game_state.py](file:///d:/projects/ZJUers_simulator/zjus-backend/tests/unit/test_game_state.py)     | PlayerStats: build_initial / from_redis / get_repair_fields / GameStateSnapshot | 27     |
+| [test_balance.py](file:///d:/projects/ZJUers_simulator/zjus-backend/tests/unit/test_balance.py)           | GameBalance: 加载/属性/默认值/热重载                                            | 14     |
+| [test_dingtalk_llm.py](file:///d:/projects/ZJUers_simulator/zjus-backend/tests/unit/test_dingtalk_llm.py) | M2-her: 消息构建/API mock/缓存/fallback                                         | 20     |
+| [test_dingtalk_state.py](file:///d:/projects/ZJUers_simulator/zjus-backend/tests/unit/test_dingtalk_state.py) | 钉钉联系人状态、可回复角色、消息裁剪、三次回复结算                         | 4      |
+| [test_auth_validation.py](file:///d:/projects/ZJUers_simulator/zjus-backend/tests/unit/test_auth_validation.py) | 角色初始化 IQ/EQ/Luck 预算校验                                            | 7      |
+| [test_onboarding_flow.py](file:///d:/projects/ZJUers_simulator/zjus-backend/tests/unit/test_onboarding_flow.py) | 存档选择、角色初始化重置、学期自动存档                                    | 4      |
 
 ## 测试依赖
 
@@ -30,7 +32,7 @@ cd zjus-backend # 进入后端目录
 # 运行测试
 python -m pytest tests/ -v
 
-# 代码风格检查
+# 代码风格检查（若当前 venv 缺少 ruff，先安装 requirements.txt）
 python -m ruff format .         # 运行格式化
 python -m ruff check --fix .    # 运行静态检查并修复
 ```
@@ -38,7 +40,7 @@ python -m ruff check --fix .    # 运行静态检查并修复
 ## 运行结果示例
 
 ```
-======================== 66 passed, 2 warnings in 1.21s ========================
+======================= 76 passed, 2 warnings in 4.13s ========================
 ```
 
-这代表 66 个测试用例全部通过，警告不影响当前测试结果。如果想看具体是哪个测试用例有警告，可以使用 `python -m pytest tests/ -v` 命令。
+这代表 76 个测试用例全部通过，警告不影响当前测试结果。如果想看具体是哪个测试用例有警告，可以使用 `python -m pytest tests/ -v` 命令。

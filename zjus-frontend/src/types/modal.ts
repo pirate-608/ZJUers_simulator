@@ -28,13 +28,53 @@ export interface RandomEventModalData {
   [k: string]: unknown
 }
 
-export interface DingTalkMessage {
+export interface DingTalkLegacyMessage {
   sender?: string
   role: string
   content: string
   is_urgent?: boolean
   [k: string]: unknown
 }
+
+export interface DingTalkReplyOption {
+  option_id: string
+  text: string
+}
+
+export interface DingTalkThreadMessage {
+  message_id: string
+  speaker: 'npc' | 'player' | 'system'
+  content: string
+  created_at: number
+  round_id?: string | null
+}
+
+export interface DingTalkRoundState {
+  round_id: string
+  status: 'open' | 'closed'
+  player_reply_count: number
+}
+
+export interface DingTalkContact {
+  contact_id: string
+  sender: string
+  role: string
+  is_replyable: boolean
+  is_urgent?: boolean
+  unread_count: number
+  last_message_at: number
+  messages: DingTalkThreadMessage[]
+  pending_options: DingTalkReplyOption[]
+  round: DingTalkRoundState
+}
+
+export interface DingTalkState {
+  version: number
+  contacts: Record<string, DingTalkContact>
+  updated_at: number
+}
+
+export type DingTalkMessage = DingTalkLegacyMessage
 
 export interface FeedbackModalData {
   title: string
@@ -44,5 +84,5 @@ export interface FeedbackModalData {
   [k: string]: unknown
 }
 
-export type ModalData = TranscriptModalData | RandomEventModalData | DingTalkMessage | FeedbackModalData | Record<string, unknown>
+export type ModalData = TranscriptModalData | RandomEventModalData | DingTalkMessage | DingTalkContact | FeedbackModalData | Record<string, unknown>
 

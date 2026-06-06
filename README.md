@@ -15,7 +15,7 @@
 ![Redis](https://img.shields.io/badge/Redis-7.x-DC382D?logo=redis&logoColor=white)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-15+pgvector-4169E1?logo=postgresql)
 ![Nginx](https://img.shields.io/badge/Nginx-1.24+-009639?logo=nginx&logoColor=white)
-![OpenAI](https://img.shields.io/badge/OpenAI_python_SDK-1.12+-412991)
+![OpenAI](https://img.shields.io/badge/OpenAI_Python_SDK-1.12+-412991)
 ![Docker](https://img.shields.io/badge/Docker-2496ED?logo=docker&logoColor=white)
 ![Docker Compose](https://img.shields.io/badge/Docker_Compose-2496ED?logo=docker&logoColor=white)
 

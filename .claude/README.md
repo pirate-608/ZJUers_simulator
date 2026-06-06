@@ -6,7 +6,7 @@ This directory contains Claude Code handoff material for ZJUers Simulator.
 
 1. `CLAUDE.md` - main project instructions and current architecture.
 2. `Changelog.md` - recent development state and handoff notes.
-3. `skills/code-review-skill/SKILL.md` - path-aware review and validation workflow.
+3. `skills/code-review/SKILL.md` - path-aware review and validation workflow.
 4. MkDocs developer docs under `docs/dev/` for detailed contracts.
 
 ## Current Project Shape
@@ -42,6 +42,6 @@ New players choose a major and allocate base stats. Returning players choose an 
 
 The local Claude skill currently present is:
 
-- `skills/code-review-skill/SKILL.md`: selects backend/frontend checks based on changed paths.
+- `skills/code-review/SKILL.md`: selects backend/frontend checks based on changed paths.
 
 Codex-side project skills in `.codex/skills/` are not Claude-native skills, but they are useful reference material when maintaining equivalent Claude workflows.

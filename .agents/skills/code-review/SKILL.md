@@ -1,5 +1,5 @@
 ---
-name: code-review-skill
+name: code-review
 description: Path-aware full-stack review workflow for ZJUers Simulator. Use when reviewing changes, running checks, triaging regressions, validating frontend/backend edits, or deciding which focused tests/type checks to run.
 ---
 

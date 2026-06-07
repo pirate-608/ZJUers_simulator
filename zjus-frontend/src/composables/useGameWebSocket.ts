@@ -345,9 +345,24 @@ export function useGameWebSocket() {
 
         case 'new_semester': {
           const nsData = isRecord(wsMsg.data) ? wsMsg.data : {}
-          const newCourseJson = typeof nsData.course_info_json === 'string' ? nsData.course_info_json as string : '[]'
+          const stats = isRecord(nsData.stats) ? nsData.stats : {}
+          const newCourseJson = typeof nsData.course_info_json === 'string'
+            ? nsData.course_info_json as string
+            : typeof stats.course_info_json === 'string'
+              ? stats.course_info_json
+              : '[]'
           const courses = parseCourseMetadataArray(newCourseJson)
           gameStore.resetForNewSemester(courses)
+          gameStore.updateStats(stats)
+          if (isRecord(nsData.courses)) {
+            gameStore.updateCourseProgress(nsData.courses as Record<string, unknown>)
+          }
+          if (isRecord(nsData.course_states)) {
+            gameStore.updateCourseStatesRaw(nsData.course_states as Record<string, unknown>)
+          }
+          if (typeof nsData.semester_time_left === 'number') {
+            gameStore.semesterTimeLeft = nsData.semester_time_left
+          }
           gameStore.clearEventLogs()
           const semesterName = extractNewSemesterName(wsMsg)
           gameStore.addLog('系统', `=== 欢迎来到 ${semesterName} ===`, 'text-success fw-bold')

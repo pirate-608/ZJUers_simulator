@@ -14,17 +14,41 @@ REPLYABLE_DINGTALK_ROLES = {
     "crush",
 }
 
+DINGTALK_ROLE_ALIASES = {
+    "student": "classmate",
+    "students": "classmate",
+    "同学": "classmate",
+    "同班同学": "classmate",
+    "室友": "roommate",
+    "舍友": "roommate",
+    "roomie": "roommate",
+    "ta": "teaching_assistant",
+    "assistant": "teaching_assistant",
+    "助教": "teaching_assistant",
+    "老师": "teacher",
+    "教师": "teacher",
+    "朋友": "friend",
+    "好友": "friend",
+    "crush": "crush",
+    "暗恋对象": "crush",
+}
+
 DINGTALK_MAX_MESSAGES_PER_CONTACT = 50
 
 
+def normalize_dingtalk_role(role: str) -> str:
+    normalized = str(role or "unknown").strip().lower()
+    return DINGTALK_ROLE_ALIASES.get(normalized, normalized)
+
+
 def build_contact_id(sender: str, role: str) -> str:
-    raw = f"{role.strip().lower()}:{sender.strip()}"
+    raw = f"{normalize_dingtalk_role(role)}:{sender.strip()}"
     digest = hashlib.sha1(raw.encode("utf-8")).hexdigest()[:12]
     return f"dt_{digest}"
 
 
 def is_replyable_role(role: str) -> bool:
-    return role in REPLYABLE_DINGTALK_ROLES
+    return normalize_dingtalk_role(role) in REPLYABLE_DINGTALK_ROLES
 
 
 def new_message_id() -> str:

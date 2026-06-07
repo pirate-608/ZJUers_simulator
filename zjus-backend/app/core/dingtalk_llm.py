@@ -18,6 +18,7 @@ from app.core.config import settings
 from app.schemas.dingtalk import (
     build_contact_id,
     is_replyable_role,
+    normalize_dingtalk_role,
 )
 
 logger = logging.getLogger(__name__)
@@ -82,6 +83,7 @@ def _json_from_text(content: object) -> dict[str, Any]:
 
 
 def _fallback_reply_options(role: str) -> list[dict[str, str]]:
+    role = normalize_dingtalk_role(role)
     options = _FALLBACK_REPLY_OPTIONS.get(
         role, ["好的收到", "我想想怎么回", "可以再说详细点吗"]
     )
@@ -92,6 +94,7 @@ def _fallback_reply_options(role: str) -> list[dict[str, str]]:
 
 
 def _coerce_reply_options(value: object, role: str) -> list[dict[str, str]]:
+    role = normalize_dingtalk_role(role)
     if not isinstance(value, list):
         return _fallback_reply_options(role)
     options: list[dict[str, str]] = []
@@ -113,7 +116,7 @@ async def _generate_reply_options_via_m2her(
     npc_message: str,
     context: str,
 ) -> list[dict[str, str]]:
-    role = str(character.get("role") or "unknown")
+    role = normalize_dingtalk_role(str(character.get("role") or "unknown"))
     if not is_replyable_role(role):
         return []
 
@@ -379,7 +382,7 @@ async def generate_dingtalk_via_m2her(
         content = await _call_m2her_api(messages)
         if content:
             sender = str(char.get("name") or "未知")
-            role = str(char.get("role") or "unknown")
+            role = normalize_dingtalk_role(str(char.get("role") or "unknown"))
             reply_options = await _generate_reply_options_via_m2her(
                 char, player_stats, content, context
             )
@@ -444,7 +447,7 @@ async def generate_dingtalk_reply_via_m2her(
         return None
 
     sender = str(character.get("name") or "未知")
-    role = str(character.get("role") or "unknown")
+    role = normalize_dingtalk_role(str(character.get("role") or "unknown"))
     if not is_replyable_role(role):
         return None
 

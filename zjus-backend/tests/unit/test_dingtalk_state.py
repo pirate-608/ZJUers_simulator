@@ -13,6 +13,7 @@ from app.schemas.dingtalk import (
     DingTalkState,
     build_contact_id,
     is_replyable_role,
+    normalize_dingtalk_role,
 )
 
 
@@ -33,6 +34,14 @@ def test_replyable_roles_match_product_contract():
     assert is_replyable_role("crush")
     assert not is_replyable_role("system")
     assert not is_replyable_role("counselor")
+
+
+def test_role_aliases_keep_legacy_student_messages_replyable():
+    assert normalize_dingtalk_role("student") == "classmate"
+    assert normalize_dingtalk_role("同学") == "classmate"
+    assert normalize_dingtalk_role("室友") == "roommate"
+    assert is_replyable_role("student")
+    assert build_contact_id("小明", "student") == build_contact_id("小明", "classmate")
 
 
 def test_dingtalk_state_compacts_contact_history():
@@ -117,7 +126,7 @@ async def test_engine_dingtalk_reply_closes_round_and_applies_effects():
         ),
     )
     repo = _Repo(DingTalkState(contacts={contact.contact_id: contact}))
-    engine = GameEngine("1", repo=repo, save_service=Mock(), game_service=Mock())
+    engine = GameEngine("1", repo=repo, save_service=Mock(), game_service=Mock()) # type: ignore
     engine.emit = AsyncMock()
     engine._push_update = AsyncMock()
     engine._generate_dingtalk_reply_result = AsyncMock(

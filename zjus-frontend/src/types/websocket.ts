@@ -53,7 +53,18 @@ export type WsMessage =
         wenyan_report?: string
       }
     }
-  | { type: 'new_semester'; data?: { semester_name?: string; course_info_json?: string }; semester_name?: string }
+  | {
+      type: 'new_semester'
+      data?: {
+        semester_name?: string
+        course_info_json?: string
+        stats?: Partial<PlayerStats>
+        courses?: CoursesMap
+        course_states?: CoursesMap
+        semester_time_left?: number
+      }
+      semester_name?: string
+    }
   | { type: 'mode_changed'; mode?: string; llm_available?: boolean; data?: { mode?: string; llm_available?: boolean } }
   | { type: 'toast'; message?: string; level?: string; data?: { message?: string; level?: string } }
   | { type: 'save_result'; message?: string; success?: boolean }

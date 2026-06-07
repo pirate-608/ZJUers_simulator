@@ -36,8 +36,7 @@
     </div>
 
     <div
-      class="card-body p-0 position-relative"
-      style="height: 280px;"
+      class="card-body p-0 position-relative mid-panel-body"
     >
       <div
         v-if="activeTab === 'events'"
@@ -175,7 +174,7 @@
                 v-else
                 class="text-muted small text-center py-2"
               >
-                {{ activeContact.is_replyable ? '等待对方的新消息' : '该联系人暂不支持回复' }}
+                {{ isContactReplyable(activeContact) ? '等待对方的新消息' : '该联系人暂不支持回复' }}
               </div>
             </div>
           </template>
@@ -224,7 +223,40 @@ const activeContact = computed(() => (
   activeContactId.value ? store.dingtalkContacts[activeContactId.value] : null
 ))
 
+const roleAliases: Record<string, string> = {
+  student: 'classmate',
+  students: 'classmate',
+  同学: 'classmate',
+  同班同学: 'classmate',
+  室友: 'roommate',
+  舍友: 'roommate',
+  roomie: 'roommate',
+  ta: 'teaching_assistant',
+  assistant: 'teaching_assistant',
+  助教: 'teaching_assistant',
+  老师: 'teacher',
+  教师: 'teacher',
+  朋友: 'friend',
+  好友: 'friend',
+  暗恋对象: 'crush',
+}
+
+const replyableRoles = new Set([
+  'roommate',
+  'classmate',
+  'friend',
+  'teaching_assistant',
+  'teacher',
+  'crush',
+])
+
+function normalizeRole(role: string): string {
+  const normalized = String(role || 'unknown').trim().toLowerCase()
+  return roleAliases[normalized] || normalized
+}
+
 const getRoleConfig = (role: string) => {
+  const normalizedRole = normalizeRole(role)
   const configs: Record<string, { bg: string; icon: string; name: string }> = {
     counselor: { bg: '#FF9F43', icon: '导', name: '辅导员' },
     teacher: { bg: '#54a0ff', icon: '师', name: '老师' },
@@ -236,7 +268,11 @@ const getRoleConfig = (role: string) => {
     system: { bg: '#8395a7', icon: '系', name: '系统通知' },
     volunteer_coordinator: { bg: '#f368e0', icon: '志', name: '志愿活动' },
   }
-  return configs[role] || { bg: '#1dd1a1', icon: '生', name: '同学' }
+  return configs[normalizedRole] || { bg: '#1dd1a1', icon: '生', name: '同学' }
+}
+
+function isContactReplyable(contact: DingTalkContact): boolean {
+  return Boolean(contact.is_replyable) || replyableRoles.has(normalizeRole(contact.role))
 }
 
 function contactPreview(contact: DingTalkContact): string {
@@ -331,13 +367,22 @@ function setSpeed(speed: number) {
   border-color: #d9d2c2 #d9d2c2 #ffffff;
 }
 
+.mid-panel-body {
+  height: 280px;
+  min-height: 0;
+  overflow: hidden;
+}
+
 .dingtalk-shell {
   display: grid;
   grid-template-columns: minmax(116px, 34%) 1fr;
   background: #f7faff;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .ding-contact-list {
+  min-height: 0;
   overflow-y: auto;
   background: #f5f8fc;
 }
@@ -410,9 +455,11 @@ function setSpeed(speed: number) {
 
 .ding-thread {
   min-width: 0;
+  min-height: 0;
   display: flex;
   flex-direction: column;
   background: #eef5ff;
+  overflow: hidden;
 }
 
 .ding-thread-header {
@@ -423,6 +470,7 @@ function setSpeed(speed: number) {
 
 .ding-messages {
   flex: 1 1 auto;
+  min-height: 0;
   overflow-y: auto;
   padding: 10px 12px;
 }
@@ -443,6 +491,8 @@ function setSpeed(speed: number) {
   font-size: 0.88rem;
   line-height: 1.45;
   box-shadow: 0 1px 4px rgba(31, 67, 104, 0.08);
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .from-npc .ding-bubble {
@@ -466,6 +516,7 @@ function setSpeed(speed: number) {
 }
 
 .ding-replies {
+  flex: 0 0 auto;
   min-height: 48px;
   display: flex;
   gap: 6px;
@@ -488,8 +539,8 @@ function setSpeed(speed: number) {
 }
 
 @media (max-width: 430px) {
-  .card-body[style] {
-    height: 300px !important;
+  .mid-panel-body {
+    height: 300px;
   }
 
   .mid-panel-card .nav-link {

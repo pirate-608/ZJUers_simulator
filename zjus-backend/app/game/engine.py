@@ -29,6 +29,7 @@ from app.schemas.dingtalk import (
     build_contact_id,
     is_replyable_role,
     new_message_id,
+    normalize_dingtalk_role,
     now_ts,
 )
 from app.services.game_service import GameService
@@ -207,7 +208,9 @@ class GameEngine:
         contact_raw = msg_data.get("contact")
         contact = contact_raw if isinstance(contact_raw, dict) else {}
         sender = str(contact.get("sender") or msg_data.get("sender") or "未知")
-        role = str(contact.get("role") or msg_data.get("role") or "unknown")
+        role = normalize_dingtalk_role(
+            str(contact.get("role") or msg_data.get("role") or "unknown")
+        )
         contact_id = str(
             contact.get("contact_id") or build_contact_id(sender, role)
         )
@@ -1474,8 +1477,13 @@ class GameEngine:
             "new_semester",
             {
                 "data": {
-                    "semester_name": f"第 {current_semester_idx} 学期",
+                    "semester_name": new_stats.get(
+                        "semester", f"第 {current_semester_idx} 学期"
+                    ),
                     "holiday_event": transition.get("holiday_event"),
+                    "stats": new_stats,
+                    "courses": new_snapshot.courses,
+                    "course_states": new_snapshot.course_states,
                     "course_info_json": new_stats.get("course_info_json", "[]"),
                 }
             },

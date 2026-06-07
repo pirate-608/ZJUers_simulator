@@ -1,10 +1,10 @@
-import logging
 import inspect
+import logging
 from typing import Any, Awaitable, Dict, TypeVar
 
 from app.api.cache import RedisCache
-from app.schemas.game_state import PlayerStats
 from app.repositories.redis_repo import RedisRepository
+from app.schemas.game_state import PlayerStats
 
 logger = logging.getLogger(__name__)
 T = TypeVar("T")

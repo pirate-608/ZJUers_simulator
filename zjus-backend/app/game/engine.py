@@ -6,7 +6,7 @@ import math
 import random
 import time
 from pathlib import Path
-from typing import Any, Callable, Coroutine, Optional
+from typing import Any, Callable, Coroutine, Literal, Optional
 
 from sqlalchemy import update
 
@@ -147,7 +147,10 @@ class GameEngine:
         self.BASE_MASTERY_GROWTH = balance.base_mastery_growth
 
     def _make_dingtalk_message(
-        self, speaker: str, content: str, round_id: str | None = None
+        self,
+        speaker: Literal["npc", "player", "system"],
+        content: str,
+        round_id: str | None = None,
     ) -> DingTalkMessage:
         return DingTalkMessage(
             message_id=new_message_id(),

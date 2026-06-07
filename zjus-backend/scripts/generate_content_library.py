@@ -16,16 +16,16 @@ Usage:
 """
 
 import argparse
+import ast
 import json
 import os
+import random
+import re  # 添加这行
 import sys
 import time
 import uuid
-import random
-import re  # 添加这行
-import ast
 from pathlib import Path
-from typing import List, Dict, Any, Optional
+from typing import Any, Dict, List, Optional
 
 import requests
 
@@ -64,7 +64,7 @@ if TOPIC_EXAMPLES_PATH.exists():
     CC98_TOPICS = list(CC98_TOPIC_DATA.keys())
     print(f"✅ 已加载 {len(CC98_TOPICS)} 个 CC98 版面示例数据")
 else:
-    print(f"⚠️ 未找到 topic_examples.json，将使用默认 CC98_TOPICS 列表")
+    print("⚠️ 未找到 topic_examples.json，将使用默认 CC98_TOPICS 列表")
     # 回退到硬编码列表（如果您之前有定义，可以保留）
     CC98_TOPICS = [
         "似水流年", "心灵之约", "开怀一笑", "郁闷小屋",
@@ -85,7 +85,7 @@ if KEYWORDS_PATH.exists():
         KEYWORDS_DATA = json.load(f)
     print(f"✅ 已加载 {len(KEYWORDS_DATA)} 个校园关键词")
 else:
-    print(f"⚠️ 未找到 keywords.json，将不使用关键词提示")
+    print("⚠️ 未找到 keywords.json，将不使用关键词提示")
 
 # ============================================================
 # OpenAI 兼容 API 调用
@@ -95,14 +95,14 @@ def call_llm(messages: List[Dict[str, Any]], max_retries: int = 3) -> Optional[s
     """调用 OpenAI 兼容 API，返回纯文本响应"""
     api_base = _config.get("api_base", "https://api.openai.com/v1")
     api_key = _config.get("api_key", "")
-    
+
     url = f"{api_base.rstrip('/')}/chat/completions"
     headers = {
         "Content-Type": "application/json",
     }
     if api_key:
         headers["Authorization"] = f"Bearer {api_key}"
-        
+
     payload = {
         "model": _config["model"],
         "messages": messages,
@@ -123,7 +123,10 @@ def call_llm(messages: List[Dict[str, Any]], max_retries: int = 3) -> Optional[s
         except requests.exceptions.Timeout:
             print(f"  ⚠️ 请求超时 (尝试 {attempt+1}/{max_retries})")
         except requests.exceptions.ConnectionError:
-            print(f"  ⚠️ API 连接失败 (尝试 {attempt+1}/{max_retries})，请确认网络和 API_BASE 设置")
+            print(
+                f"  ⚠️ API 连接失败 (尝试 {attempt+1}/{max_retries})，"
+                "请确认网络和 API_BASE 设置"
+            )
         except Exception as e:
             print(f"  ⚠️ 调用失败: {e} (尝试 {attempt+1}/{max_retries})")
 
@@ -155,7 +158,12 @@ def extract_json(raw: str) -> Optional[Any]:
         s = match.group(0)
         return s.replace('\n', '\\n').replace('\r', '\\r').replace('\t', '\\t')
     # 仅处理双引号字符串内的内容（粗略匹配，不够精确，但常用）
-    text = re.sub(r'"[^"\\]*(?:\\.[^"\\]*)*"', escape_control_chars, text, flags=re.DOTALL)
+    text = re.sub(
+        r'"[^"\\]*(?:\\.[^"\\]*)*"',
+        escape_control_chars,
+        text,
+        flags=re.DOTALL,
+    )
 
     # 4. 清理尾随逗号（对象和数组）
     # 在 } 或 ] 之前的逗号
@@ -344,7 +352,9 @@ def generate_events(target_count: int) -> List[Dict[str, Any]]:
 要求：
 1. 每个事件必须包含 title、desc、tags、options
 2. options 必须包含两个选项，每个选项必须有 id、text、effects
-3. effects 必须包含 desc 字段，以及以下任意字段：energy(-10~10)、sanity(-10~10)、stress(-10~10)、luck(-5~5)、reputation(-5~5)
+3. effects 必须包含 desc 字段，以及以下任意字段：
+   energy(-10~10)、sanity(-10~10)、stress(-10~10)、
+   luck(-5~5)、reputation(-5~5)
 4. 描述要生动有趣，符合浙大学生视角
 5. 事件适合{sanity_label}、{stress_label}的玩家
 
@@ -363,14 +373,14 @@ def generate_events(target_count: int) -> List[Dict[str, Any]]:
             raw = call_llm(messages)
 
             if not raw:
-                print(f"  ❌ 生成失败，跳过本批次")
+                print("  ❌ 生成失败，跳过本批次")
                 consecutive_failures += 1
                 continue
 
             data = extract_json(raw)
 
             if not data:
-                print(f"  ❌ JSON 解析失败，跳过本批次")
+                print("  ❌ JSON 解析失败，跳过本批次")
                 print(f"  📝 原始内容前200字符: {raw[:200]}")
                 consecutive_failures += 1
                 continue
@@ -383,18 +393,18 @@ def generate_events(target_count: int) -> List[Dict[str, Any]]:
             elif isinstance(data, dict) and "events" in data:
                 events_data = data["events"]
             else:
-                print(f"  ❌ 不支持的 JSON 格式，跳过本批次")
+                print("  ❌ 不支持的 JSON 格式，跳过本批次")
                 continue
 
             if not isinstance(events_data, list):
-                print(f"  ❌ events 不是数组格式，跳过本批次")
+                print("  ❌ events 不是数组格式，跳过本批次")
                 continue
 
             valid_count = 0
             for evt in events_data:
                 if not evt or not isinstance(evt, dict):
                     continue
-                if not evt.get("title") or not evt.get("desc") or not evt.get("options"):
+                if not all(evt.get(key) for key in ("title", "desc", "options")):
                     continue
 
                 options = evt.get("options", [])
@@ -404,8 +414,14 @@ def generate_events(target_count: int) -> List[Dict[str, Any]]:
                 for opt in options:
                     if "effects" in opt:
                         if "desc" not in opt["effects"]:
-                            opt["effects"]["desc"] = f"你选择了{opt.get('text', '这个选项')}"
-                        opt["effects"] = {k: v for k, v in opt["effects"].items() if v is not None}
+                            opt["effects"]["desc"] = (
+                                f"你选择了{opt.get('text', '这个选项')}"
+                            )
+                        opt["effects"] = {
+                            k: v
+                            for k, v in opt["effects"].items()
+                            if v is not None
+                        }
 
                 evt["id"] = f"evt_{uuid.uuid4().hex[:8]}"
                 evt["sanity_range"] = sanity_range
@@ -416,7 +432,10 @@ def generate_events(target_count: int) -> List[Dict[str, Any]]:
                 events.append(evt)
                 valid_count += 1
 
-            print(f"  ✅ {len(events)}/{target_count} 事件已生成 (本批次 +{valid_count})")
+            print(
+                f"  ✅ {len(events)}/{target_count} 事件已生成 "
+                f"(本批次 +{valid_count})"
+            )
 
             if valid_count == 0:
                 time.sleep(1)
@@ -491,8 +510,12 @@ def generate_cc98_posts(target_count: int) -> List[Dict[str, Any]]:
 1. 每条帖子内容简短（10-30字），像真实浙大学生发的
 2. 使用大学生网络用语，自然接地气
 3. {keywords_text}
-4. 不同帖子之间风格要有差异 
-5. 可根据语境添加cc98独有的表情符号，如[ac01]（扇子）、[ac05]（呆住，无语）、[ac06]（抿嘴憋笑卖萌，表示可爱）、[ac08]（抱拳微笑，表示感谢、祝福、赞美等）、[ac09]（暴跳如雷，表示“怒了一下”）、[ac19]（震惊、惊讶）、[ac22]（难过）、[ac35]（大哭）
+4. 不同帖子之间风格要有差异
+5. 可根据语境添加cc98独有的表情符号，如[ac01]（扇子）、
+   [ac05]（呆住，无语）、[ac06]（抿嘴憋笑卖萌，表示可爱）、
+   [ac08]（抱拳微笑，表示感谢、祝福、赞美等）、
+   [ac09]（暴跳如雷，表示“怒了一下”）、[ac19]（震惊、惊讶）、
+   [ac22]（难过）、[ac35]（大哭）
 
 现在请直接输出 JSON："""
 
@@ -509,14 +532,14 @@ def generate_cc98_posts(target_count: int) -> List[Dict[str, Any]]:
             raw = call_llm(messages)
 
             if not raw:
-                print(f"  ❌ 生成失败，跳过本批次")
+                print("  ❌ 生成失败，跳过本批次")
                 consecutive_failures += 1
                 continue
 
             data = extract_json(raw)
 
             if not data:
-                print(f"  ❌ JSON 解析失败，跳过本批次")
+                print("  ❌ JSON 解析失败，跳过本批次")
                 print(f"  📝 原始内容: {raw[:150]}...")
                 consecutive_failures += 1
                 continue
@@ -528,7 +551,7 @@ def generate_cc98_posts(target_count: int) -> List[Dict[str, Any]]:
             elif isinstance(data, list):
                 posts_data = data
             else:
-                print(f"  ❌ 不支持的 JSON 格式，跳过本批次")
+                print("  ❌ 不支持的 JSON 格式，跳过本批次")
                 continue
 
             if not isinstance(posts_data, list):
@@ -545,7 +568,10 @@ def generate_cc98_posts(target_count: int) -> List[Dict[str, Any]]:
                     })
                     valid_count += 1
 
-            print(f"  ✅ {len(posts)}/{target_count} 帖子已生成 (本批次 +{valid_count})")
+            print(
+                f"  ✅ {len(posts)}/{target_count} 帖子已生成 "
+                f"(本批次 +{valid_count})"
+            )
 
             if valid_count == 0:
                 time.sleep(1)
@@ -570,9 +596,18 @@ def main():
     parser.add_argument("--cc98", type=int, default=0, help="生成 CC98 帖子数量")
     parser.add_argument("--events-only", type=int, default=0, help="仅生成事件")
     parser.add_argument("--cc98-only", type=int, default=0, help="仅生成帖子")
-    parser.add_argument("--model", type=str, default=_config["model"], help="调用的模型名")
-    parser.add_argument("--api-base", type=str, default=_config["api_base"], help="OpenAI 兼容 API Base URL")
-    parser.add_argument("--api-key", type=str, default=_config["api_key"], help="API Key")
+    parser.add_argument(
+        "--model", type=str, default=_config["model"], help="调用的模型名"
+    )
+    parser.add_argument(
+        "--api-base",
+        type=str,
+        default=_config["api_base"],
+        help="OpenAI 兼容 API Base URL",
+    )
+    parser.add_argument(
+        "--api-key", type=str, default=_config["api_key"], help="API Key"
+    )
     parser.add_argument("--append", action="store_true", help="追加到现有库而不是覆盖")
     args = parser.parse_args()
 
@@ -601,14 +636,23 @@ def main():
                 models = [m["id"] for m in resp.json().get("data", [])]
                 print(f"✅ API 已连接，获取到 {len(models)} 个可用模型")
                 if _config["model"] not in models:
-                    print(f"⚠️  提示：目标模型 '{_config['model']}' 可能不在可用模型列表中。请确认拼写正确。")
+                    print(
+                        f"⚠️  提示：目标模型 '{_config['model']}' "
+                        "可能不在可用模型列表中。请确认拼写正确。"
+                    )
             else:
-                print(f"⚠️ 无法获取模型列表，HTTP 状态码: {resp.status_code}，将直接尝试调用...")
+                print(
+                    f"⚠️ 无法获取模型列表，HTTP 状态码: {resp.status_code}，"
+                    "将直接尝试调用..."
+                )
         except Exception as e:
             print(f"⚠️ API 连接测试失败: {e}，将直接尝试调用...")
     else:
         print("⚠️ 无效的 API_BASE，必须以 http/https 开头")
         sys.exit(1)
+
+    events: List[Dict[str, Any]] = []
+    posts: List[Dict[str, Any]] = []
 
     try:
         # 生成事件
@@ -620,7 +664,10 @@ def main():
                 with open(out_path, "r", encoding="utf-8") as f:
                     existing = json.load(f)
                 events = existing + events
-                print(f"\n📎 追加模式：已有 {len(existing)} 条 + 新增 {len(events) - len(existing)} 条")
+                print(
+                    f"\n📎 追加模式：已有 {len(existing)} 条 + "
+                    f"新增 {len(events) - len(existing)} 条"
+                )
 
             with open(out_path, "w", encoding="utf-8") as f:
                 json.dump(events, f, ensure_ascii=False, indent=2)
@@ -635,7 +682,10 @@ def main():
                 with open(out_path, "r", encoding="utf-8") as f:
                     existing = json.load(f)
                 posts = existing + posts
-                print(f"\n📎 追加模式：已有 {len(existing)} 条 + 新增 {len(posts) - len(existing)} 条")
+                print(
+                    f"\n📎 追加模式：已有 {len(existing)} 条 + "
+                    f"新增 {len(posts) - len(existing)} 条"
+                )
 
             with open(out_path, "w", encoding="utf-8") as f:
                 json.dump(posts, f, ensure_ascii=False, indent=2)
@@ -644,26 +694,26 @@ def main():
     except KeyboardInterrupt:
         print("\n⚠️ 程序被用户中断。")
         # 如果已经生成了部分数据，仍然保存
-        if 'events' in locals() and events:
+        if events:
             out_path = WORLD_DIR / "event_library.json"
             if args.append and out_path.exists():
                 try:
                     with open(out_path, "r", encoding="utf-8") as f:
                         existing = json.load(f)
                     events = existing + events
-                except:
+                except (OSError, json.JSONDecodeError, TypeError):
                     pass
             with open(out_path, "w", encoding="utf-8") as f:
                 json.dump(events, f, ensure_ascii=False, indent=2)
             print(f"📦 已保存 {len(events)} 条事件到 {out_path}")
-        if 'posts' in locals() and posts:
+        if posts:
             out_path = WORLD_DIR / "cc98_library.json"
             if args.append and out_path.exists():
                 try:
                     with open(out_path, "r", encoding="utf-8") as f:
                         existing = json.load(f)
                     posts = existing + posts
-                except:
+                except (OSError, json.JSONDecodeError, TypeError):
                     pass
             with open(out_path, "w", encoding="utf-8") as f:
                 json.dump(posts, f, ensure_ascii=False, indent=2)

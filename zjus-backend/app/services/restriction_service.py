@@ -1,8 +1,10 @@
 import datetime
 from typing import Optional
-from sqlalchemy import select, or_
+
+from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from app.models.admin import UserRestriction, UserBlacklist
+
+from app.models.admin import UserBlacklist, UserRestriction
 
 
 class RestrictionService:

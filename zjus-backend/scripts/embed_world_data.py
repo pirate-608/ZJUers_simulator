@@ -20,26 +20,26 @@ Usage:
 """
 
 import asyncio
-import json
 import csv
+import json
+import os
 import sys
 from pathlib import Path
-from typing import List, Dict, Any
+from typing import Any, Dict, List
+
+import requests
 
 # 将项目根目录加入 sys.path
 _project_root = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(_project_root))
 
 # 加载 .env（可能在 zjus-backend/ 或项目根目录）
-import os
+
 for env_candidate in [_project_root / ".env", _project_root.parent / ".env"]:
     if env_candidate.exists():
         from dotenv import load_dotenv
         load_dotenv(env_candidate)
         break
-
-import requests
-
 
 # ============================================================
 # 配置
@@ -159,7 +159,7 @@ def export_csv(records: List[Dict], output_path: Path):
     """导出 embedding 到 CSV"""
     with open(output_path, "w", encoding="utf-8", newline="") as f:
         writer = csv.writer(f)
-        writer.writerow(["char_name", "char_role", "source_text", "embedding", "char_json"])
+        writer.writerow(["char_name", "char_role", "source_text", "embedding", "char_json"])  # noqa: E501
         for rec in records:
             vec_str = "[" + ",".join(f"{v:.6f}" for v in rec["embedding"]) + "]"
             writer.writerow([
@@ -178,9 +178,10 @@ def export_csv(records: List[Dict], output_path: Path):
 
 async def write_to_pgvector(records: List[Dict]):
     """将 embedding 写入 PostgreSQL character_embeddings 表（自动建表）"""
-    from app.core.database import AsyncSessionLocal
-    from app.models.embedding import CharacterEmbedding, EMBEDDING_DIM
     from sqlalchemy import delete, text
+
+    from app.core.database import AsyncSessionLocal
+    from app.models.embedding import EMBEDDING_DIM, CharacterEmbedding
 
     async with AsyncSessionLocal() as db:
         # 自动启用 pgvector 扩展 + 建表（幂等操作）
@@ -246,7 +247,7 @@ def main():
             original = os.environ["DATABASE_URL"]
             fixed = original.replace("@db:", "@localhost:").replace(":5432/", ":15432/")
             os.environ["DATABASE_URL"] = fixed
-            print(f"📌 DATABASE_URL 已自动修正为宿主机地址: ...@localhost:15432/...")
+            print("📌 DATABASE_URL 已自动修正为宿主机地址: ...@localhost:15432/...")
 
     # 1. 检查 Ollama
     print("🔍 检查 Ollama bge-m3...")

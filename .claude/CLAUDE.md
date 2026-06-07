@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-This file is the handoff guide for Claude Code when working in this repository.
+This file is the handoff guide for AI agents when working in this repository.
 
 ## Project Snapshot
 
@@ -41,6 +41,9 @@ OpenAPI regeneration path:
 
 ```powershell
 docker compose up -d --build backend
+# Wait for the backend server to become available (e.g., sleep 5-10 seconds or ping until 200 OK)
+# to avoid connection refused errors before fetching the OpenAPI schema.
+Start-Sleep -Seconds 8
 Invoke-WebRequest -UseBasicParsing http://127.0.0.1:8000/openapi.json
 cd zjus-frontend
 .\node_modules\.bin\openapi-typescript.cmd http://127.0.0.1:8000/openapi.json -o src/types/api.generated.ts
@@ -87,7 +90,7 @@ Backend:
 Frontend:
 
 - `zjus-frontend/src/App.vue`: phase routing, global modals, guide startup.
-- `zjus-frontend/src/components/LoginView.vue`: invite-code login and optional session-scoped custom LLM config.
+- `zjus-frontend/src/components/LoginView.vue`: Invite-code login, plus a session-scoped custom LLM config section where API key, model name, and provider are optional fields (may be left NULL; system defaults apply when NULL).
 - `zjus-frontend/src/components/SaveSelect.vue`: returning-user save selection or new game.
 - `zjus-frontend/src/components/CharacterCreate.vue`: major selection and stat budget UI.
 - `zjus-frontend/src/composables/useGameWebSocket.ts`: auth handshake, heartbeat, message dispatch.
@@ -141,7 +144,7 @@ Random events:
 Content generation:
 
 - Modes are `library`, `hybrid`, and `ai`.
-- When AI/LLM becomes unavailable, AI mode falls back toward hybrid/library behavior and emits mode/toast updates.
+- When AI/LLM becomes unavailable, AI mode falls back toward hybrid mode(if still have issues, then fall back to library mode) behavior and emits mode/toast updates.
 
 ## Pylance Notes
 

@@ -1,6 +1,6 @@
 ---
 name: zjus-docs-sync
-description: "Update ZJUers Simulator documentation after product, API, onboarding, deployment, or architecture changes. Use when modifying MkDocs pages, README files, user guides, developer guides, navigation, screenshots/previews, API docs, setup docs, or when removing stale references such as the old entrance exam flow."
+description: "Update ZJUers Simulator documentation after product, API, onboarding, deployment, architecture, or agent-workflow changes. Use when modifying MkDocs pages, README files, AGENTS.md, .claude/CLAUDE.md, user guides, developer guides, navigation, screenshots/previews, API docs, setup docs, or when removing stale references such as the old entrance exam flow."
 ---
 
 # ZJUS Docs Sync
@@ -17,6 +17,8 @@ Keep user-facing and developer-facing docs aligned with the actual app behavior.
 - Preview pages: `docs/preview/*`
 - General FAQ/index: `docs/faq.md`, `docs/index.md`
 - Repository landing docs: `README.md`, `README_en.md`
+- Agent handoff docs: `AGENTS.md`, `.claude/CLAUDE.md`
+- Agent skills/workflows: `.codex/skills/*`, `.agents/skills/*`
 
 ## Workflow
 
@@ -36,12 +38,17 @@ rg -n "\u{5165}\u{5b66}\u{8003}\u{8bd5}|\u{5f55}\u{53d6}\u{901a}\u{77e5}|exam|ad
    - Frontend docs should describe `LoginView`, `CharacterCreate`, `SaveSelect`, WebSocket connection, and `client.ts`/`api.generated.ts` responsibilities.
    - Backend docs should describe JWT/session auth, Redis state, Postgres saves, migrations, and compose-first API generation.
 
-4. Wire new pages into `mkdocs.yml` cleanly.
+4. Sync agent-facing handoff docs when workflows or maintenance rules change.
+   - Check `AGENTS.md` and `.claude/CLAUDE.md` for any new project rules, verification commands, Docker/OpenAPI guidance, ownership boundaries, or handoff assumptions introduced by the change.
+   - If a workflow skill changes how agents should work, update the relevant `.codex/skills/*` or `.agents/skills/*` file as part of the same documentation pass.
+   - Treat agent docs as living operational docs, not static background notes: keep them concise, current, and aligned with actual repo behavior.
+
+5. Wire new pages into `mkdocs.yml` cleanly.
    - Keep user-guide pages under the existing user section.
    - Remove nav entries for deleted preview pages.
    - Avoid adding generated or planning notes to nav unless the user asks.
 
-5. Validate with strict MkDocs build:
+6. Validate with strict MkDocs build:
 
 ```powershell
 .\.venv\Scripts\python.exe -m mkdocs build --strict

@@ -17,6 +17,8 @@ Current player entry flow:
 login -> save_select -> character_create -> loading -> playing -> ended
 ```
 
+On a browser's first visit, the frontend may show a skippable pre-login prologue before this `GamePhase` flow. It is stored with `localStorage.zjus_prologue_seen_v1`; while it is active, App startup must not route to login/save/character pages or open the WebSocket.
+
 There is no entrance-exam/admission-test flow anymore. New players authenticate with invite code, save their long-lived student credential, choose a major, allocate stats, then enter the game. Returning players authenticate with nickname + invite code + student credential, then choose a save slot or start a new game.
 
 ## Hard Rules
@@ -89,7 +91,8 @@ Backend:
 
 Frontend:
 
-- `zjus-frontend/src/App.vue`: phase routing, global modals, guide startup.
+- `zjus-frontend/src/App.vue`: pre-login prologue gate, phase routing, global modals, guide startup.
+- `zjus-frontend/src/components/PrologueScene.vue` and `src/data/prologue.ts`: first-visit prologue text, image mapping, and seen-state key.
 - `zjus-frontend/src/components/LoginView.vue`: Invite-code login, plus a session-scoped custom LLM config section where API key, model name, and provider are optional fields (may be left NULL; system defaults apply when NULL).
 - `zjus-frontend/src/components/SaveSelect.vue`: returning-user save selection or new game.
 - `zjus-frontend/src/components/CharacterCreate.vue`: major selection and stat budget UI.

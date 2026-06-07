@@ -11,6 +11,8 @@ zjus-frontend/src/
 ├── App.vue                  # Phase 路由中枢 + 全局 Toast/反馈弹窗挂载
 ├── api/
 │   └── client.ts            # HTTP API 薄封装，类型来自 OpenAPI
+├── data/
+│   └── prologue.ts          # 登录前序章文本、图片映射和 localStorage key
 ├── types/
 │   ├── api.generated.ts     # 从后端 /openapi.json 生成
 │   ├── game.ts              # GamePhase, PlayerStats
@@ -22,6 +24,7 @@ zjus-frontend/src/
 ├── composables/
 │   └── useGameWebSocket.ts  # WebSocket 连接、鉴权、消息分发
 └── components/
+    ├── PrologueScene.vue    # 首次访问登录前序章
     ├── LoginView.vue        # 邀请码登录 + 自定义 LLM 配置
     ├── SaveSelect.vue       # 老玩家存档选择 / 新游戏入口
     ├── CharacterCreate.vue  # 专业选择 + 初始属性分配
@@ -44,6 +47,8 @@ zjus-frontend/src/
 login | save_select | character_create | loading | playing | ended
 ```
 
+登录前序章不是 `GamePhase`，而是 `App.vue` 启动时的前置 gate。首次访问会先渲染 `PrologueScene.vue`，播放或跳过后写入 `localStorage.zjus_prologue_seen_v1`，随后才执行下面的入口分流。
+
 ```mermaid
 graph TD
     Login["login<br>邀请码登录"] -->|"new_user"| Create["character_create<br>选择专业/分配属性"]
@@ -57,7 +62,8 @@ graph TD
 
 ### `App.vue`
 
-- 启动时读取 `localStorage`：
+- 启动时先检查 `zjus_prologue_seen_v1`；未看过序章时暂不执行鉴权分流，也不建立 WebSocket。
+- 序章完成后读取 `localStorage`：
   - `zju_jwt` / `zju_token`：JWT，用于 HTTP/WS 鉴权。
   - `zju_user_token`：长期学生凭证，用于老玩家登录。
   - `zju_saves`：老玩家登录返回的存档摘要。

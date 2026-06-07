@@ -1,8 +1,10 @@
 <script setup lang="ts">
-import { onMounted, watch } from 'vue'
+import { onMounted, ref, watch } from 'vue'
 import { useGameStore } from '@/stores/gameStore.ts'
 import { useGameWebSocket } from '@/composables/useGameWebSocket.ts'
 import { useGameGuide } from '@/composables/useGameGuide.ts'
+import { PROLOGUE_SEEN_STORAGE_KEY } from '@/data/prologue'
+import PrologueScene from './components/PrologueScene.vue'
 import LoginView from './components/LoginView.vue'
 import SaveSelect from './components/SaveSelect.vue'
 import CharacterCreate from './components/CharacterCreate.vue'
@@ -22,6 +24,25 @@ const store = useGameStore()
 const { connect, isConnected, send } = useGameWebSocket()
 const { startGuide } = useGameGuide()
 
+const hasSeenPrologue = () => {
+  try {
+    return localStorage.getItem(PROLOGUE_SEEN_STORAGE_KEY) === '1'
+  } catch {
+    return true
+  }
+}
+
+const markPrologueSeen = () => {
+  try {
+    localStorage.setItem(PROLOGUE_SEEN_STORAGE_KEY, '1')
+  } catch {
+    // localStorage can be unavailable in restricted browsers; the main flow should still continue.
+  }
+}
+
+const isPrologueActive = ref(!hasSeenPrologue())
+let hasBootstrappedEntry = false
+
 // 首次进入 playing 阶段后触发引导
 watch(
   () => [store.currentPhase, isConnected.value] as const,
@@ -32,7 +53,10 @@ watch(
   },
 )
 
-onMounted(() => {
+const bootstrapEntryFlow = () => {
+  if (hasBootstrappedEntry) return
+  hasBootstrappedEntry = true
+
   const storedJwt = localStorage.getItem('zju_jwt')
   if (storedJwt) localStorage.setItem('zju_token', storedJwt)
 
@@ -55,6 +79,18 @@ onMounted(() => {
     }
   } else {
     store.setPhase('login')
+  }
+}
+
+const handlePrologueComplete = () => {
+  markPrologueSeen()
+  isPrologueActive.value = false
+  bootstrapEntryFlow()
+}
+
+onMounted(() => {
+  if (!isPrologueActive.value) {
+    bootstrapEntryFlow()
   }
 })
 
@@ -82,92 +118,99 @@ const handleEnterGame = () => {
     rel="stylesheet"
   >
 
-  <div
-    class="toast-container app-toast position-fixed top-0 end-0 p-4"
-    style="z-index: 10000;"
-  >
+  <PrologueScene
+    v-if="isPrologueActive"
+    @complete="handlePrologueComplete"
+  />
+
+  <template v-else>
     <div
-      v-if="store.toast"
-      class="toast show align-items-center text-white border-0 shadow-lg fade-in" 
-      :class="`bg-${store.toast.type}`"
-      role="alert"
+      class="toast-container app-toast position-fixed top-0 end-0 p-4"
+      style="z-index: 10000;"
     >
-      <div class="d-flex px-1 py-1">
-        <div class="toast-body fw-bold fs-6">
-          {{ store.toast.type === 'success' ? '✅' : '⚠️' }} {{ store.toast.message }}
+      <div
+        v-if="store.toast"
+        class="toast show align-items-center text-white border-0 shadow-lg fade-in" 
+        :class="`bg-${store.toast.type}`"
+        role="alert"
+      >
+        <div class="d-flex px-1 py-1">
+          <div class="toast-body fw-bold fs-6">
+            {{ store.toast.type === 'success' ? '✅' : '⚠️' }} {{ store.toast.message }}
+          </div>
+          <button
+            type="button"
+            class="btn-close btn-close-white me-2 m-auto"
+            @click="store.toast = null"
+          />
         </div>
-        <button
-          type="button"
-          class="btn-close btn-close-white me-2 m-auto"
-          @click="store.toast = null"
-        />
       </div>
     </div>
-  </div>
-  
-  <LoginView v-if="store.currentPhase === 'login'" />
-
-  <SaveSelect
-    v-else-if="store.currentPhase === 'save_select'"
-  />
-
-  <CharacterCreate
-    v-else-if="store.currentPhase === 'character_create'"
-  />
-
-  <div
-    v-else-if="store.currentPhase === 'loading'"
-    class="app-loading vh-100 d-flex flex-column justify-content-center align-items-center"
-  >
-    <div
-      class="spinner-border text-primary mb-3"
-      style="width: 3rem; height: 3rem;"
-      role="status"
-    />
-    <h4 class="text-muted">
-      正在连接「zdbk」...
-    </h4>
-    <div
-      v-if="!isConnected"
-      class="text-danger small mt-2"
-    >
-      （如果长时间卡住，请尝试刷新页面）
-    </div>
-  </div>
-
-  <div
-    v-else-if="store.currentPhase === 'playing'"
-    class="container-fluid app-playing px-3 px-lg-4 py-3 py-lg-4 fade-in-up"
-  >
-    <TopNav @send-action="send" />
     
-    <HudBar />
-    <div class="row g-3 g-xl-4">
-      <div class="col-12 col-lg-3">
-        <div class="card mb-3 border-0 shadow-sm h-100">
-          <div class="card-header bg-info text-white text-center fw-bold py-2">
-            📚 学在折大
-          </div>
-          <div class="card-body p-0">
-            <CourseList @send-action="send" />
-          </div>
-        </div>
-      </div>
-      <div class="col-12 col-lg-6">
-        <MidPanel @send-action="send" />
-      </div>
-      <div class="col-12 col-lg-3">
-        <RightPanel @send-action="send" />
+    <LoginView v-if="store.currentPhase === 'login'" />
+
+    <SaveSelect
+      v-else-if="store.currentPhase === 'save_select'"
+    />
+
+    <CharacterCreate
+      v-else-if="store.currentPhase === 'character_create'"
+    />
+
+    <div
+      v-else-if="store.currentPhase === 'loading'"
+      class="app-loading vh-100 d-flex flex-column justify-content-center align-items-center"
+    >
+      <div
+        class="spinner-border text-primary mb-3"
+        style="width: 3rem; height: 3rem;"
+        role="status"
+      />
+      <h4 class="text-muted">
+        正在连接「zdbk」...
+      </h4>
+      <div
+        v-if="!isConnected"
+        class="text-danger small mt-2"
+      >
+        （如果长时间卡住，请尝试刷新页面）
       </div>
     </div>
 
-    <TranscriptModal @send-action="send" />
-    <RandomEventModal @send-action="send" />
-    <FeedbackModal />
-    <ExitConfirmModal @send-action="send" />
-  </div>
+    <div
+      v-else-if="store.currentPhase === 'playing'"
+      class="container-fluid app-playing px-3 px-lg-4 py-3 py-lg-4 fade-in-up"
+    >
+      <TopNav @send-action="send" />
+      
+      <HudBar />
+      <div class="row g-3 g-xl-4">
+        <div class="col-12 col-lg-3">
+          <div class="card mb-3 border-0 shadow-sm h-100">
+            <div class="card-header bg-info text-white text-center fw-bold py-2">
+              📚 学在折大
+            </div>
+            <div class="card-body p-0">
+              <CourseList @send-action="send" />
+            </div>
+          </div>
+        </div>
+        <div class="col-12 col-lg-6">
+          <MidPanel @send-action="send" />
+        </div>
+        <div class="col-12 col-lg-3">
+          <RightPanel @send-action="send" />
+        </div>
+      </div>
 
-  <EndScreen v-else-if="store.currentPhase === 'ended'" @send-action="send" />
+      <TranscriptModal @send-action="send" />
+      <RandomEventModal @send-action="send" />
+      <FeedbackModal />
+      <ExitConfirmModal @send-action="send" />
+    </div>
+
+    <EndScreen v-else-if="store.currentPhase === 'ended'" @send-action="send" />
+  </template>
 </template>
 
 <style>

@@ -27,6 +27,8 @@ logger = logging.getLogger(__name__)
 _CACHE_KEY = "game:dingtalk_m2her"
 _CACHE_MAX_LEN = 100
 _CACHE_TTL_SECONDS = 6 * 60 * 60  # 6 小时
+_CHARACTER_CACHE: List[Dict[str, Any]] | None = None
+_M2HER_CLIENT: httpx.AsyncClient | None = None
 
 _FALLBACK_REPLY_OPTIONS = {
     "roommate": ["哈哈收到", "我马上看看", "你先别急"],
@@ -44,6 +46,10 @@ _FALLBACK_REPLY_OPTIONS = {
 
 def _load_characters() -> List[Dict[str, Any]]:
     """加载 characters.json"""
+    global _CHARACTER_CACHE
+    if _CHARACTER_CACHE is not None:
+        return _CHARACTER_CACHE
+
     base_dir = Path(__file__).resolve().parent.parent.parent
     char_path = (
         Path("/app/world/characters.json")
@@ -52,10 +58,12 @@ def _load_characters() -> List[Dict[str, Any]]:
     )
     try:
         with open(char_path, "r", encoding="utf-8") as f:
-            return json.load(f)
+            data = json.load(f)
+        _CHARACTER_CACHE = data if isinstance(data, list) else []
     except Exception:
         logger.error("Failed to load characters.json")
-        return []
+        _CHARACTER_CACHE = []
+    return _CHARACTER_CACHE
 
 
 def get_character_by_contact_id(contact_id: str) -> Optional[Dict[str, Any]]:
@@ -248,43 +256,43 @@ async def _call_m2her_api(
         return None
 
     try:
-        async with httpx.AsyncClient() as client:
-            resp = await client.post(
-                base_url,
-                headers={
-                    "Authorization": f"Bearer {api_key}",
-                    "Content-Type": "application/json",
-                },
-                json={
-                    "model": "M2-her",
-                    "messages": messages,
-                    "temperature": 1.0,
-                    "top_p": 0.95,
-                    "max_completion_tokens": max_completion_tokens,
-                },
-                timeout=15.0,
+        client = _get_m2her_client()
+        resp = await client.post(
+            base_url,
+            headers={
+                "Authorization": f"Bearer {api_key}",
+                "Content-Type": "application/json",
+            },
+            json={
+                "model": "M2-her",
+                "messages": messages,
+                "temperature": 1.0,
+                "top_p": 0.95,
+                "max_completion_tokens": max_completion_tokens,
+            },
+            timeout=15.0,
+        )
+        resp.raise_for_status()
+        data = resp.json()
+
+        # 检查 base_resp 错误
+        base_resp = data.get("base_resp", {})
+        if base_resp.get("status_code", 0) != 0:
+            logger.warning(
+                "M2-her API error: %s", base_resp.get("status_msg", "unknown")
             )
-            resp.raise_for_status()
-            data = resp.json()
-
-            # 检查 base_resp 错误
-            base_resp = data.get("base_resp", {})
-            if base_resp.get("status_code", 0) != 0:
-                logger.warning(
-                    "M2-her API error: %s", base_resp.get("status_msg", "unknown")
-                )
-                return None
-
-            # 检查敏感词
-            if data.get("output_sensitive"):
-                logger.warning("M2-her output hit sensitive filter")
-                return None
-
-            choices = data.get("choices", [])
-            if choices:
-                return choices[0].get("message", {}).get("content", "").strip()
-
             return None
+
+        # 检查敏感词
+        if data.get("output_sensitive"):
+            logger.warning("M2-her output hit sensitive filter")
+            return None
+
+        choices = data.get("choices", [])
+        if choices:
+            return choices[0].get("message", {}).get("content", "").strip()
+
+        return None
 
     except httpx.TimeoutException:
         logger.warning("M2-her API timeout")
@@ -292,6 +300,20 @@ async def _call_m2her_api(
     except Exception as e:
         logger.error("M2-her API call failed: %s", e)
         return None
+
+
+def _get_m2her_client() -> httpx.AsyncClient:
+    global _M2HER_CLIENT
+    if _M2HER_CLIENT is None or _M2HER_CLIENT.is_closed:
+        _M2HER_CLIENT = httpx.AsyncClient()
+    return _M2HER_CLIENT
+
+
+async def close_m2her_client() -> None:
+    global _M2HER_CLIENT
+    if _M2HER_CLIENT is not None and not _M2HER_CLIENT.is_closed:
+        await _M2HER_CLIENT.aclose()
+    _M2HER_CLIENT = None
 
 
 # ==========================================

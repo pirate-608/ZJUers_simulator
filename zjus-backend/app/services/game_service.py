@@ -1,9 +1,10 @@
 # app/services/game_service.py
 import json
 import logging
-import time
-from typing import Dict, Any, Optional
+from typing import Any, Dict, Optional
+
 from sqlalchemy.ext.asyncio import AsyncSession
+
 from app.repositories.redis_repo import RedisRepository
 from app.schemas.game_state import PlayerStats
 from app.services.save_service import SaveService
@@ -23,7 +24,7 @@ class GameService:
     async def prepare_game_context(
         self,
         username: str,
-        db: AsyncSession = None,
+        db: AsyncSession = None, # type: ignore
         save_slot: int = 1,
         force_load_save: bool = False,
     ) -> Dict[str, Any]:

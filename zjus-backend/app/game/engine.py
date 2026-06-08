@@ -140,6 +140,7 @@ class GameEngine:
                 / "world"
                 / "achievements.json"
             )
+        self._achievement_config: dict[str, Any] | None = None
 
         # ========== 从配置文件加载数值参数 ==========
         # 状态定义: 0=摆(Lay Flat), 1=摸(Chill), 2=卷(Hardcore)
@@ -392,10 +393,13 @@ class GameEngine:
         self.is_running = True
         self._run_task = asyncio.create_task(self.run_loop())
 
-    async def check_and_trigger_gameover(self) -> bool:
+    async def check_and_trigger_gameover(
+        self, stats: dict[str, Any] | None = None
+    ) -> bool:
         """检测精力/心态是否归零并触发game over"""
-        snapshot = await self.repo.get_snapshot()
-        stats = snapshot.stats.model_dump()
+        if stats is None:
+            snapshot = await self.repo.get_snapshot()
+            stats = snapshot.stats.model_dump()
         if not stats:
             return False
         try:
@@ -521,9 +525,11 @@ class GameEngine:
                 # 因为它的 max_val 默认值 200 会截断计时器
                 elapsed = await self.repo.update_stat("elapsed_game_time", 3)
 
+                snapshot = await self.repo.get_snapshot()
+                stats = snapshot.stats.model_dump()
+
                 # 动态获取当前学期时长上限
-                snapshot_for_time = await self.repo.get_snapshot()
-                sem_idx = int(snapshot_for_time.stats.semester_idx or 1)
+                sem_idx = int(stats.get("semester_idx") or 1)
                 sem_duration = balance.get_semester_duration(sem_idx)
                 if elapsed >= sem_duration:
                     logger.info(
@@ -544,12 +550,10 @@ class GameEngine:
                     self._last_ttl_refresh = now_ts
 
                 # 1. 基础检查
-                if await self.check_and_trigger_gameover():
+                if await self.check_and_trigger_gameover(stats):
                     break
 
-                # 2. 获取计算所需数据 (并行获取以提升性能)
-                snapshot = await self.repo.get_snapshot()
-                stats = snapshot.stats.model_dump()
+                # 2. 获取计算所需数据
                 course_states_raw = snapshot.course_states
 
                 # 解析课程信息
@@ -1401,10 +1405,9 @@ class GameEngine:
             eq = int(stats.get("eq") or 50)
             study_count = int(action_counts.get("study") or 0)
 
-            if not self.achievement_path.exists():
+            ach_config = self._load_achievement_config()
+            if not ach_config:
                 return
-            with open(self.achievement_path, "r", encoding="utf-8") as f:
-                ach_config = json.load(f)
 
             unlocked = await self.repo.get_unlocked_achievements()
 
@@ -1430,6 +1433,21 @@ class GameEngine:
                     )
         except Exception as e:
             logger.error(f"Achievement check error: {e}")
+
+    def _load_achievement_config(self) -> dict[str, Any]:
+        if self._achievement_config is not None:
+            return self._achievement_config
+        if not self.achievement_path.exists():
+            self._achievement_config = {}
+            return self._achievement_config
+        try:
+            with open(self.achievement_path, "r", encoding="utf-8") as f:
+                data = json.load(f)
+            self._achievement_config = data if isinstance(data, dict) else {}
+        except Exception as e:
+            logger.error("Failed to load achievements config: %s", e)
+            self._achievement_config = {}
+        return self._achievement_config
 
     async def _next_semester(self):
         """进入下一学期逻辑"""

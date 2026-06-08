@@ -42,6 +42,8 @@ docker compose up -d --build
 
 本地开发应保留 `docker-compose.override.yml`；它会把后端映射到宿主机 `127.0.0.1:8000`。生产基础 `docker-compose.yml` 不发布后端端口，只允许 Nginx 通过 Docker 内网访问 `backend:8000`。
 
+生产环境下后端默认关闭 SQL echo，并跳过 `Base.metadata.create_all`；数据库结构由 `migrate` 服务执行 Alembic 迁移。若确需覆盖，可设置 `DATABASE_ECHO` 或 `CREATE_ALL_ON_STARTUP`，但常规生产不建议开启。
+
 该命令会构建并启动：
 
 - PostgreSQL + pgvector

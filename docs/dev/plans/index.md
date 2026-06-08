@@ -18,8 +18,15 @@
           </ul>
         </li>
         <li class="todo-item">
-          <input type="checkbox" disabled> 
+          <input type="checkbox" disabled>
           <strong>验证前后端兼容性</strong>
+        </li>
+        <li class="todo-item">
+          <input type="checkbox" disabled>
+          <strong>2C2G 生产资源优化</strong>
+          <ul class="todo-sub-list">
+            <li>📄 <a href="production-resource-optimization/">查看文档</a></li>
+          </ul>
         </li>
       </ul>
     </div>

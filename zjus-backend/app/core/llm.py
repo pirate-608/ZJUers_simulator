@@ -1,6 +1,6 @@
 import json
-import os
 import logging
+import os
 from typing import Any, Dict, List, Optional, Tuple
 
 from openai import AsyncOpenAI
@@ -93,10 +93,16 @@ EVENTS_CACHE_MAX_LEN = 100
 EVENTS_CACHE_TTL_SECONDS = 12 * 60 * 60
 DINGTALK_CACHE_MAX_LEN = 200
 DINGTALK_CACHE_TTL_SECONDS = 6 * 60 * 60
+_KEYWORDS_CACHE_LOADED = False
+_KEYWORDS_CACHE: list[Any] = []
 
 
 def _load_keywords():
     """加载 world/keywords.json 供 LLM 提示词使用"""
+    global _KEYWORDS_CACHE_LOADED, _KEYWORDS_CACHE
+    if _KEYWORDS_CACHE_LOADED:
+        return _KEYWORDS_CACHE
+
     from pathlib import Path
 
     base_dir = Path(__file__).resolve().parent.parent.parent
@@ -107,9 +113,12 @@ def _load_keywords():
     )
     try:
         with open(kw_path, "r", encoding="utf-8") as f:
-            return json.load(f)
+            data = json.load(f)
+        _KEYWORDS_CACHE = data if isinstance(data, list) else []
     except Exception:
-        return []
+        _KEYWORDS_CACHE = []
+    _KEYWORDS_CACHE_LOADED = True
+    return _KEYWORDS_CACHE
 
 
 async def generate_cc98_post(
@@ -217,8 +226,10 @@ async def generate_random_event(
         f"生成 3 个浙大校园随机事件，风格迥异。\n"
         f"每个事件含两个选项，effects 范围 -10~+10。\n"
         f'\n严格 JSON：{{ "events": [{{ "title": "...", "desc": "...", '
-        f'"options": [{{"id": "A", "text": "...", "effects": {{"energy": -5, "desc": "..."}}}}, '
-        f'{{"id": "B", "text": "...", "effects": {{"sanity": 5, "desc": "..."}}}}] }}] }}'
+        f'"options": [{{"id": "A", "text": "...", '
+        f'"effects": {{"energy": -5, "desc": "..."}}}}, '
+        f'{{"id": "B", "text": "...", '
+        f'"effects": {{"sanity": 5, "desc": "..."}}}}] }}] }}'
     )
     messages.append({"role": "user", "content": prompt})
     try:

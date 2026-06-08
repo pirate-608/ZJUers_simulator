@@ -1,8 +1,8 @@
-from pydantic_settings import BaseSettings
-from pydantic import model_validator
-import os
 import logging
-import secrets
+import os
+
+from pydantic import model_validator
+from pydantic_settings import BaseSettings
 
 _config_logger = logging.getLogger("app.core.config")
 
@@ -45,6 +45,8 @@ class Settings(BaseSettings):
 
     # 环境标识：production / development
     ENVIRONMENT: str = os.environ.get("ENVIRONMENT", "development")
+    DATABASE_ECHO: bool | None = None
+    CREATE_ALL_ON_STARTUP: bool | None = None
 
     # MiniMax M2-her 配置（钉钉消息 RP 生成）
     MINIMAX_API_KEY: str = os.environ.get("MINIMAX_API_KEY", "")

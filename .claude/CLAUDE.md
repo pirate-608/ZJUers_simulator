@@ -39,6 +39,8 @@ docker compose up -d --build backend
 docker compose logs --tail=200 backend
 ```
 
+Production `docker-compose.yml` does not publish the backend port to the host; Nginx reaches `backend:8000` over the Docker network. Local development and OpenAPI generation rely on `docker-compose.override.yml` to publish `127.0.0.1:8000:8000`.
+
 OpenAPI regeneration path:
 
 ```powershell

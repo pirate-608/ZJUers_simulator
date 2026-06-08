@@ -50,6 +50,7 @@ cp docker-compose.override.example docker-compose.override.yml
 ```
 
 该文件将 Docker 镜像拉取替换为本地源码构建，是本地开发必需的。
+它还会把后端端口映射到 `127.0.0.1:8000`，方便本地前端代理、OpenAPI 生成和调试；生产基础配置不会向宿主机公开后端端口。
 
 #### 宿主机
 
@@ -100,7 +101,7 @@ sudo docker run hello-world
 docker compose up -d --build
 ```
 
-这会构建所有服务的本地镜像并拉起容器：数据库（PostgreSQL + pgvector）、缓存（Redis）、后端（FastAPI :8000）、前端（Nginx :80），并自动执行数据库迁移和向量数据导入。
+这会构建所有服务的本地镜像并拉起容器：数据库（PostgreSQL + pgvector）、缓存（Redis）、后端（FastAPI，开发覆写下仅绑定宿主机 `127.0.0.1:8000`）、前端（Nginx :80），并自动执行数据库迁移和向量数据导入。
 
 访问 [http://localhost](http://localhost) 即可开始游戏。
 

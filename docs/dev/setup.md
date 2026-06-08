@@ -40,6 +40,8 @@ MINIMAX_BASE_URL=https://api.minimax.chat/v1/text/chatcompletion_v2
 docker compose up -d --build
 ```
 
+本地开发应保留 `docker-compose.override.yml`；它会把后端映射到宿主机 `127.0.0.1:8000`。生产基础 `docker-compose.yml` 不发布后端端口，只允许 Nginx 通过 Docker 内网访问 `backend:8000`。
+
 该命令会构建并启动：
 
 - PostgreSQL + pgvector
@@ -99,6 +101,8 @@ docker compose up -d --build backend
 cd zjus-frontend
 npx openapi-typescript http://127.0.0.1:8000/openapi.json -o src/types/api.generated.ts
 ```
+
+上述 `127.0.0.1:8000` 来自本地 `docker-compose.override.yml` 的端口映射；在生产基础 compose 中后端不会暴露到宿主机。
 
 不要手写 `api.generated.ts`。前端 HTTP 调用封装放在 `src/api/client.ts`。
 

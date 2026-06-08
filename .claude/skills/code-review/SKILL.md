@@ -64,6 +64,8 @@ docker compose up -d --build backend
 Invoke-WebRequest -UseBasicParsing http://127.0.0.1:8000/openapi.json
 ```
 
+The `127.0.0.1:8000` URL depends on the local `docker-compose.override.yml` backend port mapping. Production base compose keeps backend access internal to Nginx and the Docker network.
+
 Then run from `zjus-frontend/`:
 
 ```powershell

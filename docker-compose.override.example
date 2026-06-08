@@ -9,6 +9,9 @@ services:
     build:
       context: ./zjus-backend
       dockerfile: Dockerfile
+    # 本地开发与 OpenAPI 生成需要从宿主机访问后端；生产基础 compose 不发布该端口。
+    ports:
+      - "127.0.0.1:8000:8000"
     # 本地开发时挂载代码以实现热更新
     volumes:
       - ./zjus-backend/app:/app/app

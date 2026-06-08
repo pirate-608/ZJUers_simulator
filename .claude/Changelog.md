@@ -1,5 +1,52 @@
 # Claude Code Handoff Changelog
 
+## 2026-06-07
+
+### Pre-login Prologue
+
+- Added a first-visit, skippable prologue before the normal `GamePhase` flow.
+- The prologue is a frontend startup gate, not a new game phase; while active, `App.vue` must not route to login/save/character pages or open the WebSocket.
+- Seen state is stored as `localStorage.zjus_prologue_seen_v1`.
+- Prologue text is embedded in `zjus-frontend/src/data/prologue.ts`; it does not fetch `/world/prologue.md` at runtime.
+- `PrologueScene.vue` uses existing public image assets for mood transitions, including `sunset.webp` for the line about recorded smiles and "tomorrow will be better".
+- Focused frontend tests cover first-visit display, skip behavior, and bypass after the seen flag is set.
+
+### Docs And Handoff
+
+- User docs now mention the first-visit prologue before login.
+- Frontend framework docs and agent handoff docs describe the prologue gate and its localStorage key.
+- No backend API, WebSocket, database migration, or OpenAPI regeneration was required.
+
+## 2026-06-06
+
+### DingTalk Private Chat Upgrade
+
+- Reworked DingTalk from a simple message surface into persistent private threads grouped by character/contact.
+- Only characters with messages appear in the contact list; unread contacts show red-dot/unread state.
+- DingTalk state now carries contacts, messages, pending reply options, round metadata, and unread counts through the game lifecycle.
+- Contact and conversation history persists across semester transitions and save/load boundaries.
+- Replyable roles currently include `roommate`, `classmate`, `friend`, `teaching_assistant`, `teacher`, and `crush`, with role aliases normalized for Chinese labels such as "同学" and "室友".
+
+### Reply Rounds And Stat Settlement
+
+- Replyable contacts receive AI-generated player reply options.
+- Three player replies to one contact count as one conversation round; after the NPC's third response in that round, AI settlement applies numeric effects.
+- The MiniMax M2-her roleplay base, pgvector character retrieval, and embedding data shape were preserved.
+- Fallback behavior remains in place when MiniMax, pgvector retrieval, or broader LLM services are unavailable.
+
+### Frontend And WebSocket Contracts
+
+- WebSocket handling now supports DingTalk state snapshots and per-thread updates alongside legacy message compatibility.
+- The frontend store restores DingTalk contacts, recalculates unread counts, marks individual contacts read locally, and updates threads as messages arrive.
+- The central panel now renders a contact list plus per-character private conversation view and reply options.
+- Follow-up UI fixes kept long DingTalk threads scrollable so speed controls do not overlap extended conversation content.
+
+### Save, Semester, And Regression Notes
+
+- DingTalk state is included in active runtime state and persisted save data.
+- Semester transition updates were tightened so the frontend immediately receives new semester stats, course metadata, and course states without requiring browser refresh.
+- Focused DingTalk state tests, frontend type checks, Vitest, MkDocs strict build, and targeted backend checks were used during the upgrade.
+
 ## 2026-06-03
 
 ### Entry Flow And Saves

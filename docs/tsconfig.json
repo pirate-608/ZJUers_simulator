@@ -1,0 +1,24 @@
+{
+    "extends": "../zjus-frontend/tsconfig.json",
+    "compilerOptions": {
+        "baseUrl": ".",
+        "paths": {
+            "@/*": [
+                "../zjus-frontend/src/*"
+            ]
+        }
+    },
+    "include": [
+        "**/*.ts",
+        "**/*.vue",
+        "**/*.js",
+        ".vitepress/**/*.ts",
+        ".vitepress/**/*.vue",
+        ".vitepress/**/*.js"
+    ],
+    "exclude": [
+        "node_modules",
+        ".vitepress/dist",
+        ".vitepress/cache"
+    ]
+}

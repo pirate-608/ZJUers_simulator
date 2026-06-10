@@ -151,7 +151,7 @@ function seedGameState() {
   store.llmAvailable = true
   store.semesterTimeLeft = 368
   store.updateStats({
-    username: '折姜新生',
+    username: '新生',
     major: '计算机科学与技术',
     major_abbr: 'CS',
     semester: '大一秋冬',
@@ -269,7 +269,7 @@ function handleAction(payload: WsClientAction) {
   }
   if (payload.action === 'dingtalk_reply') {
     const contact = store.dingtalkContacts[payload.contact_id]
-    const option = contact?.pending_options.find(item => item.option_id === payload.option_id)
+    const option = contact?.pending_options.find((item: { option_id: any }) => item.option_id === payload.option_id)
     if (!contact || !option) return
     const now = Math.floor(Date.now() / 1000)
     contact.messages.push({

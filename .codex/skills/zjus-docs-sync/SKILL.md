@@ -48,10 +48,13 @@ rg -n "\u{5165}\u{5b66}\u{8003}\u{8bd5}|\u{5f55}\u{53d6}\u{901a}\u{77e5}|exam|ad
    - Remove nav entries for deleted pages.
    - Avoid adding generated or planning notes to nav unless the user asks.
 
-6. Validate with VitePress build:
+6. Validate with VitePress build. The homepage demo imports selected `zjus-frontend` Vue components, so a clean checkout or CI runner must install frontend dependencies before docs build:
 
 ```powershell
-cd docs
+cd zjus-frontend
+npm install
+cd ..\docs
+npm install
 npm run build
 ```
 

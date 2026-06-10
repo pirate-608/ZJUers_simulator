@@ -6,6 +6,9 @@ on:
       - main
     paths:
       - 'docs/**'
+      - 'zjus-frontend/src/**'
+      - 'zjus-frontend/package.json'
+      - 'zjus-frontend/package-lock.json'
       - '.github/workflows/deploy_docs.yml'
   workflow_dispatch:
 
@@ -33,9 +36,15 @@ jobs:
         with:
           node-version: '22'
           cache: npm
-          cache-dependency-path: docs/package-lock.json
+          cache-dependency-path: |
+            docs/package-lock.json
+            zjus-frontend/package-lock.json
 
-      - name: Install dependencies
+      - name: Install frontend dependencies
+        working-directory: zjus-frontend
+        run: npm ci
+
+      - name: Install docs dependencies
         working-directory: docs
         run: npm ci
 

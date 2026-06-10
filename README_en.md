@@ -140,13 +140,16 @@ docker compose up -d --build
 The documentation site lives in `docs/` and is built with VitePress. Theme files, Vue components, and static assets are isolated inside that directory.
 
 ```bash
-cd docs
+cd zjus-frontend
+npm install
+
+cd ../docs
 npm install
 npm run dev
 npm run build
 ```
 
-The documentation homepage uses an atmospheric starfield theme with an embedded interactive Vue demo. Static image paths remain available at `/assets/images/*` for README and external links.
+The documentation homepage uses an atmospheric starfield theme with an embedded interactive Vue demo. The demo reuses components from `zjus-frontend`, so a clean environment should install frontend dependencies before building the docs. Static image paths remain available at `/assets/images/*` for README and external links.
 
 ## License
 This project is open-sourced under the MIT License.

@@ -145,13 +145,16 @@ docker compose up -d --build
 文档站位于 `docs/`，使用 VitePress 构建；主题、组件和静态资源都隔离在该目录内。
 
 ```bash
-cd docs
+cd zjus-frontend
+npm install
+
+cd ../docs
 npm install
 npm run dev
 npm run build
 ```
 
-文档首页使用星空主题页，并内嵌可交互的 Vue demo；静态图片路径保留为 `/assets/images/*`，便于 README 和外部链接继续引用。
+文档首页使用星空主题页，并内嵌可交互的 Vue demo；该 demo 复用了 `zjus-frontend` 的组件，因此干净环境下需要先安装前端依赖。静态图片路径保留为 `/assets/images/*`，便于 README 和外部链接继续引用。
 
 ## 许可证
 本项目采用 MIT License 开源。

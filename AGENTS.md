@@ -80,6 +80,8 @@ Docs checks from `docs/`:
 npm run build
 ```
 
+The VitePress homepage demo imports selected `zjus-frontend` Vue components. In a clean checkout or CI runner, install `zjus-frontend` dependencies before building docs so frontend `tsconfig` package extends such as `@vue/tsconfig` resolve correctly.
+
 ## Architecture Pointers
 
 Backend:

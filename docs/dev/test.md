@@ -39,9 +39,13 @@ cd zjus-frontend
 
 ## 文档
 
-文档站使用 VitePress。修改用户文档、开发文档、导航、主题组件或文档资源后，从 `docs/` 运行：
+文档站使用 VitePress。首页交互式 demo 复用了 `zjus-frontend` 的 Vue 组件，因此干净环境或 CI 中要先安装前端依赖，再构建文档：
 
 ```powershell
+cd zjus-frontend
+npm install
+cd ..\docs
+npm install
 npm run build
 ```
 
@@ -65,7 +69,7 @@ cd zjus-frontend
 
 | 改动范围 | 建议验证 |
 |---|---|
-| 纯文档 | `cd docs; npm run build` |
+| 纯文档 | 前端依赖已安装时 `cd docs; npm run build`；干净环境先安装 `zjus-frontend` 依赖 |
 | 前端 UI/状态 | `vue-tsc --noEmit`、`vitest run` 或 focused spec |
 | 后端引擎/状态 | `pytest tests\unit`、`py_compile`、`ruff check` |
 | API/模型 | Docker Compose 后端、OpenAPI 生成、前端类型检查 |

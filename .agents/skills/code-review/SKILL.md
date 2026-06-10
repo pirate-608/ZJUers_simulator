@@ -15,7 +15,7 @@ Inspect changed or discussed file paths:
 
 - `zjus-backend/` -> set `RUN_BACKEND = true`.
 - `zjus-frontend/` -> set `RUN_FRONTEND = true`.
-- `docs/`, `mkdocs.yml`, `.claude/`, `.codex/skills/` -> set `RUN_DOCS = true`.
+- `docs/`, `.claude/`, `.codex/skills/` -> set `RUN_DOCS = true`.
 - Backend HTTP schema/route changes in `zjus-backend/app/api/*.py`, Pydantic models, auth/init-character responses, or endpoint fields -> set `RUN_OPENAPI = true`.
 
 When both frontend and backend changed, check backend first, then OpenAPI if needed, then frontend.
@@ -79,13 +79,13 @@ Rules:
 
 ## Docs Pipeline
 
-Run from the repository root when docs or handoff files changed:
+Run from `docs/` when docs or handoff files changed:
 
 ```powershell
-.\.venv\Scripts\python.exe -m mkdocs build --strict
+npm run build
 ```
 
-If MkDocs reports existing unnaved planning files and the build still succeeds, mention them as pre-existing noise only if relevant.
+If VitePress reports broken links or build-time Vue errors, fix them before handing off.
 
 ## Review Focus
 

@@ -1,5 +1,15 @@
 # Claude Code Handoff Changelog
 
+## 2026-06-09
+
+### VitePress Docs Migration
+
+- Replaced the MkDocs Material documentation site with VitePress while keeping the existing page hierarchy and public routes.
+- Moved documentation theme code, Vue components, and public image assets under `docs/`; root-level `overrides/` and MkDocs config/dependencies were removed.
+- Rebuilt the docs homepage as a starfield/typewriter landing page and embedded a mock interactive Vue demo on the homepage.
+- Updated docs deployment to run Node/VitePress from `docs/` and upload `docs/.vitepress/dist`.
+- Current docs validation command is `cd docs; npm run build`.
+
 ## 2026-06-07
 
 ### Pre-login Prologue
@@ -45,7 +55,7 @@
 
 - DingTalk state is included in active runtime state and persisted save data.
 - Semester transition updates were tightened so the frontend immediately receives new semester stats, course metadata, and course states without requiring browser refresh.
-- Focused DingTalk state tests, frontend type checks, Vitest, MkDocs strict build, and targeted backend checks were used during the upgrade.
+- Focused DingTalk state tests, frontend type checks, Vitest, documentation build, and targeted backend checks were used during the upgrade.
 
 ## 2026-06-03
 
@@ -93,8 +103,8 @@
 
 ### Documentation
 
-- MkDocs user/developer docs were updated for the current onboarding, saves, content generation modes, feedback modals, cooldowns, and WebSocket fields.
-- `mkdocs build --strict` was passing after the docs sync; existing unnaved planning notes may still be reported by MkDocs Material.
+- User/developer docs were updated for the current onboarding, saves, content generation modes, feedback modals, cooldowns, and WebSocket fields.
+- The documentation site now builds with VitePress from `docs/`.
 
 ### Validation Notes
 
@@ -102,4 +112,4 @@
   - Backend syntax: `..\.venv\Scripts\python.exe -m py_compile <file>`
   - Focused backend tests: `..\.venv\Scripts\python.exe -m pytest tests\unit\test_onboarding_flow.py`
   - Frontend type check: `.\node_modules\.bin\vue-tsc.cmd --noEmit`
-  - Docs: `.\.venv\Scripts\python.exe -m mkdocs build --strict`
+  - Docs: `cd docs; npm run build`

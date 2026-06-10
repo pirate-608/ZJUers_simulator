@@ -22,7 +22,7 @@ Handle Pylance/Pyright warnings without hiding real defects or changing unrelate
    - **Style preference**: strictness choice such as unknown member/type noise.
 
 3. Verify before editing:
-   - Inspect existing project config first: `.vscode/settings.json`, `zjus-backend/pyproject.toml`, `zjus-backend/requirements.txt`, `docs/requirements.txt`, `.venv/`, Docker Compose files, and related scripts.
+   - Inspect existing project config first: `.vscode/settings.json`, `zjus-backend/pyproject.toml`, `zjus-backend/requirements.txt`, `docs/package.json`, `.venv/`, Docker Compose files, and related scripts.
    - Run the smallest relevant command when useful, such as `..\.venv\Scripts\python.exe -m py_compile app\path\file.py` from `zjus-backend`, a focused pytest file, or a docs build if docs Python changed.
    - Do not assume a Pylance warning is false. `zjus-backend` is production Python code, not just tooling.
 
@@ -41,7 +41,7 @@ This repository is a Python/FastAPI backend plus Vue frontend monorepo:
 - Backend tests: `zjus-backend/tests/**`
 - Backend config: `zjus-backend/pyproject.toml`, `zjus-backend/requirements.txt`
 - Frontend TypeScript/OpenAPI files are handled by `zjus-compose-openapi` when backend HTTP models/routes change.
-- Docs Python tooling is secondary and uses `docs/requirements.txt`.
+- Docs tooling is Node/VitePress based and uses `docs/package.json`.
 
 Treat these paths as likely editor noise sources unless the user is explicitly working on them:
 
@@ -67,7 +67,8 @@ cd zjus-backend
 For docs-only diagnostics, validate with:
 
 ```powershell
-.\.venv\Scripts\python.exe -m mkdocs build --strict
+cd docs
+npm run build
 ```
 
 For frontend checks, prefer project-local binaries and remember the user's npm is not the problem when Codex sandbox npm commands fail:

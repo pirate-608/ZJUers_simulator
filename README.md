@@ -140,22 +140,18 @@ docker compose up -d --build
 # 访问 http://localhost 即可开始游戏
 ```
 
-## 内容同步
+## 文档站开发
 
-如需将本地的代码仓库中的文档内容同步到文档仓库，只需将两者放在统一目录下，如：
+文档站位于 `docs/`，使用 VitePress 构建；主题、组件和静态资源都隔离在该目录内。
 
-```
-projects
-├── ZJUers_simulator
-└── ZJUers_simulator-docs
-```
-
-然后在scripts/sync_config.json中配置好`project_dir`, `source_folder`和`target_folder`
-
-在代码仓库根目录执行
 ```bash
-python scripts/sync_docs.py
+cd docs
+npm install
+npm run dev
+npm run build
 ```
+
+文档首页使用星空主题页，并内嵌可交互的 Vue demo；静态图片路径保留为 `/assets/images/*`，便于 README 和外部链接继续引用。
 
 ## 许可证
 本项目采用 MIT License 开源。

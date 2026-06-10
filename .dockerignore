@@ -12,6 +12,7 @@ venv/
 .env.prod
 .antigravity/
 build/
+docs/
 zjus-backend/.pytest_cache
 *.so
 *.dll
@@ -22,3 +23,6 @@ zjus-backend/.pytest_cache
 *.tar
 *.tar.gz
 *.zip
+.claude/
+.codex/
+.agents/

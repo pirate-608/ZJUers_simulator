@@ -51,7 +51,7 @@ login -> save_select -> character_create -> loading -> playing -> ended
 | 后端引擎语法 | `..\.venv\Scripts\python.exe -m py_compile app\game\engine.py` | 通过 |
 | 前端类型检查 | `.\node_modules\.bin\vue-tsc.cmd --noEmit` | 通过 |
 | 前端单测 | `.\node_modules\.bin\vitest.cmd run` | `3 passed` |
-| 文档构建 | `.\.venv\Scripts\python.exe -m mkdocs build --strict` | 通过 |
+| 文档构建 | `cd docs; npm run build` | 通过 |
 
 当前本地 `.venv` 如果缺少 `ruff`，先安装后端 `requirements.txt`，再运行 `python -m ruff check .`。pytest 可能出现 Pydantic v2 `Config` 弃用警告或本地 `.pytest_cache` 写入警告，这些不是当前功能失败。
 

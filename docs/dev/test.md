@@ -1,46 +1,74 @@
-# pytest 测试基础设施
+# 测试与验证
 
-## 测试文件
+本页记录当前项目常用验证入口。测试数量会随功能变化增减，最终以命令输出为准。
 
-| 文件                                                                                                      | 用途                                                                            | 测试数 |
-| --------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------- | ------ |
-| [pyproject.toml](file:///d:/projects/ZJUers_simulator/zjus-backend/pyproject.toml)                        | pytest 配置（pythonpath、asyncio_mode）                                         | —      |
-| [conftest.py](file:///d:/projects/ZJUers_simulator/zjus-backend/tests/conftest.py)                        | 环境变量、sample data fixtures、mock Redis                                      | —      |
-| [test_game_state.py](file:///d:/projects/ZJUers_simulator/zjus-backend/tests/unit/test_game_state.py)     | PlayerStats: build_initial / from_redis / get_repair_fields / GameStateSnapshot | 27     |
-| [test_balance.py](file:///d:/projects/ZJUers_simulator/zjus-backend/tests/unit/test_balance.py)           | GameBalance: 加载/属性/默认值/热重载                                            | 14     |
-| [test_dingtalk_llm.py](file:///d:/projects/ZJUers_simulator/zjus-backend/tests/unit/test_dingtalk_llm.py) | M2-her: 消息构建/API mock/缓存/fallback                                         | 20     |
-| [test_dingtalk_state.py](file:///d:/projects/ZJUers_simulator/zjus-backend/tests/unit/test_dingtalk_state.py) | 钉钉联系人状态、可回复角色、消息裁剪、三次回复结算                         | 4      |
-| [test_auth_validation.py](file:///d:/projects/ZJUers_simulator/zjus-backend/tests/unit/test_auth_validation.py) | 角色初始化 IQ/EQ/Luck 预算校验                                            | 7      |
-| [test_onboarding_flow.py](file:///d:/projects/ZJUers_simulator/zjus-backend/tests/unit/test_onboarding_flow.py) | 存档选择、角色初始化重置、学期自动存档                                    | 4      |
+## 后端
 
-## 测试依赖
+后端测试位于 `zjus-backend/tests/unit/`，覆盖游戏状态、数值配置、钉钉私聊状态、DingTalk LLM 降级、认证校验和玩家入口/存档流程。
 
-后端测试依赖已在 requirements.txt 中声明，主要包括：
+常用命令：
 
-- **pytest**：主测试框架。
-- **pytest-asyncio**：支持异步测试。
-- **ruff**：代码风格检查与自动修复。
-
-其他依赖如 mock、数据库驱动等也会被用于 fixture 或测试环境。
-
-## 使用方式
-
-```bash
-# 激活 venv 后
-cd zjus-backend # 进入后端目录
-
-# 运行测试
-python -m pytest tests/ -v
-
-# 代码风格检查（若当前 venv 缺少 ruff，先安装 requirements.txt）
-python -m ruff format .         # 运行格式化
-python -m ruff check --fix .    # 运行静态检查并修复
+```powershell
+cd zjus-backend
+..\.venv\Scripts\python.exe -m pytest tests\unit
+..\.venv\Scripts\python.exe -m py_compile app\game\engine.py
+..\.venv\Scripts\python.exe -m ruff check .
 ```
 
-## 运行结果示例
+修改共享模型、引擎状态、Redis 快照或存档逻辑时，优先跑完整 `tests\unit`。只改窄路径时，可以先跑对应 focused test，再在交付前补完整相关套件。
 
-```
-======================= 76 passed, 2 warnings in 4.13s ========================
+## 前端
+
+前端测试位于 `zjus-frontend/src/**/*.spec.*`。
+
+当前重点：
+
+- `src/App.spec.js`：登录前序章闸门、登录/存档启动分流、WebSocket 不应在序章期间提前连接。
+- `src/stores/gameStore.spec.ts`：钉钉联系人状态恢复、未读数与本地已读更新。
+
+常用命令：
+
+```powershell
+cd zjus-frontend
+.\node_modules\.bin\vue-tsc.cmd --noEmit
+.\node_modules\.bin\vitest.cmd run
+.\node_modules\.bin\vite.cmd build
 ```
 
-这代表 76 个测试用例全部通过，警告不影响当前测试结果。如果想看具体是哪个测试用例有警告，可以使用 `python -m pytest tests/ -v` 命令。
+涉及玩家入口、WebSocket、钉钉面板、引导暂停或反馈弹窗时，应增加 focused test 或浏览器 smoke。
+
+## 文档
+
+文档站使用 VitePress。修改用户文档、开发文档、导航、主题组件或文档资源后，从 `docs/` 运行：
+
+```powershell
+npm run build
+```
+
+文档站不再手工维护旧资源下载包；世界观、课程、角色、数值和向量资源以仓库中的 `zjus-backend/world/` 最新文件为准。
+
+## OpenAPI 与 Compose 验证
+
+后端 HTTP 路由或 Pydantic 模型变化后，需要用 Docker Compose 后端重新生成前端类型：
+
+```powershell
+docker compose up -d --build backend
+Start-Sleep -Seconds 8
+Invoke-WebRequest -UseBasicParsing http://127.0.0.1:8000/openapi.json
+cd zjus-frontend
+.\node_modules\.bin\openapi-typescript.cmd http://127.0.0.1:8000/openapi.json -o src/types/api.generated.ts
+```
+
+不要手写 `zjus-frontend/src/types/api.generated.ts`。生产基础 Compose 不发布后端端口，本地 OpenAPI 生成依赖 `docker-compose.override.yml` 提供的 `127.0.0.1:8000:8000` 映射。
+
+## 选择测试范围
+
+| 改动范围 | 建议验证 |
+|---|---|
+| 纯文档 | `cd docs; npm run build` |
+| 前端 UI/状态 | `vue-tsc --noEmit`、`vitest run` 或 focused spec |
+| 后端引擎/状态 | `pytest tests\unit`、`py_compile`、`ruff check` |
+| API/模型 | Docker Compose 后端、OpenAPI 生成、前端类型检查 |
+| Docker/部署 | `docker compose config`、服务启动日志、生产 smoke |
+
+pytest 可能出现依赖库弃用警告；只要测试结果通过且警告与本次改动无关，可以在交付说明中记录为残余风险。

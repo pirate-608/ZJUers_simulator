@@ -89,7 +89,7 @@ docker compose config --no-interpolate
 - 合并本地 override 后仍有 `127.0.0.1:8000:8000`，方便 OpenAPI 生成和前端代理。
 - `migrate -> seed_embeddings -> backend -> nginx` 启动顺序正常。
 - 首页、登录、进入游戏、保存、钉钉消息或降级路径 smoke 正常。
-- `mkdocs build --strict` 通过。
+- 文档站构建 `cd docs; npm run build` 通过。
 
 ## 假设
 

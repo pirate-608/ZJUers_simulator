@@ -1,4 +1,4 @@
-```LICENSE
+```text
 MIT License
 
 Copyright (c) 2026 pirate-608

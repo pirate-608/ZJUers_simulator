@@ -6,8 +6,6 @@ on:
       - main
     paths:
       - 'docs/**'
-      - 'mkdocs.yml'
-      - 'overrides/**'
       - '.github/workflows/deploy_docs.yml'
   workflow_dispatch:
 
@@ -28,33 +26,29 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # git-revision-date-localized 需要完整历史
+          fetch-depth: 0
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
         with:
-          python-version: '3.11'
-
-      - name: Cache pip dependencies
-        uses: actions/cache@v4
-        with:
-          path: ~/.cache/pip
-          key: ${{ runner.os }}-pip-docs-${{ hashFiles('docs/requirements.txt') }}
-          restore-keys: |
-            ${{ runner.os }}-pip-docs-
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: docs/package-lock.json
 
       - name: Install dependencies
-        run: pip install -r docs/requirements.txt
+        working-directory: docs
+        run: npm ci
 
-      - name: Build MkDocs site
-        run: mkdocs build
+      - name: Build VitePress site
+        working-directory: docs
+        run: npm run build
         env:
           CI: true
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: site
+          path: docs/.vitepress/dist
 
   deploy:
     name: Deploy to GitHub Pages

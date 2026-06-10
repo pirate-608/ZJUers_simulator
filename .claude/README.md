@@ -7,7 +7,7 @@ This directory contains Claude Code handoff material for ZJUers Simulator.
 1. `CLAUDE.md` - main project instructions and current architecture.
 2. `Changelog.md` - recent development state and handoff notes.
 3. `skills/code-review/SKILL.md` - path-aware review and validation workflow.
-4. MkDocs developer docs under `docs/dev/` for detailed contracts.
+4. VitePress developer docs under `docs/dev/` for detailed contracts.
 
 ## Current Project Shape
 

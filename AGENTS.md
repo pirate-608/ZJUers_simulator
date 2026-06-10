@@ -9,7 +9,7 @@ ZJUers Simulator (折姜大学模拟器) is a Vue 3 + FastAPI campus simulation 
 - Frontend: `zjus-frontend/`, Vue 3, TypeScript, Vite, Pinia.
 - Backend: `zjus-backend/`, FastAPI, WebSocket, SQLAlchemy async, PostgreSQL, Redis.
 - Runtime data: `zjus-backend/world/`, including courses, majors, achievements, balance, event libraries, and CC98 libraries.
-- Docs: MkDocs under `docs/`, wired by `mkdocs.yml`.
+- Docs: VitePress under `docs/`, with theme/components/static assets isolated in `docs/.vitepress/` and `docs/public/`.
 
 Current player entry flow:
 
@@ -74,10 +74,10 @@ Frontend checks from `zjus-frontend/`:
 .\node_modules\.bin\vite.cmd build
 ```
 
-Docs checks from the repository root:
+Docs checks from `docs/`:
 
 ```powershell
-.\.venv\Scripts\python.exe -m mkdocs build --strict
+npm run build
 ```
 
 ## Architecture Pointers
@@ -108,8 +108,11 @@ Docs:
 
 - User docs: `docs/user/*`
 - Developer docs: `docs/dev/*`
-- UI preview docs: `docs/preview/*`
+- Homepage interactive demo: `docs/.vitepress/theme/components/InteractiveGameDemo.vue`
 - World/balance docs: `docs/world/*`
+- VitePress theme and interactive docs components: `docs/.vitepress/*`
+- Public docs assets served from site root: `docs/public/assets/*`
+- Do not manually maintain `docs/assets/sources` resource mirrors; world data source of truth is `zjus-backend/world/`.
 
 ## Current Behavior Contracts
 

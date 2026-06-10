@@ -135,22 +135,18 @@ docker compose up -d --build
 # Visit http://localhost to start playing
 ```
 
-## Content Synchronization
+## Documentation Site Development
 
-To sync the documentation content from the local code repository to the documentation repository, simply place both in the same parent directory, for example:
+The documentation site lives in `docs/` and is built with VitePress. Theme files, Vue components, and static assets are isolated inside that directory.
 
-```
-projects
-├── ZJUers_simulator
-└── ZJUers_simulator-docs
-```
-
-Then configure `project_dir`, `source_folder`, and `target_folder` in `scripts/sync_config.json`.
-
-Execute from the root of the code repository:
 ```bash
-python scripts/sync_docs.py
+cd docs
+npm install
+npm run dev
+npm run build
 ```
+
+The documentation homepage uses an atmospheric starfield theme with an embedded interactive Vue demo. Static image paths remain available at `/assets/images/*` for README and external links.
 
 ## License
 This project is open-sourced under the MIT License.

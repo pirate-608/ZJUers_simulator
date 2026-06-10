@@ -91,6 +91,10 @@ site/
 
 # 回收站
 __recycle_bin/
+archives/
+
+# VitePress
+docs/.vitepress/cache/
 
 # 其他
 

@@ -41,7 +41,8 @@ git diff --stat
 ```powershell
 ..\.venv\Scripts\python.exe -m pytest
 .\node_modules\.bin\vue-tsc.cmd --noEmit
-.\.venv\Scripts\python.exe -m mkdocs build --strict
+cd docs
+npm run build
 ```
 
 Use project-local frontend binaries when npm wrapper behavior is affected by the Codex sandbox. Do not claim the user's local npm is broken based only on sandbox npm failures.

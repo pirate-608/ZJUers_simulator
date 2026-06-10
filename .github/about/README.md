@@ -19,7 +19,7 @@ This directory contains GitHub-specific configuration for this repository.
 ### For GitHub Actions (Workflows)
 
 - `workflows/` – CI/CD pipeline definitions
-- `workflows/deploy_docs.yml` - Auto build and deploy documentations（View them in `docs/` and [mkdocs.yml](../mkdocs.yml)）
+- `workflows/deploy_docs.yml` - Auto build and deploy the VitePress documentation site in `docs/`
 - `workflows/docker-release.yml` - Build and publish Docker Images of game modules（`zjus-backend` and `zjus-frontend`）to [Docker Hub](https://hub.docker.com/) when pushing tags.
 - `workflows/mirror-to-gitee.yml` - Auto mirror this repo to [Gitee repo](https://gitee.com/huang-youran/ZJUers_simulator)
 ---

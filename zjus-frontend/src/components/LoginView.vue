@@ -94,7 +94,7 @@
                   :disabled="!form.username || !form.inviteCode"
                   @click="handleLogin"
                 >
-                  📝 入学报到
+                  📝 进入求是园
                 </button>
               </div>
             </div>

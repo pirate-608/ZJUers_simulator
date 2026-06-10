@@ -1,8 +1,9 @@
 ## 本地部署游戏
 
-!!! tip "提示"
-    本地部署游戏需要配置环境（并不是很复杂），和一定的技术知识（对于在座的各位应该都不难），如果实在不想折腾，建议使用[在线游戏](online_guide.md)。
+::: tip 提示
+本地部署游戏需要配置环境（并不是很复杂），和一定的技术知识（对于在座的各位应该都不难），如果实在不想折腾，建议使用[在线游戏](online_guide.md)。
 
+:::
 ---
 
 
@@ -54,9 +55,10 @@ cp docker-compose.override.example docker-compose.override.yml
 
 #### 宿主机
 
-!!! tip "提示"
-    对于当前版本的游戏（包含数据库、后端、前端），我们强烈建议使用[Docker容器化部署](#docker)，如果你真的想在本地折腾😅，请参考以下步骤（不保证成功）。
+::: tip 提示
+对于当前版本的游戏（包含数据库、后端、前端），我们强烈建议使用Docker 容器化部署，如果你真的想在本地折腾😅，请参考以下步骤（不保证成功）。
 
+:::
 ---
 
 详细内容请查看[原生部署指南](./local_deploy_bare.md)
@@ -64,9 +66,10 @@ cp docker-compose.override.example docker-compose.override.yml
 
 #### 使用 Docker 一键启动（推荐）
 
-!!! tip "提示"
-    对于Windows和macOS用户，请直接访问[Docker Desktop](https://www.docker.com/products/docker-desktop/)下载并安装Docker Desktop（Windows需要WSL2）。
+::: tip 提示
+对于Windows和macOS用户，请直接访问[Docker Desktop](https://www.docker.com/products/docker-desktop/)下载并安装Docker Desktop（Windows需要WSL2）。
 
+:::
 ---
 
 对于Linux用户（以Ubuntu / Debian为例），请参考以下步骤安装docker和docker-compose：

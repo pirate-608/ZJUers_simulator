@@ -177,6 +177,7 @@ export default defineConfig({
       alias: {
         '@': fromRoot('zjus-frontend/src'),
       },
+      dedupe: ['vue', 'pinia'],
     },
     build: {
       chunkSizeWarningLimit: 700,

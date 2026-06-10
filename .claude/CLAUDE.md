@@ -81,6 +81,7 @@ npm run build
 ```
 
 The VitePress homepage demo imports selected `zjus-frontend` Vue components. In a clean checkout or CI runner, install `zjus-frontend` dependencies before building docs so frontend `tsconfig` package extends such as `@vue/tsconfig` resolve correctly.
+Keep `vue` and `pinia` deduped in `docs/.vitepress/config.ts`; otherwise the docs theme can install one Pinia instance while reused frontend components read another, causing the homepage demo to disappear during hydration.
 
 ## Architecture Pointers
 

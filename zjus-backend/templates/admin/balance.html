@@ -32,7 +32,7 @@
         <div class="col-auto">
           <form
             method="post"
-            action="{{ request.url_for('admin:balance_restore_latest') }}"
+            action="{{ balance_restore_action }}"
             onsubmit="return confirm('确定恢复最近一次数值修改前的配置吗？当前配置会被覆盖并立即热重载。')"
           >
             <button type="submit" class="btn btn-outline-warning">
@@ -45,7 +45,7 @@
   </div>
 </div>
 
-<form method="post" action="{{ request.url_for('admin:balance') }}" class="col-12">
+<form method="post" action="{{ balance_form_action }}" class="col-12">
   <div class="row row-cards">
     {% for section in sections %}
     <div class="col-12">

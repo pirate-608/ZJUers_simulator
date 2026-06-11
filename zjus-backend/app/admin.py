@@ -2,6 +2,7 @@ import copy
 import json
 import secrets
 from typing import Any
+from urllib.parse import urlencode
 
 from sqladmin import Admin, BaseView, ModelView, expose
 from sqladmin.authentication import AuthenticationBackend
@@ -167,11 +168,14 @@ class BalanceConfigAdmin(BaseView):
 
     @expose(
         "/balance/restore-latest",
-        methods=["POST"],
+        methods=["GET", "POST"],
         identity="balance_restore_latest",
         include_in_schema=False,
     )
-    async def _restore_latest(self, request: Request):
+    async def restore_latest(self, request: Request):
+        if request.method == "GET":
+            return _balance_redirect(request)
+
         try:
             snapshot = _get_latest_balance_snapshot()
             if snapshot is None:
@@ -256,6 +260,10 @@ class BalanceConfigAdmin(BaseView):
             "error": error,
             "status": status,
             "balance_path": str(balance.config_path),
+            "balance_form_action": _admin_path(request, "/balance"),
+            "balance_restore_action": _admin_path(
+                request, "/balance/restore-latest"
+            ),
             "raw_json": json.dumps(current_config, ensure_ascii=False, indent=2),
             "recent_logs": _get_recent_balance_logs(),
         }
@@ -272,10 +280,19 @@ def _build_sync_engine():
 
 
 def _balance_redirect(request: Request, **params: str):
-    url = request.url_for("admin:balance")
+    url = _admin_path(request, "/balance")
     if params:
-        url = url.include_query_params(**params)
-    return RedirectResponse(str(url), status_code=303)
+        url = f"{url}?{urlencode(params)}"
+    return RedirectResponse(url, status_code=303)
+
+
+def _admin_path(request: Request, path: str) -> str:
+    root_path = str(request.scope.get("root_path") or "").rstrip("/")
+    if root_path.endswith("/admin"):
+        base_path = root_path
+    else:
+        base_path = f"{root_path}/admin"
+    return f"{base_path}{path}"
 
 
 def _log_admin_action(
@@ -344,4 +361,5 @@ def setup_admin(app):
     admin.add_view(UserRestrictionAdmin)
     admin.add_view(UserBlacklistAdmin)
     admin.add_view(BalanceConfigAdmin)
+    BalanceConfigAdmin.identity = "balance"
     admin.add_view(AdminAuditLogAdmin)

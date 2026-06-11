@@ -170,3 +170,17 @@ def test_admin_balance_page_renders_with_admin_session(monkeypatch):
     assert response.status_code == 200
     assert "数值平衡" in response.text
     assert "game_balance.json" in response.text
+    assert 'action="/admin/balance/restore-latest"' in response.text
+    assert 'action="/admin/balance"' in response.text
+
+    index_response = client.get("/admin/")
+    assert index_response.status_code == 200
+    assert 'href="http://testserver/admin/balance"' in index_response.text
+    assert "/admin/balance/restore-latest" not in index_response.text
+
+    restore_get_response = client.get(
+        "/admin/balance/restore-latest",
+        follow_redirects=False,
+    )
+    assert restore_get_response.status_code == 303
+    assert restore_get_response.headers["location"] == "/admin/balance"

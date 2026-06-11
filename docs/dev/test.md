@@ -4,14 +4,16 @@
 
 ## 后端
 
-后端测试位于 `zjus-backend/tests/unit/`，覆盖游戏状态、数值配置、钉钉私聊状态、DingTalk LLM 降级、认证校验和玩家入口/存档流程。
+后端测试位于 `zjus-backend/tests/unit/`，覆盖游戏状态、数值配置、Admin 数值平衡表单发布、钉钉私聊状态、DingTalk LLM 降级、认证校验和玩家入口/存档流程。
 
 常用命令：
 
 ```powershell
 cd zjus-backend
 ..\.venv\Scripts\python.exe -m pytest tests\unit
+..\.venv\Scripts\python.exe -m pytest tests\unit\test_admin_balance_config.py tests\unit\test_balance.py
 ..\.venv\Scripts\python.exe -m py_compile app\game\engine.py
+..\.venv\Scripts\python.exe -m py_compile app\game\balance.py app\services\balance_admin.py app\admin.py
 ..\.venv\Scripts\python.exe -m ruff check .
 ```
 

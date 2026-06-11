@@ -33,7 +33,8 @@ zjus-backend/app/
 │   ├── game_service.py      # 游戏生命周期编排
 │   ├── save_service.py      # Redis ↔ PostgreSQL 存档同步
 │   ├── world_service.py     # 专业/课程/成就 JSON 加载
-│   └── restriction_service.py
+│   ├── restriction_service.py
+│   └── balance_admin.py     # 后台数值配置表单、校验、发布
 ├── game/
 │   ├── engine.py            # Tick 循环 + 动作处理
 │   ├── balance.py           # 数值配置
@@ -231,6 +232,16 @@ db -> migrate -> seed_embeddings -> backend
 ```
 
 `seed_embeddings` 会把 `world/character_embeddings.csv` 导入 pgvector 表，保证后端启动后可检索角色。
+
+---
+
+## 运维后台与数值平衡
+
+SQLAdmin 挂载在 `/admin`，登录态与账号密码来自 `ADMIN_USERNAME`、`ADMIN_PASSWORD` 和 `ADMIN_SESSION_SECRET`。
+
+`/admin/balance` 是专用数值平衡页面，只编辑运行中的 `world/game_balance.json` 既有结构，不进入 OpenAPI，也不需要数据库迁移。提交时由 `app/services/balance_admin.py` 将表单转换为完整配置、校验范围和固定节点，再用临时文件 + `os.replace` 原子写回；写回成功后调用 `GameBalance.reload()` 热重载。
+
+生产 Compose 保留 `./zjus-backend/world:/app/world` 挂载，因此后台保存会写到服务器挂载目录中的实际 `game_balance.json`。每次保存写入 `admin_audit_logs` 的 `balance_update` 记录，最近一次保存可通过页面恢复为 `balance_restore`。
 
 ---
 

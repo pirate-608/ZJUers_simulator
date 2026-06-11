@@ -89,9 +89,12 @@ Backend:
 
 - `zjus-backend/app/api/auth.py`: invite-code auth, returning-user save list, majors, character initialization.
 - `zjus-backend/app/api/game.py`: WebSocket entry, config API, engine lifecycle.
+- `zjus-backend/app/admin.py`: SQLAdmin models plus `/admin/balance` operational balance editor.
 - `zjus-backend/app/game/engine.py`: tick loop, actions, final exams, random events, relax cooldowns, feedback messages, content mode switching.
+- `zjus-backend/app/game/balance.py`: `world/game_balance.json` path resolution, runtime reads, and hot reload.
 - `zjus-backend/app/services/game_service.py`: character/major initialization, semester transitions.
 - `zjus-backend/app/services/save_service.py`: Redis/Postgres save load and persistence.
+- `zjus-backend/app/services/balance_admin.py`: admin form schema, validation, atomic file publish, audit snapshot restore.
 - `zjus-backend/app/repositories/redis_repo.py`: active game state, TTL, cooldowns, event history.
 - `zjus-backend/app/core/llm.py` and `dingtalk_llm.py`: LLM-backed content generation and fallbacks.
 
@@ -157,6 +160,13 @@ Content generation:
 
 - Modes are `library`, `hybrid`, and `ai`.
 - When AI/LLM becomes unavailable, AI mode falls back toward hybrid mode(if still have issues, then fall back to library mode) behavior and emits mode/toast updates.
+
+Admin balance:
+
+- `/admin/balance` edits only the existing numeric/short-text fields in `zjus-backend/world/game_balance.json`; v1 does not add/delete speed modes, course strategies, relax actions, or arbitrary JSON nodes.
+- Saving validates the full config, atomically replaces the JSON file, calls `balance.reload()`, and records `balance_update` in `admin_audit_logs`.
+- "Restore latest" reads the previous config from the latest `balance_update` audit row, writes it back, hot reloads, and records `balance_restore`.
+- This admin page does not change player HTTP APIs, WebSocket contracts, OpenAPI, or database schema.
 
 ## Pylance Notes
 

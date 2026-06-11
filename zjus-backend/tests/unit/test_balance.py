@@ -6,9 +6,10 @@ GameBalance 单元测试
 """
 
 import json
-import pytest
-from app.game.balance import GameBalance
 
+import pytest
+
+from app.game.balance import GameBalance
 
 # ==========================================
 # 重置单例（每个测试独立）
@@ -19,9 +20,11 @@ def reset_singleton():
     """每个测试前重置 GameBalance 单例，避免状态泄漏"""
     GameBalance._instance = None
     GameBalance._config = {}
+    GameBalance._config_path = None
     yield
     GameBalance._instance = None
     GameBalance._config = {}
+    GameBalance._config_path = None
 
 
 # ==========================================
@@ -49,7 +52,7 @@ class TestConfigLoading:
         bad_file.write_text("{invalid json", encoding="utf-8")
         gb = GameBalance.__new__(GameBalance)
         gb._config = {}
-        with pytest.raises(Exception):
+        with pytest.raises(json.JSONDecodeError):
             gb.load(str(bad_file))
 
     def test_reload_updates_config(self, tmp_path):

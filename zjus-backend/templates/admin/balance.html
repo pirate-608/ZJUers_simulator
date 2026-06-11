@@ -1,0 +1,151 @@
+{% extends "sqladmin/layout.html" %}
+
+{% block content %}
+<div class="col-12">
+  {% if error %}
+  <div class="alert alert-danger" role="alert">
+    <strong>保存失败：</strong>{{ error }}
+  </div>
+  {% endif %}
+
+  {% if status == "saved" %}
+  <div class="alert alert-success" role="alert">数值配置已保存并热重载。</div>
+  {% elif status == "unchanged" %}
+  <div class="alert alert-info" role="alert">没有检测到配置变化，未写入文件。</div>
+  {% elif status == "restored" %}
+  <div class="alert alert-success" role="alert">已恢复上一版数值配置并热重载。</div>
+  {% elif status == "no_restore" %}
+  <div class="alert alert-warning" role="alert">没有找到可恢复的上一版配置。</div>
+  {% elif status == "restore_error" %}
+  <div class="alert alert-danger" role="alert">恢复失败：{{ request.query_params.get("error", "") }}</div>
+  {% endif %}
+</div>
+
+<div class="col-12">
+  <div class="card">
+    <div class="card-body">
+      <div class="row align-items-center">
+        <div class="col">
+          <div class="text-muted">当前写入路径</div>
+          <code>{{ balance_path }}</code>
+        </div>
+        <div class="col-auto">
+          <form
+            method="post"
+            action="{{ request.url_for('admin:balance_restore_latest') }}"
+            onsubmit="return confirm('确定恢复最近一次数值修改前的配置吗？当前配置会被覆盖并立即热重载。')"
+          >
+            <button type="submit" class="btn btn-outline-warning">
+              恢复上一版
+            </button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<form method="post" action="{{ request.url_for('admin:balance') }}" class="col-12">
+  <div class="row row-cards">
+    {% for section in sections %}
+    <div class="col-12">
+      <div class="card">
+        <div class="card-header">
+          <div>
+            <h3 class="card-title">{{ section.title }}</h3>
+            <p class="card-subtitle">{{ section.description }}</p>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="row">
+            {% for field in section.fields %}
+            <div class="col-sm-6 col-lg-3 mb-3">
+              <label class="form-label" for="{{ field.name }}">{{ field.label }}</label>
+              <input
+                id="{{ field.name }}"
+                name="{{ field.name }}"
+                class="form-control"
+                type="{{ field.input_type }}"
+                value="{{ values.get(field.name, '') }}"
+                {% if field.input_type == "number" %}
+                step="{{ field.step }}"
+                {% if field.minimum is not none %}min="{{ field.minimum }}"{% endif %}
+                {% if field.maximum is not none %}max="{{ field.maximum }}"{% endif %}
+                {% else %}
+                {% if field.maximum is not none %}maxlength="{{ field.maximum|int }}"{% endif %}
+                {% endif %}
+                required
+              >
+              {% if field.help_text %}
+              <div class="form-hint">{{ field.help_text }}</div>
+              {% endif %}
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+
+    <div class="col-12">
+      <div class="card">
+        <div class="card-body d-flex justify-content-between align-items-center">
+          <div class="text-muted">
+            保存会先校验完整配置，再原子写入 game_balance.json，并立即热重载后端数值。
+          </div>
+          <button type="submit" class="btn btn-primary">保存并热重载</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</form>
+
+<div class="col-lg-6 col-12">
+  <div class="card">
+    <div class="card-header">
+      <h3 class="card-title">最近数值变更</h3>
+    </div>
+    <div class="table-responsive">
+      <table class="table card-table table-vcenter">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>管理员</th>
+            <th>动作</th>
+            <th>版本</th>
+            <th>字段数</th>
+            <th>时间</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for log in recent_logs %}
+          <tr>
+            <td>{{ log.id }}</td>
+            <td>{{ log.admin_username }}</td>
+            <td>{{ log.action }}</td>
+            <td>{{ log.old_version }} → {{ log.new_version }}</td>
+            <td>{{ log.changed_fields|length }}</td>
+            <td>{{ log.created_at }}</td>
+          </tr>
+          {% else %}
+          <tr>
+            <td colspan="6" class="text-muted">暂无数值变更记录。</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<div class="col-lg-6 col-12">
+  <div class="card">
+    <div class="card-header">
+      <h3 class="card-title">当前 JSON 预览</h3>
+    </div>
+    <div class="card-body">
+      <pre class="bg-light p-3 rounded" style="max-height: 480px; overflow: auto;"><code>{{ raw_json }}</code></pre>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -203,4 +203,5 @@ npm test
 - 登录必须使用 `.env` 中的 `INVITE_CODES`。
 - 新玩家首次登录会生成长期学生凭证。
 - 管理后台账号由 `ADMIN_USERNAME` / `ADMIN_PASSWORD` 控制。
+- `/admin/balance` 可图形化调整 `world/game_balance.json` 的既有数值项，保存后热重载并记录审计日志；该页面不修改玩家 API，也不需要 OpenAPI 生成或 Alembic 迁移。
 - 生产务必使用强随机的 `SECRET_KEY`、`ADMIN_PASSWORD`、`ADMIN_SESSION_SECRET`。

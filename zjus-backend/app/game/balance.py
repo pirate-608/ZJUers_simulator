@@ -15,6 +15,7 @@ class GameBalance:
     """游戏数值配置管理器（单例）"""
     _instance: Optional['GameBalance'] = None
     _config: Dict[str, Any] = {}
+    _config_path: Path | None = None
 
     def __new__(cls):
         if cls._instance is None:
@@ -25,32 +26,58 @@ class GameBalance:
         if not self._config:
             self.load()
 
-    def load(self, config_path: str = "world/game_balance.json"):
+    @staticmethod
+    def resolve_config_path(config_path: str | Path | None = None) -> Path:
+        """Resolve the active game_balance.json path across local and Docker runs."""
+        if config_path is not None:
+            return Path(config_path)
+
+        candidates = [
+            Path("world/game_balance.json"),
+            Path("/app/world/game_balance.json"),
+            (
+                Path(__file__).resolve().parent.parent.parent
+                / "world"
+                / "game_balance.json"
+            ),
+        ]
+        for candidate in candidates:
+            if candidate.exists():
+                return candidate
+        return candidates[0]
+
+    def load(self, config_path: str | Path | None = None):
         """加载配置文件"""
         try:
-            path = Path(config_path)
+            path = self.resolve_config_path(config_path)
             if not path.exists():
-                logger.error(f"配置文件不存在: {config_path}")
-                raise FileNotFoundError(f"配置文件不存在: {config_path}")
+                logger.error("配置文件不存在: %s", path)
+                raise FileNotFoundError(f"配置文件不存在: {path}")
 
             with open(path, 'r', encoding='utf-8') as f:
                 self._config = json.load(f)
+            self._config_path = path
 
             logger.info(f"游戏配置已加载: version={self._config.get('version', 'unknown')}")  # noqa: E501
         except Exception as e:
             logger.error(f"加载游戏配置失败: {e}")
             raise
 
-    def reload(self, config_path: str = "world/game_balance.json"):
+    def reload(self, config_path: str | Path | None = None):
         """热重载配置（用于调试/运维）"""
         self._config = {}
-        self.load(config_path)
+        self.load(config_path or self._config_path)
         logger.info("游戏配置已重载")
 
     @property
     def raw(self) -> Dict[str, Any]:
         """获取原始配置字典"""
         return self._config
+
+    @property
+    def config_path(self) -> Path:
+        """当前已加载配置文件路径"""
+        return self._config_path or self.resolve_config_path()
 
     @property
     def version(self) -> str:

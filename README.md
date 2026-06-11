@@ -161,7 +161,7 @@ npm run build
 
 ## 贡献
 欢迎进行关键词补充！
-欢迎 PR、Issue 及建议！
+欢迎 PR、Issue 及建议！（尤其是世界观和设定的补充！）
 
 ## 作者
 pirate-608

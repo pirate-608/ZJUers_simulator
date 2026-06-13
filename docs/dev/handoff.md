@@ -58,7 +58,7 @@ login -> save_select -> character_create -> loading -> playing -> ended
 ## 后续开发默认策略
 
 - 后端集成、迁移和 OpenAPI 生成使用根目录 Docker Compose，不用裸 `uvicorn` 做集成验证。
-- 后端 HTTP 模型或路由变化后，启动 Docker 后端并从 `/openapi.json` 重新生成 `zjus-frontend/src/types/api.generated.ts`；不要手写生成文件。
+- 后端 HTTP 模型或路由变化后，启动 Docker Compose 后端，等待 `/openapi.json` 可访问，再重新生成 `zjus-frontend/src/types/api.generated.ts`；不要手写生成文件，`src/api/client.ts` 保持手写薄封装。
 - 入口流、WebSocket 合同、存档结构、Redis 快照或内容生成模式变更后，同步更新 `docs/dev/api.md`、前后端框架文档和相关用户文档。
 - 涉及玩家入口或 UI 行为时，增加 focused tests 或浏览器 smoke，至少覆盖登录、存档选择、角色创建、WebSocket 消息分发、暂停/引导和反馈弹窗。
 - 世界观数据位于 `zjus-backend/world/`，它既是游戏运行数据，也是文档和内容生成的产品表面；改数据时同步检查文档引用。

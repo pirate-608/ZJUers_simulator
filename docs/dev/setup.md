@@ -96,17 +96,29 @@ uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
 
 ## OpenAPI 类型生成
 
-后端 API 变更后，先用根目录 Docker Compose 启动后端，再生成前端类型：
+后端 API 变更后，先用根目录 Docker Compose 启动后端，等待 `/openapi.json` 可访问，再生成前端类型：
 
-```bash
+```powershell
 docker compose up -d --build backend
+$openapi = $null
+for ($i = 0; $i -lt 30; $i++) {
+    try {
+        $openapi = Invoke-WebRequest -UseBasicParsing http://127.0.0.1:8000/openapi.json
+        if ($openapi.StatusCode -eq 200) { break }
+    } catch {
+        Start-Sleep -Seconds 2
+    }
+}
+if (-not $openapi -or $openapi.StatusCode -ne 200) {
+    throw "Backend did not serve /openapi.json in time."
+}
 cd zjus-frontend
-npx openapi-typescript http://127.0.0.1:8000/openapi.json -o src/types/api.generated.ts
+.\node_modules\.bin\openapi-typescript.cmd http://127.0.0.1:8000/openapi.json -o src/types/api.generated.ts
 ```
 
 上述 `127.0.0.1:8000` 来自本地 `docker-compose.override.yml` 的端口映射；在生产基础 compose 中后端不会暴露到宿主机。
 
-不要手写 `api.generated.ts`。前端 HTTP 调用封装放在 `src/api/client.ts`。
+不要手写 `src/types/api.generated.ts`；如果类型不对，先修后端 Pydantic/FastAPI 契约再重新生成。前端 HTTP 调用封装放在 `src/api/client.ts`，保持手写薄封装。
 
 ## 本地预构建资产流程
 

@@ -75,9 +75,9 @@
 ### API And OpenAPI
 
 - HTTP models/routes are the source for generated frontend types.
-- `zjus-frontend/src/types/api.generated.ts` is generated from the running backend `/openapi.json`.
+- `zjus-frontend/src/types/api.generated.ts` is generated from the Docker Compose backend `/openapi.json`.
 - `zjus-frontend/src/api/client.ts` remains the hand-written fetch wrapper.
-- For OpenAPI regeneration, use root Docker Compose backend; do not start a local bare `uvicorn` process.
+- For OpenAPI regeneration, use root Docker Compose backend, wait until `/openapi.json` is reachable, and do not start a local bare `uvicorn` process.
 
 ### WebSocket And Gameplay UX
 

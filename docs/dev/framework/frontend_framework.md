@@ -203,10 +203,22 @@ npm run lint
 npm test
 ```
 
-OpenAPI 类型生成需在根目录通过 Docker Compose 启动后端后执行：
+OpenAPI 类型生成需在根目录通过 Docker Compose 启动后端，并等待 `/openapi.json` 可访问后执行：
 
-```bash
+```powershell
 docker compose up -d --build backend
+$openapi = $null
+for ($i = 0; $i -lt 30; $i++) {
+    try {
+        $openapi = Invoke-WebRequest -UseBasicParsing http://127.0.0.1:8000/openapi.json
+        if ($openapi.StatusCode -eq 200) { break }
+    } catch {
+        Start-Sleep -Seconds 2
+    }
+}
+if (-not $openapi -or $openapi.StatusCode -ne 200) {
+    throw "Backend did not serve /openapi.json in time."
+}
 cd zjus-frontend
-npx openapi-typescript http://127.0.0.1:8000/openapi.json -o src/types/api.generated.ts
+.\node_modules\.bin\openapi-typescript.cmd http://127.0.0.1:8000/openapi.json -o src/types/api.generated.ts
 ```

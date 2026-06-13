@@ -71,7 +71,7 @@
 ### 13. 如何添加新配置或环境变量？
 - 配置统一在 [app/core/config.py](https://github.com/pirate-608/ZJUers_simulator/tree/main/app/core/config.py)。
 - README 中同步补充使用说明。
-- 若变更 HTTP API，请通过 Docker Compose 启动后端并重新生成 `src/types/api.generated.ts`。
+- 若变更 HTTP API，请通过根目录 Docker Compose 启动后端，等待 `/openapi.json` 可访问后重新生成 `src/types/api.generated.ts`；不要手写生成类型，`src/api/client.ts` 保持手写薄封装。
 
 ### 14. 什么时候需要更新 requirements.txt？
 - 新增第三方依赖或版本变更时。

@@ -59,13 +59,23 @@ npm run build
 
 ```powershell
 docker compose up -d --build backend
-Start-Sleep -Seconds 8
-Invoke-WebRequest -UseBasicParsing http://127.0.0.1:8000/openapi.json
+$openapi = $null
+for ($i = 0; $i -lt 30; $i++) {
+    try {
+        $openapi = Invoke-WebRequest -UseBasicParsing http://127.0.0.1:8000/openapi.json
+        if ($openapi.StatusCode -eq 200) { break }
+    } catch {
+        Start-Sleep -Seconds 2
+    }
+}
+if (-not $openapi -or $openapi.StatusCode -ne 200) {
+    throw "Backend did not serve /openapi.json in time."
+}
 cd zjus-frontend
 .\node_modules\.bin\openapi-typescript.cmd http://127.0.0.1:8000/openapi.json -o src/types/api.generated.ts
 ```
 
-不要手写 `zjus-frontend/src/types/api.generated.ts`。生产基础 Compose 不发布后端端口，本地 OpenAPI 生成依赖 `docker-compose.override.yml` 提供的 `127.0.0.1:8000:8000` 映射。
+不要手写 `zjus-frontend/src/types/api.generated.ts`；生成类型不匹配时先修后端 Pydantic/FastAPI 契约。`zjus-frontend/src/api/client.ts` 保持手写薄封装。生产基础 Compose 不发布后端端口，本地 OpenAPI 生成依赖 `docker-compose.override.yml` 提供的 `127.0.0.1:8000:8000` 映射。
 
 ## 选择测试范围
 

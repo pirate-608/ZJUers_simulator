@@ -46,10 +46,18 @@ OpenAPI regeneration path:
 
 ```powershell
 docker compose up -d --build backend
-# Wait for the backend server to become available (e.g., sleep 5-10 seconds or ping until 200 OK)
-# to avoid connection refused errors before fetching the OpenAPI schema.
-Start-Sleep -Seconds 8
-Invoke-WebRequest -UseBasicParsing http://127.0.0.1:8000/openapi.json
+$openapi = $null
+for ($i = 0; $i -lt 30; $i++) {
+    try {
+        $openapi = Invoke-WebRequest -UseBasicParsing http://127.0.0.1:8000/openapi.json
+        if ($openapi.StatusCode -eq 200) { break }
+    } catch {
+        Start-Sleep -Seconds 2
+    }
+}
+if (-not $openapi -or $openapi.StatusCode -ne 200) {
+    throw "Backend did not serve /openapi.json in time."
+}
 cd zjus-frontend
 .\node_modules\.bin\openapi-typescript.cmd http://127.0.0.1:8000/openapi.json -o src/types/api.generated.ts
 ```

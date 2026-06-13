@@ -259,15 +259,27 @@ SQLAdmin 挂载在 `/admin`，登录态与账号密码来自 `ADMIN_USERNAME`、
 
 ## OpenAPI 与前端类型
 
-后端 API 变更后，需要通过根目录 Docker Compose 启动服务，再生成前端类型：
+后端 API 变更后，需要通过根目录 Docker Compose 启动服务，等待 `/openapi.json` 可访问，再生成前端类型：
 
-```bash
+```powershell
 docker compose up -d --build backend
+$openapi = $null
+for ($i = 0; $i -lt 30; $i++) {
+    try {
+        $openapi = Invoke-WebRequest -UseBasicParsing http://127.0.0.1:8000/openapi.json
+        if ($openapi.StatusCode -eq 200) { break }
+    } catch {
+        Start-Sleep -Seconds 2
+    }
+}
+if (-not $openapi -or $openapi.StatusCode -ne 200) {
+    throw "Backend did not serve /openapi.json in time."
+}
 cd zjus-frontend
-npx openapi-typescript http://127.0.0.1:8000/openapi.json -o src/types/api.generated.ts
+.\node_modules\.bin\openapi-typescript.cmd http://127.0.0.1:8000/openapi.json -o src/types/api.generated.ts
 ```
 
-`api.generated.ts` 是契约类型来源；`client.ts` 是手写请求封装。
+`api.generated.ts` 是生成的契约类型来源，不手写修改；`client.ts` 是手写请求封装。
 
 ---
 

@@ -10,7 +10,7 @@
     "lint": "eslint . --fix",
     "type-check": "vue-tsc --noEmit",
     "test": "vitest run",
-    "gen:api": "openapi-typescript http://localhost:8000/openapi.json -o src/types/api.generated.ts"
+    "gen:api": "cd .. && docker compose up -d --build backend && cd zjus-frontend && node scripts/wait-openapi.mjs && openapi-typescript http://127.0.0.1:8000/openapi.json -o src/types/api.generated.ts"
   },
   "dependencies": {
     "driver.js": "^1.4.0",

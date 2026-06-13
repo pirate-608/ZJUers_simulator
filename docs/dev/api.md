@@ -5,7 +5,7 @@
 - HTTP API：认证、角色初始化、配置查询。
 - WebSocket：实时游戏循环、保存/退出、动作指令。
 
-前端类型来源为后端 OpenAPI：`zjus-frontend/src/types/api.generated.ts`。该文件应从运行中的后端 `/openapi.json` 生成，不手写维护。
+前端类型来源为后端 OpenAPI：`zjus-frontend/src/types/api.generated.ts`。该文件应从 Docker Compose 后端 `/openapi.json` 生成，不手写维护。
 
 ## 认证与角色初始化 (`app/api/auth.py`)
 
@@ -229,15 +229,27 @@
 
 ## OpenAPI 类型生成
 
-后端必须通过根目录 Docker Compose 启动后再生成前端 API 类型：
+后端必须通过根目录 Docker Compose 启动并确认 `/openapi.json` 可访问后，再生成前端 API 类型：
 
-```bash
+```powershell
 docker compose up -d --build backend
+$openapi = $null
+for ($i = 0; $i -lt 30; $i++) {
+    try {
+        $openapi = Invoke-WebRequest -UseBasicParsing http://127.0.0.1:8000/openapi.json
+        if ($openapi.StatusCode -eq 200) { break }
+    } catch {
+        Start-Sleep -Seconds 2
+    }
+}
+if (-not $openapi -or $openapi.StatusCode -ne 200) {
+    throw "Backend did not serve /openapi.json in time."
+}
 cd zjus-frontend
-npx openapi-typescript http://127.0.0.1:8000/openapi.json -o src/types/api.generated.ts
+.\node_modules\.bin\openapi-typescript.cmd http://127.0.0.1:8000/openapi.json -o src/types/api.generated.ts
 ```
 
-`api.generated.ts` 只保存后端契约类型；`src/api/client.ts` 是手写薄封装，负责调用 `fetch()` 并引用生成类型。
+`api.generated.ts` 只保存后端契约类型，不手写修改；`src/api/client.ts` 是手写薄封装，负责调用 `fetch()` 并引用生成类型。
 
 ## 会话级自定义 LLM
 

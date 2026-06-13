@@ -61,7 +61,18 @@ Run from the repository root:
 
 ```powershell
 docker compose up -d --build backend
-Invoke-WebRequest -UseBasicParsing http://127.0.0.1:8000/openapi.json
+$openapi = $null
+for ($i = 0; $i -lt 30; $i++) {
+    try {
+        $openapi = Invoke-WebRequest -UseBasicParsing http://127.0.0.1:8000/openapi.json
+        if ($openapi.StatusCode -eq 200) { break }
+    } catch {
+        Start-Sleep -Seconds 2
+    }
+}
+if (-not $openapi -or $openapi.StatusCode -ne 200) {
+    throw "Backend did not serve /openapi.json in time."
+}
 ```
 
 The `127.0.0.1:8000` URL depends on the local `docker-compose.override.yml` backend port mapping. Production base compose keeps backend access internal to Nginx and the Docker network.

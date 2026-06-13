@@ -24,10 +24,21 @@ docker compose up -d --build backend
 If Docker Engine access is denied by the sandbox, request escalation for the same `docker compose` command. The repo expects compose to orchestrate db, redis, migrations, seed jobs, and backend.
 The production base compose file keeps the backend internal to the Docker network; `http://127.0.0.1:8000` is available only when the local `docker-compose.override.yml` publishes `127.0.0.1:8000:8000`.
 
-3. Verify the compose backend serves OpenAPI:
+3. Wait until the compose backend serves OpenAPI:
 
 ```powershell
-Invoke-WebRequest -UseBasicParsing http://127.0.0.1:8000/openapi.json | Select-Object -ExpandProperty StatusCode
+$openapi = $null
+for ($i = 0; $i -lt 30; $i++) {
+    try {
+        $openapi = Invoke-WebRequest -UseBasicParsing http://127.0.0.1:8000/openapi.json
+        if ($openapi.StatusCode -eq 200) { break }
+    } catch {
+        Start-Sleep -Seconds 2
+    }
+}
+if (-not $openapi -or $openapi.StatusCode -ne 200) {
+    throw "Backend did not serve /openapi.json in time."
+}
 ```
 
 4. Regenerate frontend API types from the running compose backend:

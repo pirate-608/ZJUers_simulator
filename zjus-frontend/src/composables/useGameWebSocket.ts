@@ -176,6 +176,7 @@ export function useGameWebSocket() {
           if ('dingtalk_state' in wsMsg && isRecord(wsMsg.dingtalk_state)) {
             gameStore.setDingTalkState(wsMsg.dingtalk_state)
           }
+          gameStore.addLog('系统', '已连接折大服务器，游戏状态已同步。', 'text-success')
           break
         }
 

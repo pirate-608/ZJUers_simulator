@@ -15,6 +15,7 @@ import httpx
 
 from app.api.cache import RedisCache
 from app.core.config import settings
+from app.core.input_safety import safe_username_for_prompt
 from app.schemas.dingtalk import (
     build_contact_id,
     is_replyable_role,
@@ -172,7 +173,7 @@ def _build_m2her_messages(
     char_content = character.get("content", "")
     examples = character.get("examples", [])
 
-    username = player_stats.get("username", "同学")
+    username = safe_username_for_prompt(player_stats.get("username", "同学"))
     major = player_stats.get("major", "未知专业")
     semester = player_stats.get("semester", "大一秋冬")
     stress = int(player_stats.get("stress", 0))

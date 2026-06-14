@@ -7,6 +7,7 @@ from openai import AsyncOpenAI
 
 from app.api.cache import RedisCache
 from app.content.state_vector import PlayerStateVector
+from app.core.input_safety import safe_username_for_prompt
 
 logger = logging.getLogger(__name__)
 
@@ -343,8 +344,12 @@ async def generate_wenyan_report(
                 ],
             }
         )
+    safe_stats = dict(final_stats or {})
+    if "username" in safe_stats:
+        safe_stats["username"] = safe_username_for_prompt(safe_stats.get("username"))
+
     prompt = f"""
-    玩家数据：{json.dumps(final_stats, ensure_ascii=False)}
+    玩家数据：{json.dumps(safe_stats, ensure_ascii=False)}
     你是一位古风文案大师。请根据以上玩家的折姜大学结业数据，为其撰写一段100字左右的文言文结业总结，内容需涵盖其专业、能力、GPA、性格、成就等主要信息，风格典雅、用词考究，严肃中不失诙谐风趣，结尾可有调侃或祝福。
     只需返回文言文内容本身，不要任何解释。
     """

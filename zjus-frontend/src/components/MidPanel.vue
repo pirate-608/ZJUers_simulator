@@ -49,7 +49,7 @@
             v-if="store.eventLogs.length === 0"
             class="text-muted"
           >
-            连接到折大服务器中...
+            暂无求是园动态
           </div>
           <div
             v-for="log in store.eventLogs"
@@ -60,7 +60,7 @@
             <b>[{{ log.type }}]</b> {{ log.message }}
           </div>
         </div>
-        <div class="text-end border-top py-1 px-2 bg-white">
+        <div class="text-end border-top py-1 px-2 event-log-footer">
           <button
             class="btn btn-link btn-sm text-decoration-none text-secondary"
             @click="store.clearEventLogs()"
@@ -354,21 +354,26 @@ function setSpeed(speed: number) {
 <style scoped>
 .event-log {
   font-family: 'Courier New', Courier, monospace;
-  color: #24384d;
-  background: linear-gradient(180deg, #f9fbfe 0%, #f1f6fb 100%);
+  color: var(--console-text);
+  background: var(--console-surface-gradient);
 }
 
 .event-log b {
-  color: #285a87;
+  color: var(--console-primary);
 }
 
 .mid-panel-header {
-  background: linear-gradient(180deg, #f8fbfe 0%, #edf4fb 100%) !important;
-  border-bottom: 1px solid #cbd8e5;
+  background: var(--console-surface-gradient) !important;
+  border-bottom: 1px solid var(--console-border-strong);
 }
 
 .mid-panel-card {
   overflow: hidden;
+}
+
+.event-log-footer {
+  background: var(--console-surface);
+  border-color: var(--console-border-strong) !important;
 }
 
 .mid-panel-card .nav-tabs {
@@ -377,7 +382,7 @@ function setSpeed(speed: number) {
 }
 
 .mid-panel-card .nav-link {
-  color: #587088;
+  color: var(--console-muted);
   border: 1px solid transparent;
   border-radius: 6px 6px 0 0;
   font-weight: 700;
@@ -385,16 +390,16 @@ function setSpeed(speed: number) {
 }
 
 .mid-panel-card .nav-link:hover {
-  color: #244d76;
-  border-color: rgba(145, 166, 187, 0.45);
-  background: rgba(255, 255, 255, 0.58);
+  color: var(--console-primary-dark);
+  border-color: var(--console-primary-border);
+  background: color-mix(in srgb, var(--console-surface) 58%, transparent);
 }
 
 .mid-panel-card .nav-link.active {
-  color: #183b60;
+  color: var(--console-strong);
   font-weight: 700;
-  background: #ffffff;
-  border-color: #b9c8d8 #b9c8d8 #ffffff;
+  background: var(--console-surface);
+  border-color: var(--console-primary-border) var(--console-primary-border) var(--console-surface);
   box-shadow: 0 -1px 8px rgba(20, 43, 70, 0.06);
 }
 
@@ -412,7 +417,7 @@ function setSpeed(speed: number) {
 .dingtalk-shell {
   display: grid;
   grid-template-columns: minmax(116px, 34%) 1fr;
-  background: #edf4fb;
+  background: var(--console-surface-alt);
   min-height: 0;
   overflow: hidden;
 }
@@ -420,14 +425,14 @@ function setSpeed(speed: number) {
 .ding-contact-list {
   min-height: 0;
   overflow-y: auto;
-  background: linear-gradient(180deg, #f6f9fd 0%, #edf4fb 100%);
-  border-color: #d3deea !important;
+  background: var(--console-surface-gradient-strong);
+  border-color: var(--console-border-strong) !important;
 }
 
 .ding-contact {
   width: 100%;
   border: 0;
-  border-bottom: 1px solid #dde7f0;
+  border-bottom: 1px solid var(--console-border-strong);
   background: transparent;
   display: grid;
   grid-template-columns: 34px 1fr auto;
@@ -438,8 +443,8 @@ function setSpeed(speed: number) {
 }
 
 .ding-contact.active {
-  background: #ffffff;
-  box-shadow: inset 3px 0 0 #285a87;
+  background: var(--console-surface);
+  box-shadow: inset 3px 0 0 var(--console-primary);
 }
 
 .ding-avatar {
@@ -464,7 +469,7 @@ function setSpeed(speed: number) {
 .ding-contact-name {
   font-size: 0.82rem;
   font-weight: 700;
-  color: #22384e;
+  color: var(--console-text);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -472,7 +477,7 @@ function setSpeed(speed: number) {
 
 .ding-contact-preview {
   font-size: 0.72rem;
-  color: #6f7f90;
+  color: var(--console-muted);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -496,15 +501,19 @@ function setSpeed(speed: number) {
   min-height: 0;
   display: flex;
   flex-direction: column;
-  background: #edf4fb;
+  background: var(--console-surface-alt);
   overflow: hidden;
 }
 
 .ding-thread-header {
   min-height: 46px;
   padding: 7px 12px;
-  background: #ffffff;
-  border-color: #d3deea !important;
+  background: var(--console-surface);
+  border-color: var(--console-border-strong) !important;
+}
+
+.ding-thread-header .text-dark {
+  color: var(--console-text) !important;
 }
 
 .ding-messages {
@@ -529,21 +538,21 @@ function setSpeed(speed: number) {
   padding: 8px 10px 5px;
   font-size: 0.88rem;
   line-height: 1.45;
-  box-shadow: 0 3px 10px rgba(31, 67, 104, 0.08);
+  box-shadow: 0 3px 10px color-mix(in srgb, var(--console-primary-dark) 8%, transparent);
   overflow-wrap: anywhere;
   word-break: break-word;
 }
 
 .from-npc .ding-bubble {
-  background: #ffffff;
-  border: 1px solid #dfe7ef;
+  background: var(--console-surface);
+  border: 1px solid var(--console-border-strong);
   border-top-left-radius: 2px;
 }
 
 .from-player .ding-bubble {
-  color: #10263d;
-  background: #dcebf8;
-  border: 1px solid #bdd2e5;
+  color: var(--console-text);
+  background: var(--console-thread-player-bg);
+  border: 1px solid var(--console-thread-player-border);
   border-top-right-radius: 2px;
 }
 
@@ -551,7 +560,7 @@ function setSpeed(speed: number) {
   display: block;
   margin-top: 3px;
   font-size: 0.64rem;
-  color: #8c97a5;
+  color: var(--console-muted);
   text-align: right;
 }
 
@@ -562,8 +571,8 @@ function setSpeed(speed: number) {
   gap: 6px;
   padding: 7px;
   overflow-x: auto;
-  background: #ffffff;
-  border-color: #d3deea !important;
+  background: var(--console-surface);
+  border-color: var(--console-border-strong) !important;
 }
 
 .ding-replies .btn {
@@ -571,30 +580,30 @@ function setSpeed(speed: number) {
 }
 
 .mid-panel-footer {
-  background: linear-gradient(180deg, #f8fbfe 0%, #edf4fb 100%);
-  border-color: #cbd8e5 !important;
+  background: var(--console-surface-gradient);
+  border-color: var(--console-border-strong) !important;
 }
 
 .speed-control {
   border-radius: 7px;
-  box-shadow: inset 0 0 0 1px #cbd8e5;
+  box-shadow: inset 0 0 0 1px var(--console-border-strong);
   overflow: hidden;
 }
 
 .speed-btn {
-  color: #355a7c;
+  color: var(--console-primary);
   border-color: transparent;
-  background: rgba(255, 255, 255, 0.62);
+  background: color-mix(in srgb, var(--console-surface) 62%, transparent);
   font-weight: 700;
 }
 
 .speed-btn.active {
   color: #fff;
-  background: linear-gradient(180deg, #356894 0%, #244d76 100%);
+  background: var(--console-primary-gradient);
 }
 
 .speed-label {
-  color: #647789 !important;
+  color: var(--console-muted) !important;
   letter-spacing: 0.06em;
 }
 
@@ -629,17 +638,17 @@ function setSpeed(speed: number) {
     overflow-x: auto;
     overflow-y: hidden;
     border-right: 0 !important;
-    border-bottom: 1px solid #dbe4ef;
+    border-bottom: 1px solid var(--console-border-strong);
   }
 
   .ding-contact {
     min-width: 136px;
     border-bottom: 0;
-    border-right: 1px solid #e7edf5;
+    border-right: 1px solid var(--console-border-strong);
   }
 
   .ding-contact.active {
-    box-shadow: inset 0 -3px 0 #285a87;
+    box-shadow: inset 0 -3px 0 var(--console-primary);
   }
 }
 </style>

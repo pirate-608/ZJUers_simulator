@@ -3,6 +3,7 @@ import logging
 from typing import Any, Awaitable, Dict, TypeVar
 
 from app.api.cache import RedisCache
+from app.core.input_safety import safe_username_for_prompt
 from app.repositories.redis_repo import RedisRepository
 from app.schemas.game_state import PlayerStats
 
@@ -90,7 +91,8 @@ class RedisState:
     # 游戏初始化逻辑
     # ==========================================
     async def init_game(self, username: str) -> Dict[str, Any]:
-        initial_stats = PlayerStats.build_initial(username=username).model_dump()
+        safe_username = safe_username_for_prompt(username)
+        initial_stats = PlayerStats.build_initial(username=safe_username).model_dump()
         await self.repo.set_game_data(initial_stats)
         return initial_stats
 

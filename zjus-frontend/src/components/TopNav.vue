@@ -12,6 +12,24 @@
     </div>
 
     <div class="d-flex gap-2 top-nav-actions">
+      <div
+        class="theme-switch"
+        role="group"
+        aria-label="控制台主题"
+      >
+        <button
+          v-for="theme in consoleThemes"
+          :key="theme.id"
+          type="button"
+          class="theme-switch-btn"
+          :class="{ active: store.consoleTheme === theme.id }"
+          :title="`切换为${theme.label}主题`"
+          @click="store.setConsoleTheme(theme.id)"
+        >
+          {{ theme.label }}
+        </button>
+      </div>
+
       <button
         id="tour-pause-btn"
         class="btn btn-sm fw-bold top-action"
@@ -48,7 +66,7 @@
 </template>
 
 <script setup lang="ts">
-import { useGameStore } from '../stores/gameStore.ts'
+import { useGameStore, type ConsoleTheme } from '../stores/gameStore.ts'
 import type { WsClientAction } from '@/types/websocket'
 
 const store = useGameStore()
@@ -68,62 +86,107 @@ const requestExit = () => {
 const togglePause = () => {
   emit('send-action', { action: store.isPaused ? 'resume' : 'pause' })
 }
+
+const consoleThemes: Array<{ id: ConsoleTheme; label: string }> = [
+  { id: 'lantian', label: '蓝田' },
+  { id: 'yunfeng', label: '云峰' },
+  { id: 'danqing', label: '丹青' },
+]
 </script>
 
 <style scoped>
 .top-nav {
   padding: 12px 14px;
-  border: 1px solid rgba(89, 113, 139, 0.22);
+  border: 1px solid var(--console-border);
   border-radius: 8px;
-  background: linear-gradient(180deg, rgba(251, 253, 255, 0.96) 0%, rgba(238, 245, 251, 0.96) 100%);
-  box-shadow: 0 14px 36px rgba(18, 44, 73, 0.1);
+  background: var(--console-surface-gradient);
+  box-shadow: var(--console-card-shadow);
+}
+
+.top-nav-actions {
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: flex-end;
 }
 
 .title {
   font-family: "Noto Serif SC", "Songti SC", "STSong", serif;
-  color: #143657;
+  color: var(--console-strong);
   letter-spacing: 0.04em;
 }
 
 .top-nav-meta {
-  color: #637588 !important;
+  color: var(--console-muted) !important;
+}
+
+.theme-switch {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px;
+  border: 1px solid var(--console-primary-border);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--console-surface-soft) 86%, transparent);
+  box-shadow: inset 0 1px 2px rgba(20, 43, 70, 0.06);
+}
+
+.theme-switch-btn {
+  min-width: 42px;
+  border: 0;
+  border-radius: 999px;
+  color: var(--console-muted);
+  background: transparent;
+  font-size: 0.74rem;
+  font-weight: 800;
+  line-height: 1;
+  padding: 0.38rem 0.48rem;
+  transition: color 0.18s ease, background 0.18s ease, box-shadow 0.18s ease;
+}
+
+.theme-switch-btn:hover {
+  color: var(--console-primary-dark);
+}
+
+.theme-switch-btn.active {
+  color: #fff;
+  background: var(--console-primary-gradient);
+  box-shadow: 0 2px 8px color-mix(in srgb, var(--console-primary-dark) 24%, transparent);
 }
 
 .top-action {
   min-width: 76px;
-  color: #2d567d;
-  border: 1px solid #b9c8d8;
-  background: rgba(248, 251, 255, 0.84);
+  color: var(--console-primary);
+  border: 1px solid var(--console-primary-border);
+  background: color-mix(in srgb, var(--console-surface-soft) 84%, transparent);
   border-radius: 6px;
 }
 
 .top-action:hover {
   color: #fff;
-  border-color: #2f5f8c;
-  background: linear-gradient(180deg, #356894 0%, #244d76 100%);
+  border-color: var(--console-primary);
+  background: var(--console-primary-gradient);
 }
 
 .top-action-primary {
   color: #fff;
-  border-color: #21486e;
-  background: linear-gradient(180deg, #356894 0%, #244d76 100%);
+  border-color: var(--console-primary-dark);
+  background: var(--console-primary-gradient);
 }
 
 .top-action-gold {
-  color: #25384c;
-  border-color: #b88a44;
-  background: linear-gradient(180deg, #d7bd7b 0%, #b88a44 100%);
+  color: var(--console-gold-text);
+  border-color: var(--console-gold-border);
+  background: var(--console-warn-gradient);
 }
 
 .top-action-danger {
-  color: #824047;
-  border-color: #caa3a6;
+  color: var(--console-danger-dark);
+  border-color: var(--console-danger-border);
 }
 
 .top-action-danger:hover {
   color: #fff;
-  border-color: #824047;
-  background: linear-gradient(180deg, #a7565b 0%, #824047 100%);
+  border-color: var(--console-danger-dark);
+  background: var(--console-danger-gradient);
 }
 
 @media (max-width: 430px) {
@@ -144,6 +207,16 @@ const togglePause = () => {
     display: grid !important;
     grid-template-columns: 1fr 1fr;
     gap: 6px !important;
+  }
+
+  .theme-switch {
+    grid-column: 1 / -1;
+    width: 100%;
+    justify-content: stretch;
+  }
+
+  .theme-switch-btn {
+    flex: 1;
   }
 
   .top-nav-actions .btn {

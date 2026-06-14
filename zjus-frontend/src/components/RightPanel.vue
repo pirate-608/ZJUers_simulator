@@ -324,73 +324,73 @@ const takeExam = () => {
 <style scoped>
 .section-header {
   font-family: "Noto Serif SC", "Songti SC", "STSong", serif;
-  color: #f4f8fc;
+  color: var(--console-panel-header-text);
   border-bottom: 1px solid rgba(255, 255, 255, 0.16);
   letter-spacing: 0.08em;
 }
 
 .section-header-info {
-  background: linear-gradient(180deg, #18395d 0%, #244f7b 100%) !important;
+  background: var(--console-panel-header-gradient) !important;
 }
 
 .section-header-warn {
-  background: linear-gradient(180deg, #244f7b 0%, #315f89 100%) !important;
+  background: var(--console-panel-header-gradient-alt) !important;
 }
 
 .section-header-danger {
-  background: linear-gradient(180deg, #1e466f 0%, #344f72 100%) !important;
+  background: var(--console-panel-header-gradient-deep) !important;
 }
 
 .efficiency-card {
-  background: linear-gradient(180deg, #f8fbfe 0%, #edf4fb 100%);
-  border: 1px solid #c9d7e5;
+  background: var(--console-surface-gradient);
+  border: 1px solid var(--console-border-strong);
 }
 
 .mini-metrics {
-  border-color: #d4e0eb !important;
-  color: #24384d;
+  border-color: var(--console-border-strong) !important;
+  color: var(--console-text);
 }
 
 .relax-btn {
   min-height: 31px;
   white-space: nowrap;
-  border-color: #b9c8d8;
-  color: #2d567d;
-  background: #f8fbfe;
+  border-color: var(--console-primary-border);
+  color: var(--console-primary);
+  background: var(--console-surface-soft);
   font-weight: 700;
 }
 
 .relax-btn:hover:not(:disabled) {
   color: #fff;
-  border-color: #2f5f8c;
-  background: linear-gradient(180deg, #356894 0%, #244d76 100%);
+  border-color: var(--console-primary);
+  background: var(--console-primary-gradient);
 }
 
 .semester-progress-bar {
-  background: linear-gradient(90deg, #386f9d 0%, #79a9ce 100%) !important;
+  background: var(--console-normal-gradient) !important;
 }
 
 .exam-panel {
-  background: linear-gradient(180deg, #fbfcfe 0%, #eef4fa 100%);
-  border: 1px solid #cbd8e5;
+  background: var(--console-surface-gradient);
+  border: 1px solid var(--console-border-strong);
 }
 
 .exam-btn {
   color: #fff;
-  border-color: #824047;
-  background: linear-gradient(180deg, #a7565b 0%, #824047 100%);
-  box-shadow: 0 8px 18px rgba(130, 64, 71, 0.18);
+  border-color: var(--console-danger-dark);
+  background: var(--console-danger-gradient);
+  box-shadow: 0 8px 18px color-mix(in srgb, var(--console-danger-dark) 18%, transparent);
 }
 
 .exam-btn:hover:not(:disabled) {
   color: #fff;
-  border-color: #70383f;
-  background: linear-gradient(180deg, #944c52 0%, #723941 100%);
+  border-color: var(--console-danger);
+  background: var(--console-danger-gradient-hover);
 }
 
 .mode-group {
   border-radius: 7px;
-  box-shadow: inset 0 0 0 1px #cbd8e5;
+  box-shadow: inset 0 0 0 1px var(--console-border-strong);
   overflow: hidden;
 }
 

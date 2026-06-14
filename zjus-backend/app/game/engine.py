@@ -13,6 +13,7 @@ from sqlalchemy import update
 from app.content.event_library import pick_cc98_post, pick_random_event
 from app.core.database import AsyncSessionLocal
 from app.core.events import GameEvent
+from app.core.input_safety import safe_username_for_prompt
 from app.core.llm import (
     generate_cc98_post,
     generate_dingtalk_message,
@@ -1679,7 +1680,7 @@ class GameEngine:
         self.stop()
         snapshot = await self.repo.get_snapshot()
         stats = snapshot.stats.model_dump()
-        username = str(stats.get("username") or "ZJUer")
+        username = safe_username_for_prompt(stats.get("username") or "ZJUer")
         major_abbr = str(
             stats.get("initial_major_abbr") or stats.get("major_abbr") or ""
         ).strip()

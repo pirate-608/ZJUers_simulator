@@ -5,6 +5,7 @@ from typing import Any, Dict, Optional
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.input_safety import safe_username_for_prompt
 from app.repositories.redis_repo import RedisRepository
 from app.schemas.game_state import PlayerStats
 from app.services.save_service import SaveService
@@ -72,7 +73,8 @@ class GameService:
         major_info = assignment["major_info"]
         overrides = stat_overrides or {}
 
-        initial_stats = PlayerStats.build_initial(username=username).model_dump()
+        safe_username = safe_username_for_prompt(username)
+        initial_stats = PlayerStats.build_initial(username=safe_username).model_dump()
         update_fields = {
             "elapsed_game_time": 0,
             "major": major_info["name"],

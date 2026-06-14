@@ -181,6 +181,7 @@ const handleEnterGame = () => {
     <div
       v-else-if="store.currentPhase === 'playing'"
       class="container-fluid app-playing px-3 px-lg-4 py-3 py-lg-4 fade-in-up"
+      :data-console-theme="store.consoleTheme"
     >
       <TopNav @send-action="send" />
       
@@ -236,7 +237,109 @@ const handleEnterGame = () => {
   margin: 0 auto;
   min-height: 100vh;
   position: relative;
-  color: #172433;
+  color: var(--console-text);
+  --console-text: #172433;
+  --console-strong: #143657;
+  --console-muted: #637588;
+  --console-border: rgba(88, 111, 137, 0.22);
+  --console-border-strong: #cbd8e5;
+  --console-card-bg: rgba(251, 253, 255, 0.95);
+  --console-card-shadow: 0 16px 42px rgba(18, 44, 73, 0.13);
+  --console-page-gradient: linear-gradient(160deg, #eaf1f8 0%, #dce7f2 54%, #d2deeb 100%);
+  --console-grid-line-a: rgba(32, 72, 112, 0.045);
+  --console-grid-line-b: rgba(32, 72, 112, 0.04);
+  --console-surface: #ffffff;
+  --console-surface-soft: #f8fbfe;
+  --console-surface-alt: #edf4fb;
+  --console-surface-gradient: linear-gradient(180deg, #f8fbfe 0%, #edf4fb 100%);
+  --console-surface-gradient-strong: linear-gradient(180deg, #f6f9fd 0%, #edf4fb 100%);
+  --console-panel-header-gradient: linear-gradient(180deg, #18395d 0%, #234d78 100%);
+  --console-panel-header-gradient-alt: linear-gradient(180deg, #244f7b 0%, #315f89 100%);
+  --console-panel-header-gradient-deep: linear-gradient(180deg, #1e466f 0%, #344f72 100%);
+  --console-panel-header-text: #f3f8fc;
+  --console-primary: #285a87;
+  --console-primary-mid: #356894;
+  --console-primary-dark: #244d76;
+  --console-primary-soft: #dcebf8;
+  --console-primary-border: #b9c8d8;
+  --console-primary-gradient: linear-gradient(180deg, #356894 0%, #244d76 100%);
+  --console-normal-gradient: linear-gradient(90deg, #386f9d 0%, #79a9ce 100%);
+  --console-energy-gradient: linear-gradient(90deg, #bd8b3b 0%, #e0bd68 100%);
+  --console-good-gradient: linear-gradient(90deg, #2f7569 0%, #65a296 100%);
+  --console-warn-gradient: linear-gradient(180deg, #d7bd7b 0%, #b88a44 100%);
+  --console-danger: #94454c;
+  --console-danger-dark: #824047;
+  --console-danger-border: #caa3a6;
+  --console-danger-gradient: linear-gradient(180deg, #a7565b 0%, #824047 100%);
+  --console-danger-gradient-hover: linear-gradient(180deg, #944c52 0%, #723941 100%);
+  --console-alert-gradient: linear-gradient(90deg, #93484f 0%, #bf7478 100%);
+  --console-low-gradient: linear-gradient(90deg, #6a7888 0%, #9aa8b6 100%);
+  --console-gold-text: #25384c;
+  --console-gold-border: #b88a44;
+  --console-thread-player-bg: #dcebf8;
+  --console-thread-player-border: #bdd2e5;
+}
+
+.app-playing[data-console-theme="yunfeng"] {
+  --console-text: #241f35;
+  --console-strong: #32245a;
+  --console-muted: #716988;
+  --console-border: rgba(104, 88, 137, 0.24);
+  --console-border-strong: #d6cfe4;
+  --console-card-bg: rgba(253, 251, 255, 0.96);
+  --console-card-shadow: 0 16px 42px rgba(47, 33, 84, 0.13);
+  --console-page-gradient: linear-gradient(160deg, #f0edf8 0%, #e4dff0 55%, #d8d0e8 100%);
+  --console-grid-line-a: rgba(76, 55, 119, 0.045);
+  --console-grid-line-b: rgba(76, 55, 119, 0.04);
+  --console-surface-soft: #fbf9ff;
+  --console-surface-alt: #f1edf8;
+  --console-surface-gradient: linear-gradient(180deg, #fbf9ff 0%, #f1edf8 100%);
+  --console-surface-gradient-strong: linear-gradient(180deg, #f8f5fd 0%, #f1edf8 100%);
+  --console-panel-header-gradient: linear-gradient(180deg, #34265f 0%, #564281 100%);
+  --console-panel-header-gradient-alt: linear-gradient(180deg, #4c3978 0%, #6a5797 100%);
+  --console-panel-header-gradient-deep: linear-gradient(180deg, #3f315f 0%, #554c72 100%);
+  --console-primary: #5d4890;
+  --console-primary-mid: #725aa8;
+  --console-primary-dark: #46326f;
+  --console-primary-soft: #eee6fb;
+  --console-primary-border: #cec4df;
+  --console-primary-gradient: linear-gradient(180deg, #725aa8 0%, #4b3678 100%);
+  --console-normal-gradient: linear-gradient(90deg, #6952a0 0%, #a08acd 100%);
+  --console-gold-text: #332a4b;
+  --console-thread-player-bg: #eee6fb;
+  --console-thread-player-border: #d8cbea;
+}
+
+.app-playing[data-console-theme="danqing"] {
+  --console-text: #30271d;
+  --console-strong: #4c3117;
+  --console-muted: #796a58;
+  --console-border: rgba(142, 104, 59, 0.24);
+  --console-border-strong: #dfcfb9;
+  --console-card-bg: rgba(255, 252, 246, 0.96);
+  --console-card-shadow: 0 16px 42px rgba(89, 56, 22, 0.13);
+  --console-page-gradient: linear-gradient(160deg, #f7efe1 0%, #eadbc3 56%, #ddc9aa 100%);
+  --console-grid-line-a: rgba(133, 86, 35, 0.045);
+  --console-grid-line-b: rgba(133, 86, 35, 0.04);
+  --console-surface-soft: #fffcf6;
+  --console-surface-alt: #f5ecdc;
+  --console-surface-gradient: linear-gradient(180deg, #fffcf6 0%, #f5ecdc 100%);
+  --console-surface-gradient-strong: linear-gradient(180deg, #fff9ef 0%, #f5ecdc 100%);
+  --console-panel-header-gradient: linear-gradient(180deg, #6f4825 0%, #9b642c 100%);
+  --console-panel-header-gradient-alt: linear-gradient(180deg, #8f5f2d 0%, #b17938 100%);
+  --console-panel-header-gradient-deep: linear-gradient(180deg, #684a2d 0%, #80613f 100%);
+  --console-primary: #9a6129;
+  --console-primary-mid: #b87935;
+  --console-primary-dark: #764713;
+  --console-primary-soft: #f7e7cf;
+  --console-primary-border: #d9c4a8;
+  --console-primary-gradient: linear-gradient(180deg, #b87935 0%, #7b4c18 100%);
+  --console-normal-gradient: linear-gradient(90deg, #a86b2f 0%, #d3a35c 100%);
+  --console-energy-gradient: linear-gradient(90deg, #c1832b 0%, #e2bd61 100%);
+  --console-gold-text: #4b321c;
+  --console-gold-border: #c38a3f;
+  --console-thread-player-bg: #f7e7cf;
+  --console-thread-player-border: #e4cda9;
 }
 
 .app-playing::before {
@@ -245,17 +348,17 @@ const handleEnterGame = () => {
   inset: 0;
   z-index: -1;
   background:
-    linear-gradient(90deg, rgba(32, 72, 112, 0.045) 1px, transparent 1px),
-    linear-gradient(180deg, rgba(32, 72, 112, 0.04) 1px, transparent 1px),
-    linear-gradient(160deg, #eaf1f8 0%, #dce7f2 54%, #d2deeb 100%);
+    linear-gradient(90deg, var(--console-grid-line-a) 1px, transparent 1px),
+    linear-gradient(180deg, var(--console-grid-line-b) 1px, transparent 1px),
+    var(--console-page-gradient);
   background-size: 48px 48px, 48px 48px, auto;
 }
 
 .app-playing .card {
-  border: 1px solid rgba(88, 111, 137, 0.22) !important;
+  border: 1px solid var(--console-border) !important;
   border-radius: 8px;
-  background: rgba(251, 253, 255, 0.95);
-  box-shadow: 0 16px 42px rgba(18, 44, 73, 0.13);
+  background: var(--console-card-bg);
+  box-shadow: var(--console-card-shadow);
 }
 
 .app-playing .app-console-panel {
@@ -263,8 +366,8 @@ const handleEnterGame = () => {
 }
 
 .app-playing .app-panel-header {
-  background: linear-gradient(180deg, #18395d 0%, #234d78 100%) !important;
-  color: #f3f8fc;
+  background: var(--console-panel-header-gradient) !important;
+  color: var(--console-panel-header-text);
   border-bottom: 1px solid rgba(255, 255, 255, 0.18);
   font-size: 0.92rem;
   letter-spacing: 0.08em;
@@ -272,18 +375,18 @@ const handleEnterGame = () => {
 
 .app-playing .progress {
   height: 10px;
-  background-color: #e6edf5 !important;
+  background-color: var(--console-primary-soft) !important;
   border-radius: 999px;
   box-shadow: inset 0 1px 2px rgba(20, 43, 70, 0.1);
   overflow: hidden;
 }
 
 .app-playing .progress-bar {
-  background-color: #426f9c;
+  background-color: var(--console-primary);
 }
 
 .app-playing .bg-info {
-  background-color: #4578a6 !important;
+  background-color: var(--console-primary-mid) !important;
 }
 
 .app-playing .bg-success {
@@ -299,7 +402,7 @@ const handleEnterGame = () => {
 }
 
 .app-playing .text-primary {
-  color: #285a87 !important;
+  color: var(--console-primary) !important;
 }
 
 .app-playing .text-success {
@@ -311,7 +414,7 @@ const handleEnterGame = () => {
 }
 
 .app-playing .text-info {
-  color: #4578a6 !important;
+  color: var(--console-primary-mid) !important;
 }
 
 .app-playing .text-danger {
@@ -326,9 +429,9 @@ const handleEnterGame = () => {
 .app-playing .btn-outline-info,
 .app-playing .btn-outline-success,
 .app-playing .btn-outline-primary {
-  color: #2c567d;
-  border-color: #b9c8d8;
-  background-color: rgba(248, 251, 255, 0.78);
+  color: var(--console-primary);
+  border-color: var(--console-primary-border);
+  background-color: color-mix(in srgb, var(--console-surface-soft) 78%, transparent);
 }
 
 .app-playing .btn-outline-secondary:hover,
@@ -336,26 +439,26 @@ const handleEnterGame = () => {
 .app-playing .btn-outline-success:hover,
 .app-playing .btn-outline-primary:hover {
   color: #fff;
-  background-color: #2f5f8c;
-  border-color: #2f5f8c;
+  background-color: var(--console-primary);
+  border-color: var(--console-primary);
 }
 
 .app-playing .btn-secondary,
 .app-playing .btn-primary,
 .app-playing .btn-success {
-  background: linear-gradient(180deg, #356894 0%, #244d76 100%) !important;
-  border-color: #21486e !important;
+  background: var(--console-primary-gradient) !important;
+  border-color: var(--console-primary-dark) !important;
 }
 
 .app-playing .btn-warning {
-  color: #22384e !important;
-  background: linear-gradient(180deg, #d7bd7b 0%, #b88a44 100%) !important;
-  border-color: #a77b38 !important;
+  color: var(--console-gold-text) !important;
+  background: var(--console-warn-gradient) !important;
+  border-color: var(--console-gold-border) !important;
 }
 
 .app-playing .btn-danger {
-  background: linear-gradient(180deg, #a7565b 0%, #824047 100%) !important;
-  border-color: #793b42 !important;
+  background: var(--console-danger-gradient) !important;
+  border-color: var(--console-danger-dark) !important;
 }
 
 .app-playing .btn:disabled {

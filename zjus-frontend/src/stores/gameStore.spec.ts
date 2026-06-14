@@ -4,6 +4,7 @@ import { useGameStore } from './gameStore'
 
 describe('gameStore DingTalk threads', () => {
   beforeEach(() => {
+    localStorage.clear()
     setActivePinia(createPinia())
   })
 
@@ -71,5 +72,32 @@ describe('gameStore DingTalk threads', () => {
     expect(store.dingtalkContacts.a.unread_count).toBe(0)
     expect(store.dingtalkContacts.b.unread_count).toBe(3)
     expect(store.unreadDingtalk).toBe(3)
+  })
+})
+
+describe('gameStore console theme', () => {
+  beforeEach(() => {
+    localStorage.clear()
+    setActivePinia(createPinia())
+  })
+
+  it('defaults to the Lantian theme when storage is empty or invalid', () => {
+    let store = useGameStore()
+    expect(store.consoleTheme).toBe('lantian')
+
+    localStorage.setItem('zjus_console_theme', 'unknown')
+    setActivePinia(createPinia())
+    store = useGameStore()
+
+    expect(store.consoleTheme).toBe('lantian')
+  })
+
+  it('persists the selected console theme', () => {
+    const store = useGameStore()
+
+    store.setConsoleTheme('yunfeng')
+
+    expect(store.consoleTheme).toBe('yunfeng')
+    expect(localStorage.getItem('zjus_console_theme')).toBe('yunfeng')
   })
 })

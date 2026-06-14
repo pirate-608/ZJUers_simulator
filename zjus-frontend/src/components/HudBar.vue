@@ -118,23 +118,22 @@ const stressColorClass = computed(() => {
 <style scoped>
 .hud-container {
   z-index: 100;
-  border: 1px solid rgba(89, 113, 139, 0.22);
+  border: 1px solid var(--console-border);
   border-radius: 8px;
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.95) 0%, rgba(242, 247, 252, 0.96) 100%);
-  box-shadow: 0 14px 36px rgba(18, 44, 73, 0.12);
+  background: var(--console-surface-gradient);
+  box-shadow: var(--console-card-shadow);
 }
 .stat-item {
   min-width: 150px;
 }
 
 .stat-row {
-  color: #22384e;
+  color: var(--console-text);
 }
 
 .stat-label,
 .metric-label {
-  color: #496176 !important;
+  color: var(--console-muted) !important;
   letter-spacing: 0.04em;
 }
 
@@ -147,23 +146,23 @@ const stressColorClass = computed(() => {
 }
 
 .stat-bar-energy {
-  background: linear-gradient(90deg, #bd8b3b 0%, #e0bd68 100%) !important;
+  background: var(--console-energy-gradient) !important;
 }
 
 .stat-bar-good {
-  background: linear-gradient(90deg, #2f7569 0%, #65a296 100%) !important;
+  background: var(--console-good-gradient) !important;
 }
 
 .stat-bar-normal {
-  background: linear-gradient(90deg, #386f9d 0%, #79a9ce 100%) !important;
+  background: var(--console-normal-gradient) !important;
 }
 
 .stat-bar-alert {
-  background: linear-gradient(90deg, #93484f 0%, #bf7478 100%) !important;
+  background: var(--console-alert-gradient) !important;
 }
 
 .hud-metrics {
-  border-color: rgba(89, 113, 139, 0.24) !important;
+  border-color: var(--console-border) !important;
 }
 
 .hud-metric-block {
@@ -171,11 +170,11 @@ const stressColorClass = computed(() => {
 }
 
 .metric-value {
-  color: #193553;
+  color: var(--console-strong);
 }
 
 .metric-excellent {
-  color: #244f7c;
+  color: var(--console-primary-dark);
 }
 
 .metric-good {
@@ -183,11 +182,11 @@ const stressColorClass = computed(() => {
 }
 
 .metric-warn {
-  color: #9a6d25;
+  color: var(--console-gold-border);
 }
 
 .metric-alert {
-  color: #94454c;
+  color: var(--console-danger);
 }
 
 @media (max-width: 430px) {
@@ -210,7 +209,7 @@ const stressColorClass = computed(() => {
     width: 100%;
     border-left: 0 !important;
     padding-left: 0 !important;
-    border-top: 1px solid rgba(89, 113, 139, 0.24);
+    border-top: 1px solid var(--console-border);
     padding-top: 8px;
     justify-content: space-between;
     gap: 0.5rem !important;

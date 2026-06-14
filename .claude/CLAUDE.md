@@ -98,6 +98,7 @@ Backend:
 - `zjus-backend/app/api/auth.py`: invite-code auth, returning-user save list, majors, character initialization.
 - `zjus-backend/app/api/game.py`: WebSocket entry, config API, engine lifecycle.
 - `zjus-backend/app/admin.py`: SQLAdmin models plus `/admin/balance` operational balance editor.
+- `zjus-backend/app/core/input_safety.py`: player username normalization, prompt-injection keyword checks, and prompt-safe fallback.
 - `zjus-backend/app/game/engine.py`: tick loop, actions, final exams, random events, relax cooldowns, feedback messages, content mode switching.
 - `zjus-backend/app/game/balance.py`: `world/game_balance.json` path resolution, runtime reads, and hot reload.
 - `zjus-backend/app/services/game_service.py`: character/major initialization, semester transitions.
@@ -129,6 +130,12 @@ Docs:
 - Do not manually maintain `docs/assets/sources` resource mirrors; world data source of truth is `zjus-backend/world/`.
 
 ## Current Behavior Contracts
+
+Player usernames:
+
+- `POST /api/auth` normalizes usernames with NFKC, trims/collapses ordinary spaces, limits length, and rejects control/hidden characters, emoji/symbols, unsupported punctuation, and prompt-injection/reserved keywords.
+- Reuse `app.core.input_safety.validate_username` for login-time checks; do not add a second username allowlist in route code.
+- Before putting any username into LLM prompts or persistent game stats, use `safe_username_for_prompt`; unsafe legacy values fall back to `同学`.
 
 Character creation:
 

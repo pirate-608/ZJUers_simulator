@@ -22,12 +22,29 @@ type EndData = {
 }
 
 type ActiveModalName = 'transcript' | 'random_event' | 'exit_confirm' | 'exam_confirm' | null
+export type ConsoleTheme = 'lantian' | 'yunfeng' | 'danqing'
 
 type EventLog = {
   id: number
   type: string
   message: string
   cssClass: string
+}
+
+const CONSOLE_THEME_STORAGE_KEY = 'zjus_console_theme'
+const CONSOLE_THEMES: ConsoleTheme[] = ['lantian', 'yunfeng', 'danqing']
+
+function isConsoleTheme(value: unknown): value is ConsoleTheme {
+  return typeof value === 'string' && CONSOLE_THEMES.includes(value as ConsoleTheme)
+}
+
+function readStoredConsoleTheme(): ConsoleTheme {
+  try {
+    const storedTheme = localStorage.getItem(CONSOLE_THEME_STORAGE_KEY)
+    return isConsoleTheme(storedTheme) ? storedTheme : 'lantian'
+  } catch {
+    return 'lantian'
+  }
 }
 
 export const useGameStore = defineStore('game', () => {
@@ -93,6 +110,7 @@ export const useGameStore = defineStore('game', () => {
 
   const gameMode = ref<'library' | 'ai' | 'hybrid'>('hybrid')
   const llmAvailable = ref<boolean>(true)
+  const consoleTheme = ref<ConsoleTheme>(readStoredConsoleTheme())
 
   const isPendingExit = ref<boolean>(false)
 
@@ -170,6 +188,15 @@ export const useGameStore = defineStore('game', () => {
 
   function setGameSpeed(speed: number) {
     gameSpeed.value = speed
+  }
+
+  function setConsoleTheme(theme: ConsoleTheme) {
+    consoleTheme.value = theme
+    try {
+      localStorage.setItem(CONSOLE_THEME_STORAGE_KEY, theme)
+    } catch {
+      // Ignore persistence failures; the visual switch should still work for this session.
+    }
   }
 
   function setRelaxCooldowns(cooldowns: Record<string, unknown> | null | undefined) {
@@ -391,6 +418,8 @@ export const useGameStore = defineStore('game', () => {
     closeFeedback,
     gameMode,
     llmAvailable,
+    consoleTheme,
+    setConsoleTheme,
     isPendingExit,
   }
 })

@@ -1,22 +1,29 @@
-from jose import JWTError, jwt
-from app.core.config import settings
+import secrets
+from typing import Annotated, List, Optional
+
 from fastapi import APIRouter, Depends, Header, HTTPException
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from jose import JWTError, jwt
 from pydantic import BaseModel, Field
-from typing import List, Optional
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from app.api import deps
-from app.models.user import User
+from app.api.cache import RedisCache
+from app.core.config import settings
+from app.core.input_safety import validate_username
 from app.core.security import create_access_token
 from app.game.state import RedisState
-from app.api.cache import RedisCache
+from app.models.user import User
 from app.repositories.redis_repo import RedisRepository
 from app.services.game_service import GameService
+from app.services.restriction_service import RestrictionService
 from app.services.save_service import SaveService
 from app.services.world_service import WorldService
-from app.services.restriction_service import RestrictionService
 
 router = APIRouter()
+
+DbSessionDep = Annotated[AsyncSession, Depends(deps.get_db)]
+AuthorizationHeader = Annotated[str, Header(..., description="Bearer <JWT>")]
 
 # ─── 模型 ───
 
@@ -86,30 +93,13 @@ class AdmissionInfoResponse(BaseModel):
 
 # ─── 安全校验 ───
 
-BLACKLIST = [
-    "SYSTEM MODE", "系统提示", "IGNORE START",
-    "flag{", "====", "====================",
-    "Happy Hacking", "Is it SQL Injection",
-]
-
-
-def is_username_safe(username: str) -> bool:
-    if not username:
-        return False
-    if len(username) > 50:
-        return False
-    for keyword in BLACKLIST:
-        if keyword in username:
-            return False
-    return True
-
-
 def _validate_invite_code(code: str) -> bool:
     raw = settings.INVITE_CODES.strip()
     if not raw:
         return False
     codes = [c.strip() for c in raw.split(",") if c.strip()]
-    return code.strip() in codes
+    candidate = code.strip()
+    return any(secrets.compare_digest(candidate, valid_code) for valid_code in codes)
 
 
 def _validate_initial_stats(req: InitCharacterRequest):
@@ -131,42 +121,42 @@ def _validate_initial_stats(req: InitCharacterRequest):
 
 
 @router.post("/auth", response_model=AuthResponse)
-async def auth(data: AuthRequest, db: AsyncSession = Depends(deps.get_db)):
+async def auth(data: AuthRequest, db: DbSessionDep):
     """邀请码认证：验证用户名+邀请码，返回 JWT 和持久凭证"""
-    if not is_username_safe(data.username):
+    is_safe_username, username, username_error = validate_username(data.username)
+    if not is_safe_username:
         return AuthResponse(
-            status="error", username=data.username,
-            message="用户名包含不允许的内容或过长",
+            status="error",
+            username=username,
+            message=username_error or "用户名包含不允许的内容",
         )
 
-    if await RestrictionService.is_blacklisted(db, data.username, "username"):
+    if await RestrictionService.is_blacklisted(db, username, "username"):
         return AuthResponse(
-            status="error", username=data.username,
+            status="error", username=username,
             message="该用户名已被拉黑",
         )
     if data.token and await RestrictionService.is_blacklisted(db, data.token, "token"):
         return AuthResponse(
-            status="error", username=data.username,
+            status="error", username=username,
             message="该凭证已被拉黑",
         )
 
     if not _validate_invite_code(data.invite_code):
         return AuthResponse(
-            status="error", username=data.username,
+            status="error", username=username,
             message="邀请码无效",
         )
 
-    stmt = select(User).where(User.username == data.username)
+    stmt = select(User).where(User.username == username)
     result = await db.execute(stmt)
     user = result.scalars().first()
-
-    import secrets
 
     if not user:
         # 新用户
         user_token = secrets.token_urlsafe(16)
         user = User(
-            username=data.username,
+            username=username,
             token=user_token,
         )
         db.add(user)
@@ -190,7 +180,7 @@ async def auth(data: AuthRequest, db: AsyncSession = Depends(deps.get_db)):
         if restriction:
             return AuthResponse(
                 status="error",
-                username=data.username,
+                username=username,
                 message=f"账号受限：{restriction.restriction_type}",
             )
         saves = await SaveService.list_saves(str(user.id), db)
@@ -206,7 +196,7 @@ async def auth(data: AuthRequest, db: AsyncSession = Depends(deps.get_db)):
         )
 
     return AuthResponse(
-        status="error", username=data.username,
+        status="error", username=username,
         message="用户名已被占用，请填写老玩家凭证重试",
     )
 
@@ -220,9 +210,7 @@ async def get_majors():
 
 
 @router.post("/init_character", response_model=InitCharacterResponse)
-async def init_character(
-    req: InitCharacterRequest, db: AsyncSession = Depends(deps.get_db)
-):
+async def init_character(req: InitCharacterRequest, db: DbSessionDep):
     """初始化角色：选择专业并分配初始属性"""
     _validate_initial_stats(req)
     # 解码 JWT
@@ -232,8 +220,8 @@ async def init_character(
         )
         user_id_raw = payload.get("sub")
         username_raw = payload.get("username")
-    except JWTError:
-        raise HTTPException(status_code=401, detail="Invalid token")
+    except JWTError as exc:
+        raise HTTPException(status_code=401, detail="Invalid token") from exc
 
     if not user_id_raw:
         raise HTTPException(status_code=401, detail="Invalid token payload")
@@ -285,8 +273,8 @@ async def init_character(
 
 @router.get("/admission_info", response_model=AdmissionInfoResponse)
 async def get_admission_info(
-    authorization: str = Header(..., description="Bearer <JWT>"),
-    db: AsyncSession = Depends(deps.get_db),
+    authorization: AuthorizationHeader,
+    db: DbSessionDep,
 ):
     """查询当前用户的用户名和已分配专业"""
     if not authorization.lower().startswith("bearer "):
@@ -298,8 +286,8 @@ async def get_admission_info(
         )
         username_raw = payload.get("username")
         user_id_raw = payload.get("sub")
-    except JWTError:
-        raise HTTPException(status_code=401, detail="Invalid token")
+    except JWTError as exc:
+        raise HTTPException(status_code=401, detail="Invalid token") from exc
     if not user_id_raw:
         raise HTTPException(status_code=401, detail="Invalid token payload")
 

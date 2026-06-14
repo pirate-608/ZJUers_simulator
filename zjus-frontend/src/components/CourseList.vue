@@ -130,46 +130,46 @@ const changeStrategy = (courseId: string, newState: number) => {
 
 <style scoped>
 .course-list-panel {
-  background: linear-gradient(180deg, #f8fbfe 0%, #eef4fa 100%);
-  scrollbar-color: #9eb2c6 transparent;
+  background: var(--console-surface-gradient);
+  scrollbar-color: var(--console-primary-border) transparent;
 }
 
 .course-item {
-  border-color: #dce6f0 !important;
-  background: rgba(255, 255, 255, 0.72);
+  border-color: var(--console-border-strong) !important;
+  background: color-mix(in srgb, var(--console-surface) 72%, transparent);
 }
 
 .course-item:hover {
-  background: rgba(255, 255, 255, 0.95);
+  background: color-mix(in srgb, var(--console-surface) 95%, transparent);
 }
 
 .course-title {
-  color: #1b3048;
+  color: var(--console-text);
   font-size: 0.94rem;
   letter-spacing: 0.01em;
 }
 
 .course-credit {
-  color: #46627c;
-  border: 1px solid #c7d5e3;
-  background: #eef4fa;
+  color: var(--console-muted);
+  border: 1px solid var(--console-primary-border);
+  background: var(--console-surface-alt);
 }
 
 .progress {
   height: 8px;
-  background: #e3ebf4;
+  background: var(--console-primary-soft);
 }
 
 .course-progress-high {
-  background: linear-gradient(90deg, #2f7569 0%, #65a296 100%) !important;
+  background: var(--console-good-gradient) !important;
 }
 
 .course-progress-mid {
-  background: linear-gradient(90deg, #3b709e 0%, #7aa9ce 100%) !important;
+  background: var(--console-normal-gradient) !important;
 }
 
 .course-progress-low {
-  background: linear-gradient(90deg, #6a7888 0%, #9aa8b6 100%) !important;
+  background: var(--console-low-gradient) !important;
 }
 
 /* 给按钮组增加一点点击时的缩放动画，提升手感 */
@@ -181,16 +181,16 @@ const changeStrategy = (courseId: string, newState: number) => {
 }
 
 .strategy-btn {
-  color: #31536f;
-  border-color: #c2d0dd;
-  background: #f7fbff;
+  color: var(--console-primary);
+  border-color: var(--console-primary-border);
+  background: var(--console-surface-soft);
   min-width: 36px;
 }
 
 .strategy-btn:hover:not(:disabled) {
-  color: #15324f;
-  border-color: #8fa8bf;
-  background: #e9f1f8;
+  color: var(--console-primary-dark);
+  border-color: var(--console-primary);
+  background: var(--console-primary-soft);
 }
 
 .strategy-rest.active {
@@ -200,9 +200,9 @@ const changeStrategy = (courseId: string, newState: number) => {
 }
 
 .strategy-steady.active {
-  color: #24384d;
-  border-color: #b88a44;
-  background: linear-gradient(180deg, #d9bf7a 0%, #bf9350 100%);
+  color: var(--console-gold-text);
+  border-color: var(--console-gold-border);
+  background: var(--console-warn-gradient);
 }
 
 .strategy-focus.active {

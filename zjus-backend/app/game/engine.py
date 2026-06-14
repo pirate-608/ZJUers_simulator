@@ -692,11 +692,7 @@ class GameEngine:
             self.resume()
             return
         if action == "restart":
-            self.stop()
-            initial_stats = self._build_initial_stats("ZJUer")
-            await self.repo.set_game_data(initial_stats)
-            await self.emit("init", {"data": initial_stats})
-            self.start()
+            await self._handle_restart()
             return
 
         # ✨ 新增：真正接管全局倍速
@@ -1609,6 +1605,107 @@ class GameEngine:
         from app.schemas.game_state import PlayerStats
 
         return PlayerStats.build_initial(username=username).model_dump()
+
+    def _coerce_initial_stat(
+        self,
+        value: Any,
+        default: int,
+        minimum: int = 50,
+        maximum: int = 150,
+    ) -> int:
+        try:
+            parsed = int(value)
+        except (TypeError, ValueError):
+            parsed = default
+        return max(minimum, min(maximum, parsed))
+
+    async def _infer_restart_stat_overrides(
+        self, stats: dict[str, Any], major_abbr: str
+    ) -> dict[str, int]:
+        initial_iq = int(stats.get("initial_iq", 0) or 0)
+        if initial_iq <= 0:
+            iq_buff = 0
+            world = getattr(self.game_service, "world", None)
+            if world is not None:
+                try:
+                    assignment = await world.get_major_by_abbr(major_abbr)
+                    major_info = (assignment or {}).get("major_info", {})
+                    iq_buff = int(major_info.get("iq_buff", 0) or 0)
+                except Exception as exc:
+                    logger.warning(
+                        "Could not infer major IQ buff for restart: %s", exc
+                    )
+            initial_iq = int(stats.get("iq", 100) or 100) - iq_buff
+
+        return {
+            "iq": self._coerce_initial_stat(initial_iq, 100),
+            "eq": self._coerce_initial_stat(
+                stats.get("initial_eq") or stats.get("eq"), 100
+            ),
+            "luck": self._coerce_initial_stat(
+                stats.get("initial_luck") or stats.get("luck"), 50
+            ),
+        }
+
+    async def _emit_current_init(self):
+        snapshot = await self.repo.get_snapshot()
+        stats = snapshot.stats.model_dump()
+        try:
+            semester_idx = int(stats.get("semester_idx", 1) or 1)
+        except (TypeError, ValueError):
+            semester_idx = 1
+        try:
+            elapsed = int(stats.get("elapsed_game_time", 0) or 0)
+        except (TypeError, ValueError):
+            elapsed = 0
+        base_duration = balance.get_semester_duration(semester_idx)
+        dingtalk_state = await self.repo.get_dingtalk_state()
+
+        await self.emit(
+            "init",
+            {
+                "data": stats,
+                "courses": snapshot.courses,
+                "course_states": snapshot.course_states,
+                "semester_time_left": self._get_semester_time_left(
+                    elapsed, base_duration
+                ),
+                "relax_cooldowns": await self._get_relax_cooldowns(),
+                "dingtalk_state": dingtalk_state.model_dump(),
+            },
+        )
+
+    async def _handle_restart(self):
+        self.stop()
+        snapshot = await self.repo.get_snapshot()
+        stats = snapshot.stats.model_dump()
+        username = str(stats.get("username") or "ZJUer")
+        major_abbr = str(
+            stats.get("initial_major_abbr") or stats.get("major_abbr") or ""
+        ).strip()
+
+        if major_abbr:
+            overrides = await self._infer_restart_stat_overrides(stats, major_abbr)
+            try:
+                await self.game_service.assign_major_and_init(
+                    major_abbr,
+                    stat_overrides=overrides,
+                    username=username,
+                )
+            except Exception as exc:
+                logger.error(
+                    "Failed to restart from initial profile for user %s: %s",
+                    self.user_id,
+                    exc,
+                    exc_info=True,
+                )
+                await self.repo.set_game_data(self._build_initial_stats(username))
+        else:
+            await self.repo.set_game_data(self._build_initial_stats(username))
+
+        self.speed_multiplier = 1.0
+        await self._emit_current_init()
+        self.start()
 
     async def _check_cooldown(self, action_type: str) -> int:
         last_use = await self.repo.get_cooldown_timestamp(action_type)

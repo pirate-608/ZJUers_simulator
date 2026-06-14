@@ -23,18 +23,16 @@
       >
         <div class="d-flex justify-content-between align-items-center mb-2">
           <span
-            class="fw-bold text-dark"
-            style="font-size: 0.95rem;"
+            class="fw-bold course-title"
           >{{ course.name }}</span>
-          <span class="badge bg-light text-secondary border">{{ course.credit }} 学分</span>
+          <span class="badge course-credit">{{ course.credit }} 学分</span>
         </div>
         
         <div
-          class="progress mb-2 bg-light"
-          style="height: 8px;"
+          class="progress mb-2"
         >
           <div
-            class="progress-bar progress-bar-striped" 
+            class="progress-bar"
             :class="getProgressColor(course.progress)" 
             :style="{ width: `${course.progress}%` }"
           />
@@ -50,25 +48,25 @@
             role="group"
           >
             <button
-              class="btn" 
+              class="btn strategy-btn strategy-rest"
               :disabled="store.isPaused"
-              :class="course.state === 0 ? 'btn-danger text-white fw-bold' : 'btn-outline-secondary'"
+              :class="{ active: course.state === 0 }"
               @click="changeStrategy(course.id, 0)"
             >
               摆
             </button>
             <button
-              class="btn" 
+              class="btn strategy-btn strategy-steady"
               :disabled="store.isPaused"
-              :class="course.state === 1 ? 'btn-warning text-dark fw-bold' : 'btn-outline-secondary'"
+              :class="{ active: course.state === 1 }"
               @click="changeStrategy(course.id, 1)"
             >
               摸
             </button>
             <button
-              class="btn" 
+              class="btn strategy-btn strategy-focus"
               :disabled="store.isPaused"
-              :class="course.state === 2 ? 'btn-success text-white fw-bold' : 'btn-outline-secondary'"
+              :class="{ active: course.state === 2 }"
               @click="changeStrategy(course.id, 2)"
             >
               卷
@@ -114,9 +112,9 @@ const enrichedCourses = computed(() => {
 
 // 根据进度改变进度条颜色
 const getProgressColor = (progress: number): string => {
-  if (progress >= 85) return 'bg-success'
-  if (progress >= 60) return 'bg-info'
-  return 'bg-secondary' // 不及格时的颜色
+  if (progress >= 85) return 'course-progress-high'
+  if (progress >= 60) return 'course-progress-mid'
+  return 'course-progress-low'
 }
 
 // 切换课程策略的方法
@@ -131,12 +129,86 @@ const changeStrategy = (courseId: string, newState: number) => {
 </script>
 
 <style scoped>
+.course-list-panel {
+  background: linear-gradient(180deg, #f8fbfe 0%, #eef4fa 100%);
+  scrollbar-color: #9eb2c6 transparent;
+}
+
+.course-item {
+  border-color: #dce6f0 !important;
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.course-item:hover {
+  background: rgba(255, 255, 255, 0.95);
+}
+
+.course-title {
+  color: #1b3048;
+  font-size: 0.94rem;
+  letter-spacing: 0.01em;
+}
+
+.course-credit {
+  color: #46627c;
+  border: 1px solid #c7d5e3;
+  background: #eef4fa;
+}
+
+.progress {
+  height: 8px;
+  background: #e3ebf4;
+}
+
+.course-progress-high {
+  background: linear-gradient(90deg, #2f7569 0%, #65a296 100%) !important;
+}
+
+.course-progress-mid {
+  background: linear-gradient(90deg, #3b709e 0%, #7aa9ce 100%) !important;
+}
+
+.course-progress-low {
+  background: linear-gradient(90deg, #6a7888 0%, #9aa8b6 100%) !important;
+}
+
 /* 给按钮组增加一点点击时的缩放动画，提升手感 */
 .btn-group .btn {
   transition: all 0.2s ease-in-out;
 }
 .btn-group .btn:active {
   transform: scale(0.95);
+}
+
+.strategy-btn {
+  color: #31536f;
+  border-color: #c2d0dd;
+  background: #f7fbff;
+  min-width: 36px;
+}
+
+.strategy-btn:hover:not(:disabled) {
+  color: #15324f;
+  border-color: #8fa8bf;
+  background: #e9f1f8;
+}
+
+.strategy-rest.active {
+  color: #fff;
+  border-color: #7d4850;
+  background: linear-gradient(180deg, #a25d63 0%, #85444c 100%);
+}
+
+.strategy-steady.active {
+  color: #24384d;
+  border-color: #b88a44;
+  background: linear-gradient(180deg, #d9bf7a 0%, #bf9350 100%);
+}
+
+.strategy-focus.active {
+  color: #fff;
+  border-color: #275f55;
+  background: linear-gradient(180deg, #448373 0%, #2e6d62 100%);
 }
 
 @media (max-width: 430px) {
@@ -148,7 +220,7 @@ const changeStrategy = (courseId: string, newState: number) => {
     padding: 0.7rem 0.65rem !important;
   }
 
-  .course-item .fw-bold.text-dark {
+  .course-item .course-title {
     max-width: 66%;
     line-height: 1.25;
     font-size: 0.86rem !important;

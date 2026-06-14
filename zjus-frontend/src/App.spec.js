@@ -35,6 +35,7 @@ describe('App.vue', () => {
         TranscriptModal: true,
         RandomEventModal: true,
         FeedbackModal: true,
+        ExamConfirmModal: true,
         ExitConfirmModal: true,
         EndScreen: true,
       },

@@ -24,7 +24,10 @@ async def test_prepare_game_context_requires_selected_save_when_forced():
     repo = DummyRepo(exists_result=True)
     service = GameService("1", repo, world=Mock())
 
-    with patch("app.services.game_service.SaveService.load_from_db", new=AsyncMock(return_value=False)):
+    with patch(
+        "app.services.game_service.SaveService.load_from_db",
+        new=AsyncMock(return_value=False),
+    ):
         result = await service.prepare_game_context(
             "tester",
             db=Mock(),
@@ -92,6 +95,83 @@ async def test_assign_major_and_init_resets_existing_redis_state():
     assert stats["iq"] == 115
     assert stats["eq"] == 100
     assert stats["luck"] == 50
+    assert stats["initial_major_abbr"] == "CS"
+    assert stats["initial_iq"] == 100
+    assert stats["initial_eq"] == 100
+    assert stats["initial_luck"] == 50
+
+
+@pytest.mark.asyncio
+async def test_engine_restart_rebuilds_initial_profile_and_emits_complete_init():
+    repo = Mock()
+    repo.get_snapshot = AsyncMock(
+        side_effect=[
+            _Snapshot(
+                {
+                    "username": "tester",
+                    "major_abbr": "CS",
+                    "initial_major_abbr": "CS",
+                    "initial_iq": 100,
+                    "initial_eq": 110,
+                    "initial_luck": 40,
+                    "semester_idx": 2,
+                    "elapsed_game_time": 120,
+                }
+            ),
+            _Snapshot(
+                {
+                    "username": "tester",
+                    "major_abbr": "CS",
+                    "initial_major_abbr": "CS",
+                    "initial_iq": 100,
+                    "initial_eq": 110,
+                    "initial_luck": 40,
+                    "semester": "大一秋冬",
+                    "semester_idx": 1,
+                    "elapsed_game_time": 0,
+                    "course_info_json": "[]",
+                },
+                courses={"CS1001": 0.0},
+                course_states={"CS1001": 1},
+            ),
+        ]
+    )
+    repo.get_dingtalk_state = AsyncMock(
+        return_value=Mock(model_dump=Mock(return_value={"contacts": {}}))
+    )
+    repo.get_cooldown_timestamp = AsyncMock(return_value=None)
+    repo.set_game_data = AsyncMock()
+
+    game_service = Mock()
+    game_service.assign_major_and_init = AsyncMock()
+    engine = GameEngine(
+        "1",
+        repo=repo,
+        save_service=Mock(),
+        game_service=game_service,
+        db_factory=lambda: _AsyncContext(Mock()),
+        save_slot=1,
+    )
+    engine.stop = Mock()
+    engine.start = Mock()
+    engine.emit = AsyncMock()
+
+    await engine.process_action({"action": "restart"})
+
+    game_service.assign_major_and_init.assert_awaited_once_with(
+        "CS",
+        stat_overrides={"iq": 100, "eq": 110, "luck": 50},
+        username="tester",
+    )
+    engine.emit.assert_awaited_once()
+    event_type, payload = engine.emit.await_args.args
+    assert event_type == "init"
+    assert payload["data"]["semester"] == "大一秋冬"
+    assert payload["courses"] == {"CS1001": 0.0}
+    assert payload["course_states"] == {"CS1001": 1}
+    assert payload["semester_time_left"] > 0
+    assert payload["dingtalk_state"] == {"contacts": {}}
+    engine.start.assert_called_once()
 
 
 @pytest.mark.asyncio
@@ -128,3 +208,18 @@ class _AsyncContext:
 
     async def __aexit__(self, exc_type, exc, tb):
         return False
+
+
+class _Snapshot:
+    def __init__(self, stats, courses=None, course_states=None):
+        self.stats = _Stats(stats)
+        self.courses = courses or {}
+        self.course_states = course_states or {}
+
+
+class _Stats:
+    def __init__(self, data):
+        self.data = data
+
+    def model_dump(self):
+        return dict(self.data)

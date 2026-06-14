@@ -142,6 +142,7 @@ export function useGameWebSocket() {
 
         case 'init': {
           const data = isRecord(wsMsg.data) ? wsMsg.data : {}
+          gameStore.resetRuntimeStateForInit()
           gameStore.setPhase('playing')
           gameStore.userInfo = data
 

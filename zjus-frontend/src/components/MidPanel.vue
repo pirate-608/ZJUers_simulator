@@ -1,9 +1,9 @@
 <template>
   <div
     id="tour-mid-panel"
-    class="card mid-panel-card mb-3 d-flex flex-column h-100 shadow-sm border-0"
+    class="card mid-panel-card mb-3 d-flex flex-column h-100"
   >
-    <div class="card-header pb-0 bg-white border-bottom mid-panel-header">
+    <div class="card-header pb-0 mid-panel-header">
       <ul
         class="nav nav-tabs card-header-tabs"
         role="tablist"
@@ -26,7 +26,7 @@
             💬 钉钉
             <span
               v-if="store.unreadDingtalk > 0"
-              class="badge bg-danger rounded-pill pulse-animation"
+              class="badge ding-tab-unread rounded-pill pulse-animation"
             >
               {{ store.unreadDingtalk }}
             </span>
@@ -44,7 +44,6 @@
       >
         <div
           class="event-log flex-grow-1 overflow-auto border-0 p-3"
-          style="background: #f8f9fa;"
         >
           <div
             v-if="store.eventLogs.length === 0"
@@ -130,7 +129,7 @@
                   {{ activeContact.sender }}
                   <span
                     v-if="activeContact.is_urgent"
-                    class="badge bg-danger ms-1"
+                    class="badge urgent-badge ms-1"
                   >紧急</span>
                 </div>
                 <div class="text-muted small">
@@ -158,7 +157,7 @@
               </div>
             </div>
 
-            <div class="ding-replies border-top bg-white">
+            <div class="ding-replies border-top">
               <template v-if="activeContact.pending_options.length > 0">
                 <button
                   v-for="option in activeContact.pending_options"
@@ -182,19 +181,19 @@
       </div>
     </div>
 
-    <div class="card-footer bg-white border-top p-3 d-flex flex-column gap-2">
-      <div class="btn-group w-100">
+    <div class="card-footer mid-panel-footer border-top p-3 d-flex flex-column gap-2">
+      <div class="btn-group w-100 speed-control">
         <button
           v-for="speed in [1.0, 1.5, 2.0]"
           :key="speed"
-          class="btn btn-sm"
-          :class="store.gameSpeed === speed ? 'btn-secondary text-white' : 'btn-outline-secondary'"
+          class="btn btn-sm speed-btn"
+          :class="{ active: store.gameSpeed === speed }"
           @click="setSpeed(speed)"
         >
           {{ speed }}x
         </button>
       </div>
-      <small class="text-muted text-center mt-1">⚡ 游戏速度</small>
+      <small class="text-muted text-center mt-1 speed-label">游戏速度</small>
     </div>
   </div>
 </template>
@@ -258,17 +257,17 @@ function normalizeRole(role: string): string {
 const getRoleConfig = (role: string) => {
   const normalizedRole = normalizeRole(role)
   const configs: Record<string, { bg: string; icon: string; name: string }> = {
-    counselor: { bg: '#FF9F43', icon: '导', name: '辅导员' },
-    teacher: { bg: '#54a0ff', icon: '师', name: '老师' },
-    teaching_assistant: { bg: '#2e86de', icon: '助', name: '助教' },
-    classmate: { bg: '#1dd1a1', icon: '同', name: '同学' },
-    roommate: { bg: '#5f27cd', icon: '寝', name: '室友' },
-    friend: { bg: '#10ac84', icon: '友', name: '朋友' },
-    crush: { bg: '#ff6b81', icon: '心', name: 'crush' },
-    system: { bg: '#8395a7', icon: '系', name: '系统通知' },
-    volunteer_coordinator: { bg: '#f368e0', icon: '志', name: '志愿活动' },
+    counselor: { bg: '#a5753d', icon: '导', name: '辅导员' },
+    teacher: { bg: '#3f719e', icon: '师', name: '老师' },
+    teaching_assistant: { bg: '#315f8a', icon: '助', name: '助教' },
+    classmate: { bg: '#477f8a', icon: '同', name: '同学' },
+    roommate: { bg: '#626f95', icon: '寝', name: '室友' },
+    friend: { bg: '#4f8378', icon: '友', name: '朋友' },
+    crush: { bg: '#9b6475', icon: '心', name: 'crush' },
+    system: { bg: '#778596', icon: '系', name: '系统通知' },
+    volunteer_coordinator: { bg: '#7c6f95', icon: '志', name: '志愿活动' },
   }
-  return configs[normalizedRole] || { bg: '#1dd1a1', icon: '生', name: '同学' }
+  return configs[normalizedRole] || { bg: '#477f8a', icon: '生', name: '同学' }
 }
 
 function isContactReplyable(contact: DingTalkContact): boolean {
@@ -355,20 +354,57 @@ function setSpeed(speed: number) {
 <style scoped>
 .event-log {
   font-family: 'Courier New', Courier, monospace;
+  color: #24384d;
+  background: linear-gradient(180deg, #f9fbfe 0%, #f1f6fb 100%);
+}
+
+.event-log b {
+  color: #285a87;
 }
 
 .mid-panel-header {
-  background: linear-gradient(180deg, #fbf9f1 0%, #f4f0e2 100%) !important;
+  background: linear-gradient(180deg, #f8fbfe 0%, #edf4fb 100%) !important;
+  border-bottom: 1px solid #cbd8e5;
+}
+
+.mid-panel-card {
+  overflow: hidden;
+}
+
+.mid-panel-card .nav-tabs {
+  gap: 6px;
+  border-bottom: 0;
+}
+
+.mid-panel-card .nav-link {
+  color: #587088;
+  border: 1px solid transparent;
+  border-radius: 6px 6px 0 0;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.mid-panel-card .nav-link:hover {
+  color: #244d76;
+  border-color: rgba(145, 166, 187, 0.45);
+  background: rgba(255, 255, 255, 0.58);
 }
 
 .mid-panel-card .nav-link.active {
-  color: #1f4368;
+  color: #183b60;
   font-weight: 700;
-  border-color: #d9d2c2 #d9d2c2 #ffffff;
+  background: #ffffff;
+  border-color: #b9c8d8 #b9c8d8 #ffffff;
+  box-shadow: 0 -1px 8px rgba(20, 43, 70, 0.06);
+}
+
+.ding-tab-unread,
+.urgent-badge {
+  background: #9f4d52;
 }
 
 .mid-panel-body {
-  height: 280px;
+  height: clamp(320px, 38vh, 450px);
   min-height: 0;
   overflow: hidden;
 }
@@ -376,7 +412,7 @@ function setSpeed(speed: number) {
 .dingtalk-shell {
   display: grid;
   grid-template-columns: minmax(116px, 34%) 1fr;
-  background: #f7faff;
+  background: #edf4fb;
   min-height: 0;
   overflow: hidden;
 }
@@ -384,13 +420,14 @@ function setSpeed(speed: number) {
 .ding-contact-list {
   min-height: 0;
   overflow-y: auto;
-  background: #f5f8fc;
+  background: linear-gradient(180deg, #f6f9fd 0%, #edf4fb 100%);
+  border-color: #d3deea !important;
 }
 
 .ding-contact {
   width: 100%;
   border: 0;
-  border-bottom: 1px solid #e7edf5;
+  border-bottom: 1px solid #dde7f0;
   background: transparent;
   display: grid;
   grid-template-columns: 34px 1fr auto;
@@ -402,7 +439,7 @@ function setSpeed(speed: number) {
 
 .ding-contact.active {
   background: #ffffff;
-  box-shadow: inset 3px 0 0 #2e86de;
+  box-shadow: inset 3px 0 0 #285a87;
 }
 
 .ding-avatar {
@@ -415,6 +452,7 @@ function setSpeed(speed: number) {
   align-items: center;
   justify-content: center;
   font-size: 0.78rem;
+  box-shadow: inset 0 -1px 0 rgba(0, 0, 0, 0.16);
 }
 
 .ding-contact-main {
@@ -426,7 +464,7 @@ function setSpeed(speed: number) {
 .ding-contact-name {
   font-size: 0.82rem;
   font-weight: 700;
-  color: #26384d;
+  color: #22384e;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -434,7 +472,7 @@ function setSpeed(speed: number) {
 
 .ding-contact-preview {
   font-size: 0.72rem;
-  color: #7b8794;
+  color: #6f7f90;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -445,7 +483,7 @@ function setSpeed(speed: number) {
   height: 18px;
   padding: 0 5px;
   border-radius: 999px;
-  background: #dc3545;
+  background: #9f4d52;
   color: white;
   font-size: 0.68rem;
   display: inline-flex;
@@ -458,7 +496,7 @@ function setSpeed(speed: number) {
   min-height: 0;
   display: flex;
   flex-direction: column;
-  background: #eef5ff;
+  background: #edf4fb;
   overflow: hidden;
 }
 
@@ -466,6 +504,7 @@ function setSpeed(speed: number) {
   min-height: 46px;
   padding: 7px 12px;
   background: #ffffff;
+  border-color: #d3deea !important;
 }
 
 .ding-messages {
@@ -490,20 +529,21 @@ function setSpeed(speed: number) {
   padding: 8px 10px 5px;
   font-size: 0.88rem;
   line-height: 1.45;
-  box-shadow: 0 1px 4px rgba(31, 67, 104, 0.08);
+  box-shadow: 0 3px 10px rgba(31, 67, 104, 0.08);
   overflow-wrap: anywhere;
   word-break: break-word;
 }
 
 .from-npc .ding-bubble {
   background: #ffffff;
-  border: 1px solid #e4eaf2;
+  border: 1px solid #dfe7ef;
   border-top-left-radius: 2px;
 }
 
 .from-player .ding-bubble {
-  background: #d9f7be;
-  border: 1px solid #b7eb8f;
+  color: #10263d;
+  background: #dcebf8;
+  border: 1px solid #bdd2e5;
   border-top-right-radius: 2px;
 }
 
@@ -522,10 +562,40 @@ function setSpeed(speed: number) {
   gap: 6px;
   padding: 7px;
   overflow-x: auto;
+  background: #ffffff;
+  border-color: #d3deea !important;
 }
 
 .ding-replies .btn {
   white-space: nowrap;
+}
+
+.mid-panel-footer {
+  background: linear-gradient(180deg, #f8fbfe 0%, #edf4fb 100%);
+  border-color: #cbd8e5 !important;
+}
+
+.speed-control {
+  border-radius: 7px;
+  box-shadow: inset 0 0 0 1px #cbd8e5;
+  overflow: hidden;
+}
+
+.speed-btn {
+  color: #355a7c;
+  border-color: transparent;
+  background: rgba(255, 255, 255, 0.62);
+  font-weight: 700;
+}
+
+.speed-btn.active {
+  color: #fff;
+  background: linear-gradient(180deg, #356894 0%, #244d76 100%);
+}
+
+.speed-label {
+  color: #647789 !important;
+  letter-spacing: 0.06em;
 }
 
 .pulse-animation {
@@ -569,7 +639,7 @@ function setSpeed(speed: number) {
   }
 
   .ding-contact.active {
-    box-shadow: inset 0 -3px 0 #2e86de;
+    box-shadow: inset 0 -3px 0 #285a87;
   }
 }
 </style>

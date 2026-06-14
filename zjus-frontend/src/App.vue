@@ -15,6 +15,7 @@ import CourseList from './components/CourseList.vue'
 import TranscriptModal from './components/modals/TranscriptModal.vue'
 import RandomEventModal from './components/modals/RandomEventModal.vue'
 import FeedbackModal from './components/modals/FeedbackModal.vue'
+import ExamConfirmModal from './components/modals/ExamConfirmModal.vue'
 import TopNav from './components/TopNav.vue'
 import ExitConfirmModal from './components/modals/ExitConfirmModal.vue'
 import EndScreen from './components/EndScreen.vue'
@@ -186,9 +187,9 @@ const handleEnterGame = () => {
       <HudBar />
       <div class="row g-3 g-xl-4">
         <div class="col-12 col-lg-3">
-          <div class="card mb-3 border-0 shadow-sm h-100">
-            <div class="card-header bg-info text-white text-center fw-bold py-2">
-              📚 学在折大
+          <div class="card app-console-panel app-course-panel mb-3 h-100">
+            <div class="card-header app-panel-header text-center fw-bold py-2">
+              学在折大
             </div>
             <div class="card-body p-0">
               <CourseList @send-action="send" />
@@ -206,6 +207,7 @@ const handleEnterGame = () => {
       <TranscriptModal @send-action="send" />
       <RandomEventModal @send-action="send" />
       <FeedbackModal />
+      <ExamConfirmModal @send-action="send" />
       <ExitConfirmModal @send-action="send" />
     </div>
 
@@ -230,8 +232,137 @@ const handleEnterGame = () => {
 }
 
 .app-playing {
-  max-width: 1440px;
+  max-width: 1480px;
   margin: 0 auto;
+  min-height: 100vh;
+  position: relative;
+  color: #172433;
+}
+
+.app-playing::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background:
+    linear-gradient(90deg, rgba(32, 72, 112, 0.045) 1px, transparent 1px),
+    linear-gradient(180deg, rgba(32, 72, 112, 0.04) 1px, transparent 1px),
+    linear-gradient(160deg, #eaf1f8 0%, #dce7f2 54%, #d2deeb 100%);
+  background-size: 48px 48px, 48px 48px, auto;
+}
+
+.app-playing .card {
+  border: 1px solid rgba(88, 111, 137, 0.22) !important;
+  border-radius: 8px;
+  background: rgba(251, 253, 255, 0.95);
+  box-shadow: 0 16px 42px rgba(18, 44, 73, 0.13);
+}
+
+.app-playing .app-console-panel {
+  overflow: hidden;
+}
+
+.app-playing .app-panel-header {
+  background: linear-gradient(180deg, #18395d 0%, #234d78 100%) !important;
+  color: #f3f8fc;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.18);
+  font-size: 0.92rem;
+  letter-spacing: 0.08em;
+}
+
+.app-playing .progress {
+  height: 10px;
+  background-color: #e6edf5 !important;
+  border-radius: 999px;
+  box-shadow: inset 0 1px 2px rgba(20, 43, 70, 0.1);
+  overflow: hidden;
+}
+
+.app-playing .progress-bar {
+  background-color: #426f9c;
+}
+
+.app-playing .bg-info {
+  background-color: #4578a6 !important;
+}
+
+.app-playing .bg-success {
+  background-color: #3f806e !important;
+}
+
+.app-playing .bg-warning {
+  background-color: #c79a4b !important;
+}
+
+.app-playing .bg-danger {
+  background-color: #9f4d52 !important;
+}
+
+.app-playing .text-primary {
+  color: #285a87 !important;
+}
+
+.app-playing .text-success {
+  color: #2f7767 !important;
+}
+
+.app-playing .text-warning {
+  color: #9a6d25 !important;
+}
+
+.app-playing .text-info {
+  color: #4578a6 !important;
+}
+
+.app-playing .text-danger {
+  color: #94454c !important;
+}
+
+.app-playing .btn {
+  border-radius: 6px;
+}
+
+.app-playing .btn-outline-secondary,
+.app-playing .btn-outline-info,
+.app-playing .btn-outline-success,
+.app-playing .btn-outline-primary {
+  color: #2c567d;
+  border-color: #b9c8d8;
+  background-color: rgba(248, 251, 255, 0.78);
+}
+
+.app-playing .btn-outline-secondary:hover,
+.app-playing .btn-outline-info:hover,
+.app-playing .btn-outline-success:hover,
+.app-playing .btn-outline-primary:hover {
+  color: #fff;
+  background-color: #2f5f8c;
+  border-color: #2f5f8c;
+}
+
+.app-playing .btn-secondary,
+.app-playing .btn-primary,
+.app-playing .btn-success {
+  background: linear-gradient(180deg, #356894 0%, #244d76 100%) !important;
+  border-color: #21486e !important;
+}
+
+.app-playing .btn-warning {
+  color: #22384e !important;
+  background: linear-gradient(180deg, #d7bd7b 0%, #b88a44 100%) !important;
+  border-color: #a77b38 !important;
+}
+
+.app-playing .btn-danger {
+  background: linear-gradient(180deg, #a7565b 0%, #824047 100%) !important;
+  border-color: #793b42 !important;
+}
+
+.app-playing .btn:disabled {
+  color: #8b9aaa !important;
+  border-color: #d2dbe6 !important;
+  background: #edf2f7 !important;
+  opacity: 0.82;
 }
 
 .fade-in-up {

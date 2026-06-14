@@ -58,6 +58,9 @@ class RedisRepository:
             "luck",
             "reputation",
             "efficiency",
+            "initial_iq",
+            "initial_eq",
+            "initial_luck",
             "elapsed_game_time",
             "exam_completed",
         }
@@ -65,6 +68,7 @@ class RedisRepository:
             "username",
             "major",
             "major_abbr",
+            "initial_major_abbr",
             "semester",
             "gpa",
             "highest_gpa",

@@ -1,16 +1,15 @@
 <template>
   <div class="right-panel d-flex flex-column gap-3 h-100" id="tour-right-panel">
-    <div class="card border-0 shadow-sm">
+    <div class="card">
       <div
-        class="card-header section-header section-header-info text-white py-1 text-center fw-bold"
+        class="card-header section-header section-header-info py-1 text-center fw-bold"
         style="font-size: 0.9rem;"
       >
-        📊 状态与增益
+        状态与增益
       </div>
       <div class="card-body p-2">
         <div
-          class="d-flex justify-content-between align-items-center p-2 rounded mb-2" 
-          style="background-color: rgba(13, 110, 253, 0.08); border: 1px solid rgba(13, 110, 253, 0.2);"
+          class="d-flex justify-content-between align-items-center p-2 rounded mb-2 efficiency-card"
         >
           <div>
             <span
@@ -27,7 +26,7 @@
           <span class="fw-bold text-primary fs-5">{{ store.currentStats.efficiency ?? 100 }}%</span>
         </div>
 
-        <div class="d-flex justify-content-around align-items-center pt-1 border-top">
+        <div class="d-flex justify-content-around align-items-center pt-2 border-top mini-metrics">
           <div
             class="text-center"
             title="运气影响随机事件的好坏"
@@ -44,12 +43,12 @@
       </div>
     </div>
 
-    <div class="card border-0 shadow-sm">
+    <div class="card">
       <div
-        class="card-header section-header section-header-warn text-dark py-1 text-center fw-bold"
+        class="card-header section-header section-header-warn py-1 text-center fw-bold"
         style="font-size: 0.9rem;"
       >
-        ☕ 摸鱼休闲
+        摸鱼休闲
       </div>
       <div class="card-body p-2">
         <div class="row g-2">
@@ -98,12 +97,12 @@
       </div>
     </div>
 
-    <div class="card border-0 shadow-sm flex-grow-1">
+    <div class="card flex-grow-1">
       <div
-        class="card-header section-header section-header-danger text-white py-1 text-center fw-bold"
+        class="card-header section-header section-header-danger py-1 text-center fw-bold"
         style="font-size: 0.9rem;"
       >
-        🔥 学期进度
+        学期进度
       </div>
       <div class="card-body p-3 d-flex flex-column justify-content-center">
         <div class="d-flex justify-content-between align-items-end mb-1">
@@ -111,17 +110,16 @@
           <span class="text-primary fw-bold">{{ averageProgress.toFixed(1) }}%</span>
         </div>
         <div
-          class="progress mb-3 shadow-sm"
-          style="height: 12px;"
+          class="progress mb-3"
         >
           <div
-            class="progress-bar bg-info progress-bar-striped progress-bar-animated" 
+            class="progress-bar semester-progress-bar"
             :style="{ width: `${averageProgress}%` }"
           />
         </div>
 
         <!-- 倒计时与考试按钮放在同一个高亮框内，完美融合 -->
-        <div class="d-flex justify-content-between align-items-center p-2 rounded bg-light border border-danger border-opacity-25">
+        <div class="d-flex justify-content-between align-items-center p-2 rounded exam-panel">
           <div class="text-center px-2">
             <div
               class="small text-muted"
@@ -138,7 +136,7 @@
           </div>
           <!-- 🌟 修复：考试按钮同时受控于暂停和倒计时状态 -->
           <button
-            class="btn btn-danger fw-bold shadow-sm px-3" 
+            class="btn exam-btn fw-bold px-3"
             :disabled="store.isPaused || !canTakeExam"
             @click="takeExam"
           >
@@ -148,16 +146,16 @@
       </div>
     </div>
 
-    <div class="card border-0 shadow-sm">
+    <div class="card">
       <div
-        class="card-header section-header section-header-info text-white py-1 text-center fw-bold"
+        class="card-header section-header section-header-info py-1 text-center fw-bold"
         style="font-size: 0.85rem;"
       >
-        🔧 内容生成模式
+        内容生成模式
       </div>
       <div class="card-body p-2">
         <div
-          class="btn-group w-100"
+          class="btn-group w-100 mode-group"
           role="group"
         >
           <button
@@ -263,10 +261,10 @@ const formattedTime = computed(() => {
 // 计算效率的文案提示
 const efficiencyHint = computed(() => {
   const eff = store.currentStats.efficiency ?? 100
-  if (eff >= 120) return '如有神助 🚀'
-  if (eff >= 100) return '状态良好 ✅'
-  if (eff >= 80) return '略显疲态 ⚠️'
-  return '效率低下 ❌'
+  if (eff >= 120) return '卓越状态'
+  if (eff >= 100) return '稳定运行'
+  if (eff >= 80) return '略有疲态'
+  return '需调整节奏'
 })
 
 // 计算课程平均掌握度 (动态从 store 的课程数据中读取)
@@ -281,18 +279,18 @@ const averageProgress = computed(() => {
   return count > 0 ? Math.min(100, totalProgress / count) : 0
 })
 
-// 考试按钮始终可用（玩家可以主动提前考试）
+// 玩家可以主动提前考试，但本学期结算后不可重复触发。
 const canTakeExam = computed(() => {
-  return true
+  return Number(store.currentStats.exam_completed || 0) <= 0
 })
 
 // --- 发送指令逻辑 ---
 
 const relaxLabels: Record<RelaxTarget, string> = {
-  gym: '🏋️‍♂️ 健身',
-  game: '🎮 游戏',
-  walk: '🚶 散步',
-  cc98: '🌊 CC98',
+  gym: '健身',
+  game: '游戏',
+  walk: '散步',
+  cc98: 'CC98',
 }
 
 const cooldownRemaining = (activity: RelaxTarget) => store.relaxCooldowns[activity] ?? 0
@@ -319,31 +317,86 @@ const sendRelax = (activity: RelaxTarget) => {
   emit('send-action', { action: 'relax', target: activity }) 
 }
 const takeExam = () => {
-  emit('send-action', { action: 'exam' }) 
+  store.showModal('exam_confirm')
 }
 </script>
 
 <style scoped>
 .section-header {
   font-family: "Noto Serif SC", "Songti SC", "STSong", serif;
+  color: #f4f8fc;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.16);
+  letter-spacing: 0.08em;
 }
 
 .section-header-info {
-  background: linear-gradient(120deg, #315f89 0%, #3e759f 100%) !important;
+  background: linear-gradient(180deg, #18395d 0%, #244f7b 100%) !important;
 }
 
 .section-header-warn {
-  background: linear-gradient(120deg, #e8ddc2 0%, #ddd0ae 100%) !important;
-  color: #483927 !important;
+  background: linear-gradient(180deg, #244f7b 0%, #315f89 100%) !important;
 }
 
 .section-header-danger {
-  background: linear-gradient(120deg, #8d3f3f 0%, #724040 100%) !important;
+  background: linear-gradient(180deg, #1e466f 0%, #344f72 100%) !important;
+}
+
+.efficiency-card {
+  background: linear-gradient(180deg, #f8fbfe 0%, #edf4fb 100%);
+  border: 1px solid #c9d7e5;
+}
+
+.mini-metrics {
+  border-color: #d4e0eb !important;
+  color: #24384d;
 }
 
 .relax-btn {
   min-height: 31px;
   white-space: nowrap;
+  border-color: #b9c8d8;
+  color: #2d567d;
+  background: #f8fbfe;
+  font-weight: 700;
+}
+
+.relax-btn:hover:not(:disabled) {
+  color: #fff;
+  border-color: #2f5f8c;
+  background: linear-gradient(180deg, #356894 0%, #244d76 100%);
+}
+
+.semester-progress-bar {
+  background: linear-gradient(90deg, #386f9d 0%, #79a9ce 100%) !important;
+}
+
+.exam-panel {
+  background: linear-gradient(180deg, #fbfcfe 0%, #eef4fa 100%);
+  border: 1px solid #cbd8e5;
+}
+
+.exam-btn {
+  color: #fff;
+  border-color: #824047;
+  background: linear-gradient(180deg, #a7565b 0%, #824047 100%);
+  box-shadow: 0 8px 18px rgba(130, 64, 71, 0.18);
+}
+
+.exam-btn:hover:not(:disabled) {
+  color: #fff;
+  border-color: #70383f;
+  background: linear-gradient(180deg, #944c52 0%, #723941 100%);
+}
+
+.mode-group {
+  border-radius: 7px;
+  box-shadow: inset 0 0 0 1px #cbd8e5;
+  overflow: hidden;
+}
+
+.mode-group .btn {
+  border-color: transparent;
+  font-weight: 700;
 }
 
 @media (max-width: 430px) {

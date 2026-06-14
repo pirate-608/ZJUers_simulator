@@ -6,16 +6,14 @@ PlayerStats 单元测试
 """
 
 import time
-import pytest
 
 from app.schemas.game_state import (
-    PlayerStats,
     GameStateSnapshot,
-    _to_int,
+    PlayerStats,
     _to_float,
+    _to_int,
     _to_str,
 )
-
 
 # ==========================================
 # 辅助函数测试
@@ -116,10 +114,30 @@ class TestBuildInitial:
         ps = PlayerStats.build_initial(username="DumpTest")
         d = ps.model_dump()
         expected_keys = {
-            "username", "major", "major_abbr", "semester", "semester_idx",
-            "semester_start_time", "energy", "sanity", "stress", "iq", "eq",
-            "luck", "gpa", "highest_gpa", "reputation", "efficiency", "course_plan_json",
-            "course_info_json", "elapsed_game_time", "exam_completed",
+            "username",
+            "major",
+            "major_abbr",
+            "semester",
+            "semester_idx",
+            "semester_start_time",
+            "energy",
+            "sanity",
+            "stress",
+            "iq",
+            "eq",
+            "luck",
+            "gpa",
+            "highest_gpa",
+            "reputation",
+            "efficiency",
+            "initial_major_abbr",
+            "initial_iq",
+            "initial_eq",
+            "initial_luck",
+            "course_plan_json",
+            "course_info_json",
+            "elapsed_game_time",
+            "exam_completed",
         }
         assert set(d.keys()) == expected_keys
 

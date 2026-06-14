@@ -1,12 +1,19 @@
 :root {
-  --page-bg: #f6f2e9;
-  --page-bg-alt: #ece6d8;
-  --text-main: #1c2a3a;
-  --text-sub: #5a6470;
-  --brand: #2f5d88;
-  --brand-strong: #1f4368;
-  --border-soft: #d9d2c2;
-  --card-shadow: 0 10px 30px rgba(32, 44, 58, 0.1);
+  --page-bg: #e8eef6;
+  --page-bg-alt: #dbe5ef;
+  --text-main: #172433;
+  --text-sub: #5a6a7e;
+  --brand: #285a87;
+  --brand-strong: #183b60;
+  --brand-soft: #e7f0f8;
+  --academic-navy: #132f4d;
+  --academic-blue: #285a87;
+  --academic-blue-2: #3c719e;
+  --academic-gold: #a77b38;
+  --surface-paper: #fbfdff;
+  --surface-muted: #f2f6fb;
+  --border-soft: #c6d2df;
+  --card-shadow: 0 14px 36px rgba(20, 43, 70, 0.12);
   font-family: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans SC", sans-serif;
   line-height: 1.5;
   font-weight: 400;
@@ -36,9 +43,10 @@ body {
 body {
   color: var(--text-main);
   background:
-    radial-gradient(circle at 18% 16%, rgba(49, 86, 122, 0.14), transparent 32%),
-    radial-gradient(circle at 84% 0%, rgba(130, 110, 76, 0.09), transparent 30%),
+    linear-gradient(90deg, rgba(23, 54, 87, 0.045) 1px, transparent 1px),
+    linear-gradient(180deg, rgba(23, 54, 87, 0.04) 1px, transparent 1px),
     linear-gradient(160deg, var(--page-bg), var(--page-bg-alt));
+  background-size: 44px 44px, 44px 44px, auto;
 }
 
 #app {
@@ -61,7 +69,7 @@ button,
 
 .card {
   border: 1px solid var(--border-soft);
-  border-radius: 14px;
+  border-radius: 8px;
   box-shadow: var(--card-shadow);
 }
 
@@ -71,8 +79,8 @@ button,
 }
 
 .btn-primary {
-  background-color: var(--brand);
-  border-color: var(--brand);
+  background: linear-gradient(180deg, var(--academic-blue) 0%, var(--brand-strong) 100%);
+  border-color: var(--brand-strong);
 }
 
 .btn-primary:hover,
@@ -87,6 +95,6 @@ button,
   }
 
   .card {
-    border-radius: 12px;
+    border-radius: 8px;
   }
 }

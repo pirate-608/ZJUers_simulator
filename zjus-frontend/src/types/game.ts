@@ -23,6 +23,12 @@ export interface PlayerStats {
   highest_gpa?: number
   reputation?: number
   efficiency?: number
+  exam_completed?: number
+
+  initial_major_abbr?: string
+  initial_iq?: number
+  initial_eq?: number
+  initial_luck?: number
 
   courses: CoursesMap
 

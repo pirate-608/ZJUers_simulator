@@ -21,7 +21,7 @@ type EndData = {
   [k: string]: unknown
 }
 
-type ActiveModalName = 'transcript' | 'random_event' | 'exit_confirm' | null
+type ActiveModalName = 'transcript' | 'random_event' | 'exit_confirm' | 'exam_confirm' | null
 
 type EventLog = {
   id: number
@@ -62,6 +62,7 @@ export const useGameStore = defineStore('game', () => {
     reputation: 0,
     efficiency: 100,
     courses: {}, // 存放实时的掌握度进度
+    exam_completed: 0,
   })
 
   const courseMetadata = ref<CourseMetadata[]>([]) // 静态课程信息
@@ -314,6 +315,33 @@ export const useGameStore = defineStore('game', () => {
     setPhase('ended')
   }
 
+  function resetRuntimeStateForInit() {
+    endType.value = null
+    endData.value = {}
+    isPaused.value = false
+    isGuideActive.value = false
+    gameSpeed.value = 1
+    semesterTimeLeft.value = 0
+    eventLogs.value = []
+    dingMessages.value = []
+    for (const key in dingtalkContacts) {
+      delete dingtalkContacts[key]
+    }
+    unreadDingtalk.value = 0
+    for (const target of Object.keys(relaxCooldowns) as RelaxTarget[]) {
+      relaxCooldowns[target] = 0
+    }
+    for (const key in currentStats.courses) {
+      delete currentStats.courses[key]
+    }
+    for (const key in currentCourseStates) {
+      delete currentCourseStates[key]
+    }
+    closeModal()
+    closeFeedback()
+    isPendingExit.value = false
+  }
+
   return {
     currentPhase,
     setPhase,
@@ -325,6 +353,7 @@ export const useGameStore = defineStore('game', () => {
     endType,
     endData,
     triggerEndGame,
+    resetRuntimeStateForInit,
     courseMetadata,
     setCourseMetadata,
     resetForNewSemester,

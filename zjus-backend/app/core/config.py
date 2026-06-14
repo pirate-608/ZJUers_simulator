@@ -50,9 +50,10 @@ class Settings(BaseSettings):
 
     # MiniMax M2-her 配置（钉钉消息 RP 生成）
     MINIMAX_API_KEY: str = os.environ.get("MINIMAX_API_KEY", "")
+    MINIMAX_MODEL: str = os.environ.get("MINIMAX_MODEL", "M2-her")
     MINIMAX_BASE_URL: str = os.environ.get(
         "MINIMAX_BASE_URL",
-        "https://api.minimaxi.com/v1/text/chatcompletion_v2",
+        "https://api.minimaxi.com/v1",
     )
     INVITE_CODES: str = ""  # 逗号分隔的邀请码列表，如 "CODE1,CODE2,CODE3"
 

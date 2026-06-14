@@ -10,7 +10,7 @@ pgvector 向量存储抽象层
 import json
 import logging
 from pathlib import Path
-from typing import List, Dict, Any, Optional
+from typing import Any, Dict, List, Optional
 
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -118,9 +118,9 @@ async def search_by_vector(
         vec_str = "[" + ",".join(str(v) for v in query_vec) + "]"
         sql = text(
             """
-            SELECT char_json, 1 - (embedding <=> :vec::vector) AS similarity
+            SELECT char_json, 1 - (embedding <=> CAST(:vec AS vector)) AS similarity
             FROM character_embeddings
-            ORDER BY embedding <=> :vec::vector
+            ORDER BY embedding <=> CAST(:vec AS vector)
             LIMIT :k
             """
         )

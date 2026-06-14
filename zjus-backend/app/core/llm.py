@@ -18,7 +18,7 @@ PROVIDER_BASE_URLS = {
     "qwen": "https://dashscope.aliyuncs.com/compatible-mode/v1",
     "glm": "https://open.bigmodel.cn/api/paas/v4",
     "moonshot": "https://api.moonshot.cn/v1",
-    "minimax": "https://api.minimax.chat/v1",
+    "minimax": "https://api.minimaxi.com/v1",
 }
 
 DEFAULT_LLM_MODEL = "gpt-4o-mini"
@@ -49,8 +49,13 @@ def _get_client(api_key: Optional[str], base_url: Optional[str]) -> AsyncOpenAI:
 def _json_from_text(content: object) -> dict[str, Any]:
     if not isinstance(content, str) or not content.strip():
         return {}
+    text = content.strip()
+    if text.startswith("```"):
+        text = text.strip("`")
+        if text.lower().startswith("json"):
+            text = text[4:].strip()
     try:
-        parsed = json.loads(content)
+        parsed = json.loads(text)
     except json.JSONDecodeError:
         return {}
     return parsed if isinstance(parsed, dict) else {}
@@ -320,6 +325,102 @@ async def generate_dingtalk_message(
         return current_msg
     except Exception as e:
         print(f"[LLM DingTalk Error] {e}")
+        return None
+
+
+async def generate_dingtalk_reply_message(
+    character: Dict[str, Any],
+    player_stats: dict,
+    history: list[dict[str, Any]],
+    player_reply: str,
+    reply_count: int,
+    llm_override: Optional[Dict[str, Any]] = None,
+) -> dict[str, Any] | None:
+    """用通用 OpenAI-compatible LLM 生成钉钉私聊回复。"""
+    try:
+        api_key, base_url, model = _resolve_llm_config(llm_override)
+        if not api_key:
+            return None
+
+        sender = str(character.get("name") or character.get("sender") or "对方")
+        role = str(character.get("role") or "unknown")
+        persona = str(character.get("content") or f"你是{sender}。")
+        examples = character.get("examples")
+        example_hint = ""
+        if isinstance(examples, list) and examples:
+            example_hint = "角色说话示例：" + " / ".join(str(x) for x in examples[:3])
+
+        username = safe_username_for_prompt(player_stats.get("username") or "同学")
+        major = str(player_stats.get("major") or "未知专业")
+        semester = str(player_stats.get("semester") or "当前学期")
+        stats_hint = (
+            f"玩家：{username}，{major}，{semester}。"
+            f"心态 {player_stats.get('sanity', '--')}，"
+            f"压力 {player_stats.get('stress', '--')}，"
+            f"GPA {player_stats.get('gpa', '--')}。"
+        )
+
+        history_lines = []
+        for msg in history[-8:]:
+            speaker = "玩家" if msg.get("speaker") == "player" else sender
+            text = str(msg.get("content") or "").strip()
+            if text:
+                history_lines.append(f"{speaker}: {text}")
+        history_text = "\n".join(history_lines) or "暂无历史。"
+        should_settle = reply_count >= 3
+
+        if should_settle:
+            output_contract = (
+                '严格返回 JSON：{"npc_reply":"...",'
+                '"settlement":{"desc":"...","effects":{"sanity":1}}}。'
+                "effects 只能包含 energy/sanity/stress/eq/luck/reputation，"
+                "整数幅度要克制，通常在 -3 到 3。"
+            )
+        else:
+            output_contract = (
+                '严格返回 JSON：{"npc_reply":"...",'
+                '"reply_options":["选项1","选项2","选项3"]}。'
+                "回复选项要像玩家会点的短句，2-3 个。"
+            )
+
+        prompt = (
+            "你正在模拟浙江大学校园钉钉私聊。\n"
+            f"NPC：{sender}，角色类型：{role}。\n"
+            f"NPC人设：{persona}\n"
+            f"{example_hint}\n"
+            f"{stats_hint}\n"
+            f"当前私聊历史：\n{history_text}\n"
+            f"玩家刚选择回复：{player_reply}\n"
+            "请保持自然、简短、有角色感，不要解释生成过程。\n"
+            f"{output_contract}"
+        )
+
+        llm_client = _get_client(api_key, base_url)
+        response = await llm_client.chat.completions.create(
+            model=model,
+            messages=[{"role": "user", "content": prompt}],
+            max_tokens=420,
+        )
+        raw = response.choices[0].message.content
+        data = _json_from_text(raw)
+        npc_reply = str(data.get("npc_reply") or raw or "").strip()
+        if not npc_reply:
+            return None
+
+        result: dict[str, Any] = {"content": npc_reply[:500]}
+        if should_settle:
+            settlement = data.get("settlement")
+            result["settlement"] = settlement if isinstance(settlement, dict) else None
+        else:
+            options = _string_list(data.get("reply_options"))
+            if options:
+                result["reply_options"] = [
+                    {"option_id": f"opt_{idx + 1}", "text": text[:80]}
+                    for idx, text in enumerate(options[:3])
+                ]
+        return result
+    except Exception as e:
+        logger.warning("Generic DingTalk reply generation failed: %s", e)
         return None
 
 

@@ -121,8 +121,8 @@ LLM_API_KEY=your_llm_api_key (optional)
 LLM_BASE_URL=https://dashscope.aliyuncs.com/compatible-mode/v1
 LLM=your_model_name
 MINIMAX_API_KEY=your_minimax_api_key (optional, leave empty to fall back to default LLM)
-MINIMAX_MODEL=minimax-m2-her
-MINIMAX_BASE_URL=https://api.minimax.chat/v1/text/chatcompletion_v2
+MINIMAX_MODEL=M2-her
+MINIMAX_BASE_URL=https://api.minimaxi.com/v1
 ```
 
 ```bash

@@ -2,16 +2,16 @@
 MiniMax M2-her 钉钉消息生成模块
 
 将 characters.json 中的角色映射到 M2-her 的 RP 角色系统，
-使用 httpx 直接调用原生 API，生成高质量角色扮演钉钉消息。
+通过 OpenAI SDK 兼容接口生成高质量角色扮演钉钉消息。
 """
 
 import json
 import logging
 import random
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, cast
 
-import httpx
+from openai import APITimeoutError, AsyncOpenAI, OpenAIError
 
 from app.api.cache import RedisCache
 from app.core.config import settings
@@ -29,7 +29,9 @@ _CACHE_KEY = "game:dingtalk_m2her"
 _CACHE_MAX_LEN = 100
 _CACHE_TTL_SECONDS = 6 * 60 * 60  # 6 小时
 _CHARACTER_CACHE: List[Dict[str, Any]] | None = None
-_M2HER_CLIENT: httpx.AsyncClient | None = None
+_M2HER_CLIENT: AsyncOpenAI | None = None
+_M2HER_CLIENT_CONFIG: tuple[str, str] | None = None
+_DEFAULT_M2HER_BASE_URL = "https://api.minimaxi.com/v1"
 
 _FALLBACK_REPLY_OPTIONS = {
     "roommate": ["哈哈收到", "我马上看看", "你先别急"],
@@ -249,72 +251,77 @@ def _build_m2her_messages(
 async def _call_m2her_api(
     messages: List[Dict], max_completion_tokens: int = 200
 ) -> Optional[str]:
-    """调用 MiniMax M2-her 原生 API"""
+    """通过 OpenAI SDK 兼容接口调用 MiniMax M2-her"""
     api_key = settings.MINIMAX_API_KEY
-    base_url = settings.MINIMAX_BASE_URL
+    model_value = getattr(settings, "MINIMAX_MODEL", "M2-her")
+    model = (
+        model_value
+        if isinstance(model_value, str) and model_value.strip()
+        else "M2-her"
+    )
+    base_url = _normalize_m2her_base_url(settings.MINIMAX_BASE_URL)
 
     if not api_key:
         return None
 
     try:
-        client = _get_m2her_client()
-        resp = await client.post(
-            base_url,
-            headers={
-                "Authorization": f"Bearer {api_key}",
-                "Content-Type": "application/json",
-            },
-            json={
-                "model": "M2-her",
-                "messages": messages,
-                "temperature": 1.0,
-                "top_p": 0.95,
-                "max_completion_tokens": max_completion_tokens,
-            },
-            timeout=15.0,
+        client = await _get_m2her_client(api_key, base_url)
+        response = await client.chat.completions.create(
+            model=model,
+            messages=cast(Any, messages),
+            temperature=1.0,
+            top_p=0.95,
+            max_completion_tokens=max_completion_tokens,
         )
-        resp.raise_for_status()
-        data = resp.json()
-
-        # 检查 base_resp 错误
-        base_resp = data.get("base_resp", {})
-        if base_resp.get("status_code", 0) != 0:
-            logger.warning(
-                "M2-her API error: %s", base_resp.get("status_msg", "unknown")
-            )
-            return None
-
-        # 检查敏感词
-        if data.get("output_sensitive"):
-            logger.warning("M2-her output hit sensitive filter")
-            return None
-
-        choices = data.get("choices", [])
+        choices = response.choices or []
         if choices:
-            return choices[0].get("message", {}).get("content", "").strip()
+            content = choices[0].message.content
+            return content.strip() if isinstance(content, str) else None
 
         return None
 
-    except httpx.TimeoutException:
+    except APITimeoutError:
         logger.warning("M2-her API timeout")
+        return None
+    except OpenAIError as e:
+        logger.warning("M2-her API error: %s", e)
         return None
     except Exception as e:
         logger.error("M2-her API call failed: %s", e)
         return None
 
 
-def _get_m2her_client() -> httpx.AsyncClient:
-    global _M2HER_CLIENT
-    if _M2HER_CLIENT is None or _M2HER_CLIENT.is_closed:
-        _M2HER_CLIENT = httpx.AsyncClient()
+def _normalize_m2her_base_url(base_url: str | None) -> str:
+    """Return an OpenAI SDK base URL, tolerating older full endpoint config."""
+    normalized = (base_url or _DEFAULT_M2HER_BASE_URL).strip().rstrip("/")
+    for suffix in ("/chat/completions", "/text/chatcompletion_v2"):
+        if normalized.endswith(suffix):
+            normalized = normalized[: -len(suffix)].rstrip("/")
+    return normalized or _DEFAULT_M2HER_BASE_URL
+
+
+async def _get_m2her_client(api_key: str, base_url: str) -> AsyncOpenAI:
+    global _M2HER_CLIENT, _M2HER_CLIENT_CONFIG
+    client_config = (api_key, base_url)
+    if _M2HER_CLIENT is None or _M2HER_CLIENT_CONFIG != client_config:
+        if _M2HER_CLIENT is not None:
+            await _M2HER_CLIENT.close()
+        _M2HER_CLIENT = AsyncOpenAI(
+            api_key=api_key,
+            base_url=base_url,
+            timeout=15.0,
+        )
+        _M2HER_CLIENT_CONFIG = client_config
+    assert _M2HER_CLIENT is not None
     return _M2HER_CLIENT
 
 
 async def close_m2her_client() -> None:
-    global _M2HER_CLIENT
-    if _M2HER_CLIENT is not None and not _M2HER_CLIENT.is_closed:
-        await _M2HER_CLIENT.aclose()
+    global _M2HER_CLIENT, _M2HER_CLIENT_CONFIG
+    if _M2HER_CLIENT is not None:
+        await _M2HER_CLIENT.close()
     _M2HER_CLIENT = None
+    _M2HER_CLIENT_CONFIG = None
 
 
 # ==========================================

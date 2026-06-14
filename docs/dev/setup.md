@@ -30,8 +30,8 @@ LLM_API_KEY=optional
 LLM_BASE_URL=https://dashscope.aliyuncs.com/compatible-mode/v1
 LLM=your-model
 MINIMAX_API_KEY=optional
-MINIMAX_MODEL=minimax-m2-her
-MINIMAX_BASE_URL=https://api.minimax.chat/v1/text/chatcompletion_v2
+MINIMAX_MODEL=M2-her
+MINIMAX_BASE_URL=https://api.minimaxi.com/v1
 ```
 
 2. 从项目根目录启动：

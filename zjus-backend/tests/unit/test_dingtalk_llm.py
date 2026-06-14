@@ -10,11 +10,22 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
+import app.core.dingtalk_llm as dingtalk_llm
 from app.core.dingtalk_llm import (
     _build_m2her_messages,
     _call_m2her_api,
+    _normalize_m2her_base_url,
     generate_dingtalk_via_m2her,
 )
+
+
+@pytest.fixture(autouse=True)
+def reset_m2her_client_cache():
+    dingtalk_llm._M2HER_CLIENT = None
+    dingtalk_llm._M2HER_CLIENT_CONFIG = None
+    yield
+    dingtalk_llm._M2HER_CLIENT = None
+    dingtalk_llm._M2HER_CLIENT_CONFIG = None
 
 # ==========================================
 # _build_m2her_messages 测试（纯函数，无 I/O）
@@ -34,13 +45,17 @@ class TestBuildM2herMessages:
         assert "group" in roles
         assert roles[-1] == "user"  # 最后一条触发生成
 
-    def test_system_message_uses_character_data(self, sample_character, sample_player_stats):
+    def test_system_message_uses_character_data(
+        self, sample_character, sample_player_stats
+    ):
         msgs = _build_m2her_messages(sample_character, sample_player_stats, "random")
         system_msg = msgs[0]
         assert system_msg["name"] == "【室友】"
         assert "室友" in system_msg["content"]
 
-    def test_user_system_contains_player_info(self, sample_character, sample_player_stats):
+    def test_user_system_contains_player_info(
+        self, sample_character, sample_player_stats
+    ):
         msgs = _build_m2her_messages(sample_character, sample_player_stats, "random")
         user_system_msgs = [m for m in msgs if m["role"] == "user_system"]
         assert len(user_system_msgs) == 1
@@ -71,7 +86,9 @@ class TestBuildM2herMessages:
         user_system = [m for m in msgs if m["role"] == "user_system"][0]
         assert "心态不太好" in user_system["content"]
 
-    def test_group_message_contains_context(self, sample_character, sample_player_stats):
+    def test_group_message_contains_context(
+        self, sample_character, sample_player_stats
+    ):
         msgs = _build_m2her_messages(sample_character, sample_player_stats, "low_gpa")
         group_msgs = [m for m in msgs if m["role"] == "group"]
         assert len(group_msgs) == 1
@@ -84,7 +101,9 @@ class TestBuildM2herMessages:
         assert len(sample_ai_msgs) == 3
         assert sample_ai_msgs[0]["content"] == "你早上出门忘关空调了！"
 
-    def test_sample_user_replies_between_examples(self, sample_character, sample_player_stats):
+    def test_sample_user_replies_between_examples(
+        self, sample_character, sample_player_stats
+    ):
         msgs = _build_m2her_messages(sample_character, sample_player_stats, "random")
         sample_user_msgs = [m for m in msgs if m["role"] == "sample_message_user"]
         # 3 examples → 2 user replies (between each pair)
@@ -104,7 +123,7 @@ class TestBuildM2herMessages:
 
 
 # ==========================================
-# _call_m2her_api 测试（mock httpx）
+# _call_m2her_api 测试（mock OpenAI SDK）
 # ==========================================
 
 
@@ -120,91 +139,88 @@ class TestCallM2herApi:
 
     @pytest.mark.asyncio
     async def test_success_response(self):
-        mock_resp = MagicMock()
-        mock_resp.status_code = 200
-        mock_resp.raise_for_status = MagicMock()
-        mock_resp.json.return_value = {
-            "choices": [
-                {"message": {"content": "今天记得带伞哦！", "role": "assistant"}}
-            ],
-            "base_resp": {"status_code": 0},
-            "output_sensitive": False,
-        }
+        mock_response = MagicMock()
+        mock_choice = MagicMock()
+        mock_choice.message.content = "今天记得带伞哦！"
+        mock_response.choices = [mock_choice]
 
         with patch("app.core.dingtalk_llm.settings") as mock_settings:
             mock_settings.MINIMAX_API_KEY = "test-key"
-            mock_settings.MINIMAX_BASE_URL = "https://test.api.com"
-            with patch("httpx.AsyncClient") as MockClient:
-                mock_client = AsyncMock()
-                mock_client.post.return_value = mock_resp
-                mock_client.__aenter__ = AsyncMock(return_value=mock_client)
-                mock_client.__aexit__ = AsyncMock(return_value=False)
+            mock_settings.MINIMAX_MODEL = "M2-her"
+            mock_settings.MINIMAX_BASE_URL = (
+                "https://api.minimaxi.com/v1/chat/completions"
+            )
+            with patch("app.core.dingtalk_llm.AsyncOpenAI") as MockClient:
+                mock_client = MagicMock()
+                mock_client.chat.completions.create = AsyncMock(
+                    return_value=mock_response
+                )
+                mock_client.close = AsyncMock()
                 MockClient.return_value = mock_client
 
                 result = await _call_m2her_api([{"role": "user", "content": "test"}])
                 assert result == "今天记得带伞哦！"
+                MockClient.assert_called_once_with(
+                    api_key="test-key",
+                    base_url="https://api.minimaxi.com/v1",
+                    timeout=15.0,
+                )
+                kwargs = mock_client.chat.completions.create.await_args.kwargs
+                assert kwargs["model"] == "M2-her"
+                assert kwargs["messages"] == [{"role": "user", "content": "test"}]
+                assert kwargs["max_completion_tokens"] == 200
 
     @pytest.mark.asyncio
-    async def test_sensitive_output_returns_none(self):
-        mock_resp = MagicMock()
-        mock_resp.raise_for_status = MagicMock()
-        mock_resp.json.return_value = {
-            "choices": [{"message": {"content": "bad content"}}],
-            "base_resp": {"status_code": 0},
-            "output_sensitive": True,
-        }
-
+    async def test_empty_choices_returns_none(self):
+        mock_response = MagicMock()
+        mock_response.choices = []
         with patch("app.core.dingtalk_llm.settings") as mock_settings:
             mock_settings.MINIMAX_API_KEY = "test-key"
-            mock_settings.MINIMAX_BASE_URL = "https://test.api.com"
-            with patch("httpx.AsyncClient") as MockClient:
-                mock_client = AsyncMock()
-                mock_client.post.return_value = mock_resp
-                mock_client.__aenter__ = AsyncMock(return_value=mock_client)
-                mock_client.__aexit__ = AsyncMock(return_value=False)
+            mock_settings.MINIMAX_BASE_URL = "https://api.minimaxi.com/v1"
+            with patch("app.core.dingtalk_llm.AsyncOpenAI") as MockClient:
+                mock_client = MagicMock()
+                mock_client.chat.completions.create = AsyncMock(
+                    return_value=mock_response
+                )
+                mock_client.close = AsyncMock()
                 MockClient.return_value = mock_client
 
                 result = await _call_m2her_api([{"role": "user", "content": "test"}])
                 assert result is None
 
     @pytest.mark.asyncio
-    async def test_api_error_status_returns_none(self):
-        mock_resp = MagicMock()
-        mock_resp.raise_for_status = MagicMock()
-        mock_resp.json.return_value = {
-            "choices": [],
-            "base_resp": {"status_code": 1001, "status_msg": "rate limited"},
-        }
-
+    async def test_sdk_error_returns_none(self):
         with patch("app.core.dingtalk_llm.settings") as mock_settings:
             mock_settings.MINIMAX_API_KEY = "test-key"
-            mock_settings.MINIMAX_BASE_URL = "https://test.api.com"
-            with patch("httpx.AsyncClient") as MockClient:
-                mock_client = AsyncMock()
-                mock_client.post.return_value = mock_resp
-                mock_client.__aenter__ = AsyncMock(return_value=mock_client)
-                mock_client.__aexit__ = AsyncMock(return_value=False)
+            mock_settings.MINIMAX_BASE_URL = "https://api.minimaxi.com/v1"
+            with patch("app.core.dingtalk_llm.AsyncOpenAI") as MockClient:
+                mock_client = MagicMock()
+                mock_client.chat.completions.create = AsyncMock(
+                    side_effect=RuntimeError("rate limited")
+                )
+                mock_client.close = AsyncMock()
                 MockClient.return_value = mock_client
 
                 result = await _call_m2her_api([{"role": "user", "content": "test"}])
                 assert result is None
 
-    @pytest.mark.asyncio
-    async def test_timeout_returns_none(self):
-        import httpx as httpx_mod
-
-        with patch("app.core.dingtalk_llm.settings") as mock_settings:
-            mock_settings.MINIMAX_API_KEY = "test-key"
-            mock_settings.MINIMAX_BASE_URL = "https://test.api.com"
-            with patch("httpx.AsyncClient") as MockClient:
-                mock_client = AsyncMock()
-                mock_client.post.side_effect = httpx_mod.TimeoutException("timeout")
-                mock_client.__aenter__ = AsyncMock(return_value=mock_client)
-                mock_client.__aexit__ = AsyncMock(return_value=False)
-                MockClient.return_value = mock_client
-
-                result = await _call_m2her_api([{"role": "user", "content": "test"}])
-                assert result is None
+    def test_normalizes_compatible_base_urls(self):
+        assert (
+            _normalize_m2her_base_url("https://api.minimaxi.com/v1")
+            == "https://api.minimaxi.com/v1"
+        )
+        assert (
+            _normalize_m2her_base_url(
+                "https://api.minimaxi.com/v1/chat/completions"
+            )
+            == "https://api.minimaxi.com/v1"
+        )
+        assert (
+            _normalize_m2her_base_url(
+                "https://api.minimax.chat/v1/text/chatcompletion_v2"
+            )
+            == "https://api.minimax.chat/v1"
+        )
 
 
 # ==========================================
@@ -246,8 +262,14 @@ class TestGenerateDingtalkViaM2her:
             with patch("app.core.dingtalk_llm.RedisCache") as mock_cache:
                 mock_cache.lpop = AsyncMock(return_value=None)
                 mock_cache.rpush_many_with_limit = AsyncMock()
-                with patch("app.core.dingtalk_llm._load_characters", return_value=sample_characters_list):
-                    with patch("app.core.dingtalk_llm._call_m2her_api", new_callable=AsyncMock) as mock_api:
+                with patch(
+                    "app.core.dingtalk_llm._load_characters",
+                    return_value=sample_characters_list,
+                ):
+                    with patch(
+                        "app.core.dingtalk_llm._call_m2her_api",
+                        new_callable=AsyncMock,
+                    ) as mock_api:
                         mock_api.return_value = "测试消息内容"
                         result = await generate_dingtalk_via_m2her(sample_player_stats)
 
@@ -259,14 +281,22 @@ class TestGenerateDingtalkViaM2her:
                         assert result["content"] == "测试消息内容"
 
     @pytest.mark.asyncio
-    async def test_api_failure_returns_none(self, sample_player_stats, sample_characters_list):
+    async def test_api_failure_returns_none(
+        self, sample_player_stats, sample_characters_list
+    ):
         """所有 API 调用失败时返回 None"""
         with patch("app.core.dingtalk_llm.settings") as mock_settings:
             mock_settings.MINIMAX_API_KEY = "test-key"
             with patch("app.core.dingtalk_llm.RedisCache") as mock_cache:
                 mock_cache.lpop = AsyncMock(return_value=None)
-                with patch("app.core.dingtalk_llm._load_characters", return_value=sample_characters_list):
-                    with patch("app.core.dingtalk_llm._call_m2her_api", new_callable=AsyncMock) as mock_api:
+                with patch(
+                    "app.core.dingtalk_llm._load_characters",
+                    return_value=sample_characters_list,
+                ):
+                    with patch(
+                        "app.core.dingtalk_llm._call_m2her_api",
+                        new_callable=AsyncMock,
+                    ) as mock_api:
                         mock_api.return_value = None  # API 全部失败
                         result = await generate_dingtalk_via_m2her(sample_player_stats)
                         assert result is None

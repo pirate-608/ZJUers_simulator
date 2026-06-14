@@ -17,6 +17,7 @@ from app.core.input_safety import safe_username_for_prompt
 from app.core.llm import (
     generate_cc98_post,
     generate_dingtalk_message,
+    generate_dingtalk_reply_message,
     generate_random_event,
 )
 from app.game.balance import balance  # 游戏数值配置
@@ -329,6 +330,26 @@ class GameEngine:
                     return generated
             except Exception as e:
                 logger.warning("M2-her dingtalk reply fallback: %s", e)
+        try:
+            character = {
+                "name": contact.sender,
+                "role": contact.role,
+                "content": f"你是{contact.sender}。",
+                "examples": [],
+            }
+            history = [m.model_dump() for m in contact.messages]
+            generated = await generate_dingtalk_reply_message(
+                character,
+                stats,
+                history,
+                player_reply,
+                reply_count,
+                llm_override=self.llm_override,
+            )
+            if generated:
+                return generated
+        except Exception as e:
+            logger.warning("Generic dingtalk reply fallback failed: %s", e)
         return self._fallback_dingtalk_reply_result(contact, reply_count)
 
     def _sanitize_dingtalk_effects(

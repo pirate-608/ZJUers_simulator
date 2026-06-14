@@ -126,8 +126,8 @@ LLM_API_KEY=你的大模型API密钥（可选）
 LLM_BASE_URL=https://dashscope.aliyuncs.com/compatible-mode/v1
 LLM=你的模型名称
 MINIMAX_API_KEY=你的MiniMax API密钥（可选，留空则回退到默认LLM）
-MINIMAX_MODEL=minimax-m2-her
-MINIMAX_BASE_URL=https://api.minimax.chat/v1/text/chatcompletion_v2
+MINIMAX_MODEL=M2-her
+MINIMAX_BASE_URL=https://api.minimaxi.com/v1
 ```
 
 ```bash

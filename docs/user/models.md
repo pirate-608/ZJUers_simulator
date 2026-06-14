@@ -4,7 +4,7 @@ ZJUers 模拟器本身不依赖大模型运行，即其本质不是通过 agent 
 
 ### 默认模型
 
-默认情况下，游戏使用的模型是不固定的，通常情况下，我们使用的是[阿里云的百炼平台](https://help.aliyun.com/zh/model-studio/get-api-key)，也可能是[DeepSeek](https://api-docs.deepseek.com/)。而对于钉钉消息、NPC 私聊回复和回复选项，我们特别地使用 [MiniMax-M2-Her](https://www.minimaxi.com/news/minimax-m2-her-%E6%8A%80%E6%9C%AF%E6%B7%B1%E5%BA%A6%E8%A7%A3%E6%9E%90) 来生成，因为 M2-Her 是一款专门对于角色扮演（RP）优化的模型。当然，你也可以选择用自己的模型。
+默认情况下，游戏使用的模型是不固定的，通常情况下，我们使用的是[阿里云的百炼平台](https://help.aliyun.com/zh/model-studio/get-api-key)，也可能是[DeepSeek](https://api-docs.deepseek.com/)。而对于钉钉消息、NPC 私聊回复和回复选项，我们特别地使用 [MiniMax M2-her](https://www.minimaxi.com/news/minimax-m2-her-%E6%8A%80%E6%9C%AF%E6%B7%B1%E5%BA%A6%E8%A7%A3%E6%9E%90) 来生成，因为 `M2-her` 是一款专门对于角色扮演（RP）优化的模型。当然，你也可以选择用自己的模型。
 
 钉钉私聊状态本身会随游戏存档保存；模型只负责生成新消息、回复选项和一轮对话后的轻量结算。若模型不可用，游戏会尽量降级处理，但新钉钉内容可能减少。
 
@@ -42,7 +42,7 @@ ZJUers 模拟器本身不依赖大模型运行，即其本质不是通过 agent 
 
 ### 模型支持
 
-当前平台支持所有兼容OpenAI协议的模型（M2-Her除外，我们使用原生API以充分利用其RP能力）。
+当前平台支持所有兼容OpenAI协议的模型。`M2-her` 也通过 OpenAI SDK 兼容接口调用，但会使用 `user_system`、`group`、`sample_message_user` 和 `sample_message_ai` 等高级角色类型以充分利用其 RP 能力。
 
 *以下为部分可供参考的兼容服务商列表（排名不分先后），其服务条款、价格和政策由各平台独立制定，请在使用前仔细阅读。*
 

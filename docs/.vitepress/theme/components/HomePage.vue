@@ -22,7 +22,7 @@
     <section id="interactive-demo" class="zjus-section zjus-demo-section">
       <div class="zjus-section-head">
         <p>Interactive Preview</p>
-        <h2>不用离开文档，就能摸到游戏主界面</h2>
+        <h2>游戏演示</h2>
       </div>
       <InteractiveGameDemo mode="dashboard" />
     </section>

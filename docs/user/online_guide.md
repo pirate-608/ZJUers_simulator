@@ -1,5 +1,16 @@
 # 在线游戏
 
+<div class="zjus-video-showcase">
+  <figure>
+    <video controls preload="metadata" playsinline src="/assets/videos/zjus-demo1.mp4"></video>
+    <figcaption>游戏流程演示（一）</figcaption>
+  </figure>
+  <figure>
+    <video controls preload="metadata" playsinline src="/assets/videos/zjus-demo2.mp4"></video>
+    <figcaption>游戏流程演示（二）</figcaption>
+  </figure>
+</div>
+
 ## 游戏入口
 
 访问 [67656.fun](https://67656.fun)。
@@ -38,3 +49,37 @@
 右侧休闲动作有独立冷却。冷却中按钮会锁定并显示剩余秒数；暂停时休闲、课程策略和期末考试等主要操作也会锁定。
 
 文档首页提供可交互的游戏 Demo，可直接查看主界面、课程、求是园动态和钉钉私聊的基本效果。
+
+<style scoped>
+.zjus-video-showcase {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  margin: 18px 0 30px;
+}
+
+.zjus-video-showcase figure {
+  margin: 0;
+}
+
+.zjus-video-showcase video {
+  display: block;
+  width: 100%;
+  border: 1px solid var(--vp-c-border);
+  border-radius: 8px;
+  background: #000;
+}
+
+.zjus-video-showcase figcaption {
+  margin-top: 8px;
+  color: var(--vp-c-text-2);
+  font-size: 0.9rem;
+  text-align: center;
+}
+
+@media (max-width: 760px) {
+  .zjus-video-showcase {
+    grid-template-columns: 1fr;
+  }
+}
+</style>

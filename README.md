@@ -77,7 +77,7 @@ zjus-backend/world/
 <details>
 <summary>🎛️ 游戏控制台</summary>
 
-![游戏控制台](https://zjusim-docs.67656.fun/assets/images/dashboard.png)
+![游戏控制台](./docs/public/assets/images/dashboard.png)
 
 </details>
 
@@ -100,7 +100,7 @@ zjus-backend/world/
 <details>
 <summary>💬 钉钉消息</summary>
 
-![钉钉消息](https://zjusim-docs.67656.fun/assets/images/dingtalk.png)
+![钉钉消息](./docs/public/assets/images/dingtalk.png)
 
 </details>
 

@@ -123,6 +123,7 @@ class GameEngine:
         self._background_tasks: set[asyncio.Task] = set()
         self._random_event_inflight = False
         self._dingtalk_inflight = False
+        self._relax_inflight: set[str] = set()
         self._dingtalk_state_lock = asyncio.Lock()
         self._ttl_refresh_interval_seconds = 600
         self._last_ttl_refresh = 0.0
@@ -404,8 +405,27 @@ class GameEngine:
     def _track_task(self, coro: Coroutine[Any, Any, Any]) -> asyncio.Task[Any]:
         task = asyncio.create_task(coro)
         self._background_tasks.add(task)
-        task.add_done_callback(self._background_tasks.discard)
+
+        def _finalize_background_task(done_task: asyncio.Task[Any]) -> None:
+            self._background_tasks.discard(done_task)
+            try:
+                done_task.result()
+            except asyncio.CancelledError:
+                pass
+            except Exception:
+                logger.error("Background game task failed", exc_info=True)
+
+        task.add_done_callback(_finalize_background_task)
         return task
+
+    async def _run_relax_action(self, target: str):
+        try:
+            await self._handle_relax(target)
+            await self.check_and_trigger_gameover()
+        except Exception:
+            logger.error("Relax action failed for %s", target, exc_info=True)
+        finally:
+            self._relax_inflight.discard(target)
 
     def start(self):
         if self.is_running and self._run_task and not self._run_task.done():
@@ -769,7 +789,7 @@ class GameEngine:
             return
 
         if action == "dingtalk_reply":
-            await self._handle_dingtalk_reply(action_data)
+            self._track_task(self._handle_dingtalk_reply(action_data))
             return
 
         # [保留] 其它一次性动作 (Relax/Event)
@@ -778,7 +798,15 @@ class GameEngine:
                 if not isinstance(target, str) or not target:
                     await self._push_update("请选择一个有效的休闲动作。")
                     return
-                await self._handle_relax(target)
+                if target in self._relax_inflight:
+                    await self.emit(
+                        "toast",
+                        {"message": "该休闲动作正在结算中，请稍等", "level": "info"},
+                    )
+                    return
+                self._relax_inflight.add(target)
+                self._track_task(self._run_relax_action(target))
+                return
             elif action == "exam":
                 await self._handle_final_exam()
             elif action == "event_choice":
@@ -840,6 +868,8 @@ class GameEngine:
             contact.trim_messages()
             state.contacts[contact_id] = contact
             await self.repo.set_dingtalk_state(state)
+
+        await self._emit_dingtalk_contact_update(contact)
 
         snapshot = await self.repo.get_snapshot()
         stats = snapshot.stats.model_dump()

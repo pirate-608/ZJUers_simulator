@@ -1,3 +1,4 @@
+import asyncio
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, Mock
 
@@ -149,3 +150,118 @@ async def test_engine_dingtalk_reply_closes_round_and_applies_effects():
     assert [m.speaker for m in saved_contact.messages[-2:]] == ["player", "npc"]
     assert repo.effects == [("sanity", 2)]
     engine._push_update.assert_awaited()
+
+
+@pytest.mark.asyncio
+async def test_engine_emits_player_dingtalk_reply_before_generating_npc_reply():
+    contact = DingTalkContact(
+        contact_id=build_contact_id("【室友】", "roommate"),
+        sender="【室友】",
+        role="roommate",
+        is_replyable=True,
+        messages=[
+            DingTalkMessage(
+                message_id="m1",
+                speaker="npc",
+                content="你在吗？",
+                created_at=1,
+                round_id="r1",
+            )
+        ],
+        pending_options=[DingTalkReplyOption(option_id="opt_1", text="在的")],
+        round=DingTalkRoundState(
+            round_id="r1",
+            status="open",
+            player_reply_count=0,
+        ),
+    )
+    repo = _Repo(DingTalkState(contacts={contact.contact_id: contact}))
+    engine = GameEngine("1", repo=repo, save_service=Mock(), game_service=Mock())  # type: ignore
+    engine.emit = AsyncMock()
+
+    async def generate_after_player_update(*args, **kwargs):
+        del args, kwargs
+        saved_contact = repo.state.contacts[contact.contact_id]
+        assert [m.speaker for m in saved_contact.messages] == ["npc", "player"]
+        assert saved_contact.pending_options == []
+        assert engine.emit.await_count == 1
+        first_emit = engine.emit.await_args_list[0]
+        assert first_emit.args[0] == "dingtalk_thread_update"
+        assert first_emit.args[1]["contact"]["messages"][-1]["speaker"] == "player"
+        return {
+            "content": "我看到了。",
+            "reply_options": [{"option_id": "opt_1", "text": "好"}],
+        }
+
+    engine._generate_dingtalk_reply_result = AsyncMock(
+        side_effect=generate_after_player_update
+    )
+
+    await engine._handle_dingtalk_reply(
+        {"contact_id": contact.contact_id, "option_id": "opt_1"}
+    )
+
+    assert engine.emit.await_args_list[1].args[0] == "dingtalk_thread_update"
+    final_contact = repo.state.contacts[contact.contact_id]
+    assert [m.speaker for m in final_contact.messages] == ["npc", "player", "npc"]
+
+
+@pytest.mark.asyncio
+async def test_engine_schedules_dingtalk_reply_without_blocking_actions():
+    repo = _Repo(DingTalkState())
+    engine = GameEngine("1", repo=repo, save_service=Mock(), game_service=Mock())  # type: ignore
+    started = asyncio.Event()
+    release = asyncio.Event()
+
+    async def slow_reply(data):
+        del data
+        started.set()
+        await release.wait()
+
+    engine._handle_dingtalk_reply = slow_reply  # type: ignore[method-assign]
+
+    await asyncio.wait_for(
+        engine.process_action(
+            {"action": "dingtalk_reply", "contact_id": "c", "option_id": "o"}
+        ),
+        timeout=0.05,
+    )
+    await asyncio.wait_for(started.wait(), timeout=0.05)
+
+    release.set()
+    await asyncio.gather(*list(engine._background_tasks))
+
+
+@pytest.mark.asyncio
+async def test_engine_schedules_relax_action_and_deduplicates_inflight_target():
+    repo = _Repo(DingTalkState())
+    engine = GameEngine("1", repo=repo, save_service=Mock(), game_service=Mock())  # type: ignore
+    engine.emit = AsyncMock()
+    engine.check_and_trigger_gameover = AsyncMock(return_value=False)
+    started = asyncio.Event()
+    release = asyncio.Event()
+
+    async def slow_relax(target):
+        assert target == "cc98"
+        started.set()
+        await release.wait()
+
+    engine._handle_relax = slow_relax  # type: ignore[method-assign]
+
+    await asyncio.wait_for(
+        engine.process_action({"action": "relax", "target": "cc98"}),
+        timeout=0.05,
+    )
+    await asyncio.wait_for(started.wait(), timeout=0.05)
+    assert "cc98" in engine._relax_inflight
+
+    await engine.process_action({"action": "relax", "target": "cc98"})
+    engine.emit.assert_awaited_with(
+        "toast",
+        {"message": "该休闲动作正在结算中，请稍等", "level": "info"},
+    )
+
+    release.set()
+    await asyncio.gather(*list(engine._background_tasks))
+    assert "cc98" not in engine._relax_inflight
+    engine.check_and_trigger_gameover.assert_awaited()

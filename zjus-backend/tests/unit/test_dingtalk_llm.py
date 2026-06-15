@@ -15,6 +15,7 @@ from app.core.dingtalk_llm import (
     _build_m2her_messages,
     _call_m2her_api,
     _normalize_m2her_base_url,
+    _sanitize_m2her_messages,
     generate_dingtalk_via_m2her,
 )
 
@@ -50,7 +51,7 @@ class TestBuildM2herMessages:
     ):
         msgs = _build_m2her_messages(sample_character, sample_player_stats, "random")
         system_msg = msgs[0]
-        assert system_msg["name"] == "【室友】"
+        assert "name" not in system_msg
         assert "室友" in system_msg["content"]
 
     def test_user_system_contains_player_info(
@@ -119,7 +120,22 @@ class TestBuildM2herMessages:
         msgs = _build_m2her_messages(sample_character, sample_player_stats, "random")
         last = msgs[-1]
         assert last["role"] == "user"
-        assert last["name"] == "TestPlayer"
+        assert "name" not in last
+        assert "TestPlayer" in last["content"]
+
+    def test_api_payload_only_uses_documented_message_fields(
+        self, sample_character, sample_player_stats
+    ):
+        msgs = _build_m2her_messages(sample_character, sample_player_stats, "random")
+        sanitized = _sanitize_m2her_messages([
+            *msgs,
+            {"role": "user", "name": "extra-name", "content": "继续", "extra": 1},
+        ])
+
+        assert sanitized
+        assert all(set(msg) == {"role", "content"} for msg in sanitized)
+        assert any(msg["role"] == "user_system" for msg in sanitized)
+        assert any(msg["role"] == "group" for msg in sanitized)
 
 
 # ==========================================
@@ -158,7 +174,9 @@ class TestCallM2herApi:
                 mock_client.close = AsyncMock()
                 MockClient.return_value = mock_client
 
-                result = await _call_m2her_api([{"role": "user", "content": "test"}])
+                result = await _call_m2her_api(
+                    [{"role": "user", "name": "用户", "content": "test"}]
+                )
                 assert result == "今天记得带伞哦！"
                 MockClient.assert_called_once_with(
                     api_key="test-key",

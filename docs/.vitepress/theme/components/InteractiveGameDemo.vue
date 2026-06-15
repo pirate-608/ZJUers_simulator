@@ -1,5 +1,9 @@
 <template>
-  <section ref="demoRoot" class="interactive-demo">
+  <section
+    ref="demoRoot"
+    class="interactive-demo"
+    :data-console-theme="store.consoleTheme"
+  >
     <div class="demo-toolbar">
       <div>
         <p>{{ eyebrow }}</p>
@@ -58,11 +62,12 @@
     </div>
 
     <div v-else class="demo-dashboard">
+      <TopNav @send-action="handleAction" />
       <HudBar />
       <div class="demo-layout">
         <div class="demo-column left">
-          <div class="card mb-3 border-0 shadow-sm h-100">
-            <div class="card-header bg-info text-white text-center fw-bold py-2">学在折大</div>
+          <div class="card app-console-panel app-course-panel mb-3 h-100">
+            <div class="card-header app-panel-header text-white text-center fw-bold py-2">学在折大</div>
             <div class="card-body p-0">
               <CourseList @send-action="handleAction" />
             </div>
@@ -90,8 +95,9 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import HudBar from '@/components/HudBar.vue'
+import TopNav from '@/components/TopNav.vue'
 import CourseList from '@/components/CourseList.vue'
 import MidPanel from '@/components/MidPanel.vue'
 import RightPanel from '@/components/RightPanel.vue'
@@ -111,6 +117,7 @@ const demoRoot = ref<HTMLElement | null>(null)
 const activeMode = ref<DemoMode>(props.mode)
 const selectedMajor = ref('CS')
 const eventResult = ref('')
+const replyTimers: ReturnType<typeof window.setTimeout>[] = []
 
 const modes: Array<{ mode: DemoMode; label: string }> = [
   { mode: 'entry', label: '入口' },
@@ -252,6 +259,20 @@ function handleAction(payload: WsClientAction) {
     store.setGameSpeed(payload.speed)
     return
   }
+  if (payload.action === 'pause') {
+    store.setPaused(true)
+    store.addLog('系统', '演示控制台已暂停。', 'text-muted')
+    return
+  }
+  if (payload.action === 'resume') {
+    store.setPaused(false)
+    store.addLog('系统', '演示控制台已继续。', 'text-muted')
+    return
+  }
+  if (payload.action === 'save_game') {
+    store.addLog('存档', '演示中不会写入真实存档。', 'text-info')
+    return
+  }
   if (payload.action === 'set_mode') {
     store.gameMode = payload.mode
     store.addLog('模式', `内容生成模式切换为 ${payload.mode}。`, 'text-info')
@@ -279,20 +300,29 @@ function handleAction(payload: WsClientAction) {
       created_at: now,
       round_id: contact.round.round_id,
     })
-    contact.messages.push({
-      message_id: `npc_${now}`,
-      speaker: 'npc',
-      content: '收到，那我就按这个节奏来。别忘了给自己留一点喘气的时间。',
-      created_at: now + 1,
-      round_id: contact.round.round_id,
-    })
-    contact.pending_options = [
-      { option_id: `again_${now}`, text: '我会注意的，谢谢你。' },
-      { option_id: `study_${now}`, text: '等我把这题做完再说。' },
-    ]
     contact.round.player_reply_count += 1
-    contact.last_message_at = now + 1
+    contact.pending_options = []
+    contact.last_message_at = now
     store.upsertDingTalkContact(contact)
+    const timer = window.setTimeout(() => {
+      const currentContact = store.dingtalkContacts[payload.contact_id]
+      if (!currentContact) return
+      const replyAt = Math.floor(Date.now() / 1000)
+      currentContact.messages.push({
+        message_id: `npc_${replyAt}`,
+        speaker: 'npc',
+        content: '收到，那我就按这个节奏来。别忘了给自己留一点喘气的时间。',
+        created_at: replyAt,
+        round_id: currentContact.round.round_id,
+      })
+      currentContact.pending_options = [
+        { option_id: `again_${replyAt}`, text: '我会注意的，谢谢你。' },
+        { option_id: `study_${replyAt}`, text: '等我把这题做完再说。' },
+      ]
+      currentContact.last_message_at = replyAt
+      store.upsertDingTalkContact(currentContact)
+    }, 900)
+    replyTimers.push(timer)
   }
 }
 
@@ -312,6 +342,12 @@ async function activateDingTalkTab() {
 onMounted(() => {
   seedGameState()
   activateDingTalkTab()
+})
+
+onUnmounted(() => {
+  for (const timer of replyTimers) {
+    window.clearTimeout(timer)
+  }
 })
 
 watch(activeMode, async () => {

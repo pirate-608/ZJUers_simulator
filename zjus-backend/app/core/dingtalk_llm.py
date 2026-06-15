@@ -24,6 +24,16 @@ from app.schemas.dingtalk import (
 
 logger = logging.getLogger(__name__)
 
+_M2HER_ALLOWED_ROLES = {
+    "system",
+    "user",
+    "assistant",
+    "user_system",
+    "group",
+    "sample_message_user",
+    "sample_message_ai",
+}
+
 # Redis 缓存配置
 _CACHE_KEY = "game:dingtalk_m2her"
 _CACHE_MAX_LEN = 100
@@ -121,6 +131,17 @@ def _coerce_reply_options(value: object, role: str) -> list[dict[str, str]]:
     return options or _fallback_reply_options(role)
 
 
+def _sanitize_m2her_messages(messages: List[Dict]) -> list[dict[str, str]]:
+    """Keep only MiniMax-documented message fields before sending to the API."""
+    sanitized: list[dict[str, str]] = []
+    for message in messages:
+        role = str(message.get("role") or "").strip()
+        content = str(message.get("content") or "").strip()
+        if role in _M2HER_ALLOWED_ROLES and content:
+            sanitized.append({"role": role, "content": content})
+    return sanitized
+
+
 async def _generate_reply_options_via_m2her(
     character: Dict[str, Any],
     player_stats: dict,
@@ -135,7 +156,6 @@ async def _generate_reply_options_via_m2her(
     messages.append(
         {
             "role": "assistant",
-            "name": character.get("name", "未知"),
             "content": npc_message,
         }
     )
@@ -186,8 +206,7 @@ def _build_m2her_messages(
     # 1. system — AI 角色人设
     messages.append({
         "role": "system",
-        "name": char_name,
-        "content": char_content,
+        "content": f"你当前扮演：{char_name}。\n{char_content}",
     })
 
     # 2. user_system — 玩家身份/状态
@@ -223,22 +242,19 @@ def _build_m2her_messages(
     for i, example in enumerate(sample_examples):
         messages.append({
             "role": "sample_message_ai",
-            "name": char_name,
             "content": example,
         })
         # 穿插用户回复（简短的通用回复）
         if i < len(sample_examples) - 1:
             messages.append({
                 "role": "sample_message_user",
-                "name": username,
                 "content": random.choice(["好的收到", "了解~", "嗯嗯", "OK"]),
             })
 
     # 5. user — 触发 AI 生成
     messages.append({
         "role": "user",
-        "name": username,
-        "content": "（你打开了钉钉，看到一条新消息）",
+        "content": f"（{username}打开了钉钉，看到一条新消息）",
     })
 
     return messages
@@ -260,15 +276,16 @@ async def _call_m2her_api(
         else "M2-her"
     )
     base_url = _normalize_m2her_base_url(settings.MINIMAX_BASE_URL)
+    payload_messages = _sanitize_m2her_messages(messages)
 
-    if not api_key:
+    if not api_key or not payload_messages:
         return None
 
     try:
         client = await _get_m2her_client(api_key, base_url)
         response = await client.chat.completions.create(
             model=model,
-            messages=cast(Any, messages),
+            messages=cast(Any, payload_messages),
             temperature=1.0,
             top_p=0.95,
             max_completion_tokens=max_completion_tokens,

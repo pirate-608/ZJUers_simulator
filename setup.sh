@@ -104,8 +104,8 @@ LLM=$modelName
 
 # MiniMax M2-her 配置（钉钉消息 RP 生成，可选）
 MINIMAX_API_KEY=
-MINIMAX_MODEL=minimax-m2-her
-MINIMAX_BASE_URL=https://api.minimax.chat/v1/text/chatcompletion_v2
+MINIMAX_MODEL=M2-her
+MINIMAX_BASE_URL=https://api.minimaxi.com/v1
 
 # 安全配置 (随机生成)
 SECRET_KEY=$secretKey

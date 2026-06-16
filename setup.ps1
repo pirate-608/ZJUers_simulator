@@ -38,7 +38,8 @@ if (Test-Path ".env") {
             Write-Host "启动成功！即将为您在浏览器中打开游戏。" -ForegroundColor Green
             Start-Sleep -Seconds 3
             Start-Process "http://localhost"
-        } else {
+        }
+        else {
             Write-Host "启动失败，请检查上方日志。" -ForegroundColor Red
         }
         Pause
@@ -78,7 +79,8 @@ switch ($providerChoice) {
 if ($providerChoice -eq "8") {
     $apiKey = ""
     $modelName = ""
-} else {
+}
+else {
     $apiKey = Read-Host "请输入您的大模型 API Key"
     $modelName = Read-Host "请输入使用的模型代号 (如 gpt-4o-mini, deepseek-chat 等)"
 }
@@ -121,8 +123,8 @@ LLM=$modelName
 
 # MiniMax M2-her 配置（钉钉消息 RP 生成，可选）
 MINIMAX_API_KEY=
-MINIMAX_MODEL=minimax-m2-her
-MINIMAX_BASE_URL=https://api.minimax.chat/v1/text/chatcompletion_v2
+MINIMAX_MODEL=M2-her
+MINIMAX_BASE_URL=https://api.minimaxi.com/v1
 
 # 安全配置 (随机生成)
 SECRET_KEY=$secretKey
@@ -140,7 +142,8 @@ if ($?) {
     Write-Host "`n启动成功！即将为您自动弹起网页。" -ForegroundColor Green
     Start-Sleep -Seconds 3
     Start-Process "http://localhost"
-} else {
+}
+else {
     Write-Host "`n容器部署过程中发生异常，请检查上方日志输出！" -ForegroundColor Red
 }
 

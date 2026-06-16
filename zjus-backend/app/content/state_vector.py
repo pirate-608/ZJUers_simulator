@@ -7,8 +7,8 @@ PlayerStateVector — 将 30+ 字段的 player_stats 浓缩为 5 维语义标签
   3. 作为向量化角色检索的查询文本
 """
 
-from dataclasses import dataclass, asdict
-from typing import Dict, Any
+from dataclasses import asdict, dataclass
+from typing import Any, Dict
 
 
 @dataclass(frozen=True)

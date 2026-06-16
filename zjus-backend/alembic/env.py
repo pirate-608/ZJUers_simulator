@@ -1,14 +1,15 @@
 import asyncio
 from logging.config import fileConfig
-from sqlalchemy import pool
-from sqlalchemy import engine_from_config
-from sqlalchemy.ext.asyncio import async_engine_from_config
-from alembic import context
+from typing import Any
 
-from app.core.config import settings
-from app.core.database import Base
+from sqlalchemy import pool
+from sqlalchemy.ext.asyncio import async_engine_from_config
+
 # Import all models so Alembic can detect them
 import app.models.embedding  # noqa: F401
+from alembic import context
+from app.core.config import settings
+from app.core.database import Base
 
 config = context.config
 
@@ -44,8 +45,11 @@ def do_run_migrations(connection):
 
 
 async def run_migrations_online() -> None:
+    configuration: dict[str, Any] = dict(
+        config.get_section(config.config_ini_section) or {}
+    )
     connectable = async_engine_from_config(
-        config.get_section(config.config_ini_section),
+        configuration,
         prefix="sqlalchemy.",
         poolclass=pool.NullPool,
         url=get_url(),

@@ -40,6 +40,7 @@ export function useGameWebSocket() {
   const maxReconnectAttempts = 3
   const reconnectDelay = 3000
   let heartbeatInterval: ReturnType<typeof setInterval> | null = null
+  let reconnectTimer: ReturnType<typeof setTimeout> | null = null
   let shouldReconnect = true
 
   const send = (data: WsClientAction) => {
@@ -55,7 +56,22 @@ export function useGameWebSocket() {
     }, 25000)
   }
 
+  const stopHeartbeat = () => {
+    if (heartbeatInterval) {
+      clearInterval(heartbeatInterval)
+      heartbeatInterval = null
+    }
+  }
+
+  const clearReconnectTimer = () => {
+    if (reconnectTimer) {
+      clearTimeout(reconnectTimer)
+      reconnectTimer = null
+    }
+  }
+
   const connect = (token: string = 'test_token', baseUrl: string = 'ws://localhost:8000') => {
+    clearReconnectTimer()
     shouldReconnect = true
     ws.value = new WebSocket(`${baseUrl}/ws/game`)
 
@@ -444,20 +460,23 @@ export function useGameWebSocket() {
 
     ws.value.onclose = (event: CloseEvent) => {
       isConnected.value = false
-      if (heartbeatInterval) clearInterval(heartbeatInterval)
+      stopHeartbeat()
 
       const retryableCloseCodes = new Set([1001, 1006])
       if (shouldReconnect && retryableCloseCodes.has(event.code) && reconnectAttempts < maxReconnectAttempts) {
         reconnectAttempts += 1
         gameStore.addLog('系统', `断开连接，准备重连 (${reconnectAttempts}/${maxReconnectAttempts})...`, 'text-warning')
-        setTimeout(() => connect(token, baseUrl), reconnectDelay)
+        clearReconnectTimer()
+        reconnectTimer = setTimeout(() => connect(token, baseUrl), reconnectDelay)
       }
     }
   }
 
   onUnmounted(() => {
+    shouldReconnect = false
+    clearReconnectTimer()
     if (ws.value) ws.value.close()
-    if (heartbeatInterval) clearInterval(heartbeatInterval)
+    stopHeartbeat()
   })
 
   return { ws, isConnected, connect, send }

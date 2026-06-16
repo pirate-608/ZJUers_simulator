@@ -29,6 +29,7 @@ env.bak/
 instance
 .env.production
 .env.development
+.codex/config.toml
 
 # IDE 和编辑器
 .vscode/

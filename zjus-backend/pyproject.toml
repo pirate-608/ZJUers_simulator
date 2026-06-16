@@ -23,6 +23,10 @@ ignore = []
 # 允许 Ruff 自动修复所有它能修复的问题
 fixable = ["ALL"]
 
+[tool.ruff.lint.flake8-bugbear]
+# FastAPI dependency declarations intentionally use Depends(...) in defaults.
+extend-immutable-calls = ["fastapi.Depends"]
+
 [tool.ruff.format]
 # 强制使用双引号（Python 官方推荐）
 quote-style = "double"

@@ -69,6 +69,7 @@ const features = [
 
 let animationId = 0
 let typingTimer: ReturnType<typeof setTimeout> | null = null
+let cleanupStars: (() => void) | null = null
 
 function startTyping(index = 0) {
   typedText.value = phrase.slice(0, index)
@@ -79,7 +80,7 @@ function startTyping(index = 0) {
 
 function drawStars(canvas: HTMLCanvasElement) {
   const context = canvas.getContext('2d')
-  if (!context) return
+  if (!context) return null
 
   const resize = () => {
     canvas.width = window.innerWidth * window.devicePixelRatio
@@ -135,16 +136,21 @@ function drawStars(canvas: HTMLCanvasElement) {
   }
 
   render()
+  return () => {
+    window.removeEventListener('resize', resize)
+  }
 }
 
 onMounted(() => {
   startTyping()
-  if (canvasRef.value) drawStars(canvasRef.value)
+  if (canvasRef.value) cleanupStars = drawStars(canvasRef.value)
 })
 
 onUnmounted(() => {
   if (typingTimer) clearTimeout(typingTimer)
   if (animationId) cancelAnimationFrame(animationId)
+  cleanupStars?.()
+  cleanupStars = null
 })
 </script>
 

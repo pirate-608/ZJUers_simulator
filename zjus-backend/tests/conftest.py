@@ -5,11 +5,11 @@
 核心策略：mock 所有外部依赖（Redis / DB / httpx），测试不需要任何运行中的服务。
 """
 
-import os
 import json
+import os
+from unittest.mock import AsyncMock, patch
+
 import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
-from pathlib import Path
 
 # ==========================================
 # 环境变量 — 在导入 app 代码前设置

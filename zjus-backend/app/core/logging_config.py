@@ -29,12 +29,9 @@ class JSONFormatter(logging.Formatter):
         }
 
         # 附加上下文字段（通过 extra 传入）
-        if hasattr(record, "user_id"):
-            log_entry["user_id"] = getattr(record, "user_id")
-        if hasattr(record, "action"):
-            log_entry["action"] = getattr(record, "action")
-        if hasattr(record, "duration_ms"):
-            log_entry["duration_ms"] = getattr(record, "duration_ms")
+        for key in ("user_id", "action", "duration_ms"):
+            if key in record.__dict__:
+                log_entry[key] = record.__dict__[key]
 
         # 异常信息
         if record.exc_info and record.exc_info[1]:

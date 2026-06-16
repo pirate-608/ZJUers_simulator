@@ -74,6 +74,11 @@ Backend checks from `zjus-backend/`:
 ..\.venv\Scripts\python.exe -m ruff format .
 ```
 
+If pytest fails only while creating `tmp_path` directories on Windows/Codex,
+rerun it with an explicit workspace temp root such as
+`--basetemp ..\pytest-temp\current` from `zjus-backend/` before treating the
+failure as a code regression.
+
 Frontend checks from `zjus-frontend/`:
 
 ```powershell

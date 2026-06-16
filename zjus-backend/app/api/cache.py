@@ -1,5 +1,5 @@
-import logging
 import inspect
+import logging
 from typing import Any, Awaitable, Optional, Sequence, TypeVar
 
 from redis import asyncio as aioredis

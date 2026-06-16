@@ -991,8 +991,8 @@ class GameEngine:
             }
         )
 
-        # 异步更新持久化数据库
-        asyncio.create_task(self._update_db_highest_gpa(cgpa))
+        # 异步更新持久化数据库，纳入 engine 生命周期，断线时可统一取消/记录异常。
+        self._track_task(self._update_db_highest_gpa(cgpa))
 
         # 发送结算弹窗 — 字段名严格匹配前端 TranscriptModal.vue
         await self.emit(

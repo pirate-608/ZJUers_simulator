@@ -1,16 +1,17 @@
 from typing import AsyncGenerator
+
 from fastapi import Depends, HTTPException, status
 from jose import JWTError, jwt
 from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.api.cache import RedisCache
 from app.core.config import settings
 from app.core.database import AsyncSessionLocal
-from app.api.cache import RedisCache
 from app.repositories.redis_repo import RedisRepository
-from app.services.world_service import WorldService
 from app.services.game_service import GameService
 from app.services.save_service import SaveService
+from app.services.world_service import WorldService
 
 
 async def get_db() -> AsyncGenerator[AsyncSession, None]:
@@ -38,18 +39,19 @@ async def get_current_user_info(token: str) -> dict:
         payload = jwt.decode(
             token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM]
         )
-        user_id: str = payload.get("sub")
-        if not user_id:
+        user_id_raw = payload.get("sub")
+        if not isinstance(user_id_raw, str) or not user_id_raw:
             raise JWTError("Invalid user_id")
+        username_raw = payload.get("username")
         return {
-            "user_id": user_id,
-            "username": payload.get("username"),
+            "user_id": user_id_raw,
+            "username": str(username_raw) if username_raw is not None else user_id_raw,
         }
     except JWTError:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Could not validate credentials",
-        )
+        ) from None
 
 
 def get_world_service() -> WorldService:

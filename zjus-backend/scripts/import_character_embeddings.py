@@ -95,7 +95,13 @@ async def import_character_embeddings() -> int:
             INSERT INTO character_embeddings
               (char_name, char_role, source_text, embedding, char_json)
             VALUES
-              (:char_name, :char_role, :source_text, CAST(:embedding AS vector), :char_json)
+              (
+                :char_name,
+                :char_role,
+                :source_text,
+                CAST(:embedding AS vector),
+                :char_json
+              )
             """
         )
 

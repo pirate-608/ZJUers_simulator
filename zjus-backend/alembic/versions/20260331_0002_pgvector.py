@@ -5,9 +5,10 @@ Revises: 20260209_0001
 Create Date: 2026-03-31
 """
 
-from alembic import op
 import sqlalchemy as sa
 from pgvector.sqlalchemy import Vector
+
+from alembic import op
 
 # revision identifiers
 revision = "20260331_0002"

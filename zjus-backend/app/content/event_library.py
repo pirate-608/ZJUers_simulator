@@ -5,10 +5,10 @@
 """
 
 import json
-import random
 import logging
+import random
 from pathlib import Path
-from typing import Dict, Any, List, Optional, Set
+from typing import Any, Dict, List, Optional, Set
 
 logger = logging.getLogger(__name__)
 

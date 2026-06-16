@@ -5,6 +5,10 @@ on:
     branches: [ "main", "master" ]
   workflow_dispatch:
 
+concurrency:
+  group: mirror-to-gitee-${{ github.ref_name }}
+  cancel-in-progress: false
+
 jobs:
   mirror-to-gitee:
     runs-on: ubuntu-latest
@@ -12,29 +16,60 @@ jobs:
       - name: Checkout GitHub repo
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # 拉取所有历史，确保同步完整
+          fetch-depth: 0
+          ref: ${{ github.ref_name }}
 
       - name: Configure Git identity
         run: |
           git config --global user.name "${{ secrets.GITEE_USERNAME }}"
-          git config --global user.email "huangmaidou608@outlook.com"  # 改为你 Gitee 绑定的邮箱
+          git config --global user.email "huangmaidou608@outlook.com"
 
       - name: Add Gitee remote repo
         run: |
           git remote add gitee https://${{ secrets.GITEE_USERNAME }}:${{ secrets.GITEE_TOKEN }}@gitee.com/${{ secrets.GITEE_USERNAME }}/ZJUers_simulator.git
 
-      - name: Pull Gitee latest code (避免冲突)
+      - name: Show mirror refs
         run: |
-          # 先拉取 Gitee 最新代码，解决本地与远程的冲突
-          git pull gitee main --rebase || true  # 冲突时自动跳过（或手动处理）
+          echo "GitHub branch: ${GITHUB_REF_NAME}"
+          echo "GitHub commit: $(git rev-parse HEAD)"
+          git ls-remote --heads gitee "${GITHUB_REF_NAME}" || true
 
-      - name: Push to Gitee (移除强制推送)
+      - name: Push current branch to Gitee
         run: |
-          # 移除 --force，仅推送增量提交
-          git push --tags gitee 'refs/heads/*:refs/heads/*'
-          
-          # 重试逻辑保留，但移除 --force
-          if [ $? -ne 0 ]; then
-            echo "第一次推送失败，重试..."
-            git push --tags gitee 'refs/heads/*:refs/heads/*'
+          set -euo pipefail
+
+          branch="${GITHUB_REF_NAME}"
+          if [ "$branch" != "main" ] && [ "$branch" != "master" ]; then
+            echo "Skipping unsupported branch: $branch"
+            exit 0
           fi
+
+          for attempt in 1 2 3; do
+            echo "Mirror push attempt ${attempt} for ${branch}"
+            remote_sha="$(git ls-remote --heads gitee "$branch" | awk '{print $1}')"
+
+            if [ -n "$remote_sha" ]; then
+              git fetch --no-tags gitee "refs/heads/${branch}:refs/remotes/gitee/${branch}"
+              echo "Gitee ${branch}: ${remote_sha}"
+
+              if ! git merge-base --is-ancestor "refs/remotes/gitee/${branch}" HEAD; then
+                echo "::error::Gitee ${branch} is not an ancestor of GitHub ${branch}. Refusing non-fast-forward mirror push."
+                echo "GitHub HEAD: $(git rev-parse HEAD)"
+                echo "Gitee HEAD: ${remote_sha}"
+                exit 1
+              fi
+            else
+              echo "Gitee ${branch} does not exist yet; creating it."
+            fi
+
+            if git push gitee "HEAD:refs/heads/${branch}"; then
+              git push gitee --tags
+              exit 0
+            fi
+
+            echo "Push attempt ${attempt} failed; refreshing remote ref before retry."
+            sleep $((attempt * 5))
+          done
+
+          echo "::error::Failed to push ${branch} to Gitee after retries."
+          exit 1

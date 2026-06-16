@@ -164,10 +164,18 @@
                   :key="option.option_id"
                   type="button"
                   class="btn btn-outline-primary btn-sm text-start"
+                  :disabled="store.isPaused"
+                  :title="store.isPaused ? '游戏暂停中，回复选项冷却中' : option.text"
                   @click="sendReply(option.option_id)"
                 >
                   {{ option.text }}
                 </button>
+                <div
+                  v-if="store.isPaused"
+                  class="reply-paused-hint text-muted small"
+                >
+                  游戏暂停中，回复选项冷却中
+                </div>
               </template>
               <div
                 v-else
@@ -313,7 +321,7 @@ function selectContact(contactId: string) {
 
 function sendReply(optionId: string) {
   const contact = activeContact.value
-  if (!contact) return
+  if (!contact || store.isPaused) return
   emit('send-action', {
     action: 'dingtalk_reply',
     contact_id: contact.contact_id,
@@ -576,6 +584,11 @@ function setSpeed(speed: number) {
 }
 
 .ding-replies .btn {
+  white-space: nowrap;
+}
+
+.reply-paused-hint {
+  align-self: center;
   white-space: nowrap;
 }
 

@@ -93,6 +93,12 @@ Docs checks from `docs/`:
 npm run build
 ```
 
+Codex sandbox note: Vite, Vitest, and VitePress may fail in Codex with esbuild
+`spawn EPERM` because esbuild's native service process cannot start inside the
+sandbox. Current esbuild does not support an `ESBUILD_SERVICE_DISABLE` escape
+hatch; do not add fake environment variables or wrapper scripts for this. Rerun
+the same command with approval/non-sandbox execution when this happens.
+
 The VitePress homepage demo imports selected `zjus-frontend` Vue components. In a clean checkout or CI runner, install `zjus-frontend` dependencies before building docs so frontend `tsconfig` package extends such as `@vue/tsconfig` resolve correctly.
 Keep `vue` and `pinia` deduped in `docs/.vitepress/config.ts`; otherwise the docs theme can install one Pinia instance while reused frontend components read another, causing the homepage demo to disappear during hydration.
 

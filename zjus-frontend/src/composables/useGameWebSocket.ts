@@ -1,6 +1,7 @@
 import { ref, onUnmounted } from 'vue'
 import { useGameStore } from '../stores/gameStore.ts'
 import type { CourseMetadata } from '../types/course'
+import type { FeedbackChange } from '../types/modal'
 import type { WsMessage, WsClientAction } from '../types/websocket'
 import { extractGraduationFinalStats, extractNewSemesterName } from '../types/websocket'
 
@@ -29,6 +30,26 @@ function parseCourseMetadataArray(data: unknown): CourseMetadata[] {
 
 function readCooldowns(data: unknown): Record<string, unknown> | null {
   return isRecord(data) ? data : null
+}
+
+function readFeedbackChanges(data: unknown): FeedbackChange[] | undefined {
+  if (!Array.isArray(data)) return undefined
+  const changes = data.flatMap((item): FeedbackChange[] => {
+    if (!isRecord(item)) return []
+    const field = typeof item.field === 'string' ? item.field : ''
+    const label = typeof item.label === 'string' ? item.label : field
+    const delta = Number(item.delta)
+    if (!field || !label || !Number.isFinite(delta)) return []
+    const change: FeedbackChange = { field, label, delta }
+    if (typeof item.value === 'number' || typeof item.value === 'string') {
+      change.value = item.value
+    }
+    if (typeof item.unit === 'string') {
+      change.unit = item.unit
+    }
+    return [change]
+  })
+  return changes.length ? changes : undefined
 }
 
 export function useGameWebSocket() {
@@ -280,6 +301,7 @@ export function useGameWebSocket() {
             message,
             kind: kind as 'event' | 'relax' | 'info' | 'warning',
             autoCloseMs,
+            changes: readFeedbackChanges(data.changes),
           })
           break
         }
@@ -462,8 +484,19 @@ export function useGameWebSocket() {
       isConnected.value = false
       stopHeartbeat()
 
+      const closedDuringPendingExit = gameStore.isPendingExit
+      if (closedDuringPendingExit) {
+        gameStore.isPendingExit = false
+        gameStore.showToast('连接在保存确认前断开，请重试保存并退出。', 'warning', 5000)
+        gameStore.addLog('系统', '保存退出未收到服务器确认，已解除等待状态。', 'text-warning')
+      }
+
       const retryableCloseCodes = new Set([1001, 1006])
-      if (shouldReconnect && retryableCloseCodes.has(event.code) && reconnectAttempts < maxReconnectAttempts) {
+      if (
+        shouldReconnect
+        && (closedDuringPendingExit || retryableCloseCodes.has(event.code))
+        && reconnectAttempts < maxReconnectAttempts
+      ) {
         reconnectAttempts += 1
         gameStore.addLog('系统', `断开连接，准备重连 (${reconnectAttempts}/${maxReconnectAttempts})...`, 'text-warning')
         clearReconnectTimer()

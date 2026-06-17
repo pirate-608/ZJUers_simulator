@@ -65,6 +65,7 @@
 </template>
 
 <script setup lang="ts">
+import { onUnmounted, watch } from 'vue'
 import { useGameStore } from '../../stores/gameStore.ts'
 import type { WsClientAction } from '@/types/websocket'
 
@@ -73,7 +74,16 @@ const emit = defineEmits<{
   'send-action': [payload: WsClientAction]
 }>()
 
+let saveExitTimer: ReturnType<typeof setTimeout> | null = null
+
+function clearSaveExitTimer() {
+  if (!saveExitTimer) return
+  clearTimeout(saveExitTimer)
+  saveExitTimer = null
+}
+
 const exitWithoutSave = () => {
+  clearSaveExitTimer()
   store.closeModal()
   emit('send-action', { action: 'exit_without_save' })
 }
@@ -82,8 +92,23 @@ const saveAndExit = () => {
   // 🌟 修复：不再使用 setTimeout，而是设置等待标记，发送保存指令
   // 配合 useGameWebSocket.ts 里的 save_result 拦截，实现完美闭环
   store.isPendingExit = true
+  clearSaveExitTimer()
+  saveExitTimer = setTimeout(() => {
+    if (!store.isPendingExit) return
+    store.isPendingExit = false
+    store.showToast('没有收到保存确认，请检查网络后重试。', 'warning', 5000)
+    store.addLog('系统', '保存退出等待超时，当前游戏仍保留在本地运行态，可重试保存。', 'text-warning')
+  }, 15000)
   emit('send-action', { action: 'save_and_exit' })
 }
+
+watch(() => store.isPendingExit, (isPending) => {
+  if (!isPending) clearSaveExitTimer()
+})
+
+onUnmounted(() => {
+  clearSaveExitTimer()
+})
 </script>
 
 <style scoped>

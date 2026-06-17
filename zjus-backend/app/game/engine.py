@@ -56,6 +56,16 @@ class GameMode:
 
 
 class GameEngine:
+    _FEEDBACK_FIELD_LABELS = {
+        "energy": "精力",
+        "sanity": "心态",
+        "stress": "压力",
+        "eq": "EQ",
+        "luck": "运气",
+        "reputation": "声望",
+        "gpa": "GPA",
+    }
+
     async def emit(self, event_type: str, data: dict, msg: str | None = None):
         if msg:
             await self.event_queue.put(
@@ -75,18 +85,45 @@ class GameEngine:
         message: str,
         kind: str = "info",
         auto_close_ms: int = 3000,
+        changes: list[dict[str, Any]] | None = None,
     ):
+        payload: dict[str, Any] = {
+            "title": title,
+            "message": message,
+            "kind": kind,
+            "auto_close_ms": auto_close_ms,
+        }
+        if changes:
+            payload["changes"] = changes
         await self.emit(
             "feedback",
-            {
-                "data": {
-                    "title": title,
-                    "message": message,
-                    "kind": kind,
-                    "auto_close_ms": auto_close_ms,
-                }
-            },
+            {"data": payload},
         )
+
+    def _feedback_change(
+        self,
+        field: str,
+        delta: int | float,
+        value: int | float | None = None,
+    ) -> dict[str, Any]:
+        change: dict[str, Any] = {
+            "field": field,
+            "label": self._FEEDBACK_FIELD_LABELS.get(field, field),
+            "delta": delta,
+        }
+        if value is not None:
+            change["value"] = value
+        return change
+
+    async def _apply_stat_delta_for_feedback(
+        self,
+        field: str,
+        delta: int,
+    ) -> dict[str, Any] | None:
+        if delta == 0:
+            return None
+        new_value = await self.repo.update_stat_safe(field, delta)
+        return self._feedback_change(field, delta, new_value)
 
     def resume(self):
         if not self.is_running:
@@ -378,11 +415,16 @@ class GameEngine:
     ) -> dict[str, Any]:
         desc, effects = self._sanitize_dingtalk_effects(settlement)
         applied: dict[str, dict[str, int]] = {}
+        changes: list[dict[str, Any]] = []
         for field, delta in effects.items():
             if delta == 0:
                 continue
-            new_value = await self.repo.update_stat_safe(field, delta)
+            change = await self._apply_stat_delta_for_feedback(field, delta)
+            if not change:
+                continue
+            new_value = int(change.get("value", 0))
             applied[field] = {"delta": delta, "value": new_value}
+            changes.append(change)
         message = desc if applied else "这轮对话平静结束，没有明显数值变化。"
         await self.emit("event", {"data": {"desc": f"钉钉：{message}"}})
         await self._emit_feedback(
@@ -390,6 +432,7 @@ class GameEngine:
             message,
             kind="info",
             auto_close_ms=3500,
+            changes=changes,
         )
         await self.emit(
             "dingtalk_effect",
@@ -1084,6 +1127,7 @@ class GameEngine:
             return
 
         msg = ""
+        changes: list[dict[str, Any]] = []
         if target == "gym":
             snapshot = await self.repo.get_snapshot()
             stats = snapshot.stats.model_dump()
@@ -1100,23 +1144,35 @@ class GameEngine:
                 stress_change = action_cfg.get("stress_change", -5)
 
                 net_energy = energy_cost + energy_gain
-                await self.repo.update_stat_safe("energy", net_energy)
-                await self.repo.update_stat_safe("sanity", sanity_gain)
-                await self.repo.update_stat_safe("stress", stress_change)
+                for field, delta in (
+                    ("energy", net_energy),
+                    ("sanity", sanity_gain),
+                    ("stress", stress_change),
+                ):
+                    change = await self._apply_stat_delta_for_feedback(field, delta)
+                    if change:
+                        changes.append(change)
                 await self.repo.set_cooldown(target, time.time())
                 msg = "在风雨操场挥汗如雨，感觉整个人都升华了！"
         elif target == "game":
             energy_cost = action_cfg.get("energy_cost", -5)
             sanity_gain = action_cfg.get("sanity_gain", 20)
 
-            await self.repo.update_stat_safe("energy", energy_cost)
-            await self.repo.update_stat_safe("sanity", sanity_gain)
+            for field, delta in (
+                ("energy", energy_cost),
+                ("sanity", sanity_gain),
+            ):
+                change = await self._apply_stat_delta_for_feedback(field, delta)
+                if change:
+                    changes.append(change)
             await self.repo.set_cooldown(target, time.time())
             msg = "宿舍开黑连胜，这就是电子竞技的魅力吗？"
         elif target == "walk":
             stress_change = action_cfg.get("stress_change", -10)
 
-            await self.repo.update_stat_safe("stress", stress_change)
+            change = await self._apply_stat_delta_for_feedback("stress", stress_change)
+            if change:
+                changes.append(change)
             await self.repo.set_cooldown(target, time.time())
             msg = "启真湖畔的黑天鹅还是那么高傲..."
         elif target == "cc98":
@@ -1143,10 +1199,16 @@ class GameEngine:
                     break
 
             # 应用效果
-            if "sanity" in selected_effect:
-                await self.repo.update_stat_safe("sanity", selected_effect["sanity"])
-            if "stress" in selected_effect:
-                await self.repo.update_stat_safe("stress", selected_effect["stress"])
+            for field in ("sanity", "stress"):
+                if field not in selected_effect:
+                    continue
+                try:
+                    delta = int(selected_effect[field])
+                except (TypeError, ValueError):
+                    continue
+                change = await self._apply_stat_delta_for_feedback(field, delta)
+                if change:
+                    changes.append(change)
 
             # 生成对应效果描述
             effect_type = (
@@ -1230,6 +1292,7 @@ class GameEngine:
                 msg,
                 kind="relax",
                 auto_close_ms=3000,
+                changes=changes,
             )
 
     # app/game/engine.py
@@ -1345,6 +1408,7 @@ class GameEngine:
         if not isinstance(effects, dict):
             effects = {}
         desc = effects.get("desc", "")
+        changes: list[dict[str, Any]] = []
         for key, val in effects.items():
             if key == "desc":
                 continue
@@ -1359,7 +1423,9 @@ class GameEngine:
                 delta = int(val)
                 # 限制单次变化幅度
                 delta = max(-max_delta, min(max_delta, delta))
-                await self.repo.update_stat_safe(key, delta)
+                change = await self._apply_stat_delta_for_feedback(key, delta)
+                if change:
+                    changes.append(change)
             except (ValueError, TypeError):
                 continue
         result_msg = f"事件：{desc}"
@@ -1369,6 +1435,7 @@ class GameEngine:
             str(desc or "你的选择已经生效。"),
             kind="event",
             auto_close_ms=5000,
+            changes=changes,
         )
 
     async def _trigger_dingtalk_message(self):
@@ -1499,7 +1566,6 @@ class GameEngine:
 
     async def _next_semester(self):
         """进入下一学期逻辑"""
-        was_running = self.is_running
         self.stop()  # 先暂停游戏循环，防止过渡期间 tick 继续消耗精力
 
         async with self.db_factory() as db:
@@ -1538,6 +1604,10 @@ class GameEngine:
         # 获取新学期的最新快照（含新课程数据）
         new_snapshot = await self.repo.get_snapshot()
         new_stats = new_snapshot.stats.model_dump()
+        semester_idx = int(new_stats.get("semester_idx") or current_semester_idx or 1)
+        base_duration = balance.get_semester_duration(semester_idx)
+        elapsed = int(new_stats.get("elapsed_game_time", 0) or 0)
+        semester_time_left = self._get_semester_time_left(elapsed, base_duration)
 
         await self.emit(
             "new_semester",
@@ -1551,12 +1621,12 @@ class GameEngine:
                     "courses": new_snapshot.courses,
                     "course_states": new_snapshot.course_states,
                     "course_info_json": new_stats.get("course_info_json", "[]"),
+                    "semester_time_left": semester_time_left,
                 }
             },
         )
         await self._push_update("新学期开始了，加油！")
-        if was_running:
-            self.start()
+        self.start()
 
     async def _probe_llm(self):
         """后台探测 LLM API 是否可用"""

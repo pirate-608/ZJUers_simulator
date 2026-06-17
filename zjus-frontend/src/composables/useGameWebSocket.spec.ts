@@ -85,6 +85,62 @@ describe('useGameWebSocket', () => {
     })
   })
 
+  it('stores feedback stat changes for the result modal', () => {
+    const store = useGameStore()
+    const { connect } = useGameWebSocket()
+
+    connect('token', 'ws://game.test')
+    MockWebSocket.instances[0].emitMessage({
+      type: 'feedback',
+      data: {
+        title: '事件结果',
+        message: '你做出了选择。',
+        kind: 'event',
+        changes: [
+          { field: 'sanity', label: '心态', delta: -3, value: 67 },
+          { field: 'stress', label: '压力', delta: 5, value: 45 },
+        ],
+      },
+    })
+
+    expect(store.feedbackModal).toMatchObject({
+      title: '事件结果',
+      message: '你做出了选择。',
+      changes: [
+        { field: 'sanity', label: '心态', delta: -3, value: 67 },
+        { field: 'stress', label: '压力', delta: 5, value: 45 },
+      ],
+    })
+  })
+
+  it('applies new semester state and timer from the transition message', () => {
+    const store = useGameStore()
+    const { connect } = useGameWebSocket()
+
+    connect('token', 'ws://game.test')
+    MockWebSocket.instances[0].emitMessage({
+      type: 'new_semester',
+      data: {
+        semester_name: '大一春夏',
+        stats: {
+          semester: '大一春夏',
+          semester_idx: 2,
+          course_info_json: '[{"id":"cs101","name":"程序设计基础"}]',
+        },
+        courses: { cs101: 0 },
+        course_states: { cs101: 1 },
+        course_info_json: '[{"id":"cs101","name":"程序设计基础"}]',
+        semester_time_left: 180,
+      },
+    })
+
+    expect(store.currentStats.semester).toBe('大一春夏')
+    expect(store.currentStats.semester_idx).toBe(2)
+    expect(store.semesterTimeLeft).toBe(180)
+    expect(store.courseMetadata).toEqual([{ id: 'cs101', name: '程序设计基础' }])
+    expect(store.currentStats.courses.cs101).toMatchObject({ progress: 0, state: 1 })
+  })
+
   it('cancels a scheduled reconnect when the owning component unmounts', () => {
     const Harness = defineComponent({
       setup() {
@@ -106,5 +162,24 @@ describe('useGameWebSocket', () => {
     vi.advanceTimersByTime(3000)
 
     expect(MockWebSocket.instances).toHaveLength(1)
+  })
+
+  it('releases save-and-exit pending state and reconnects if the socket closes before confirmation', () => {
+    const store = useGameStore()
+    const { connect } = useGameWebSocket()
+
+    connect('token', 'ws://game.test')
+    store.isPendingExit = true
+    MockWebSocket.instances[0].emitClose(1000)
+
+    expect(store.isPendingExit).toBe(false)
+    expect(store.toast).toMatchObject({
+      type: 'warning',
+      message: '连接在保存确认前断开，请重试保存并退出。',
+    })
+
+    vi.advanceTimersByTime(3000)
+
+    expect(MockWebSocket.instances).toHaveLength(2)
   })
 })

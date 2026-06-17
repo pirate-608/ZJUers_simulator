@@ -76,11 +76,20 @@ export interface DingTalkState {
 
 export type DingTalkMessage = DingTalkLegacyMessage
 
+export interface FeedbackChange {
+  field: string
+  label: string
+  delta: number
+  value?: number | string
+  unit?: string
+}
+
 export interface FeedbackModalData {
   title: string
   message: string
   kind?: 'event' | 'relax' | 'info' | 'warning'
   autoCloseMs?: number
+  changes?: FeedbackChange[]
   [k: string]: unknown
 }
 

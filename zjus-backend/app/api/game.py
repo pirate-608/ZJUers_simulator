@@ -26,6 +26,7 @@ logger = logging.getLogger(__name__)
 
 # WebSocket 消息限流：最小间隔（秒）
 _WS_MIN_MSG_INTERVAL = 0.05
+_SAVE_TIMEOUT_SECONDS = 12.0
 _VALID_COURSE_STATES = {0, 1, 2}
 
 # 1. 必须先实例化 router
@@ -40,6 +41,28 @@ async def cleanup_redis_data(repo: RedisRepository):
         logger.info("Redis data cleaned for user %s", repo.user_id)
     except Exception as e:
         logger.error("Failed to cleanup Redis for user %s: %s", repo.user_id, e)
+
+
+async def persist_save_with_timeout(
+    save_service: SaveService,
+    repo: RedisRepository,
+    save_slot: int,
+) -> tuple[bool, str | None]:
+    """Persist a save and return a user-facing timeout reason when needed."""
+    try:
+        async with AsyncSessionLocal() as db:
+            success = await asyncio.wait_for(
+                save_service.persist_to_db(repo, db, save_slot=save_slot),
+                timeout=_SAVE_TIMEOUT_SECONDS,
+            )
+        return success, None
+    except TimeoutError:
+        logger.error(
+            "Persistence timed out for user %s slot %s",
+            repo.user_id,
+            save_slot,
+        )
+        return False, "保存超时，请检查网络后重试"
 
 
 # 3. 辅助函数
@@ -384,33 +407,40 @@ async def websocket_endpoint(websocket: WebSocket):
                 # 处理保存并退出（按需获取 DB Session）
                 elif action == "save_and_exit":
                     logger.info("User %s requested save_and_exit", username)
-                    async with AsyncSessionLocal() as db:
-                        success = await save_service.persist_to_db(
-                            repo, db, save_slot=active_save_slot
-                        )
+                    success, failure_reason = await persist_save_with_timeout(
+                        save_service, repo, active_save_slot
+                    )
                     await manager.send_personal_message(
                         {
                             "type": "save_result",
                             "success": success,
-                            "message": "存档保存成功" if success else "存档保存失败",
+                            "message": (
+                                "存档保存成功"
+                                if success
+                                else failure_reason or "存档保存失败，请重试"
+                            ),
                         },
                         user_id,
                     )
-                    await cleanup_redis_data(repo)
-                    break
+                    if success:
+                        await cleanup_redis_data(repo)
+                        break
 
                 # 处理仅保存（不退出）
                 elif action == "save_game":
                     logger.info("User %s requested save_game", username)
-                    async with AsyncSessionLocal() as db:
-                        success = await save_service.persist_to_db(
-                            repo, db, save_slot=active_save_slot
-                        )
+                    success, failure_reason = await persist_save_with_timeout(
+                        save_service, repo, active_save_slot
+                    )
                     await manager.send_personal_message(
                         {
                             "type": "save_result",
                             "success": success,
-                            "message": "游戏已保存" if success else "保存失败，请重试",
+                            "message": (
+                                "游戏已保存"
+                                if success
+                                else failure_reason or "保存失败，请重试"
+                            ),
                         },
                         user_id,
                     )

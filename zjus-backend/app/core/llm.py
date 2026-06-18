@@ -373,7 +373,7 @@ async def generate_dingtalk_reply_message(
             output_contract = (
                 '严格返回 JSON：{"npc_reply":"...",'
                 '"settlement":{"desc":"...","effects":{"sanity":1}}}。'
-                "effects 只能包含 energy/sanity/stress/eq/luck/reputation，"
+                "effects 只能包含 energy/sanity/stress/eq/luck/reputation/gold，"
                 "整数幅度要克制，通常在 -3 到 3。"
             )
         else:

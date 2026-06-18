@@ -21,6 +21,7 @@ from app.core.llm import (
     generate_random_event,
 )
 from app.game.balance import balance  # 游戏数值配置
+from app.game.items import items
 from app.models.user import User
 from app.repositories.redis_repo import RedisRepository
 from app.schemas.dingtalk import (
@@ -60,10 +61,13 @@ class GameEngine:
         "energy": "精力",
         "sanity": "心态",
         "stress": "压力",
+        "iq": "IQ",
         "eq": "EQ",
         "luck": "运气",
         "reputation": "声望",
+        "efficiency": "效率",
         "gpa": "GPA",
+        "gold": "金币",
     }
 
     async def emit(self, event_type: str, data: dict, msg: str | None = None):
@@ -122,8 +126,23 @@ class GameEngine:
     ) -> dict[str, Any] | None:
         if delta == 0:
             return None
-        new_value = await self.repo.update_stat_safe(field, delta)
+        if field == "gold":
+            new_value = await self.repo.update_stat_safe(field, delta, 0, 999999)
+        else:
+            new_value = await self.repo.update_stat_safe(field, delta)
         return self._feedback_change(field, delta, new_value)
+
+    async def _get_items_state_payload(self) -> dict[str, Any]:
+        return items.state_payload(await self.repo.get_items_state())
+
+    async def _effective_stats(self, stats: dict[str, Any]) -> dict[str, Any]:
+        return items.apply_bonuses_to_stats(stats, await self.repo.get_items_state())
+
+    async def _push_items_state(self):
+        await self.emit(
+            "items_state",
+            {"data": await self._get_items_state_payload()},
+        )
 
     def resume(self):
         if not self.is_running:
@@ -145,6 +164,7 @@ class GameEngine:
         game_service: GameService,
         db_factory: Callable[[], Any] = AsyncSessionLocal,
         llm_override: Optional[dict[str, Any]] = None,
+        rp_llm_override: Optional[dict[str, Any]] = None,
         save_slot: int = 1,
     ):
         self.user_id = user_id
@@ -153,6 +173,7 @@ class GameEngine:
         self.game_service = game_service
         self.db_factory = db_factory
         self.llm_override = llm_override
+        self.rp_llm_override = rp_llm_override
         self.save_slot = save_slot
         self.event_queue: asyncio.Queue[GameEvent] = asyncio.Queue()
         self.is_running = False
@@ -162,6 +183,7 @@ class GameEngine:
         self._dingtalk_inflight = False
         self._relax_inflight: set[str] = set()
         self._dingtalk_state_lock = asyncio.Lock()
+        self._items_lock = asyncio.Lock()
         self._ttl_refresh_interval_seconds = 600
         self._last_ttl_refresh = 0.0
         # ✨ 新增：倍速乘数，默认为 1.0
@@ -347,7 +369,8 @@ class GameEngine:
         reply_count: int,
         stats: dict[str, Any],
     ) -> dict[str, Any]:
-        if not self.llm_override:
+        rp_override = self.rp_llm_override
+        if rp_override or not self.llm_override:
             try:
                 from app.core.dingtalk_llm import (
                     generate_dingtalk_reply_via_m2her,
@@ -362,7 +385,12 @@ class GameEngine:
                 }
                 history = [m.model_dump() for m in contact.messages]
                 generated = await generate_dingtalk_reply_via_m2her(
-                    character, stats, history, player_reply, reply_count
+                    character,
+                    stats,
+                    history,
+                    player_reply,
+                    reply_count,
+                    llm_override=rp_override,
                 )
                 if generated:
                     return generated
@@ -484,7 +512,7 @@ class GameEngine:
         """检测精力/心态是否归零并触发game over"""
         if stats is None:
             snapshot = await self.repo.get_snapshot()
-            stats = snapshot.stats.model_dump()
+            stats = await self._effective_stats(snapshot.stats.model_dump())
         if not stats:
             return False
         try:
@@ -611,7 +639,7 @@ class GameEngine:
                 elapsed = await self.repo.update_stat("elapsed_game_time", 3)
 
                 snapshot = await self.repo.get_snapshot()
-                stats = snapshot.stats.model_dump()
+                stats = await self._effective_stats(snapshot.stats.model_dump())
 
                 # 动态获取当前学期时长上限
                 sem_idx = int(stats.get("semester_idx") or 1)
@@ -835,6 +863,14 @@ class GameEngine:
             self._track_task(self._handle_dingtalk_reply(action_data))
             return
 
+        if action == "item_buy":
+            await self._handle_item_buy(action_data)
+            return
+
+        if action == "item_sell":
+            await self._handle_item_sell(action_data)
+            return
+
         # [保留] 其它一次性动作 (Relax/Event)
         try:
             if action == "relax":
@@ -915,7 +951,7 @@ class GameEngine:
         await self._emit_dingtalk_contact_update(contact)
 
         snapshot = await self.repo.get_snapshot()
-        stats = snapshot.stats.model_dump()
+        stats = await self._effective_stats(snapshot.stats.model_dump())
         reply_count = contact.round.player_reply_count
         result = await self._generate_dingtalk_reply_result(
             contact, option.text, reply_count, stats
@@ -949,10 +985,119 @@ class GameEngine:
         if reply_count >= 3:
             await self._apply_dingtalk_settlement(contact, result.get("settlement"))
 
+    def _item_effect_changes(
+        self, item: dict[str, Any], sign: int = 1
+    ) -> list[dict[str, Any]]:
+        effects = item.get("effects")
+        if not isinstance(effects, dict):
+            return []
+        changes: list[dict[str, Any]] = []
+        for field, raw_delta in effects.items():
+            try:
+                delta = int(raw_delta) * sign
+            except (TypeError, ValueError):
+                continue
+            if delta:
+                changes.append(self._feedback_change(field, delta))
+        return changes
+
+    async def _handle_item_buy(self, data: dict[str, Any]):
+        item_id = str(data.get("item_id") or "").strip()
+        if not item_id:
+            await self.emit("toast", {"message": "无效的道具", "level": "warning"})
+            return
+        if not self.is_running:
+            await self.emit(
+                "toast",
+                {"message": "游戏暂停中，暂不能购买道具", "level": "warning"},
+            )
+            return
+
+        async with self._items_lock:
+            current_state = await self.repo.get_items_state()
+            new_state, item, error = items.build_buy_state(current_state, item_id)
+            if error or not item or not new_state:
+                await self.emit(
+                    "toast",
+                    {"message": error or "道具购买失败", "level": "warning"},
+                )
+                return
+
+            price = int(item.get("price", 0) or 0)
+            snapshot = await self.repo.get_snapshot()
+            current_gold = int(snapshot.stats.gold or 0)
+            if current_gold < price:
+                await self.emit(
+                    "toast",
+                    {
+                        "message": f"金币不足，还差 {price - current_gold} 枚",
+                        "level": "warning",
+                    },
+                )
+                return
+
+            gold_after = await self.repo.update_stat_safe("gold", -price, 0, 999999)
+            await self.repo.set_items_state(new_state)
+
+        changes = [self._feedback_change("gold", -price, gold_after)]
+        changes.extend(self._item_effect_changes(item, sign=1))
+        item_name = str(item.get("name") or item_id)
+        await self._push_items_state()
+        await self._push_update(f"购买道具：{item_name}")
+        await self._emit_feedback(
+            "道具购买成功",
+            f"你获得了「{item_name}」，持有加成已生效。",
+            kind="info",
+            auto_close_ms=3000,
+            changes=changes,
+        )
+
+    async def _handle_item_sell(self, data: dict[str, Any]):
+        item_id = str(data.get("item_id") or "").strip()
+        if not item_id:
+            await self.emit("toast", {"message": "无效的道具", "level": "warning"})
+            return
+        if not self.is_running:
+            await self.emit(
+                "toast",
+                {"message": "游戏暂停中，暂不能出售道具", "level": "warning"},
+            )
+            return
+
+        async with self._items_lock:
+            current_state = await self.repo.get_items_state()
+            new_state, item, error = items.build_sell_state(current_state, item_id)
+            if error or not item or not new_state:
+                await self.emit(
+                    "toast",
+                    {"message": error or "道具出售失败", "level": "warning"},
+                )
+                return
+
+            sell_price = int(item.get("sell_price", 0) or 0)
+            gold_after = await self.repo.update_stat_safe(
+                "gold", sell_price, 0, 999999
+            )
+            await self.repo.set_items_state(new_state)
+
+        changes = [self._feedback_change("gold", sell_price, gold_after)]
+        changes.extend(self._item_effect_changes(item, sign=-1))
+        item_name = str(item.get("name") or item_id)
+        await self._push_items_state()
+        await self._push_update(f"出售道具：{item_name}")
+        await self._emit_feedback(
+            "道具已出售",
+            f"你卖出了「{item_name}」，对应持有加成已移除。",
+            kind="info",
+            auto_close_ms=3000,
+            changes=changes,
+        )
+        await self.check_and_trigger_gameover()
+
     async def _handle_final_exam(self):
         """期末考试结算逻辑"""
         snapshot = await self.repo.get_snapshot()
-        stats = snapshot.stats.model_dump()
+        stats = await self._effective_stats(snapshot.stats.model_dump())
         if int(stats.get("exam_completed", 0) or 0):
             await self._push_update("本学期已经结算过期末考试，请开启新学期。")
             return
@@ -1026,6 +1171,10 @@ class GameEngine:
             bonus = balance.pass_all_bonus
             await self.repo.update_stat_safe("sanity", bonus)
 
+        gold_earned = items.calculate_exam_gold(term_gpa, failed_count)
+        if gold_earned:
+            await self.repo.update_stat_safe("gold", gold_earned, 0, 999999)
+
         # 将当期 GPA 和累计 GPA 写回 Redis stats（HudBar 实时读取）
         await self.repo.update_stats(
             {
@@ -1044,7 +1193,7 @@ class GameEngine:
                 "data": {
                     "term_gpa": term_gpa,
                     "cgpa": cgpa,
-                    "gold_earned": 0,
+                    "gold_earned": gold_earned,
                     "failed_count": failed_count,
                     "courses": courses_result,
                 }
@@ -1070,7 +1219,7 @@ class GameEngine:
 
     async def _handle_study_action(self, action_type: str, course_id: str):
         snapshot = await self.repo.get_snapshot()
-        stats = snapshot.stats.model_dump()
+        stats = await self._effective_stats(snapshot.stats.model_dump())
         iq = int(stats.get("iq", 90))
         msg = "你暂时没有采取有效的学习动作。"
 
@@ -1130,7 +1279,7 @@ class GameEngine:
         changes: list[dict[str, Any]] = []
         if target == "gym":
             snapshot = await self.repo.get_snapshot()
-            stats = snapshot.stats.model_dump()
+            stats = await self._effective_stats(snapshot.stats.model_dump())
             current_energy = int(stats.get("energy", 0))
             min_energy = action_cfg.get("min_energy_required", 30)
 
@@ -1244,7 +1393,7 @@ class GameEngine:
             if not post_content and self.mode != GameMode.LIBRARY:
                 # 库未命中且非纯算法模式：fallback 到 LLM
                 snapshot = await self.repo.get_snapshot()
-                stats = snapshot.stats.model_dump()
+                stats = await self._effective_stats(snapshot.stats.model_dump())
                 post_content, feedback = await generate_cc98_post(
                     stats, effect_type, trigger, llm_override=self.llm_override
                 )
@@ -1308,7 +1457,7 @@ class GameEngine:
         try:
             history = await self.repo.get_event_history()
             snapshot = await self.repo.get_snapshot()
-            stats = snapshot.stats.model_dump()
+            stats = await self._effective_stats(snapshot.stats.model_dump())
             event_data = None
 
             if self.mode == GameMode.AI:
@@ -1379,6 +1528,7 @@ class GameEngine:
         "eq": 20,
         "luck": 20,
         "reputation": 20,
+        "gold": 200,
     }
 
     async def _handle_event_choice(self, data):
@@ -1452,7 +1602,7 @@ class GameEngine:
         self._dingtalk_inflight = True
         try:
             snapshot = await self.repo.get_snapshot()
-            stats = snapshot.stats.model_dump()
+            stats = await self._effective_stats(snapshot.stats.model_dump())
 
             # 简单的上下文判断逻辑
             context = "random"
@@ -1467,13 +1617,16 @@ class GameEngine:
             elif gpa > 0 and gpa < 2.0:
                 context = "low_gpa"
 
-            # 优先使用 M2-her RP 模型（若用户配置了自定义模型，则跳过直接走 fallback）
+            # 优先使用 M2-her RP 模型；通用自定义 LLM 存在且未配置 RP key 时走通用 LLM。
             msg_data = None
-            if not self.llm_override:
+            rp_override = self.rp_llm_override
+            if rp_override or not self.llm_override:
                 try:
                     from app.core.dingtalk_llm import generate_dingtalk_via_m2her
 
-                    msg_data = await generate_dingtalk_via_m2her(stats, context)
+                    msg_data = await generate_dingtalk_via_m2her(
+                        stats, context, llm_override=rp_override
+                    )
                 except Exception as e:
                     logger.warning(f"M2-her dingtalk fallback: {e}")
 
@@ -1511,7 +1664,7 @@ class GameEngine:
         """成就系统判定逻辑"""
         try:
             snapshot = await self.repo.get_snapshot()
-            stats = snapshot.stats.model_dump()
+            stats = await self._effective_stats(snapshot.stats.model_dump())
             action_counts = await self.repo.get_action_counts()
 
             # 防御性转换
@@ -1578,7 +1731,7 @@ class GameEngine:
         current_semester_idx = transition.get("semester_idx")
 
         if transition.get("status") == "graduated":
-            stats = transition.get("stats") or {}
+            stats = await self._effective_stats(transition.get("stats") or {})
             # 调用AI生成文言文结业总结
             from app.core.llm import generate_wenyan_report
 
@@ -1603,7 +1756,7 @@ class GameEngine:
 
         # 获取新学期的最新快照（含新课程数据）
         new_snapshot = await self.repo.get_snapshot()
-        new_stats = new_snapshot.stats.model_dump()
+        new_stats = await self._effective_stats(new_snapshot.stats.model_dump())
         semester_idx = int(new_stats.get("semester_idx") or current_semester_idx or 1)
         base_duration = balance.get_semester_duration(semester_idx)
         elapsed = int(new_stats.get("elapsed_game_time", 0) or 0)
@@ -1622,6 +1775,7 @@ class GameEngine:
                     "course_states": new_snapshot.course_states,
                     "course_info_json": new_stats.get("course_info_json", "[]"),
                     "semester_time_left": semester_time_left,
+                    "energy_recovery": transition.get("energy_recovery"),
                 }
             },
         )
@@ -1655,7 +1809,7 @@ class GameEngine:
         """统一数据推送接口"""
         try:
             snapshot = await self.repo.get_snapshot()
-            new_stats = snapshot.stats.model_dump()
+            new_stats = await self._effective_stats(snapshot.stats.model_dump())
             course_mastery = snapshot.courses
             course_states = snapshot.course_states
             relax_cooldowns = await self._get_relax_cooldowns()
@@ -1671,8 +1825,16 @@ class GameEngine:
             # 基于 iq 和 stress 计算并存入将下发的 new_stats 中
             iq = int(new_stats.get("iq", 100))
             stress = int(new_stats.get("stress", 0))
+            item_bonuses = new_stats.get("item_bonuses")
+            efficiency_bonus = (
+                int(item_bonuses.get("efficiency", 0))
+                if isinstance(item_bonuses, dict)
+                else 0
+            )
             # 基准 100，每高出一点智商提高 1%，每多一点压力降低 0.5%
-            calculated_efficiency = max(10, 100 + (iq - 100) * 1 - int(stress * 0.5))
+            calculated_efficiency = max(
+                10, 100 + (iq - 100) * 1 - int(stress * 0.5) + efficiency_bonus
+            )
             new_stats["efficiency"] = calculated_efficiency
 
             await self.emit(
@@ -1771,7 +1933,7 @@ class GameEngine:
 
     async def _emit_current_init(self):
         snapshot = await self.repo.get_snapshot()
-        stats = snapshot.stats.model_dump()
+        stats = await self._effective_stats(snapshot.stats.model_dump())
         try:
             semester_idx = int(stats.get("semester_idx", 1) or 1)
         except (TypeError, ValueError):
@@ -1782,6 +1944,7 @@ class GameEngine:
             elapsed = 0
         base_duration = balance.get_semester_duration(semester_idx)
         dingtalk_state = await self.repo.get_dingtalk_state()
+        items_state = await self._get_items_state_payload()
 
         await self.emit(
             "init",
@@ -1794,6 +1957,7 @@ class GameEngine:
                 ),
                 "relax_cooldowns": await self._get_relax_cooldowns(),
                 "dingtalk_state": dingtalk_state.model_dump(),
+                "items_state": items_state,
             },
         )
 

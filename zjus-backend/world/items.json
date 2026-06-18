@@ -1,0 +1,143 @@
+{
+  "version": "1.0.0",
+  "description": "道具经济与持有加成配置 v1",
+  "economy": {
+    "initial_gold": 120,
+    "exam_income": {
+      "base": 20,
+      "gpa_multiplier": 36,
+      "pass_all_bonus": 30,
+      "failed_penalty_per_course": 24,
+      "min": 0,
+      "max": 240
+    }
+  },
+  "items": [
+    {
+      "id": "qiushi_planner",
+      "name": "求是日程本",
+      "category": "学习",
+      "description": "把ddl、早八和社团例会都塞进一本小册子里。学习更有章法，压力也不那么乱跳。",
+      "price": 90,
+      "sell_price": 45,
+      "tags": [
+        "学习",
+        "规划"
+      ],
+      "effects": {
+        "iq": 4,
+        "stress": -3
+      }
+    },
+    {
+      "id": "blue_lake_thermos",
+      "name": "启真湖保温杯",
+      "category": "生活",
+      "description": "热水与咖啡因在夜自习之间达成了微妙平衡。",
+      "price": 70,
+      "sell_price": 35,
+      "tags": [
+        "生活",
+        "精力"
+      ],
+      "effects": {
+        "energy": 8,
+        "sanity": 2
+      }
+    },
+    {
+      "id": "cc98_archive_key",
+      "name": "CC98 旧帖索引",
+      "category": "社交",
+      "description": "快速定位经验帖与奇怪校园传说，社交谈资突然多了起来。",
+      "price": 110,
+      "tags": [
+        "社交",
+        "论坛"
+      ],
+      "effects": {
+        "eq": 5,
+        "reputation": 3
+      }
+    },
+    {
+      "id": "silent_library_pass",
+      "name": "图书馆静音席位卡",
+      "category": "学习",
+      "description": "总能找到一个不被打扰的角落，适合把难课一点点啃下来。",
+      "price": 130,
+      "sell_price": 65,
+      "tags": [
+        "学习",
+        "效率"
+      ],
+      "effects": {
+        "iq": 6,
+        "efficiency": 5,
+        "stress": 2
+      }
+    },
+    {
+      "id": "campus_bike_coupon",
+      "name": "校园单车月卡",
+      "category": "生活",
+      "description": "紫金港再大，也挡不住踩点赶课的人。",
+      "price": 85,
+      "tags": [
+        "生活",
+        "通勤"
+      ],
+      "effects": {
+        "energy": 5,
+        "stress": -5
+      }
+    },
+    {
+      "id": "club_badge",
+      "name": "社团联名徽章",
+      "category": "社交",
+      "description": "挂在包上的小徽章，似乎让你更容易被记住。",
+      "price": 100,
+      "sell_price": 50,
+      "tags": [
+        "社交",
+        "声望"
+      ],
+      "effects": {
+        "eq": 4,
+        "reputation": 6
+      }
+    },
+    {
+      "id": "lucky_canteen_card",
+      "name": "幸运饭卡贴",
+      "category": "玄学",
+      "description": "贴上之后，抢到最后一份烤鸭卷的概率好像真的变高了。",
+      "price": 75,
+      "tags": [
+        "玄学",
+        "运气"
+      ],
+      "effects": {
+        "luck": 7
+      }
+    },
+    {
+      "id": "academy_fountain_pen",
+      "name": "学院派钢笔",
+      "category": "学习",
+      "description": "写微积分作业时显得格外笃定，虽然墨水并不会替你算曲面积分。",
+      "price": 150,
+      "sell_price": 75,
+      "tags": [
+        "学习",
+        "声望"
+      ],
+      "effects": {
+        "iq": 5,
+        "reputation": 5,
+        "sanity": 2
+      }
+    }
+  ]
+}

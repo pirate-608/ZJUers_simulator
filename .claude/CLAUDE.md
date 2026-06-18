@@ -106,25 +106,28 @@ Backend:
 - `zjus-backend/app/core/input_safety.py`: player username normalization, prompt-injection keyword checks, and prompt-safe fallback.
 - `zjus-backend/app/game/engine.py`: tick loop, actions, final exams, random events, relax cooldowns, feedback messages, content mode switching.
 - `zjus-backend/app/game/balance.py`: `world/game_balance.json` path resolution, runtime reads, and hot reload.
+- `zjus-backend/app/game/items.py`: `world/items.json` loading, item economy, passive bonuses, buy/sell state helpers.
 - `zjus-backend/app/services/game_service.py`: character/major initialization, semester transitions.
-- `zjus-backend/app/services/save_service.py`: Redis/Postgres save load and persistence.
+- `zjus-backend/app/services/save_service.py`: Redis/Postgres save load and persistence, including DingTalk and item state.
 - `zjus-backend/app/services/balance_admin.py`: admin form schema, validation, atomic file publish, audit snapshot restore.
-- `zjus-backend/app/repositories/redis_repo.py`: active game state, TTL, cooldowns, event history.
+- `zjus-backend/app/repositories/redis_repo.py`: active game state, TTL, cooldowns, event history, DingTalk state, item state.
 - `zjus-backend/app/core/llm.py` and `dingtalk_llm.py`: LLM-backed content generation and fallbacks.
   MiniMax M2-her RP calls use the OpenAI SDK compatible base URL `MINIMAX_BASE_URL=https://api.minimaxi.com/v1` and the case-sensitive model name `M2-her`; keep templates, docs, and tests exact when touching this path. Send only documented `role`/`content` fields in M2-her messages; do not pass DingTalk display names such as `【室友】` through the API `name` field.
+  DingTalk uses platform M2-her only when the player has not provided a general custom LLM, unless the player provides `custom_rp_api_key`; with a general custom LLM and no RP key, DingTalk falls back to the general custom LLM to avoid platform RP spend.
+  Cache only the platform-default MiniMax client. Player-provided `custom_rp_api_key` clients are session-sensitive and must be closed after each call instead of stored in a process-wide cache.
   Long-running content actions must not block the WebSocket receive loop: DingTalk replies and relax actions run through `GameEngine._track_task`, with target-level de-duplication for relax actions.
 
 Frontend:
 
 - `zjus-frontend/src/App.vue`: pre-login prologue gate, phase routing, global modals, guide startup.
 - `zjus-frontend/src/components/PrologueScene.vue` and `src/data/prologue.ts`: first-visit prologue text, image mapping, and seen-state key.
-- `zjus-frontend/src/components/LoginView.vue`: Invite-code login, plus a session-scoped custom LLM config section where API key, model name, and provider are optional fields (may be left NULL; system defaults apply when NULL).
+- `zjus-frontend/src/components/LoginView.vue`: Invite-code login, plus session-scoped custom general LLM config and an optional custom RP MiniMax API key for DingTalk M2-her.
 - `zjus-frontend/src/components/SaveSelect.vue`: returning-user save selection or new game.
 - `zjus-frontend/src/components/CharacterCreate.vue`: major selection and stat budget UI.
 - `zjus-frontend/src/composables/useGameWebSocket.ts`: auth handshake, heartbeat, message dispatch.
 - `zjus-frontend/src/stores/gameStore.ts`: global game state, feedback modal, pause/guide flags, cooldowns.
 - `zjus-frontend/src/components/RightPanel.vue`: relax actions, cooldown lockout, content generation mode switch.
-- `zjus-frontend/src/components/modals/FeedbackModal.vue`: random-event and relax-result feedback.
+- `zjus-frontend/src/components/modals/FeedbackModal.vue`: random-event, relax-result, DingTalk, and item feedback.
 
 Docs:
 
@@ -157,15 +160,19 @@ Returning users:
 
 WebSocket:
 
-- First message sends `token`, optional `load_save_slot`, and optional custom LLM fields.
+- First message sends `token`, optional `load_save_slot`, optional custom LLM fields, and optional `custom_rp_api_key`.
 - `auth_ok` means the connection is usable. The frontend must not automatically send `resume`; backend owns startup through `engine.start()`.
-- `init` and `tick` include `relax_cooldowns`.
+- `init` and `tick` include `relax_cooldowns`; `init` also includes `items_state`, and item buy/sell changes emit `items_state`.
 - `feedback` messages show user-facing result popups while `event` logs remain in "求是园动态".
 
 Guide/pause:
 
 - The first-play guide pauses backend ticking and freezes frontend local countdown through `isGuideActive`.
 - Resume only after the guide finishes or the user explicitly resumes.
+
+Semester transitions:
+
+- New semesters reset courses and course states, reset elapsed time, and recover energy halfway toward 100 with `ceil((100 + current_energy) / 2)` without reducing energy already above 100.
 
 Relax actions:
 
@@ -177,10 +184,20 @@ Random events:
 
 - Event choices are validated against the current server-side event.
 - Results show a feedback modal for 5 seconds and still append logs.
+- Event and DingTalk effects may include `gold`; item passive bonuses are computed separately and should not be written back into base stats.
+
+Items:
+
+- Item definitions live in `zjus-backend/world/items.json`; `app/game/items.py` validates the catalog and falls back to an empty catalog on config errors.
+- `PlayerStats.gold` is real persisted currency. New games use `economy.initial_gold`; final exams use `economy.exam_income`; random events and DingTalk settlements may also change gold.
+- Items are v1 limited to one owned copy per `item_id`. They are hold-to-activate passive bonuses; selling removes the bonus and refunds `sell_price`.
+- Backpacks persist through Redis `player:{id}:items_state` and PostgreSQL `game_saves.items_data`.
+- Passive bonuses produce effective stats for tick/exam/Game Over/LLM context/UI and must not be repeatedly written into base Redis stats.
 
 Content generation:
 
 - Modes are `library`, `hybrid`, and `ai`.
+- DingTalk model selection order is: player custom RP MiniMax key, platform M2-her when no general custom LLM is configured, then the active general LLM fallback.
 - When AI/LLM becomes unavailable, AI mode falls back toward hybrid mode(if still have issues, then fall back to library mode) behavior and emits mode/toast updates.
 
 Admin balance:

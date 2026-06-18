@@ -72,7 +72,7 @@ New players log in with an invite code, select a major, and allocate initial IQ 
 <details>
 <summary>🎛️ Game Dashboard</summary>
 
-![Game Dashboard](https://zjusim-docs.67656.fun/assets/images/dashboard.png)
+![Game Dashboard](./docs/public/assets/images/dashboard.png)
 
 </details>
 
@@ -95,7 +95,7 @@ New players log in with an invite code, select a major, and allocate initial IQ 
 <details>
 <summary>💬 DingTalk Messages</summary>
 
-![DingTalk Messages](https://zjusim-docs.67656.fun/assets/images/dingtalk.png)
+![DingTalk Messages](./docs/public/assets/images/dingtalk.png)
 
 </details>
 

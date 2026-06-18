@@ -130,6 +130,7 @@ class TestBuildInitial:
             "highest_gpa",
             "reputation",
             "efficiency",
+            "gold",
             "initial_major_abbr",
             "initial_iq",
             "initial_eq",

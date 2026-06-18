@@ -74,6 +74,15 @@
           {{ safeNumber(stats.gpa, 0).toFixed(2) }}
         </div>
       </div>
+
+      <div class="text-center hud-metric-block">
+        <div class="small text-muted fw-bold metric-label">
+          金币
+        </div>
+        <div class="fw-bold fs-5 metric-value metric-gold">
+          {{ Math.floor(safeNumber(stats.gold, 0)) }}
+        </div>
+      </div>
     </div>
   </div>
 </template>
@@ -187,6 +196,10 @@ const stressColorClass = computed(() => {
 
 .metric-alert {
   color: var(--console-danger);
+}
+
+.metric-gold {
+  color: var(--console-gold-border);
 }
 
 @media (max-width: 430px) {

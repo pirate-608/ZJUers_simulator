@@ -88,6 +88,29 @@
                 </div>
               </div>
 
+              <div class="form-check form-switch mb-2">
+                <input
+                  id="rp-toggle"
+                  v-model="form.useCustomRp"
+                  class="form-check-input"
+                  type="checkbox"
+                >
+                <label class="form-check-label" for="rp-toggle">钉钉私聊使用自定义 MiniMax RP Key（可选）</label>
+              </div>
+
+              <div
+                v-if="form.useCustomRp"
+                class="card card-body border border-primary-subtle llm-config-box mb-3"
+              >
+                <div class="mb-2">
+                  <label class="form-label small fw-bold">MiniMax API Key</label>
+                  <input v-model="form.rpKey" type="password" class="form-control form-control-sm" placeholder="用于 M2-her 钉钉角色私聊">
+                </div>
+                <div class="form-text small">
+                  留空时不会使用你的 RP Key；若已配置通用自定义模型，钉钉会回退到通用模型。
+                </div>
+              </div>
+
               <div class="d-grid gap-2 mt-4">
                 <button
                   class="btn btn-primary btn-lg fw-bold"
@@ -115,9 +138,9 @@
       >
         <div class="card shadow-lg border-0 p-4 mx-3" style="max-width: 500px;">
           <h4 class="text-danger fw-bold mb-3">⚠️ 安全政策确认</h4>
-          <p class="mb-2">你正在使用自定义的 LLM API Key。</p>
+          <p class="mb-2">你正在使用自定义模型 API Key。</p>
           <ul class="text-muted small">
-            <li>你的 API Key 仅在当前浏览器内存和后端临时会话中使用。</li>
+            <li>你的 API Key 仅在当前浏览器会话和后端临时连接中使用。</li>
             <li>游戏绝不会将你的密钥持久化存储到数据库。</li>
             <li>关闭浏览器后配置即失效。</li>
             <li>阅读<a href="https://zjusim-docs.67656.fun/user/models/#security-notice">安全须知</a></li>
@@ -161,6 +184,8 @@ const form = reactive({
   llmProvider: 'openai',
   llmModel: '',
   llmKey: '',
+  useCustomRp: false,
+  rpKey: '',
 })
 
 // LLM 安全弹窗
@@ -168,7 +193,9 @@ const showLlmWarning = ref(false)
 const pendingAction = ref<(() => void) | null>(null)
 
 const handleLogin = () => {
-  if (form.useCustomLlm && form.llmKey.trim() !== '') {
+  const hasCustomLlmKey = form.useCustomLlm && form.llmKey.trim() !== ''
+  const hasCustomRpKey = form.useCustomRp && form.rpKey.trim() !== ''
+  if (hasCustomLlmKey || hasCustomRpKey) {
     pendingAction.value = doLogin
     showLlmWarning.value = true
   } else {
@@ -207,11 +234,18 @@ const doLogin = async () => {
     if (result.user_token) localStorage.setItem('zju_user_token', result.user_token)
     localStorage.setItem('zju_username', result.username || form.username.trim())
 
-    // 保存 LLM 配置
-    if (form.useCustomLlm && form.llmKey) {
+    // 保存会话级模型配置；每次登录先清理旧值，避免关闭开关后沿用上次密钥。
+    sessionStorage.removeItem('custom_llm_provider')
+    sessionStorage.removeItem('custom_llm_model')
+    sessionStorage.removeItem('custom_llm_key')
+    sessionStorage.removeItem('custom_rp_key')
+    if (form.useCustomLlm && form.llmKey.trim() !== '') {
       sessionStorage.setItem('custom_llm_provider', form.llmProvider)
-      sessionStorage.setItem('custom_llm_model', form.llmModel)
-      sessionStorage.setItem('custom_llm_key', form.llmKey)
+      sessionStorage.setItem('custom_llm_model', form.llmModel.trim())
+      sessionStorage.setItem('custom_llm_key', form.llmKey.trim())
+    }
+    if (form.useCustomRp && form.rpKey.trim() !== '') {
+      sessionStorage.setItem('custom_rp_key', form.rpKey.trim())
     }
 
     if (result.status === 'returning') {

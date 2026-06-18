@@ -46,8 +46,56 @@ function mountWithContact(paused = false) {
   return { wrapper, store }
 }
 
+function mountWithItems(paused = false, gold = 100, owned = []) {
+  const pinia = createPinia()
+  setActivePinia(pinia)
+  const store = useGameStore()
+  store.updateStats({ gold })
+  store.setItemsState({
+    version: 1,
+    updated_at: 1,
+    items: [
+      {
+        id: 'planner',
+        name: '求是日程本',
+        category: '学习',
+        description: '规划 ddl',
+        price: 80,
+        sell_price: 40,
+        tags: ['学习'],
+        effects: { iq: 4, stress: -2 },
+      },
+      {
+        id: 'bike',
+        name: '校园单车月卡',
+        category: '生活',
+        description: '赶课更轻松',
+        price: 60,
+        sell_price: 30,
+        tags: ['通勤'],
+        effects: { energy: 5 },
+      },
+    ],
+    owned,
+    bonuses: owned.includes('planner') ? { iq: 4, stress: -2 } : {},
+  })
+  store.setPaused(paused)
+
+  const wrapper = mount(MidPanel, {
+    global: {
+      plugins: [pinia],
+    },
+  })
+  return { wrapper, store }
+}
+
 async function openDingTalkTab(wrapper) {
   await wrapper.findAll('.nav-link')[1].trigger('click')
+  await wrapper.vm.$nextTick()
+}
+
+async function openItemsTab(wrapper) {
+  await wrapper.findAll('.nav-link')[2].trigger('click')
   await wrapper.vm.$nextTick()
 }
 
@@ -82,5 +130,52 @@ describe('MidPanel DingTalk reply controls', () => {
     expect(
       emittedActions.some(([payload]) => payload.action === 'dingtalk_reply'),
     ).toBe(false)
+  })
+})
+
+describe('MidPanel item controls', () => {
+  beforeEach(() => {
+    localStorage.clear()
+  })
+
+  it('filters items and emits a buy action for affordable items', async () => {
+    const { wrapper } = mountWithItems(false, 100)
+    await openItemsTab(wrapper)
+
+    await wrapper.find('.item-search').setValue('日程')
+    expect(wrapper.text()).toContain('求是日程本')
+    expect(wrapper.text()).not.toContain('校园单车月卡')
+
+    await wrapper.find('.item-action-btn').trigger('click')
+
+    const emittedActions = wrapper.emitted('send-action') || []
+    expect(emittedActions.some(([payload]) => (
+      payload.action === 'item_buy' && payload.item_id === 'planner'
+    ))).toBe(true)
+  })
+
+  it('emits a sell action for owned items', async () => {
+    const { wrapper } = mountWithItems(false, 100, ['planner'])
+    await openItemsTab(wrapper)
+
+    await wrapper.find('.item-action-btn').trigger('click')
+
+    const emittedActions = wrapper.emitted('send-action') || []
+    expect(emittedActions.some(([payload]) => (
+      payload.action === 'item_sell' && payload.item_id === 'planner'
+    ))).toBe(true)
+  })
+
+  it('disables item buy and sell actions while paused', async () => {
+    const { wrapper } = mountWithItems(true, 100)
+    await openItemsTab(wrapper)
+
+    const button = wrapper.find('.item-action-btn')
+    expect(button.attributes('disabled')).toBeDefined()
+
+    await button.trigger('click')
+
+    const emittedActions = wrapper.emitted('send-action') || []
+    expect(emittedActions.some(([payload]) => payload.action?.startsWith('item_'))).toBe(false)
   })
 })

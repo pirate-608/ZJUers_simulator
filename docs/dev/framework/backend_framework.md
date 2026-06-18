@@ -38,6 +38,7 @@ zjus-backend/app/
 ├── game/
 │   ├── engine.py            # Tick 循环 + 动作处理
 │   ├── balance.py           # 数值配置
+│   ├── items.py             # 道具目录、经济与持有加成
 │   └── state.py             # RedisState 兼容门面
 └── websockets/
     └── manager.py           # 连接管理 + 心跳
@@ -71,7 +72,7 @@ graph TD
     subgraph "数据层"
         Redis["Redis<br>实时状态"]
         PG["PostgreSQL<br>用户/存档/限制"]
-        World["world/*.json<br>专业/课程/内容库"]
+        World["world/*.json<br>专业/课程/道具/内容库"]
         LLM["LLM<br>内容兜底"]
     end
 
@@ -151,7 +152,7 @@ graph TD
 
 ### Redis Key
 
-每个玩家 9 个核心 Key，均带 TTL：
+每个玩家 10 个核心 Key，均带 TTL：
 
 - `player:{id}:stats`
 - `player:{id}:courses`
@@ -162,8 +163,9 @@ graph TD
 - `player:{id}:cooldowns`
 - `player:{id}:current_event`
 - `player:{id}:dingtalk_state`
+- `player:{id}:items_state`
 
-`RedisRepository` 负责字段归一化、批量写入、TTL 刷新、安全数值更新和钉钉私聊状态读写。`efficiency`、`elapsed_game_time` 等运行时字段也在归一化层维护。
+`RedisRepository` 负责字段归一化、批量写入、TTL 刷新、安全数值更新、钉钉私聊状态和道具背包状态读写。`efficiency`、`elapsed_game_time`、`gold` 等运行时字段也在归一化层维护。
 
 ### PlayerStats 初始值
 
@@ -176,6 +178,7 @@ graph TD
 - `luck=50`
 - `semester_idx=1`
 - `semester="大一秋冬"`
+- `gold` 由 `world/items.json` 的 `economy.initial_gold` 写入。
 
 专业、课程和专业增益由 `GameService.assign_major_and_init()` 写入。
 
@@ -190,9 +193,12 @@ graph TD
 - 期末考试/GPA。
 - 随机事件、CC98、钉钉消息。
 - 钉钉联系人私聊、回复选项和三次回复一轮的数值结算。
+- 道具购买、出售、持有加成和金币变化反馈。
 - 休闲动作冷却计算和结果反馈弹窗消息。
 - 内容生成模式切换：`library` / `hybrid` / `ai`。
 - 学期推进、毕业、Game Over。
+
+学期推进由 `GameService.process_semester_transition()` 编排。进入新学期时会重置课程和课程策略，并把精力向 100 回调一半（`ceil((100 + 当前精力) / 2)`），避免低精力跨学期直接形成不可恢复开局。
 
 `api/game.py` 通过 `engine.start()` 启动单一主循环；`pause` 会停止 tick，`resume` 会重新启动。WebSocket 断开时调用 `engine.shutdown()` 取消主循环和仍在挂起的后台内容生成任务。
 
@@ -213,15 +219,29 @@ graph TD
 | `event_choice` | 随机事件选择 |
 | `next_semester` | 进入下学期或毕业 |
 | `set_mode` | 内容生成模式 |
+| `item_buy` / `item_sell` | 购买或出售道具 |
 
 ---
+
+## 道具与金币
+
+道具数值来源为 `world/items.json`，由 `app/game/items.py` 加载、校验和生成前端可见目录。配置非法时道具目录降级为空并记录日志，避免阻断游戏启动。
+
+- `economy.initial_gold` 控制新玩家初始金币。
+- `economy.exam_income` 控制期末结算金币收入。
+- `items[].effects` 只允许影响 `energy` / `sanity` / `stress` / `iq` / `eq` / `luck` / `reputation` / `efficiency`。
+- v1 每个 `item_id` 同一时间最多拥有一件；支持出售，`sell_price` 缺省为原价 50%。
+
+道具为持有即生效的被动加成。基础属性仍保存在 Redis `stats` 中；`GameEngine` 读取时通过 `ItemCatalog.apply_bonuses_to_stats()` 生成 effective stats，并在推送给前端时附带 `item_bonuses`。这样保存、重登或出售不会造成加成重复写入。
+
+背包状态保存在 Redis `player:{id}:items_state`，并随 `SaveService.persist_to_db()` 写入 `game_saves.items_data`。旧存档缺失 `items_data` 时按空背包加载，缺失 `gold` 时按 0 修复。
 
 ## 内容生成与检索
 
 运行时内容系统为：
 
 - 事件/CC98：优先本地预构建 JSON 库。
-- 钉钉：优先角色向量检索 + M2-her；失败时回退通用 LLM。
+- 钉钉：默认优先角色向量检索 + M2-her；玩家提供 `custom_rp_api_key` 时使用玩家 MiniMax key；玩家只提供通用自定义 LLM 时跳过平台默认 M2-her 并回退到通用 LLM。
 - 钉钉私聊状态保存在 Redis，并随存档写入 `game_saves.dingtalk_data`；学期切换不会清空联系人或历史。
 - 文言文结业总结：仍使用 LLM。
 
@@ -248,7 +268,7 @@ SQLAdmin 挂载在 `/admin`，登录态与账号密码来自 `ADMIN_USERNAME`、
 ## 数据库模型
 
 - `users`：昵称、长期学生凭证、最高 GPA。
-- `game_saves`：存档快照 JSON，含钉钉私聊状态，按 `(user_id, save_slot)` 唯一。
+- `game_saves`：存档快照 JSON，含钉钉私聊状态和道具背包状态，按 `(user_id, save_slot)` 唯一。
 - `user_restrictions`：账号限制。
 - `user_blacklist`：黑名单，支持 username/token/ip。
 - `admin_audit_logs`：后台操作审计。

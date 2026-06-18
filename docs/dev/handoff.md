@@ -22,7 +22,7 @@ login -> save_select -> character_create -> loading -> playing -> ended
 
 - `POST /api/auth` 只接收昵称、邀请码和可选长期学生凭证；新用户返回 JWT 与 `user_token`，老用户返回 JWT 与存档摘要。
 - `POST /api/init_character` 校验 `IQ` / `EQ` / `Luck` 每项 `50-150`，总和必须为 `250`；专业 IQ 加成在服务端初始化时额外叠加。
-- WebSocket 首条消息必须携带 `{ token }`，可选 `load_save_slot` 和会话级 `custom_llm_*` 字段。
+- WebSocket 首条消息必须携带 `{ token }`，可选 `load_save_slot`、会话级 `custom_llm_*` 字段和钉钉 RP 专用 `custom_rp_api_key`。
 - 指定 `load_save_slot` 时，后端必须强制从 PostgreSQL 存档恢复；存档不存在则返回 `auth_error`。
 - `auth_ok` 只表示连接可用，前端不应自动发送 `resume`；后端在上下文初始化完成后启动引擎。
 
@@ -30,14 +30,16 @@ login -> save_select -> character_create -> loading -> playing -> ended
 
 - `GameEngine` 负责 tick、暂停/恢复、期末考试、学期推进、随机事件、休闲冷却、反馈弹窗、毕业和 Game Over。
 - Redis 是单局实时状态源，PostgreSQL 是持久化存档源；保存/学期推进通过 `SaveService.persist_to_db()` upsert。
-- `init` 与 `tick` 都应携带 `relax_cooldowns`，前端据此禁用休闲按钮并显示剩余秒数。
+- `init` 与 `tick` 都应携带 `relax_cooldowns`，前端据此禁用休闲按钮并显示剩余秒数；`init` 还会携带 `items_state`，购买/出售后通过独立 `items_state` 消息同步。
+- 道具配置来自 `world/items.json`，背包在 Redis `items_state` 与 `game_saves.items_data` 间同步。道具持有即生效，但加成作为 effective stats 计算，不直接写入基础属性。
 - 随机事件和休闲结果同时保留 `event` 日志，并通过 `feedback` 展示短时弹窗。
+- 新学期切换重置课程和学期计时，并将精力向 100 回调一半，保留经营压力但避免低精力锁死。
 
 ### 内容生成
 
 - 内容模式为 `library`、`hybrid`、`ai`。
 - 事件和 CC98 优先使用本地预构建 JSON 库。
-- 钉钉消息优先走 pgvector 角色检索 + MiniMax M2-her；检索或 API 不可用时回退到随机角色或通用 LLM。联系人私聊状态随存档保存，三次玩家回复后结算一轮数值影响。
+- 钉钉消息默认优先走 pgvector 角色检索 + MiniMax M2-her；若玩家提供 `custom_rp_api_key`，使用玩家 MiniMax key 调用 M2-her；若玩家只配置通用自定义 LLM，则不再使用平台默认 M2-her，而是回退到通用自定义 LLM。联系人私聊状态随存档保存，三次玩家回复后结算一轮数值影响。
 - AI/LLM 不可用时，AI 模式要向 hybrid/library 降级，并通过 `mode_changed` 或 `toast` 告知前端。
 - 用户自定义 LLM 配置只在浏览器 `sessionStorage` 和当前 WebSocket 会话中使用，不落库。
 

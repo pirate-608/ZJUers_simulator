@@ -12,7 +12,7 @@
 - 生产环境默认跳过 `Base.metadata.create_all`，继续依赖 Compose 中的 `migrate` 服务执行 Alembic；开发环境默认保留 `create_all`。
 - `GameEngine.run_loop` 复用同一 tick 已读取的 snapshot，并让 `check_and_trigger_gameover` 支持传入 stats，减少 tick 内重复 Redis snapshot 读取。
 - `dingtalk_llm.py` 缓存 `characters.json`，`llm.py` 缓存 `keywords.json`，`GameEngine` 缓存 `achievements.json`。
-- MiniMax M2-her 使用共享 OpenAI SDK 异步客户端，并在 FastAPI shutdown 时关闭，减少频繁创建客户端和建连成本。
+- 平台默认 MiniMax M2-her 使用共享 OpenAI SDK 异步客户端，并在 FastAPI shutdown 时关闭；玩家会话级自定义 RP key 使用临时客户端，用完即关闭，避免把玩家 key 和连接池长期留在进程缓存中。
 
 ## 优化方向
 
@@ -39,7 +39,7 @@
 - 给 `dingtalk_llm.py` 的 `characters.json` 加进程内缓存，避免每次联系人或回复查询重复读文件。（已执行）
 - 给 `llm.py` 的 `keywords.json` 加进程内缓存。（已执行）
 - 缓存 `achievements.json`，避免成就检查反复读文件。（已执行）
-- MiniMax M2-her 使用共享 OpenAI SDK 异步客户端，并在 FastAPI shutdown 时关闭，减少频繁建连和文件描述符压力。（已执行）
+- 平台默认 MiniMax M2-her 使用共享 OpenAI SDK 异步客户端，并在 FastAPI shutdown 时关闭，减少频繁建连和文件描述符压力；玩家自定义 RP key 不进入共享缓存。（已执行）
 
 ### 生产 Compose
 

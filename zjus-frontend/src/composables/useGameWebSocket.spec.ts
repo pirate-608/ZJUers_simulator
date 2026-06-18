@@ -46,12 +46,16 @@ describe('useGameWebSocket', () => {
   beforeEach(() => {
     setActivePinia(createPinia())
     vi.useFakeTimers()
+    localStorage.clear()
+    sessionStorage.clear()
     MockWebSocket.instances = []
     originalWebSocket = globalThis.WebSocket
     globalThis.WebSocket = MockWebSocket as unknown as typeof WebSocket
   })
 
   afterEach(() => {
+    localStorage.clear()
+    sessionStorage.clear()
     globalThis.WebSocket = originalWebSocket
     vi.clearAllTimers()
     vi.useRealTimers()
@@ -85,6 +89,27 @@ describe('useGameWebSocket', () => {
     })
   })
 
+  it('sends session-scoped general and RP model overrides in the auth payload', () => {
+    const { connect } = useGameWebSocket()
+    sessionStorage.setItem('custom_llm_provider', 'deepseek')
+    sessionStorage.setItem('custom_llm_model', 'deepseek-chat')
+    sessionStorage.setItem('custom_llm_key', 'sk-general')
+    sessionStorage.setItem('custom_rp_key', 'sk-minimax-rp')
+
+    connect('token', 'ws://game.test')
+    const socket = MockWebSocket.instances[0]
+    socket.onopen?.(new Event('open'))
+
+    expect(socket.sent).toHaveLength(1)
+    expect(JSON.parse(socket.sent[0])).toMatchObject({
+      token: 'token',
+      custom_llm_provider: 'deepseek',
+      custom_llm_model: 'deepseek-chat',
+      custom_llm_api_key: 'sk-general',
+      custom_rp_api_key: 'sk-minimax-rp',
+    })
+  })
+
   it('stores feedback stat changes for the result modal', () => {
     const store = useGameStore()
     const { connect } = useGameWebSocket()
@@ -111,6 +136,37 @@ describe('useGameWebSocket', () => {
         { field: 'stress', label: '压力', delta: 5, value: 45 },
       ],
     })
+  })
+
+  it('stores item state messages from the server', () => {
+    const store = useGameStore()
+    const { connect } = useGameWebSocket()
+
+    connect('token', 'ws://game.test')
+    MockWebSocket.instances[0].emitMessage({
+      type: 'items_state',
+      data: {
+        items: [
+          {
+            id: 'planner',
+            name: '求是日程本',
+            category: '学习',
+            description: '规划 ddl',
+            price: 80,
+            sell_price: 40,
+            tags: ['学习'],
+            effects: { iq: 4 },
+          },
+        ],
+        owned: ['planner'],
+        bonuses: { iq: 4 },
+        updated_at: 1,
+      },
+    })
+
+    expect(store.itemCatalog[0].id).toBe('planner')
+    expect(store.ownedItems).toEqual(['planner'])
+    expect(store.itemBonuses.iq).toBe(4)
   })
 
   it('applies new semester state and timer from the transition message', () => {

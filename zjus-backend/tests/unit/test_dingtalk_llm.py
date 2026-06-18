@@ -22,11 +22,9 @@ from app.core.dingtalk_llm import (
 
 @pytest.fixture(autouse=True)
 def reset_m2her_client_cache():
-    dingtalk_llm._M2HER_CLIENT = None
-    dingtalk_llm._M2HER_CLIENT_CONFIG = None
+    dingtalk_llm._M2HER_CLIENTS.clear()
     yield
-    dingtalk_llm._M2HER_CLIENT = None
-    dingtalk_llm._M2HER_CLIENT_CONFIG = None
+    dingtalk_llm._M2HER_CLIENTS.clear()
 
 # ==========================================
 # _build_m2her_messages 测试（纯函数，无 I/O）
@@ -189,6 +187,45 @@ class TestCallM2herApi:
                 assert kwargs["max_completion_tokens"] == 200
 
     @pytest.mark.asyncio
+    async def test_custom_rp_override_uses_player_minimax_config(self):
+        mock_response = MagicMock()
+        mock_choice = MagicMock()
+        mock_choice.message.content = "自定义 RP 回复"
+        mock_response.choices = [mock_choice]
+
+        with patch("app.core.dingtalk_llm.settings") as mock_settings:
+            mock_settings.MINIMAX_API_KEY = ""
+            mock_settings.MINIMAX_MODEL = "M2-her"
+            mock_settings.MINIMAX_BASE_URL = "https://api.minimaxi.com/v1"
+            with patch("app.core.dingtalk_llm.AsyncOpenAI") as MockClient:
+                mock_client = MagicMock()
+                mock_client.chat.completions.create = AsyncMock(
+                    return_value=mock_response
+                )
+                mock_client.close = AsyncMock()
+                MockClient.return_value = mock_client
+
+                result = await _call_m2her_api(
+                    [{"role": "user", "content": "test"}],
+                    llm_override={
+                        "api_key": "player-rp-key",
+                        "model": "M2-her",
+                        "base_url": "https://api.minimaxi.com/v1/chat/completions",
+                    },
+                )
+
+                assert result == "自定义 RP 回复"
+                MockClient.assert_called_once_with(
+                    api_key="player-rp-key",
+                    base_url="https://api.minimaxi.com/v1",
+                    timeout=15.0,
+                )
+                kwargs = mock_client.chat.completions.create.await_args.kwargs
+                assert kwargs["model"] == "M2-her"
+                mock_client.close.assert_awaited_once()
+                assert dingtalk_llm._M2HER_CLIENTS == {}
+
+    @pytest.mark.asyncio
     async def test_empty_choices_returns_none(self):
         mock_response = MagicMock()
         mock_response.choices = []
@@ -255,6 +292,36 @@ class TestGenerateDingtalkViaM2her:
             mock_settings.MINIMAX_API_KEY = ""
             result = await generate_dingtalk_via_m2her(sample_player_stats)
             assert result is None
+
+    @pytest.mark.asyncio
+    async def test_custom_rp_key_can_generate_without_platform_key(
+        self, sample_player_stats, sample_characters_list
+    ):
+        with patch("app.core.dingtalk_llm.settings") as mock_settings:
+            mock_settings.MINIMAX_API_KEY = ""
+            mock_settings.MINIMAX_MODEL = "M2-her"
+            mock_settings.MINIMAX_BASE_URL = "https://api.minimaxi.com/v1"
+            with patch("app.core.dingtalk_llm.RedisCache") as mock_cache:
+                mock_cache.lpop = AsyncMock(return_value=None)
+                mock_cache.rpush_many_with_limit = AsyncMock()
+                with patch(
+                    "app.core.dingtalk_llm._load_characters",
+                    return_value=sample_characters_list,
+                ):
+                    with patch(
+                        "app.core.dingtalk_llm._call_m2her_api",
+                        new_callable=AsyncMock,
+                    ) as mock_api:
+                        mock_api.return_value = "玩家 key 生成的消息"
+                        result = await generate_dingtalk_via_m2her(
+                            sample_player_stats,
+                            llm_override={"api_key": "player-rp-key"},
+                        )
+
+        assert result is not None
+        assert result["content"] == "玩家 key 生成的消息"
+        mock_cache.lpop.assert_not_awaited()
+        mock_cache.rpush_many_with_limit.assert_not_awaited()
 
     @pytest.mark.asyncio
     async def test_returns_cached_message(self, sample_player_stats):

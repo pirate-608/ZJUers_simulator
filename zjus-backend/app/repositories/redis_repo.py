@@ -36,6 +36,7 @@ class RedisRepository:
             "cooldowns": f"player:{user_id}:cooldowns",
             "current_event": f"player:{user_id}:current_event",
             "dingtalk": f"player:{user_id}:dingtalk_state",
+            "items": f"player:{user_id}:items_state",
         }
         self.ttl = RedisCache.normalize_ttl(
             getattr(settings, "REDIS_PLAYER_TTL_SECONDS", 86400)
@@ -58,6 +59,7 @@ class RedisRepository:
             "luck",
             "reputation",
             "efficiency",
+            "gold",
             "initial_iq",
             "initial_eq",
             "initial_luck",
@@ -114,6 +116,7 @@ class RedisRepository:
         )
         data = snapshot.model_dump()
         data["stats"] = snapshot.stats.model_dump()
+        data["items_state"] = await self.get_items_state()
         return data
 
     async def get_snapshot(self) -> GameStateSnapshot:
@@ -148,6 +151,25 @@ class RedisRepository:
         except (TypeError, ValueError, json.JSONDecodeError):
             parsed = {}
         return DingTalkState.from_raw(parsed)
+
+    async def get_items_state(self) -> Dict[str, Any]:
+        raw = await _await_if_needed(self.redis.get(self.keys["items"]))
+        if not raw:
+            return {"version": 1, "owned": [], "updated_at": 0}
+        try:
+            parsed = json.loads(raw) if isinstance(raw, str) else raw
+        except (TypeError, ValueError, json.JSONDecodeError):
+            parsed = {}
+        return parsed if isinstance(parsed, dict) else {}
+
+    async def set_items_state(self, state: Dict[str, Any]):
+        await _await_if_needed(
+            self.redis.set(
+                self.keys["items"],
+                json.dumps(state or {}, ensure_ascii=False),
+                ex=self.ttl,
+            )
+        )
 
     async def set_dingtalk_state(self, state: DingTalkState | Dict[str, Any]):
         normalized = DingTalkState.from_raw(state).compact()
@@ -184,6 +206,7 @@ class RedisRepository:
         courses: Optional[Dict] = None,
         states: Optional[Dict] = None,
         achievements: Optional[List[str]] = None,
+        items_state: Optional[Dict[str, Any]] = None,
     ):
         """写入玩家状态并刷新 TTL"""
         stats = self._normalize_stats_update(stats)
@@ -198,6 +221,12 @@ class RedisRepository:
                 pipe.hset(self.keys["course_states"], mapping=states)
             if achievements:
                 pipe.sadd(self.keys["achievements"], *achievements)
+            if items_state is not None:
+                pipe.set(
+                    self.keys["items"],
+                    json.dumps(items_state, ensure_ascii=False),
+                    ex=self.ttl,
+                )
             for key in self.keys.values():
                 pipe.expire(key, self.ttl)
             await pipe.execute()

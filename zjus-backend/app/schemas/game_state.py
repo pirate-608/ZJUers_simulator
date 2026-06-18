@@ -40,6 +40,7 @@ class PlayerStats(BaseModel):
     highest_gpa: str = "0.0"
     reputation: int = 0
     efficiency: int = 100
+    gold: int = 0
     initial_major_abbr: str = ""
     initial_iq: int = 0
     initial_eq: int = 0
@@ -69,6 +70,7 @@ class PlayerStats(BaseModel):
             highest_gpa=_to_str(raw.get("highest_gpa"), "0.0"),
             reputation=_to_int(raw.get("reputation"), 0),
             efficiency=_to_int(raw.get("efficiency"), 100),
+            gold=_to_int(raw.get("gold"), 0),
             initial_major_abbr=_to_str(raw.get("initial_major_abbr"), ""),
             initial_iq=_to_int(raw.get("initial_iq"), 0),
             initial_eq=_to_int(raw.get("initial_eq"), 0),
@@ -101,6 +103,7 @@ class PlayerStats(BaseModel):
             highest_gpa="0.0",
             reputation=0,
             efficiency=100,
+            gold=0,
             initial_major_abbr="",
             initial_iq=0,
             initial_eq=0,

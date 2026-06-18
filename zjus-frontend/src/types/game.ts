@@ -23,7 +23,9 @@ export interface PlayerStats {
   highest_gpa?: number
   reputation?: number
   efficiency?: number
+  gold?: number
   exam_completed?: number
+  item_bonuses?: Record<string, number>
 
   initial_major_abbr?: string
   initial_iq?: number

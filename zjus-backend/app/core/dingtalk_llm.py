@@ -39,8 +39,7 @@ _CACHE_KEY = "game:dingtalk_m2her"
 _CACHE_MAX_LEN = 100
 _CACHE_TTL_SECONDS = 6 * 60 * 60  # 6 小时
 _CHARACTER_CACHE: List[Dict[str, Any]] | None = None
-_M2HER_CLIENT: AsyncOpenAI | None = None
-_M2HER_CLIENT_CONFIG: tuple[str, str] | None = None
+_M2HER_CLIENTS: dict[tuple[str, str], AsyncOpenAI] = {}
 _DEFAULT_M2HER_BASE_URL = "https://api.minimaxi.com/v1"
 
 _FALLBACK_REPLY_OPTIONS = {
@@ -147,6 +146,7 @@ async def _generate_reply_options_via_m2her(
     player_stats: dict,
     npc_message: str,
     context: str,
+    llm_override: Optional[dict[str, Any]] = None,
 ) -> list[dict[str, str]]:
     role = normalize_dingtalk_role(str(character.get("role") or "unknown"))
     if not is_replyable_role(role):
@@ -168,7 +168,9 @@ async def _generate_reply_options_via_m2her(
             ),
         }
     )
-    raw = await _call_m2her_api(messages, max_completion_tokens=180)
+    raw = await _call_m2her_api(
+        messages, max_completion_tokens=180, llm_override=llm_override
+    )
     data = _json_from_text(raw)
     return _coerce_reply_options(data.get("reply_options"), role)
 
@@ -265,24 +267,25 @@ def _build_m2her_messages(
 # ==========================================
 
 async def _call_m2her_api(
-    messages: List[Dict], max_completion_tokens: int = 200
+    messages: List[Dict],
+    max_completion_tokens: int = 200,
+    llm_override: Optional[dict[str, Any]] = None,
 ) -> Optional[str]:
     """通过 OpenAI SDK 兼容接口调用 MiniMax M2-her"""
-    api_key = settings.MINIMAX_API_KEY
-    model_value = getattr(settings, "MINIMAX_MODEL", "M2-her")
-    model = (
-        model_value
-        if isinstance(model_value, str) and model_value.strip()
-        else "M2-her"
-    )
-    base_url = _normalize_m2her_base_url(settings.MINIMAX_BASE_URL)
+    api_key, model, base_url = _resolve_m2her_config(llm_override)
     payload_messages = _sanitize_m2her_messages(messages)
 
     if not api_key or not payload_messages:
         return None
 
+    client: AsyncOpenAI | None = None
+    should_close_client = _has_custom_m2her_api_key(llm_override)
     try:
-        client = await _get_m2her_client(api_key, base_url)
+        client = (
+            AsyncOpenAI(api_key=api_key, base_url=base_url, timeout=15.0)
+            if should_close_client
+            else await _get_m2her_client(api_key, base_url)
+        )
         response = await client.chat.completions.create(
             model=model,
             messages=cast(Any, payload_messages),
@@ -306,6 +309,9 @@ async def _call_m2her_api(
     except Exception as e:
         logger.error("M2-her API call failed: %s", e)
         return None
+    finally:
+        if should_close_client and client is not None:
+            await client.close()
 
 
 def _normalize_m2her_base_url(base_url: str | None) -> str:
@@ -317,28 +323,53 @@ def _normalize_m2her_base_url(base_url: str | None) -> str:
     return normalized or _DEFAULT_M2HER_BASE_URL
 
 
+def _config_str(value: Any) -> str:
+    return value.strip() if isinstance(value, str) else ""
+
+
+def _override_str(llm_override: Optional[dict[str, Any]], key: str) -> str:
+    if not isinstance(llm_override, dict):
+        return ""
+    return _config_str(llm_override.get(key))
+
+
+def _has_custom_m2her_api_key(llm_override: Optional[dict[str, Any]]) -> bool:
+    return bool(_override_str(llm_override, "api_key"))
+
+
+def _resolve_m2her_config(
+    llm_override: Optional[dict[str, Any]] = None,
+) -> tuple[str, str, str]:
+    api_key = _override_str(llm_override, "api_key") or _config_str(
+        getattr(settings, "MINIMAX_API_KEY", "")
+    )
+    model = _override_str(llm_override, "model") or _config_str(
+        getattr(settings, "MINIMAX_MODEL", "M2-her")
+    ) or "M2-her"
+    base_url = _normalize_m2her_base_url(
+        _override_str(llm_override, "base_url")
+        or _config_str(getattr(settings, "MINIMAX_BASE_URL", ""))
+    )
+    return api_key, model, base_url
+
+
 async def _get_m2her_client(api_key: str, base_url: str) -> AsyncOpenAI:
-    global _M2HER_CLIENT, _M2HER_CLIENT_CONFIG
     client_config = (api_key, base_url)
-    if _M2HER_CLIENT is None or _M2HER_CLIENT_CONFIG != client_config:
-        if _M2HER_CLIENT is not None:
-            await _M2HER_CLIENT.close()
-        _M2HER_CLIENT = AsyncOpenAI(
+    client = _M2HER_CLIENTS.get(client_config)
+    if client is None:
+        client = AsyncOpenAI(
             api_key=api_key,
             base_url=base_url,
             timeout=15.0,
         )
-        _M2HER_CLIENT_CONFIG = client_config
-    assert _M2HER_CLIENT is not None
-    return _M2HER_CLIENT
+        _M2HER_CLIENTS[client_config] = client
+    return client
 
 
 async def close_m2her_client() -> None:
-    global _M2HER_CLIENT, _M2HER_CLIENT_CONFIG
-    if _M2HER_CLIENT is not None:
-        await _M2HER_CLIENT.close()
-    _M2HER_CLIENT = None
-    _M2HER_CLIENT_CONFIG = None
+    for client in list(_M2HER_CLIENTS.values()):
+        await client.close()
+    _M2HER_CLIENTS.clear()
 
 
 # ==========================================
@@ -390,6 +421,7 @@ async def _select_characters_vectorized(
 async def generate_dingtalk_via_m2her(
     player_stats: dict,
     context: str = "random",
+    llm_override: Optional[dict[str, Any]] = None,
 ) -> Optional[Dict[str, Any]]:
     """
     使用 M2-her 生成单条角色扮演钉钉消息。
@@ -399,17 +431,20 @@ async def generate_dingtalk_via_m2her(
         或 None（失败时由调用方 fallback）
     """
     # 0. 无 API key 直接返回 None（由调用方 fallback）
-    if not settings.MINIMAX_API_KEY:
+    api_key, _, _ = _resolve_m2her_config(llm_override)
+    if not api_key:
         return None
 
-    # 1. 尝试从 Redis 缓存获取
-    cached = await RedisCache.lpop(_CACHE_KEY)
-    if cached:
-        try:
-            cached_data = json.loads(cached) if isinstance(cached, str) else cached
-            return cached_data if isinstance(cached_data, dict) else None
-        except (json.JSONDecodeError, TypeError):
-            pass
+    use_shared_cache = llm_override is None
+    # 1. 平台默认 key 才使用共享 Redis 缓存；玩家自带 RP key 不混入平台缓存。
+    if use_shared_cache:
+        cached = await RedisCache.lpop(_CACHE_KEY)
+        if cached:
+            try:
+                cached_data = json.loads(cached) if isinstance(cached, str) else cached
+                return cached_data if isinstance(cached_data, dict) else None
+            except (json.JSONDecodeError, TypeError):
+                pass
 
     # 2. 向量化角色选取（优先）→ 随机兜底
     unique_chars = await _select_characters_vectorized(player_stats, context)
@@ -426,12 +461,12 @@ async def generate_dingtalk_via_m2her(
 
     async def _generate_one(char: Dict) -> Optional[Dict[str, Any]]:
         messages = _build_m2her_messages(char, player_stats, context)
-        content = await _call_m2her_api(messages)
+        content = await _call_m2her_api(messages, llm_override=llm_override)
         if content:
             sender = str(char.get("name") or "未知")
             role = normalize_dingtalk_role(str(char.get("role") or "unknown"))
             reply_options = await _generate_reply_options_via_m2her(
-                char, player_stats, content, context
+                char, player_stats, content, context, llm_override=llm_override
             )
             contact_id = build_contact_id(sender, role)
             is_urgent = role in ("counselor", "system", "teacher")
@@ -471,7 +506,7 @@ async def generate_dingtalk_via_m2her(
     current_msg = valid_results[0]
     remaining = [json.dumps(m, ensure_ascii=False) for m in valid_results[1:]]
 
-    if remaining:
+    if use_shared_cache and remaining:
         await RedisCache.rpush_many_with_limit(
             _CACHE_KEY,
             remaining,
@@ -488,9 +523,11 @@ async def generate_dingtalk_reply_via_m2her(
     history: list[dict[str, Any]],
     player_reply: str,
     reply_count: int,
+    llm_override: Optional[dict[str, Any]] = None,
 ) -> Optional[Dict[str, Any]]:
     """根据玩家选择生成 NPC 回复；第三次玩家回复后返回一轮结算。"""
-    if not settings.MINIMAX_API_KEY:
+    api_key, _, _ = _resolve_m2her_config(llm_override)
+    if not api_key:
         return None
 
     sender = str(character.get("name") or "未知")
@@ -514,7 +551,7 @@ async def generate_dingtalk_reply_via_m2her(
             f"{history_text}\n玩家刚回复：{player_reply}\n"
             "请生成 NPC 的下一条回复，并对这一轮三次往返对话"
             "产生的游戏数值影响做轻量结算。"
-            "影响只能包含 energy/sanity/stress/eq/luck/reputation，"
+            "影响只能包含 energy/sanity/stress/eq/luck/reputation/gold，"
             "数值为整数，幅度要克制。"
             '严格返回 JSON：{"npc_reply":"...",'
             '"settlement":{"desc":"...","effects":{"sanity":1}}}'
@@ -528,7 +565,9 @@ async def generate_dingtalk_reply_via_m2her(
         )
 
     messages.append({"role": "user", "content": request})
-    raw = await _call_m2her_api(messages, max_completion_tokens=420)
+    raw = await _call_m2her_api(
+        messages, max_completion_tokens=420, llm_override=llm_override
+    )
     if not raw:
         return None
 

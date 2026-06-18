@@ -4,7 +4,7 @@
 
 ## 后端
 
-后端测试位于 `zjus-backend/tests/unit/`，覆盖游戏状态、数值配置、Admin 数值平衡表单发布、钉钉私聊状态、DingTalk LLM 降级、认证校验和玩家入口/存档流程。
+后端测试位于 `zjus-backend/tests/unit/`，覆盖游戏状态、数值配置、Admin 数值平衡表单发布、道具配置/买卖/存档、钉钉私聊状态、DingTalk LLM 降级、认证校验和玩家入口/存档流程。
 
 常用命令：
 
@@ -27,6 +27,8 @@ cd zjus-backend
 
 - `src/App.spec.js`：登录前序章闸门、登录/存档启动分流、WebSocket 不应在序章期间提前连接。
 - `src/stores/gameStore.spec.ts`：钉钉联系人状态恢复、未读数与本地已读更新。
+- `src/stores/gameStore.spec.ts`：道具目录、已拥有道具和持有加成的状态恢复。
+- `src/components/MidPanel.spec.js`：钉钉回复锁定、道具搜索、购买/出售和暂停锁定。
 
 常用命令：
 

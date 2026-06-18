@@ -1,7 +1,8 @@
 import { defineStore } from 'pinia'
-import { ref, reactive } from 'vue'
+import { computed, ref, reactive } from 'vue'
 import type { GamePhase, PlayerStats } from '../types/game'
 import type { CoursesMap, CourseMetadata, CourseProgressUpdate } from '../types/course'
+import type { GameItem, ItemsState } from '../types/items'
 import type { DingTalkContact, DingTalkMessage, DingTalkState, FeedbackModalData, ModalData } from '../types/modal'
 import type { RelaxTarget } from '../types/websocket'
 
@@ -78,6 +79,8 @@ export const useGameStore = defineStore('game', () => {
     highest_gpa: 0.0,
     reputation: 0,
     efficiency: 100,
+    gold: 0,
+    item_bonuses: {},
     courses: {}, // 存放实时的掌握度进度
     exam_completed: 0,
   })
@@ -102,6 +105,11 @@ export const useGameStore = defineStore('game', () => {
   const dingMessages = ref<DingTalkMessage[]>([])
   const dingtalkContacts = reactive<Record<string, DingTalkContact>>({})
   const unreadDingtalk = ref<number>(0)
+  const itemCatalog = ref<GameItem[]>([])
+  const ownedItems = ref<string[]>([])
+  const itemBonuses = reactive<Record<string, number>>({})
+  const itemsUpdatedAt = ref<number>(0)
+  const ownedItemSet = computed(() => new Set(ownedItems.value))
 
   const activeModal = ref<ActiveModalName>(null)
   const modalData = ref<ModalData | Record<string, unknown>>({})
@@ -292,6 +300,49 @@ export const useGameStore = defineStore('game', () => {
     recalcUnreadDingtalk()
   }
 
+  function setItemsState(state: ItemsState | Record<string, unknown> | null | undefined) {
+    const record = state && typeof state === 'object' ? state as Record<string, unknown> : {}
+    const itemsRaw = Array.isArray(record.items) ? record.items : []
+    itemCatalog.value = itemsRaw.flatMap((item): GameItem[] => {
+      if (!item || typeof item !== 'object') return []
+      const data = item as Record<string, unknown>
+      const id = typeof data.id === 'string' ? data.id : ''
+      if (!id) return []
+      return [{
+        id,
+        name: typeof data.name === 'string' ? data.name : id,
+        category: typeof data.category === 'string' ? data.category : '通用',
+        description: typeof data.description === 'string' ? data.description : '',
+        price: Number(data.price ?? 0),
+        sell_price: Number(data.sell_price ?? 0),
+        tags: Array.isArray(data.tags) ? data.tags.map(String).filter(Boolean) : [],
+        effects: data.effects && typeof data.effects === 'object'
+          ? Object.fromEntries(
+              Object.entries(data.effects as Record<string, unknown>)
+                .map(([key, value]) => [key, Number(value)])
+                .filter(([, value]) => Number.isFinite(value) && value !== 0),
+            )
+          : {},
+      }]
+    })
+
+    ownedItems.value = Array.isArray(record.owned)
+      ? record.owned.map(String).filter(Boolean)
+      : []
+
+    for (const key in itemBonuses) {
+      delete itemBonuses[key]
+    }
+    const bonuses = record.bonuses && typeof record.bonuses === 'object'
+      ? record.bonuses as Record<string, unknown>
+      : {}
+    for (const [key, value] of Object.entries(bonuses)) {
+      const parsed = Number(value)
+      if (Number.isFinite(parsed) && parsed !== 0) itemBonuses[key] = parsed
+    }
+    itemsUpdatedAt.value = Number(record.updated_at ?? 0) || 0
+  }
+
   function upsertDingTalkContact(contact: DingTalkContact | Record<string, unknown> | null | undefined) {
     if (!contact || typeof contact !== 'object') return
     const contactId = (contact as DingTalkContact).contact_id
@@ -355,6 +406,12 @@ export const useGameStore = defineStore('game', () => {
       delete dingtalkContacts[key]
     }
     unreadDingtalk.value = 0
+    itemCatalog.value = []
+    ownedItems.value = []
+    for (const key in itemBonuses) {
+      delete itemBonuses[key]
+    }
+    itemsUpdatedAt.value = 0
     for (const target of Object.keys(relaxCooldowns) as RelaxTarget[]) {
       relaxCooldowns[target] = 0
     }
@@ -409,6 +466,12 @@ export const useGameStore = defineStore('game', () => {
     markDingContactReadLocal,
     unreadDingtalk,
     clearUnreadDingtalk,
+    itemCatalog,
+    ownedItems,
+    ownedItemSet,
+    itemBonuses,
+    itemsUpdatedAt,
+    setItemsState,
     activeModal,
     modalData,
     showModal,

@@ -32,6 +32,15 @@
             </span>
           </button>
         </li>
+        <li class="nav-item">
+          <button
+            class="nav-link"
+            :class="{ active: activeTab === 'items' }"
+            @click="switchTab('items')"
+          >
+            🛠️ 道具
+          </button>
+        </li>
       </ul>
     </div>
 
@@ -187,6 +196,110 @@
           </template>
         </div>
       </div>
+
+      <div
+        v-if="activeTab === 'items'"
+        class="item-shell h-100"
+      >
+        <div class="item-toolbar">
+          <div>
+            <div class="item-kicker">
+              Backpack
+            </div>
+            <div class="item-gold">
+              金币 {{ goldAmount }}
+            </div>
+          </div>
+          <input
+            v-model="itemSearch"
+            class="form-control form-control-sm item-search"
+            type="search"
+            placeholder="搜索道具、分类或标签"
+          >
+        </div>
+
+        <div class="item-bonus-panel">
+          <span class="item-bonus-title">当前持有加成</span>
+          <span
+            v-if="bonusRows.length === 0"
+            class="text-muted small"
+          >暂无加成</span>
+          <span
+            v-for="bonus in bonusRows"
+            :key="bonus.field"
+            class="item-bonus-pill"
+          >
+            {{ bonus.label }} {{ formatSigned(bonus.delta) }}
+          </span>
+        </div>
+
+        <div class="item-list">
+          <div
+            v-if="filteredItems.length === 0"
+            class="text-center text-muted small py-4"
+          >
+            暂无匹配道具
+          </div>
+
+          <article
+            v-for="item in filteredItems"
+            :key="item.id"
+            class="item-card"
+            :class="{ owned: isItemOwned(item.id) }"
+          >
+            <div class="item-card-main">
+              <div class="d-flex justify-content-between gap-2 align-items-start">
+                <div>
+                  <div class="item-name">
+                    {{ item.name }}
+                  </div>
+                  <div class="item-category">
+                    {{ item.category }}
+                  </div>
+                </div>
+                <span
+                  v-if="isItemOwned(item.id)"
+                  class="item-owned-badge"
+                >已拥有</span>
+              </div>
+              <p class="item-description">
+                {{ item.description }}
+              </p>
+              <div class="item-tags">
+                <span
+                  v-for="tag in item.tags"
+                  :key="tag"
+                  class="item-tag"
+                >{{ tag }}</span>
+              </div>
+              <div class="item-effects">
+                <span
+                  v-for="effect in itemEffectRows(item)"
+                  :key="effect.field"
+                  class="item-effect"
+                >
+                  {{ effect.label }} {{ formatSigned(effect.delta) }}
+                </span>
+              </div>
+            </div>
+            <div class="item-card-action">
+              <div class="item-price">
+                {{ isItemOwned(item.id) ? `回收 ${item.sell_price}` : `${item.price} 金币` }}
+              </div>
+              <button
+                type="button"
+                class="btn btn-sm item-action-btn"
+                :class="isItemOwned(item.id) ? 'btn-outline-secondary' : 'btn-primary'"
+                :disabled="itemActionDisabled(item)"
+                :title="itemActionTitle(item)"
+                @click="toggleItem(item)"
+              >
+                {{ isItemOwned(item.id) ? '出售' : '购买' }}
+              </button>
+            </div>
+          </article>
+        </div>
+      </div>
     </div>
 
     <div class="card-footer mid-panel-footer border-top p-3 d-flex flex-column gap-2">
@@ -209,6 +322,7 @@
 <script setup lang="ts">
 import { computed, nextTick, ref, watch } from 'vue'
 import { useGameStore } from '../stores/gameStore.ts'
+import type { GameItem } from '@/types/items'
 import type { DingTalkContact } from '@/types/modal'
 import type { WsClientAction } from '@/types/websocket'
 
@@ -220,6 +334,7 @@ const store = useGameStore()
 const activeTab = ref<string>('events')
 const activeContactId = ref<string>('')
 const dingScrollContainer = ref<HTMLDivElement | null>(null)
+const itemSearch = ref('')
 
 const sortedContacts = computed(() => (
   Object.values(store.dingtalkContacts)
@@ -229,6 +344,46 @@ const sortedContacts = computed(() => (
 const activeContact = computed(() => (
   activeContactId.value ? store.dingtalkContacts[activeContactId.value] : null
 ))
+
+const goldAmount = computed(() => Math.floor(Number(store.currentStats.gold ?? 0) || 0))
+
+const ownedItemIds = computed(() => new Set(store.ownedItems))
+
+const fieldLabels: Record<string, string> = {
+  energy: '精力',
+  sanity: '心态',
+  stress: '压力',
+  iq: 'IQ',
+  eq: 'EQ',
+  luck: '运气',
+  reputation: '声望',
+  efficiency: '效率',
+}
+
+const bonusRows = computed(() => (
+  Object.entries(store.itemBonuses)
+    .filter(([, delta]) => Number.isFinite(Number(delta)) && Number(delta) !== 0)
+    .map(([field, delta]) => ({
+      field,
+      label: fieldLabels[field] || field,
+      delta: Number(delta),
+    }))
+))
+
+const filteredItems = computed(() => {
+  const query = itemSearch.value.trim().toLowerCase()
+  const items = store.itemCatalog
+  if (!query) return items
+  return items.filter((item) => {
+    const haystack = [
+      item.name,
+      item.category,
+      item.description,
+      ...item.tags,
+    ].join(' ').toLowerCase()
+    return haystack.includes(query)
+  })
+})
 
 const roleAliases: Record<string, string> = {
   student: 'classmate',
@@ -280,6 +435,45 @@ const getRoleConfig = (role: string) => {
 
 function isContactReplyable(contact: DingTalkContact): boolean {
   return Boolean(contact.is_replyable) || replyableRoles.has(normalizeRole(contact.role))
+}
+
+function formatSigned(value: number): string {
+  return `${value > 0 ? '+' : ''}${value}`
+}
+
+function itemEffectRows(item: GameItem) {
+  return Object.entries(item.effects)
+    .filter(([, delta]) => Number(delta) !== 0)
+    .map(([field, delta]) => ({
+      field,
+      label: fieldLabels[field] || field,
+      delta: Number(delta),
+    }))
+}
+
+function isItemOwned(itemId: string): boolean {
+  return ownedItemIds.value.has(itemId)
+}
+
+function itemActionDisabled(item: GameItem): boolean {
+  if (store.isPaused) return true
+  if (isItemOwned(item.id)) return false
+  return goldAmount.value < item.price
+}
+
+function itemActionTitle(item: GameItem): string {
+  if (store.isPaused) return '游戏暂停中，暂不能买卖道具'
+  if (isItemOwned(item.id)) return `出售后回收 ${item.sell_price} 金币`
+  if (goldAmount.value < item.price) return `金币不足，还差 ${item.price - goldAmount.value} 枚`
+  return `购买 ${item.name}`
+}
+
+function toggleItem(item: GameItem) {
+  if (itemActionDisabled(item)) return
+  emit('send-action', {
+    action: isItemOwned(item.id) ? 'item_sell' : 'item_buy',
+    item_id: item.id,
+  })
 }
 
 function contactPreview(contact: DingTalkContact): string {
@@ -592,6 +786,174 @@ function setSpeed(speed: number) {
   white-space: nowrap;
 }
 
+.item-shell {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  background: var(--console-surface-alt);
+}
+
+.item-toolbar {
+  flex: 0 0 auto;
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px;
+  background: var(--console-surface-gradient);
+  border-bottom: 1px solid var(--console-border-strong);
+}
+
+.item-kicker {
+  color: var(--console-primary);
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.item-gold {
+  color: var(--console-strong);
+  font-size: 1.02rem;
+  font-weight: 800;
+}
+
+.item-search {
+  max-width: 220px;
+  color: var(--console-text);
+  background: var(--console-surface);
+  border-color: var(--console-border-strong);
+}
+
+.item-bonus-panel {
+  flex: 0 0 auto;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  padding: 8px 12px;
+  background: color-mix(in srgb, var(--console-surface) 72%, transparent);
+  border-bottom: 1px solid var(--console-border-strong);
+}
+
+.item-bonus-title {
+  color: var(--console-muted);
+  font-size: 0.75rem;
+  font-weight: 800;
+}
+
+.item-bonus-pill,
+.item-effect,
+.item-tag,
+.item-owned-badge {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.item-bonus-pill,
+.item-effect {
+  padding: 4px 8px;
+  color: var(--console-primary-dark);
+  background: color-mix(in srgb, var(--console-primary) 12%, var(--console-surface));
+  border: 1px solid var(--console-primary-border);
+}
+
+.item-list {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+}
+
+.item-card {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid var(--console-border-strong);
+  border-radius: 8px;
+  background: var(--console-surface);
+  box-shadow: 0 4px 14px color-mix(in srgb, var(--console-primary-dark) 7%, transparent);
+}
+
+.item-card.owned {
+  border-color: var(--console-primary-border);
+  background: color-mix(in srgb, var(--console-surface) 84%, var(--console-primary) 5%);
+}
+
+.item-card-main {
+  min-width: 0;
+}
+
+.item-name {
+  color: var(--console-strong);
+  font-size: 0.95rem;
+  font-weight: 800;
+}
+
+.item-category {
+  color: var(--console-muted);
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.item-owned-badge {
+  padding: 5px 8px;
+  color: #fff;
+  background: var(--console-primary-gradient);
+}
+
+.item-description {
+  margin: 8px 0;
+  color: var(--console-text);
+  font-size: 0.82rem;
+  line-height: 1.5;
+}
+
+.item-tags,
+.item-effects {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.item-tags {
+  margin-bottom: 7px;
+}
+
+.item-tag {
+  padding: 4px 7px;
+  color: var(--console-muted);
+  background: var(--console-surface-alt);
+  border: 1px solid var(--console-border);
+}
+
+.item-card-action {
+  min-width: 92px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.item-price {
+  color: var(--console-gold-border);
+  font-size: 0.78rem;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.item-action-btn {
+  min-width: 76px;
+  font-weight: 800;
+}
+
 .mid-panel-footer {
   background: var(--console-surface-gradient);
   border-color: var(--console-border-strong) !important;
@@ -662,6 +1024,23 @@ function setSpeed(speed: number) {
 
   .ding-contact.active {
     box-shadow: inset 0 -3px 0 var(--console-primary);
+  }
+
+  .item-toolbar {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .item-search {
+    max-width: none;
+  }
+
+  .item-card {
+    grid-template-columns: 1fr;
+  }
+
+  .item-card-action {
+    align-items: stretch;
   }
 }
 </style>

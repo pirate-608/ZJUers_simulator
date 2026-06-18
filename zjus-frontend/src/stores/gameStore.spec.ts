@@ -101,3 +101,38 @@ describe('gameStore console theme', () => {
     expect(localStorage.getItem('zjus_console_theme')).toBe('yunfeng')
   })
 })
+
+describe('gameStore item state', () => {
+  beforeEach(() => {
+    localStorage.clear()
+    setActivePinia(createPinia())
+  })
+
+  it('normalizes item catalog, owned list, and bonuses from websocket state', () => {
+    const store = useGameStore()
+
+    store.setItemsState({
+      version: 1,
+      updated_at: 123,
+      items: [
+        {
+          id: 'planner',
+          name: '求是日程本',
+          category: '学习',
+          description: '规划 ddl',
+          price: 80,
+          sell_price: 40,
+          tags: ['学习'],
+          effects: { iq: 4, stress: -2 },
+        },
+      ],
+      owned: ['planner'],
+      bonuses: { iq: 4, stress: -2 },
+    })
+
+    expect(store.itemCatalog).toHaveLength(1)
+    expect(store.ownedItems).toEqual(['planner'])
+    expect(store.itemBonuses.iq).toBe(4)
+    expect(store.itemsUpdatedAt).toBe(123)
+  })
+})

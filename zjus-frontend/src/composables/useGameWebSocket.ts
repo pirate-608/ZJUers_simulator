@@ -100,12 +100,14 @@ export function useGameWebSocket() {
       const llmProvider = sessionStorage.getItem('custom_llm_provider')
       const llmModel = sessionStorage.getItem('custom_llm_model')
       const llmKey = sessionStorage.getItem('custom_llm_key')
+      const rpKey = sessionStorage.getItem('custom_rp_key')
       const selectedSaveSlot = localStorage.getItem('selected_save_slot')
 
       const payload: Record<string, unknown> = { token }
       if (llmProvider) payload.custom_llm_provider = llmProvider
       if (llmModel && llmModel.trim() !== '') payload.custom_llm_model = llmModel.trim()
       if (llmKey && llmKey.trim() !== '') payload.custom_llm_api_key = llmKey.trim()
+      if (rpKey && rpKey.trim() !== '') payload.custom_rp_api_key = rpKey.trim()
       if (selectedSaveSlot && selectedSaveSlot.trim() !== '') {
         const slot = Number(selectedSaveSlot)
         if (Number.isInteger(slot) && slot > 0) {
@@ -140,6 +142,7 @@ export function useGameWebSocket() {
         'dingtalk_state',
         'dingtalk_thread_update',
         'dingtalk_effect',
+        'items_state',
         'graduation',
         'new_semester',
         'mode_changed',
@@ -212,6 +215,9 @@ export function useGameWebSocket() {
           )
           if ('dingtalk_state' in wsMsg && isRecord(wsMsg.dingtalk_state)) {
             gameStore.setDingTalkState(wsMsg.dingtalk_state)
+          }
+          if ('items_state' in wsMsg && isRecord(wsMsg.items_state)) {
+            gameStore.setItemsState(wsMsg.items_state)
           }
           gameStore.addLog('系统', '已连接折大服务器，游戏状态已同步。', 'text-success')
           break
@@ -355,6 +361,11 @@ export function useGameWebSocket() {
           if (typeof wsMsg.summary === 'string' && wsMsg.summary.trim() !== '') {
             gameStore.addLog('钉钉', wsMsg.summary, 'text-info')
           }
+          break
+        }
+
+        case 'items_state': {
+          gameStore.setItemsState(isRecord(wsMsg.data) ? wsMsg.data : null)
           break
         }
 

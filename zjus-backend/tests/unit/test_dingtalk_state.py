@@ -98,6 +98,9 @@ class _Repo:
     async def get_snapshot(self):
         return _StatsSnapshot()
 
+    async def get_items_state(self):
+        return {"version": 1, "owned": [], "updated_at": 0}
+
     async def update_stat_safe(self, field, delta, min_val=0, max_val=200):
         self.effects.append((field, delta))
         return 100 + delta

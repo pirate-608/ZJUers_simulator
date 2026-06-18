@@ -1,5 +1,6 @@
 import type { CoursesMap } from './course'
 import type { PlayerStats } from './game'
+import type { ItemsState } from './items'
 import type { DingTalkContact, DingTalkMessage, DingTalkState, FeedbackModalData, RandomEventModalData, TranscriptModalData } from './modal'
 
 export type WsMessage =
@@ -16,6 +17,7 @@ export type WsMessage =
       semester_time_left?: number
       relax_cooldowns?: Record<RelaxTarget, number>
       dingtalk_state?: DingTalkState | unknown
+      items_state?: ItemsState | unknown
     }
   | {
       type: 'tick'
@@ -41,6 +43,7 @@ export type WsMessage =
   | { type: 'dingtalk_state'; state?: DingTalkState | unknown; data?: DingTalkState | unknown }
   | { type: 'dingtalk_thread_update'; contact?: DingTalkContact | unknown; data?: { contact?: DingTalkContact } | unknown }
   | { type: 'dingtalk_effect'; contact_id?: string; summary?: string; effects?: unknown }
+  | { type: 'items_state'; data?: ItemsState | unknown }
   | {
       type: 'graduation'
       data?: {
@@ -115,6 +118,8 @@ export type WsClientAction =
   | { action: 'set_mode'; mode: 'library' | 'ai' | 'hybrid' }
   | { action: 'dingtalk_mark_read'; contact_id: string }
   | { action: 'dingtalk_reply'; contact_id: string; option_id: string }
+  | { action: 'item_buy'; item_id: string }
+  | { action: 'item_sell'; item_id: string }
   | { action: 'restart' }
 
 // ─── 运行时类型守卫 ───

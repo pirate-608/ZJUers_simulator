@@ -6,6 +6,7 @@ from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.game.items import items
 from app.models.game_save import GameSave
 from app.repositories.redis_repo import RedisRepository
 from app.schemas.dingtalk import DingTalkState
@@ -29,6 +30,7 @@ class SaveService:
 
             stats_dict = snapshot.stats.model_dump()
             dingtalk_state = await repo.get_dingtalk_state()
+            items_state = items.normalize_state(await repo.get_items_state())
 
             save_values = {
                 "user_id": int(repo.user_id),
@@ -38,6 +40,7 @@ class SaveService:
                 "course_states_data": snapshot.course_states,
                 "achievements_data": snapshot.achievements,
                 "dingtalk_data": dingtalk_state.compact().model_dump(),
+                "items_data": items_state,
                 "semester_index": int(stats_dict.get("semester_idx", 1)),
             }
 
@@ -79,6 +82,7 @@ class SaveService:
                 courses=save.courses_data or {},
                 states=save.course_states_data or {},
                 achievements=save.achievements_data or [],
+                items_state=items.normalize_state(getattr(save, "items_data", None)),
             )
             await repo.set_dingtalk_state(
                 DingTalkState.from_raw(getattr(save, "dingtalk_data", None))

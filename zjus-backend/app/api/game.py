@@ -192,15 +192,26 @@ async def websocket_endpoint(websocket: WebSocket):
 
     # 鉴权通过后检查是否被限制（短生命周期 DB Session）
     llm_override = None
+    rp_llm_override = None
     custom_model = _string_field(auth_data, "custom_llm_model").strip()
     custom_key = _string_field(auth_data, "custom_llm_api_key").strip()
     custom_provider = _string_field(auth_data, "custom_llm_provider").strip()
+    custom_rp_key = _string_field(auth_data, "custom_rp_api_key").strip()
+    custom_rp_model = _string_field(auth_data, "custom_rp_model").strip()
+    custom_rp_base_url = _string_field(auth_data, "custom_rp_base_url").strip()
 
     if custom_model or custom_key:
         llm_override = {
             "model": custom_model or None,
             "api_key": custom_key or None,
             "provider": custom_provider or None,
+        }
+    if custom_rp_key:
+        rp_llm_override = {
+            "provider": "minimax",
+            "model": custom_rp_model or "M2-her",
+            "api_key": custom_rp_key,
+            "base_url": custom_rp_base_url or settings.MINIMAX_BASE_URL,
         }
 
     async with AsyncSessionLocal() as db:
@@ -325,8 +336,10 @@ async def websocket_endpoint(websocket: WebSocket):
             game_service=game_service,
             db_factory=AsyncSessionLocal,
             llm_override=llm_override,
+            rp_llm_override=rp_llm_override,
             save_slot=active_save_slot,
         )
+        final_stats = await engine._effective_stats(final_stats)
 
         # 计算学期剩余时间（init 时就下发，避免前端等 tick 才拿到）
         semester_idx = int(final_stats.get("semester_idx", 1))
@@ -335,6 +348,7 @@ async def websocket_endpoint(websocket: WebSocket):
         semester_time_left = max(0, base_duration - elapsed)
         relax_cooldowns = await engine._get_relax_cooldowns()
         dingtalk_state = await repo.get_dingtalk_state()
+        items_state = await engine._get_items_state_payload()
 
         # 发送初始化数据包（携带完整的课程进度 + 策略 + 倒计时）
         await manager.send_personal_message(
@@ -346,11 +360,16 @@ async def websocket_endpoint(websocket: WebSocket):
                 "semester_time_left": semester_time_left,
                 "relax_cooldowns": relax_cooldowns,
                 "dingtalk_state": dingtalk_state.model_dump(),
+                "items_state": items_state,
             },
             user_id,
         )
         await manager.send_personal_message(
             {"type": "dingtalk_state", "state": dingtalk_state.model_dump()},
+            user_id,
+        )
+        await manager.send_personal_message(
+            {"type": "items_state", "data": items_state},
             user_id,
         )
 
@@ -500,6 +519,18 @@ async def websocket_endpoint(websocket: WebSocket):
                                 {
                                     "type": "toast",
                                     "message": "无效的内容生成模式",
+                                    "level": "warning",
+                                },
+                                user_id,
+                            )
+                            continue
+                    elif action in {"item_buy", "item_sell"}:
+                        item_id = data_json.get("item_id")
+                        if not isinstance(item_id, str) or not item_id.strip():
+                            await manager.send_personal_message(
+                                {
+                                    "type": "toast",
+                                    "message": "无效的道具",
                                     "level": "warning",
                                 },
                                 user_id,

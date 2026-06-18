@@ -25,13 +25,13 @@ zjus-frontend/src/
 │   └── useGameWebSocket.ts  # WebSocket 连接、鉴权、消息分发
 └── components/
     ├── PrologueScene.vue    # 首次访问登录前序章
-    ├── LoginView.vue        # 邀请码登录 + 自定义 LLM 配置
+    ├── LoginView.vue        # 邀请码登录 + 自定义通用/RP 模型配置
     ├── SaveSelect.vue       # 老玩家存档选择 / 新游戏入口
     ├── CharacterCreate.vue  # 专业选择 + 初始属性分配
     ├── TopNav.vue           # 保存/退出
     ├── HudBar.vue           # 顶部属性栏
     ├── CourseList.vue       # 课程列表 + 策略切换
-    ├── MidPanel.vue         # 事件日志 + 钉钉联系人/私聊
+    ├── MidPanel.vue         # 事件日志 + 钉钉联系人/私聊 + 道具背包
     ├── RightPanel.vue       # 属性面板 + 摸鱼动作 + 内容模式
     ├── EndScreen.vue        # 结局界面
     └── modals/              # 成绩单、随机事件、反馈、退出确认
@@ -109,7 +109,7 @@ graph TD
 ### `LoginView.vue`
 
 - 表单字段：昵称、邀请码、老玩家学生凭证。
-- 可选自定义 LLM 配置，用户确认安全提示后保存到 `sessionStorage`。
+- 可选自定义通用 LLM 配置和钉钉 RP MiniMax Key，用户确认安全提示后保存到 `sessionStorage`。
 - 新玩家成功后：
   - 保存 JWT 到 `zju_token` / `zju_jwt`。
   - 保存长期学生凭证到 `zju_user_token`。
@@ -156,17 +156,21 @@ WebSocket 首条消息包含：
   load_save_slot?,
   custom_llm_provider?,
   custom_llm_model?,
-  custom_llm_api_key?
+  custom_llm_api_key?,
+  custom_rp_api_key?
 }
 ```
 
+`custom_rp_api_key` 只用于钉钉 M2-her RP。若配置了通用自定义 LLM 但没有配置 RP key，钉钉内容会回退到通用自定义 LLM，而不是继续使用平台默认 M2-her。
+
 - `auth_ok` 后只启动心跳并记录连接日志；后端负责启动引擎，避免自动 `resume` 干扰引导或暂停。
 - `auth_error` 会清理当前游戏标记；若是存档错误则回到 `save_select`，否则回到 `login`。
-- `init` 将阶段切到 `playing` 并初始化课程、属性、剩余时间和 `relax_cooldowns`。
+- `init` 将阶段切到 `playing` 并初始化课程、属性、剩余时间、`relax_cooldowns`、钉钉状态和道具状态。
 - `tick` 持续同步课程、属性、剩余时间和 `relax_cooldowns`。
 - `feedback` 调用 `gameStore.showFeedback()` 展示结果弹窗。
 - `dingtalk_state` 恢复钉钉联系人、私聊历史、未读数和回复选项。
 - `dingtalk_thread_update` 更新单个联系人线程；旧 `dingtalk_message` 会兼容映射到联系人线程。
+- `items_state` 恢复道具目录、已拥有道具、当前加成和更新时间；`item_buy` / `item_sell` 只走 WebSocket，不进入 OpenAPI。
 - `save_result` / `exit_confirmed` 负责退出时清理 JWT 和本局标记。
 
 ---
@@ -186,6 +190,7 @@ WebSocket 首条消息包含：
 | `relaxCooldowns` | 休闲动作剩余冷却秒数 |
 | `eventLogs` | 事件日志 |
 | `dingtalkContacts` / `unreadDingtalk` | 钉钉联系人线程和未读数 |
+| `itemCatalog` / `ownedItems` / `itemBonuses` | 道具目录、已拥有道具和持有加成 |
 | `gameMode` / `llmAvailable` | 内容生成模式状态 |
 | `activeModal` / `modalData` | 当前弹窗 |
 | `feedbackModal` | 结果反馈弹窗 |

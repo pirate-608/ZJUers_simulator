@@ -147,9 +147,12 @@
   "token": "<JWT>",
   "custom_llm_provider": "openai",
   "custom_llm_model": "gpt-4o-mini",
-  "custom_llm_api_key": "sk-..."
+  "custom_llm_api_key": "sk-...",
+  "custom_rp_api_key": "minimax-..."
 }
 ```
+
+`custom_rp_api_key` 是可选的会话级 MiniMax API Key，只用于钉钉 M2-her RP 生成。若玩家配置了通用 `custom_llm_*` 但没有配置 `custom_rp_api_key`，钉钉会回退到通用自定义 LLM，而不会继续使用平台默认 M2-her。
 
 加载指定持久化存档：
 
@@ -166,7 +169,7 @@
 2. 踢掉同用户旧连接。
 3. 若提供 `load_save_slot`，从 `game_saves` 指定槽位恢复到 Redis。
 4. 启动 `GameEngine` 与事件转发协程。
-5. 推送 `auth_ok`、`init` 和当前 `dingtalk_state`。
+5. 推送 `auth_ok`、`init`、当前 `dingtalk_state` 和当前 `items_state`。
 
 `auth_ok` 只表示连接可用；后端会在 WebSocket 上下文初始化后启动 `GameEngine`。前端不应在 `auth_ok` 后主动发送 `resume`，否则可能破坏新手引导或手动暂停状态。
 
@@ -176,7 +179,7 @@
 |---|---|
 | `auth_ok` | 鉴权通过 |
 | `auth_error` | JWT 无效、账号受限或选择的存档不存在 |
-| `init` | 初始状态包：玩家属性、课程进度、课程策略、学期剩余时间、休闲动作冷却、钉钉状态 |
+| `init` | 初始状态包：玩家属性、课程进度、课程策略、学期剩余时间、休闲动作冷却、钉钉状态和道具状态 |
 | `tick` | 高频状态更新，包含 `relax_cooldowns` |
 | `event` | 事件日志 |
 | `feedback` | 结果反馈弹窗，包含 `title`、`message`、`kind`、`auto_close_ms` |
@@ -186,7 +189,8 @@
 | `dingtalk_thread_update` | 单个钉钉联系人线程更新 |
 | `dingtalk_effect` | 三次回复一轮后的钉钉对话结算 |
 | `dingtalk_message` | 旧版钉钉单条消息格式，前端仅做兼容映射 |
-| `new_semester` | 新学期课程载入 |
+| `items_state` | 道具目录、已拥有道具、当前被动加成和更新时间 |
+| `new_semester` | 新学期课程载入，包含课程、计时器和精力恢复信息 |
 | `graduation` | 毕业结算 |
 | `save_result` | 保存结果 |
 | `exit_confirmed` | 不保存退出确认 |
@@ -205,7 +209,19 @@
 
 `feedback` 用于随机事件结果和休闲动作结果。日志仍由 `event` 消息保留；前端应同时展示日志和弹窗。
 
-钉钉联系人只在有消息后显示。可回复角色包括 `roommate`、`classmate`、`friend`、`teaching_assistant`、`teacher`、`crush`。玩家通过回复选项完成三次回复后，后端生成 NPC 第三条回复并结算本轮数值影响，影响字段只允许 `energy` / `sanity` / `stress` / `eq` / `luck` / `reputation`。
+钉钉联系人只在有消息后显示。可回复角色包括 `roommate`、`classmate`、`friend`、`teaching_assistant`、`teacher`、`crush`。玩家通过回复选项完成三次回复后，后端生成 NPC 第三条回复并结算本轮数值影响，影响字段只允许 `energy` / `sanity` / `stress` / `eq` / `luck` / `reputation` / `gold`。
+
+`items_state` 示例：
+
+```json
+{
+  "version": "1.0.0",
+  "items": [],
+  "owned": ["qiushi_planner"],
+  "bonuses": { "iq": 4, "stress": -3 },
+  "updated_at": 1781760000
+}
+```
 
 ### 客户端动作
 
@@ -226,6 +242,8 @@
 | `set_mode` | 内容生成模式：`library` / `hybrid` / `ai` |
 | `dingtalk_mark_read` | 标记指定钉钉联系人已读 |
 | `dingtalk_reply` | 选择指定钉钉回复选项 |
+| `item_buy` | 购买指定道具：`{"action":"item_buy","item_id":"qiushi_planner"}` |
+| `item_sell` | 出售指定道具：`{"action":"item_sell","item_id":"qiushi_planner"}` |
 
 ## OpenAPI 类型生成
 
@@ -254,5 +272,6 @@ cd zjus-frontend
 ## 会话级自定义 LLM
 
 - 前端登录时可填写 `custom_llm_provider` / `custom_llm_model` / `custom_llm_api_key`，但这些字段不发送给 `POST /api/auth`。
+- 前端登录时也可填写 `custom_rp_api_key`，用于钉钉 M2-her RP；该字段同样只随 WebSocket 首包发送。
 - 配置保存在浏览器 `sessionStorage`，并在 WebSocket 首条鉴权消息中传给后端。
-- 后端只在当前 `GameEngine` 会话中使用 `llm_override`，不落库。
+- 后端只在当前 `GameEngine` 会话中使用 `llm_override` / `rp_llm_override`，不落库。

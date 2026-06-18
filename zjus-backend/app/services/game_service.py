@@ -6,6 +6,7 @@ from typing import Any, Dict, Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.input_safety import safe_username_for_prompt
+from app.game.items import items
 from app.repositories.redis_repo import RedisRepository
 from app.schemas.game_state import PlayerStats
 from app.services.save_service import SaveService
@@ -21,6 +22,18 @@ class GameService:
         self.user_id = user_id
         self.repo = repo
         self.world = world
+
+    @staticmethod
+    def recover_energy_for_new_semester(current_energy: Any) -> int:
+        """Recover halfway from the current energy toward a full 100."""
+        try:
+            energy = int(current_energy)
+        except (TypeError, ValueError):
+            return 100
+        if energy >= 100:
+            return energy
+        energy = max(0, energy)
+        return min(100, (100 + energy + 1) // 2)
 
     async def prepare_game_context(
         self,
@@ -91,6 +104,7 @@ class GameService:
             "sanity": 80,
             "gpa": "0.0",
             "reputation": 0,
+            "gold": items.initial_gold,
             "semester": "大一秋冬",
             "semester_idx": 1,
             "course_plan_json": json.dumps(
@@ -134,10 +148,16 @@ class GameService:
             else f"延毕学期 {semester_idx}"
         )
 
+        try:
+            current_energy = int(stats.get("energy", 100))
+        except (TypeError, ValueError):
+            current_energy = 100
+        recovered_energy = self.recover_energy_for_new_semester(current_energy)
         update_fields = {
             "semester": term_name,
             "elapsed_game_time": 0,
             "exam_completed": 0,
+            "energy": recovered_energy,
             "course_info_json": json.dumps(my_courses, ensure_ascii=False),
         }
 
@@ -149,6 +169,13 @@ class GameService:
             courses=courses_mastery,
             states=course_states,
         )
+        return {
+            "semester": term_name,
+            "energy_recovery": {
+                "before": current_energy,
+                "after": recovered_energy,
+            },
+        }
 
     async def process_semester_transition(
         self,
@@ -180,7 +207,7 @@ class GameService:
                 "autosave_ok": autosave_ok,
             }
 
-        await self.reset_courses_for_new_semester(current_semester_idx)
+        semester_reset = await self.reset_courses_for_new_semester(current_semester_idx)
         holiday_event = None
         if holiday_event_factory is not None:
             holiday_event = await holiday_event_factory(
@@ -190,6 +217,7 @@ class GameService:
         return {
             "status": "continued",
             "semester_idx": current_semester_idx,
+            "energy_recovery": semester_reset.get("energy_recovery", {}),
             "holiday_event": holiday_event,
             "autosave_ok": autosave_ok,
         }

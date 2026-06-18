@@ -102,6 +102,27 @@ async def test_assign_major_and_init_resets_existing_redis_state():
 
 
 @pytest.mark.asyncio
+async def test_reset_courses_for_new_semester_recovers_energy_halfway_to_full():
+    repo = Mock()
+    repo.get_snapshot = AsyncMock(
+        return_value=_Snapshot({"major_abbr": "CS", "energy": 20})
+    )
+    repo.update_courses_and_states = AsyncMock()
+    world = Mock()
+    world.get_semester_courses = AsyncMock(
+        return_value=[{"id": "CS2001", "name": "数据结构"}]
+    )
+    service = GameService("1", repo, world=world)
+
+    result = await service.reset_courses_for_new_semester(2)
+
+    stats_update = repo.update_courses_and_states.await_args.kwargs["stats_update"]
+    assert stats_update["semester"] == "大一春夏"
+    assert stats_update["energy"] == 60
+    assert result["energy_recovery"] == {"before": 20, "after": 60}
+
+
+@pytest.mark.asyncio
 async def test_engine_restart_rebuilds_initial_profile_and_emits_complete_init():
     repo = Mock()
     repo.get_snapshot = AsyncMock(
@@ -139,6 +160,9 @@ async def test_engine_restart_rebuilds_initial_profile_and_emits_complete_init()
     repo.get_dingtalk_state = AsyncMock(
         return_value=Mock(model_dump=Mock(return_value={"contacts": {}}))
     )
+    repo.get_items_state = AsyncMock(
+        return_value={"version": 1, "owned": [], "updated_at": 0}
+    )
     repo.get_cooldown_timestamp = AsyncMock(return_value=None)
     repo.set_game_data = AsyncMock()
 
@@ -171,6 +195,7 @@ async def test_engine_restart_rebuilds_initial_profile_and_emits_complete_init()
     assert payload["course_states"] == {"CS1001": 1}
     assert payload["semester_time_left"] > 0
     assert payload["dingtalk_state"] == {"contacts": {}}
+    assert payload["items_state"]["owned"] == []
     engine.start.assert_called_once()
 
 
@@ -178,6 +203,9 @@ async def test_engine_restart_rebuilds_initial_profile_and_emits_complete_init()
 async def test_engine_next_semester_autosaves_selected_slot():
     repo = Mock()
     repo.get_snapshot = AsyncMock()
+    repo.get_items_state = AsyncMock(
+        return_value={"version": 1, "owned": [], "updated_at": 0}
+    )
     save_service = Mock()
     game_service = Mock()
     game_service.process_semester_transition = AsyncMock(
@@ -197,6 +225,83 @@ async def test_engine_next_semester_autosaves_selected_slot():
         await engine._next_semester()
 
     assert game_service.process_semester_transition.await_args.kwargs["save_slot"] == 4
+
+
+@pytest.mark.asyncio
+async def test_dingtalk_uses_general_llm_when_custom_llm_has_no_rp_key():
+    repo = Mock()
+    repo.get_snapshot = AsyncMock(
+        return_value=_Snapshot({"sanity": 80, "stress": 20, "gpa": "3.5"})
+    )
+    repo.get_items_state = AsyncMock(
+        return_value={"version": 1, "owned": [], "updated_at": 0}
+    )
+    engine = GameEngine(
+        "1",
+        repo=repo,
+        save_service=Mock(),
+        game_service=Mock(),
+        llm_override={"api_key": "general-key", "model": "generic"},
+    )
+    engine.is_running = True
+    engine._store_dingtalk_npc_message = AsyncMock(return_value=None)
+
+    with (
+        patch(
+            "app.core.dingtalk_llm.generate_dingtalk_via_m2her",
+            new=AsyncMock(return_value={"content": "rp"}),
+        ) as m2her,
+        patch(
+            "app.game.engine.generate_dingtalk_message",
+            new=AsyncMock(return_value={"content": "generic"}),
+        ) as generic,
+    ):
+        await engine._trigger_dingtalk_message()
+
+    m2her.assert_not_awaited()
+    generic.assert_awaited_once()
+    assert generic.await_args.kwargs["llm_override"] == {
+        "api_key": "general-key",
+        "model": "generic",
+    }
+
+
+@pytest.mark.asyncio
+async def test_dingtalk_uses_custom_rp_key_before_general_llm():
+    repo = Mock()
+    repo.get_snapshot = AsyncMock(
+        return_value=_Snapshot({"sanity": 80, "stress": 20, "gpa": "3.5"})
+    )
+    repo.get_items_state = AsyncMock(
+        return_value={"version": 1, "owned": [], "updated_at": 0}
+    )
+    rp_override = {"api_key": "rp-key", "model": "M2-her"}
+    engine = GameEngine(
+        "1",
+        repo=repo,
+        save_service=Mock(),
+        game_service=Mock(),
+        llm_override={"api_key": "general-key", "model": "generic"},
+        rp_llm_override=rp_override,
+    )
+    engine.is_running = True
+    engine._store_dingtalk_npc_message = AsyncMock(return_value=None)
+
+    with (
+        patch(
+            "app.core.dingtalk_llm.generate_dingtalk_via_m2her",
+            new=AsyncMock(return_value={"content": "rp"}),
+        ) as m2her,
+        patch(
+            "app.game.engine.generate_dingtalk_message",
+            new=AsyncMock(return_value={"content": "generic"}),
+        ) as generic,
+    ):
+        await engine._trigger_dingtalk_message()
+
+    m2her.assert_awaited_once()
+    assert m2her.await_args.kwargs["llm_override"] == rp_override
+    generic.assert_not_awaited()
 
 
 class _AsyncContext:

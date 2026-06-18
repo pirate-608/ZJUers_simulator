@@ -4,16 +4,18 @@ ZJUers 模拟器本身不依赖大模型运行，即其本质不是通过 agent 
 
 ### 默认模型
 
-默认情况下，游戏使用的模型是不固定的，通常情况下，我们使用的是[阿里云的百炼平台](https://help.aliyun.com/zh/model-studio/get-api-key)，也可能是[DeepSeek](https://api-docs.deepseek.com/)。而对于钉钉消息、NPC 私聊回复和回复选项，我们特别地使用 [MiniMax M2-her](https://www.minimaxi.com/news/minimax-m2-her-%E6%8A%80%E6%9C%AF%E6%B7%B1%E5%BA%A6%E8%A7%A3%E6%9E%90) 来生成，因为 `M2-her` 是一款专门对于角色扮演（RP）优化的模型。当然，你也可以选择用自己的模型。
+默认情况下，游戏使用的通用模型是不固定的，通常情况下，我们使用的是[阿里云的百炼平台](https://help.aliyun.com/zh/model-studio/get-api-key)，也可能是[DeepSeek](https://api-docs.deepseek.com/)。而对于钉钉消息、NPC 私聊回复和回复选项，我们特别地使用 [MiniMax M2-her](https://www.minimaxi.com/news/minimax-m2-her-%E6%8A%80%E6%9C%AF%E6%B7%B1%E5%BA%A6%E8%A7%A3%E6%9E%90) 来生成，因为 `M2-her` 是一款专门对于角色扮演（RP）优化的模型。
 
 钉钉私聊状态本身会随游戏存档保存；模型只负责生成新消息、回复选项和一轮对话后的轻量结算。若模型不可用，游戏会尽量降级处理，但新钉钉内容可能减少。
+
+如果你在登录页配置了通用自定义 LLM，平台不会继续为你的钉钉私聊默认调用平台 `M2-her`，而是把钉钉内容回退到你的通用模型。若你希望钉钉仍使用角色扮演优化模型，可以额外填写自定义 RP API Key，也就是你的 MiniMax API Key；此时钉钉会使用你的 MiniMax key 调用 `M2-her`。
 
 ## 4.自定义大模型与API_KEY
 
 如果你已经知道如何配置，请跳转至[模型支持列表](#模型支持)
 
 ::: tip
-项目自身预算有限，默认的LLM免费额度坚持不了太久，因此用户可自定义LLM来驱动游戏（在首页填写），当默认LLM的额度耗尽时，若不填写自定义LLM不会影响游戏正常运行，但高级功能（如随机事件、98帖子等）将无法正常使用。
+项目自身预算有限，默认的LLM免费额度坚持不了太久，因此用户可自定义LLM来驱动游戏（在首页填写）。当默认LLM的额度耗尽时，若不填写自定义LLM不会影响游戏正常运行，但高级功能（如随机事件、98帖子、钉钉新消息等）将无法正常使用。
 
 :::
 ::: warning
@@ -32,7 +34,7 @@ ZJUers 模拟器本身不依赖大模型运行，即其本质不是通过 agent 
 3.  【选择模型和base url】在同一平台查看“模型服务”列表，记下您想调用的模型名称（如`gpt-4-turbo`、`doubao-seed-1.6-lite
 `、`qwen-turbo`、`deepseek-v3.2`）。
 4.  【配置启动】
-   *   应用场景：在登录界面填写你的模型型号、`Base URL`和`API Key`（注意隐私和安全，不要给陌生平台提供API_KEY）
+   *   应用场景：在登录界面填写你的通用模型服务商、模型型号和 `API Key`；如需让钉钉私聊继续使用 `M2-her`，额外填写自定义 RP API Key（MiniMax API Key）。注意隐私和安全，不要给陌生平台提供 API Key。
    *   开发场景：将获得的 `API key` 和 `模型名称` 填入配置文件（不推荐直接写入后端代码）或作为环境变量，格式如下（以OpenAI为例）：
    ```
    LLM_BASE_URL=https://api.openai.com/v1
@@ -42,7 +44,7 @@ ZJUers 模拟器本身不依赖大模型运行，即其本质不是通过 agent 
 
 ### 模型支持
 
-当前平台支持所有兼容OpenAI协议的模型。`M2-her` 也通过 OpenAI SDK 兼容接口调用，但会使用 `user_system`、`group`、`sample_message_user` 和 `sample_message_ai` 等高级角色类型以充分利用其 RP 能力。
+当前平台支持所有兼容OpenAI协议的通用模型。`M2-her` 也通过 OpenAI SDK 兼容接口调用，但会使用 `user_system`、`group`、`sample_message_user` 和 `sample_message_ai` 等高级角色类型以充分利用其 RP 能力。登录页中的自定义 RP API Key 只用于钉钉私聊，不会替代随机事件、CC98 或结业总结的通用模型。
 
 *以下为部分可供参考的兼容服务商列表（排名不分先后），其服务条款、价格和政策由各平台独立制定，请在使用前仔细阅读。*
 
@@ -64,7 +66,7 @@ ZJUers 模拟器本身不依赖大模型运行，即其本质不是通过 agent 
 
 ### 安全须知
 
-1. 您提供的API_KEY仅用于您当前游戏会话，不会被永久保存。
+1. 您提供的通用模型 API Key 或 RP API Key 仅用于您当前游戏会话，不会被永久保存。
 2. 填写即代表您单独同意我们为调用您指定模型而临时处理此密钥。
 3. 请妥善保管您的密钥，任何泄露可能导致您在该平台的资产损失或产生未授权费用。
 4. 您可在游戏结束时清除已配置的密钥。

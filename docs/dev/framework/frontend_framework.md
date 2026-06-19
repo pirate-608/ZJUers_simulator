@@ -128,9 +128,9 @@ graph TD
 ### `CharacterCreate.vue`
 
 - 调 `fetchMajors()` 展示专业。
-- `IQ` / `EQ` / `Luck` 三个 slider：
+- `IQ` / `EQ` / `Luck` / `魅力` 四个 slider：
   - 每项范围 50-150。
-  - 总和必须等于 250。
+  - 总和必须等于 300。
 - 调 `initCharacter()` 后设置 `game_started=1` 并进入 `loading`。
 
 ### `RightPanel.vue`
@@ -171,7 +171,9 @@ WebSocket 首条消息包含：
 - `dingtalk_state` 恢复钉钉联系人、私聊历史、未读数和回复选项。
 - `dingtalk_thread_update` 更新单个联系人线程；旧 `dingtalk_message` 会兼容映射到联系人线程。
 - `items_state` 恢复道具目录、已拥有道具、当前加成和更新时间；`item_buy` / `item_sell` 只走 WebSocket，不进入 OpenAPI。
+- `achievement_unlocked` 写入 `gameStore.unlockedAchievements`，同时展示 toast/feedback；`semester_summary` 和 `graduation` 可携带成就详情用于成绩单和毕业页。
 - `save_result` / `exit_confirmed` 负责退出时清理 JWT 和本局标记。
+- EndScreen 的“回到首页”应调用 WebSocket `disconnect()`，关闭重连并清理本局 JWT/slot 标记；长期学生凭证继续保留。
 
 ---
 
@@ -190,6 +192,7 @@ WebSocket 首条消息包含：
 | `relaxCooldowns` | 休闲动作剩余冷却秒数 |
 | `eventLogs` | 事件日志 |
 | `dingtalkContacts` / `unreadDingtalk` | 钉钉联系人线程和未读数 |
+| `unlockedAchievements` | 本局已解锁成就详情 |
 | `itemCatalog` / `ownedItems` / `itemBonuses` | 道具目录、已拥有道具和持有加成 |
 | `gameMode` / `llmAvailable` | 内容生成模式状态 |
 | `activeModal` / `modalData` | 当前弹窗 |

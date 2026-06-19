@@ -44,6 +44,7 @@ def sample_player_stats():
         "iq": 90,
         "eq": 75,
         "luck": 50,
+        "charm": 65,
         "gpa": "3.5",
         "highest_gpa": "3.8",
         "reputation": 10,
@@ -136,8 +137,16 @@ def sample_balance_config(tmp_path):
             "game": {"energy": -5, "sanity": 10, "stress": -15, "cooldown": 30},
         },
         "events": {
-            "random_event_interval": 120,
-            "dingtalk_interval": 90,
+            "random_event": {
+                "check_interval_ticks": 12,
+                "trigger_probability": 0.5,
+            },
+            "dingtalk": {
+                "check_interval_ticks": 12,
+                "trigger_probability": 0.5,
+                "max_contacts": 12,
+                "reuse_closed_contact_probability": 0.7,
+            },
         },
         "exam": {
             "gpa_base": 2.0,

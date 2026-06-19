@@ -88,6 +88,29 @@
         >
           ⚠️ 警告：你有课程不及格！心态大幅下降，请下学期注意选课和学习策略。
         </div>
+
+        <div
+          v-if="newAchievements.length"
+          class="achievement-summary mt-3"
+        >
+          <div class="fw-bold mb-2">
+            本学期新解锁成就
+          </div>
+          <div class="d-flex flex-wrap gap-2">
+            <div
+              v-for="achievement in newAchievements"
+              :key="achievement.code"
+              class="achievement-chip"
+            >
+              <span class="achievement-icon">{{ achievement.icon || '🏅' }}</span>
+              <span class="fw-bold">{{ achievement.name }}</span>
+              <span
+                v-if="achievement.desc"
+                class="achievement-desc"
+              >{{ achievement.desc }}</span>
+            </div>
+          </div>
+        </div>
       </div>
 
       <div class="card-footer bg-white border-0 py-3 text-center">
@@ -124,6 +147,8 @@ const hasFailedCourse = computed(() => {
   if (!data.value.courses) return false
   return data.value.courses.some((c: TranscriptModalCourseRow) => c.grade < 60)
 })
+
+const newAchievements = computed(() => Array.isArray(data.value.achievements) ? data.value.achievements : [])
 
 const courseCredit = (course: TranscriptModalCourseRow): string => {
   const value = Number(course.credit ?? course.credits ?? 0)
@@ -167,6 +192,34 @@ const startNextSemester = () => {
 
 .pulse-btn {
   animation: pulse 2s infinite;
+}
+
+.achievement-summary {
+  padding: 12px;
+  border: 1px solid rgba(180, 126, 45, 0.28);
+  border-radius: 10px;
+  background: rgba(255, 247, 226, 0.82);
+}
+
+.achievement-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 100%;
+  padding: 6px 10px;
+  border: 1px solid rgba(161, 112, 39, 0.22);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.82);
+  color: #5e431f;
+}
+
+.achievement-icon {
+  font-size: 1rem;
+}
+
+.achievement-desc {
+  color: #7d705e;
+  font-size: 0.78rem;
 }
 @keyframes pulse {
   0% { box-shadow: 0 0 0 0 rgba(13, 110, 253, 0.4); }

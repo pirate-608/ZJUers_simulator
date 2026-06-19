@@ -70,7 +70,7 @@ zjus-backend/world/
 <summary>🧑‍🎓 角色创建</summary>
 
 ![角色创建](https://zjusim-docs.67656.fun/assets/images/create.png)
-新玩家通过邀请码登录后选择专业，并分配 IQ / EQ / Luck 初始属性。
+新玩家通过邀请码登录后选择专业，并分配 IQ / EQ / Luck / 魅力初始属性。
 
 </details>
 

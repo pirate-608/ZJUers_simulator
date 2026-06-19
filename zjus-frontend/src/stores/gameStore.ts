@@ -3,7 +3,7 @@ import { computed, ref, reactive } from 'vue'
 import type { GamePhase, PlayerStats } from '../types/game'
 import type { CoursesMap, CourseMetadata, CourseProgressUpdate } from '../types/course'
 import type { GameItem, ItemsState } from '../types/items'
-import type { DingTalkContact, DingTalkMessage, DingTalkState, FeedbackModalData, ModalData } from '../types/modal'
+import type { AchievementSummary, DingTalkContact, DingTalkMessage, DingTalkState, FeedbackModalData, ModalData } from '../types/modal'
 import type { RelaxTarget } from '../types/websocket'
 
 type ToastType = 'success' | 'danger' | 'warning' | 'info'
@@ -16,8 +16,10 @@ type EndData = {
   gpa?: number
   iq?: number
   eq?: number
+  charm?: number
   gold?: number
   achievements_count?: number
+  achievement_details?: AchievementSummary[]
   llm_summary?: string
   [k: string]: unknown
 }
@@ -101,6 +103,7 @@ export const useGameStore = defineStore('game', () => {
     iq: 100,
     eq: 100,
     luck: 50,
+    charm: 50,
     gpa: 0.0,
     highest_gpa: 0.0,
     reputation: 0,
@@ -131,6 +134,7 @@ export const useGameStore = defineStore('game', () => {
   const dingMessages = ref<DingTalkMessage[]>([])
   const dingtalkContacts = reactive<Record<string, DingTalkContact>>({})
   const unreadDingtalk = ref<number>(0)
+  const unlockedAchievements = ref<AchievementSummary[]>([])
   const itemCatalog = ref<GameItem[]>([])
   const ownedItems = ref<string[]>([])
   const itemBonuses = reactive<Record<string, number>>({})
@@ -384,6 +388,51 @@ export const useGameStore = defineStore('game', () => {
     recalcUnreadDingtalk()
   }
 
+  function normalizeAchievement(raw: Record<string, unknown>): AchievementSummary {
+    const code = typeof raw.code === 'string' && raw.code.trim() !== ''
+      ? raw.code.trim()
+      : typeof raw.name === 'string'
+        ? raw.name.trim()
+        : 'achievement'
+    const name = typeof raw.name === 'string' && raw.name.trim() !== ''
+      ? raw.name.trim()
+      : code
+    return {
+      code,
+      name,
+      desc: typeof raw.desc === 'string'
+        ? raw.desc
+        : typeof raw.description === 'string'
+          ? raw.description
+          : '',
+      icon: typeof raw.icon === 'string' && raw.icon.trim() !== '' ? raw.icon : '🏅',
+    }
+  }
+
+  function addUnlockedAchievement(raw: AchievementSummary | Record<string, unknown> | null | undefined) {
+    if (!raw || typeof raw !== 'object') return null
+    const achievement = normalizeAchievement(raw as Record<string, unknown>)
+    const existingIndex = unlockedAchievements.value.findIndex((item) => item.code === achievement.code)
+    if (existingIndex >= 0) {
+      unlockedAchievements.value[existingIndex] = achievement
+    } else {
+      unlockedAchievements.value.push(achievement)
+    }
+    return achievement
+  }
+
+  function setUnlockedAchievements(rawItems: unknown) {
+    unlockedAchievements.value = []
+    if (!Array.isArray(rawItems)) return
+    for (const item of rawItems) {
+      if (item && typeof item === 'object') {
+        addUnlockedAchievement(item as Record<string, unknown>)
+      } else if (typeof item === 'string') {
+        addUnlockedAchievement({ code: item, name: item })
+      }
+    }
+  }
+
   function showModal(modalName: Exclude<ActiveModalName, null>, data: ModalData | Record<string, unknown> = {}) {
     activeModal.value = modalName
     modalData.value = data
@@ -428,6 +477,7 @@ export const useGameStore = defineStore('game', () => {
     semesterTimeLeft.value = 0
     eventLogs.value = []
     dingMessages.value = []
+    unlockedAchievements.value = []
     for (const key in dingtalkContacts) {
       delete dingtalkContacts[key]
     }
@@ -491,6 +541,9 @@ export const useGameStore = defineStore('game', () => {
     upsertDingTalkContact,
     markDingContactReadLocal,
     unreadDingtalk,
+    unlockedAchievements,
+    addUnlockedAchievement,
+    setUnlockedAchievements,
     clearUnreadDingtalk,
     itemCatalog,
     ownedItems,

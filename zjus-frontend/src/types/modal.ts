@@ -7,12 +7,20 @@ export interface TranscriptModalCourseRow {
   gpa?: number
 }
 
+export interface AchievementSummary {
+  code: string
+  name: string
+  desc?: string
+  icon?: string
+}
+
 export interface TranscriptModalData {
   semester_name?: string
   term_gpa?: number
   cgpa?: number
   gold_earned?: number
   courses?: TranscriptModalCourseRow[]
+  achievements?: AchievementSummary[]
   [k: string]: unknown
 }
 

@@ -356,6 +356,7 @@ const fieldLabels: Record<string, string> = {
   iq: 'IQ',
   eq: 'EQ',
   luck: '运气',
+  charm: '魅力',
   reputation: '声望',
   efficiency: '效率',
 }

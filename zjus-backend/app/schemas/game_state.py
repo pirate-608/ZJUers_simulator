@@ -36,8 +36,11 @@ class PlayerStats(BaseModel):
     iq: int = 0
     eq: int = 0
     luck: int = 0
+    charm: int = 0
     gpa: str = "0.0"
     highest_gpa: str = "0.0"
+    gpa_points_total: str = "0.0"
+    gpa_credits_total: str = "0.0"
     reputation: int = 0
     efficiency: int = 100
     gold: int = 0
@@ -45,6 +48,7 @@ class PlayerStats(BaseModel):
     initial_iq: int = 0
     initial_eq: int = 0
     initial_luck: int = 0
+    initial_charm: int = 0
     course_plan_json: str = ""
     course_info_json: str = ""
     elapsed_game_time: int = 0
@@ -66,8 +70,11 @@ class PlayerStats(BaseModel):
             iq=_to_int(raw.get("iq"), 0),
             eq=_to_int(raw.get("eq"), 0),
             luck=_to_int(raw.get("luck"), 0),
+            charm=_to_int(raw.get("charm"), 50),
             gpa=_to_str(raw.get("gpa"), "0.0"),
             highest_gpa=_to_str(raw.get("highest_gpa"), "0.0"),
+            gpa_points_total=_to_str(raw.get("gpa_points_total"), "0.0"),
+            gpa_credits_total=_to_str(raw.get("gpa_credits_total"), "0.0"),
             reputation=_to_int(raw.get("reputation"), 0),
             efficiency=_to_int(raw.get("efficiency"), 100),
             gold=_to_int(raw.get("gold"), 0),
@@ -75,6 +82,7 @@ class PlayerStats(BaseModel):
             initial_iq=_to_int(raw.get("initial_iq"), 0),
             initial_eq=_to_int(raw.get("initial_eq"), 0),
             initial_luck=_to_int(raw.get("initial_luck"), 0),
+            initial_charm=_to_int(raw.get("initial_charm"), 0),
             course_plan_json=_to_str(raw.get("course_plan_json"), ""),
             course_info_json=_to_str(raw.get("course_info_json"), ""),
             elapsed_game_time=_to_int(raw.get("elapsed_game_time"), 0),
@@ -99,8 +107,11 @@ class PlayerStats(BaseModel):
             iq=100,
             eq=100,
             luck=50,
+            charm=50,
             gpa="0.0",
             highest_gpa="0.0",
+            gpa_points_total="0.0",
+            gpa_credits_total="0.0",
             reputation=0,
             efficiency=100,
             gold=0,
@@ -108,6 +119,7 @@ class PlayerStats(BaseModel):
             initial_iq=0,
             initial_eq=0,
             initial_luck=0,
+            initial_charm=0,
             course_plan_json="",
             course_info_json="",
             exam_completed=0,
@@ -130,6 +142,8 @@ class PlayerStats(BaseModel):
             repairs["semester_start_time"] = int(_time.time())
         if not self.iq or self.iq <= 0:
             repairs["iq"] = _random.randint(80, 100)
+        if not self.charm or self.charm <= 0:
+            repairs["charm"] = 50
         return repairs
 
 

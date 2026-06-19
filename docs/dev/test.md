@@ -26,9 +26,10 @@ cd zjus-backend
 当前重点：
 
 - `src/App.spec.js`：登录前序章闸门、登录/存档启动分流、WebSocket 不应在序章期间提前连接。
-- `src/stores/gameStore.spec.ts`：钉钉联系人状态恢复、未读数与本地已读更新。
+- `src/stores/gameStore.spec.ts`：钉钉联系人状态恢复、未读数、本地已读更新和成就详情归一化。
 - `src/stores/gameStore.spec.ts`：道具目录、已拥有道具和持有加成的状态恢复。
 - `src/components/MidPanel.spec.js`：钉钉回复锁定、道具搜索、购买/出售和暂停锁定。
+- `src/components/EndScreen.spec.js`：Game Over / 毕业页的重开与回首页入口。
 
 常用命令：
 

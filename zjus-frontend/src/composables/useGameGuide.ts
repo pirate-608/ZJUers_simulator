@@ -26,7 +26,7 @@ const STEPS: GuideStep[] = [
     element: '#hud-bars',
     title: '⚡ 核心状态条',
     description:
-      '精力、心态、压力是三大核心属性。IQ 和 EQ 影响学习效率和社交能力，GPA 决定你的学业成绩。时刻关注这些数值，任一归零游戏即告结束。',
+      '精力、心态、压力是三大核心状态。IQ 影响学习效率，EQ 与魅力影响社交互动，GPA 决定你的学业成绩。时刻关注这些数值，精力或心态归零游戏即告结束。',
     side: 'bottom',
     align: 'center',
   },

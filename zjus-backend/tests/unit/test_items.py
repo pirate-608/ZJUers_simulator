@@ -40,7 +40,7 @@ def test_item_catalog_loads_valid_items_and_default_sell_price():
                 "name": "Planner",
                 "price": 80,
                 "tags": ["study"],
-                "effects": {"iq": 4, "stress": -2},
+                "effects": {"iq": 4, "stress": -2, "charm": 6},
             }
         ],
         economy={
@@ -104,6 +104,7 @@ class _ItemRepo:
             "iq": 100,
             "eq": 100,
             "luck": 50,
+            "charm": 50,
             "gold": 100,
         }
 
@@ -134,7 +135,7 @@ def item_catalog():
                 "name": "Planner",
                 "price": 80,
                 "sell_price": 30,
-                "effects": {"iq": 4, "stress": -2},
+                "effects": {"iq": 4, "stress": -2, "charm": 6},
             }
         ],
     )
@@ -160,9 +161,11 @@ async def test_engine_buys_and_sells_items_without_writing_passive_stats(
 
     assert repo.stats["gold"] == 20
     assert repo.stats["iq"] == 100
+    assert repo.stats["charm"] == 50
     assert repo.items_state["owned"] == ["planner"]
     effective = await engine._effective_stats(repo.stats)
     assert effective["iq"] == 104
+    assert effective["charm"] == 56
     assert effective["stress"] == 0
 
     await engine._handle_item_sell({"item_id": "planner"})

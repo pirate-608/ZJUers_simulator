@@ -57,6 +57,7 @@
       ],
       "effects": {
         "eq": 5,
+        "charm": 3,
         "reputation": 3
       }
     },
@@ -105,6 +106,7 @@
       ],
       "effects": {
         "eq": 4,
+        "charm": 5,
         "reputation": 6
       }
     },

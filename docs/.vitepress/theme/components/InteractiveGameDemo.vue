@@ -57,7 +57,7 @@
           <input type="range" min="50" max="150" :value="stat.value" readonly>
           <strong>{{ stat.value }}</strong>
         </div>
-        <p>基础点数合计 250，专业加成在创建后额外叠加。</p>
+        <p>基础点数合计 300，专业加成在创建后额外叠加。</p>
       </div>
     </div>
 
@@ -137,6 +137,7 @@ const demoStats = [
   { name: 'IQ', value: 100 },
   { name: 'EQ', value: 80 },
   { name: 'Luck', value: 70 },
+  { name: '魅力', value: 50 },
 ]
 
 const title = computed(() => ({
@@ -169,6 +170,7 @@ function seedGameState() {
     iq: 115,
     eq: 82,
     luck: 64,
+    charm: 78,
     gpa: 3.72,
     reputation: 4,
     efficiency: 112,

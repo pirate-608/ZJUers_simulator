@@ -175,6 +175,50 @@ async def _generate_reply_options_via_m2her(
     return _coerce_reply_options(data.get("reply_options"), role)
 
 
+async def generate_dingtalk_for_character_via_m2her(
+    character: Dict[str, Any],
+    player_stats: dict,
+    context: str = "random",
+    llm_override: Optional[dict[str, Any]] = None,
+) -> Optional[Dict[str, Any]]:
+    """Generate one opening DingTalk message for a specific character."""
+    api_key, _, _ = _resolve_m2her_config(llm_override)
+    if not api_key:
+        return None
+
+    messages = _build_m2her_messages(character, player_stats, context)
+    content = await _call_m2her_api(messages, llm_override=llm_override)
+    if not content:
+        return None
+
+    sender = str(character.get("name") or "未知")
+    role = normalize_dingtalk_role(str(character.get("role") or "unknown"))
+    reply_options = await _generate_reply_options_via_m2her(
+        character,
+        player_stats,
+        content,
+        context,
+        llm_override=llm_override,
+    )
+    contact_id = build_contact_id(sender, role)
+    is_urgent = role in ("counselor", "system", "teacher")
+    return {
+        "sender": sender,
+        "role": role,
+        "content": content,
+        "is_urgent": is_urgent,
+        "contact": {
+            "contact_id": contact_id,
+            "sender": sender,
+            "role": role,
+            "is_replyable": is_replyable_role(role),
+            "is_urgent": is_urgent,
+        },
+        "message": {"speaker": "npc", "content": content},
+        "reply_options": reply_options,
+    }
+
+
 # ==========================================
 # M2-her 消息构建
 # ==========================================
@@ -202,6 +246,7 @@ def _build_m2her_messages(
     semester = player_stats.get("semester", "大一秋冬")
     stress = int(player_stats.get("stress", 0))
     sanity = int(player_stats.get("sanity", 50))
+    charm = int(player_stats.get("charm", 50))
 
     messages = []
 
@@ -214,12 +259,16 @@ def _build_m2her_messages(
     # 2. user_system — 玩家身份/状态
     player_desc = (
         f"你是一位浙江大学{major}专业的学生，名叫{username}，"
-        f"目前处于{semester}。"
+        f"目前处于{semester}，魅力值约为{charm}。"
     )
     if stress > 70:
         player_desc += "你最近压力很大，看起来很疲惫。"
     elif sanity < 30:
         player_desc += "你最近心态不太好，情绪低落。"
+    if charm >= 110:
+        player_desc += "你在人际互动中很有亲和力。"
+    elif charm <= 60:
+        player_desc += "你最近在社交表达上稍显拘谨。"
 
     messages.append({
         "role": "user_system",
@@ -460,34 +509,12 @@ async def generate_dingtalk_via_m2her(
     import asyncio
 
     async def _generate_one(char: Dict) -> Optional[Dict[str, Any]]:
-        messages = _build_m2her_messages(char, player_stats, context)
-        content = await _call_m2her_api(messages, llm_override=llm_override)
-        if content:
-            sender = str(char.get("name") or "未知")
-            role = normalize_dingtalk_role(str(char.get("role") or "unknown"))
-            reply_options = await _generate_reply_options_via_m2her(
-                char, player_stats, content, context, llm_override=llm_override
-            )
-            contact_id = build_contact_id(sender, role)
-            is_urgent = role in ("counselor", "system", "teacher")
-            return {
-                # 兼容旧前端/旧测试字段
-                "sender": sender,
-                "role": role,
-                "content": content,
-                "is_urgent": is_urgent,
-                # 新私聊机制字段
-                "contact": {
-                    "contact_id": contact_id,
-                    "sender": sender,
-                    "role": role,
-                    "is_replyable": is_replyable_role(role),
-                    "is_urgent": is_urgent,
-                },
-                "message": {"speaker": "npc", "content": content},
-                "reply_options": reply_options,
-            }
-        return None
+        return await generate_dingtalk_for_character_via_m2her(
+            char,
+            player_stats,
+            context,
+            llm_override=llm_override,
+        )
 
     results = await asyncio.gather(
         *[_generate_one(c) for c in unique_chars],
@@ -551,7 +578,7 @@ async def generate_dingtalk_reply_via_m2her(
             f"{history_text}\n玩家刚回复：{player_reply}\n"
             "请生成 NPC 的下一条回复，并对这一轮三次往返对话"
             "产生的游戏数值影响做轻量结算。"
-            "影响只能包含 energy/sanity/stress/eq/luck/reputation/gold，"
+            "影响只能包含 energy/sanity/stress/eq/luck/charm/reputation/gold，"
             "数值为整数，幅度要克制。"
             '严格返回 JSON：{"npc_reply":"...",'
             '"settlement":{"desc":"...","effects":{"sanity":1}}}'

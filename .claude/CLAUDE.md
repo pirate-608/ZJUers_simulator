@@ -150,8 +150,8 @@ Player usernames:
 
 Character creation:
 
-- `IQ`, `EQ`, and `Luck` each range from 50 to 150.
-- The client and server both enforce a total base budget of 250.
+- `IQ`, `EQ`, `Luck`, and `Charm` each range from 50 to 150.
+- The client and server both enforce a total base budget of 300.
 - Major IQ bonus is added after the base-budget check and is intentionally retained.
 
 Returning users:
@@ -174,18 +174,26 @@ Guide/pause:
 Semester transitions:
 
 - New semesters reset courses and course states, reset elapsed time, and recover energy halfway toward 100 with `ceil((100 + current_energy) / 2)` without reducing energy already above 100.
+- Final exams compute both a term GPA and a cumulative GPA by credit-weighted grade points. `PlayerStats.gpa` stores cumulative GPA; `highest_gpa` stores the best single-term GPA for achievements/user summary; `gpa_points_total` and `gpa_credits_total` persist the cumulative weighted totals.
 
 Relax actions:
 
 - `gym`, `game`, `walk`, and `cc98` have server-side cooldowns.
 - Cooldown buttons are disabled and display remaining seconds.
-- Relax results show a feedback modal for 3 seconds and still append logs.
+- Relax results show a feedback modal for 3 seconds and still append logs; the feedback `changes` list should include the actual stat deltas players need to see.
+- Positive relax effects that hit the good endpoint are partially redirected to `energy`, then `sanity`, then `charm`; this overflow rule is relax-only and does not affect random events, DingTalk settlements, or item passives. Gym can grant charm through `relax_actions.gym.charm_gain_probability` and `charm_gain`.
 
 Random events:
 
 - Event choices are validated against the current server-side event.
 - Results show a feedback modal for 5 seconds and still append logs.
-- Event and DingTalk effects may include `gold`; item passive bonuses are computed separately and should not be written back into base stats.
+- Event and DingTalk effects may include `gold` and `charm`; item passive bonuses are computed separately and should not be written back into base stats.
+
+Achievements:
+
+- `_check_achievements()` returns newly unlocked achievement details, emits `achievement_unlocked`, and final-exam summaries include the achievements unlocked during that semester.
+- Graduation payloads should include `achievement_details` derived from `world/achievements.json`; frontend fallbacks may display legacy code-only achievements.
+- End screens expose both restart and return-home actions. Returning home disconnects the game WebSocket, disables reconnect, clears per-session game JWT/slot markers, and keeps the long-lived student credential.
 
 Items:
 
@@ -199,6 +207,7 @@ Content generation:
 
 - Modes are `library`, `hybrid`, and `ai`.
 - DingTalk model selection order is: player custom RP MiniMax key, platform M2-her when no general custom LLM is configured, then the active general LLM fallback.
+- DingTalk contact lists are capped by `events.dingtalk.max_contacts` (default 12). New messages should prefer reusable closed contacts using `reuse_closed_contact_probability` and must not compact away open-round contacts.
 - When AI/LLM becomes unavailable, AI mode falls back toward hybrid mode(if still have issues, then fall back to library mode) behavior and emits mode/toast updates.
 
 Admin balance:

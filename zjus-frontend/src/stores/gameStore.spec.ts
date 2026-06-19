@@ -157,3 +157,39 @@ describe('gameStore item state', () => {
     expect(store.itemsUpdatedAt).toBe(123)
   })
 })
+
+describe('gameStore achievements', () => {
+  beforeEach(() => {
+    localStorage.clear()
+    setActivePinia(createPinia())
+  })
+
+  it('normalizes achievement details and legacy code-only entries', () => {
+    const store = useGameStore()
+
+    store.setUnlockedAchievements([
+      {
+        code: 'gpa_king',
+        name: '卷王之王',
+        desc: '单学期 GPA 达到 4.5',
+        icon: '👑',
+      },
+      'legacy_code',
+    ])
+
+    expect(store.unlockedAchievements).toEqual([
+      {
+        code: 'gpa_king',
+        name: '卷王之王',
+        desc: '单学期 GPA 达到 4.5',
+        icon: '👑',
+      },
+      {
+        code: 'legacy_code',
+        name: 'legacy_code',
+        desc: '',
+        icon: '🏅',
+      },
+    ])
+  })
+})

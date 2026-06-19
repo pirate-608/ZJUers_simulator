@@ -81,7 +81,7 @@
 
 ### POST `/api/init_character`
 
-作用：新游戏初始化。玩家选择专业并分配 `IQ` / `EQ` / `Luck` 基础属性。
+作用：新游戏初始化。玩家选择专业并分配 `IQ` / `EQ` / `Luck` / `魅力` 基础属性。
 
 请求体：
 
@@ -91,15 +91,16 @@
   "major_abbr": "CS",
   "iq": 100,
   "eq": 100,
-  "luck": 50
+  "luck": 50,
+  "charm": 50
 }
 ```
 
 服务端约束：
 
-- `iq`、`eq`、`luck` 每项必须在 `50-150`。
-- 三项总和必须等于 `250`。
-- 专业 IQ 增益在 `GameService.assign_major_and_init()` 中额外叠加，不计入 250 点预算。
+- `iq`、`eq`、`luck`、`charm` 每项必须在 `50-150`。
+- 四项总和必须等于 `300`。
+- 专业 IQ 增益在 `GameService.assign_major_and_init()` 中额外叠加，不计入 300 点预算。
 
 响应：
 
@@ -182,7 +183,7 @@
 | `init` | 初始状态包：玩家属性、课程进度、课程策略、学期剩余时间、休闲动作冷却、钉钉状态和道具状态 |
 | `tick` | 高频状态更新，包含 `relax_cooldowns` |
 | `event` | 事件日志 |
-| `feedback` | 结果反馈弹窗，包含 `title`、`message`、`kind`、`auto_close_ms` |
+| `feedback` | 结果反馈弹窗，包含 `title`、`message`、`kind`、`auto_close_ms`，可附带 `changes` 数值变化 |
 | `random_event` | 随机事件弹窗 |
 | `semester_summary` | 期末成绩单 |
 | `dingtalk_state` | 钉钉联系人、私聊历史、未读数和待回复选项的全量状态 |
@@ -190,8 +191,9 @@
 | `dingtalk_effect` | 三次回复一轮后的钉钉对话结算 |
 | `dingtalk_message` | 旧版钉钉单条消息格式，前端仅做兼容映射 |
 | `items_state` | 道具目录、已拥有道具、当前被动加成和更新时间 |
+| `achievement_unlocked` | 新解锁成就详情 |
 | `new_semester` | 新学期课程载入，包含课程、计时器和精力恢复信息 |
-| `graduation` | 毕业结算 |
+| `graduation` | 毕业结算，`final_stats` 可包含 `achievement_details` |
 | `save_result` | 保存结果 |
 | `exit_confirmed` | 不保存退出确认 |
 | `mode_changed` / `toast` | 内容生成模式和提示 |
@@ -207,9 +209,9 @@
 }
 ```
 
-`feedback` 用于随机事件结果和休闲动作结果。日志仍由 `event` 消息保留；前端应同时展示日志和弹窗。
+`feedback` 用于随机事件结果和休闲动作结果。日志仍由 `event` 消息保留；前端应同时展示日志和弹窗。休闲和事件结算如果改变数值，应尽量通过 `changes` 列出实际变化，便于玩家理解本次结果。
 
-钉钉联系人只在有消息后显示。可回复角色包括 `roommate`、`classmate`、`friend`、`teaching_assistant`、`teacher`、`crush`。玩家通过回复选项完成三次回复后，后端生成 NPC 第三条回复并结算本轮数值影响，影响字段只允许 `energy` / `sanity` / `stress` / `eq` / `luck` / `reputation` / `gold`。
+钉钉联系人只在有消息后显示。可回复角色包括 `roommate`、`classmate`、`friend`、`teaching_assistant`、`teacher`、`crush`。玩家通过回复选项完成三次回复后，后端生成 NPC 第三条回复并结算本轮数值影响，影响字段只允许 `energy` / `sanity` / `stress` / `eq` / `luck` / `charm` / `reputation` / `gold`。联系人列表默认上限为 12，超限时优先复用已结束轮次的旧联系人。
 
 `items_state` 示例：
 
@@ -218,7 +220,7 @@
   "version": "1.0.0",
   "items": [],
   "owned": ["qiushi_planner"],
-  "bonuses": { "iq": 4, "stress": -3 },
+  "bonuses": { "iq": 4, "charm": 3, "stress": -3 },
   "updated_at": 1781760000
 }
 ```

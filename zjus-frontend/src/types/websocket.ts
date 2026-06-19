@@ -1,7 +1,7 @@
 import type { CoursesMap } from './course'
 import type { PlayerStats } from './game'
 import type { ItemsState } from './items'
-import type { DingTalkContact, DingTalkMessage, DingTalkState, FeedbackModalData, RandomEventModalData, TranscriptModalData } from './modal'
+import type { AchievementSummary, DingTalkContact, DingTalkMessage, DingTalkState, FeedbackModalData, RandomEventModalData, TranscriptModalData } from './modal'
 
 export type WsMessage =
   | { type: 'auth_ok' }
@@ -44,6 +44,7 @@ export type WsMessage =
   | { type: 'dingtalk_thread_update'; contact?: DingTalkContact | unknown; data?: { contact?: DingTalkContact } | unknown }
   | { type: 'dingtalk_effect'; contact_id?: string; summary?: string; effects?: unknown }
   | { type: 'items_state'; data?: ItemsState | unknown }
+  | { type: 'achievement_unlocked'; data?: AchievementSummary | unknown }
   | {
       type: 'graduation'
       data?: {

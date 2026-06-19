@@ -1,5 +1,14 @@
 # Claude Code Handoff Changelog
 
+## 2026-06-19
+
+### Charm Attribute
+
+- Added `Charm` / `魅力` as a fourth allocatable character-creation stat.
+- Current stat rules are `IQ`, `EQ`, `Luck`, and `Charm` each within `50-150`, with a total base budget of `300`.
+- Major IQ bonus is still applied after base-budget validation.
+- Charm is part of normal runtime state: UI stats, restart inference, event/DingTalk effects, item bonuses, and LLM context can now carry it.
+
 ## 2026-06-09
 
 ### VitePress Docs Migration
@@ -68,8 +77,7 @@
 
 ### Character Initialization
 
-- `IQ`, `EQ`, and `Luck` each stay within `50-150`.
-- Base stat total must equal `250` on both client and server.
+- This entry originally documented the three-stat onboarding model; the current four-stat `Charm` rules are tracked in the 2026-06-19 entry above.
 - Major IQ bonus is retained and applied after the base-budget validation.
 
 ### API And OpenAPI

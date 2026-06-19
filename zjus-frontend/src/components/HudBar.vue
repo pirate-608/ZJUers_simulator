@@ -55,10 +55,14 @@
     <div class="d-flex gap-4 border-start ps-4 hud-metrics">
       <div class="text-center hud-metric-block">
         <div class="small text-muted fw-bold metric-label">
-          IQ / EQ
+          IQ / EQ / 魅力
         </div>
         <div class="fw-bold fs-5 metric-value">
-          {{ Math.floor(safeNumber(stats.iq, 100)) }} <span class="text-muted fs-6">/</span> {{ Math.floor(safeNumber(stats.eq, 100)) }}
+          {{ Math.floor(safeNumber(stats.iq, 100)) }}
+          <span class="text-muted fs-6">/</span>
+          {{ Math.floor(safeNumber(stats.eq, 100)) }}
+          <span class="text-muted fs-6">/</span>
+          {{ Math.floor(safeNumber(stats.charm, 50)) }}
         </div>
       </div>
       
@@ -175,7 +179,7 @@ const stressColorClass = computed(() => {
 }
 
 .hud-metric-block {
-  min-width: 72px;
+  min-width: 82px;
 }
 
 .metric-value {

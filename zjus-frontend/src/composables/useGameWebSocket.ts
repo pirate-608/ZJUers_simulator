@@ -150,6 +150,7 @@ export function useGameWebSocket() {
         'dingtalk_thread_update',
         'dingtalk_effect',
         'items_state',
+        'achievement_unlocked',
         'graduation',
         'new_semester',
         'mode_changed',
@@ -375,6 +376,24 @@ export function useGameWebSocket() {
           break
         }
 
+        case 'achievement_unlocked': {
+          const achievement = gameStore.addUnlockedAchievement(
+            isRecord(wsMsg.data) ? wsMsg.data : null,
+          )
+          if (achievement) {
+            const message = `${achievement.icon ?? '🏅'} ${achievement.name}${achievement.desc ? `：${achievement.desc}` : ''}`
+            gameStore.addLog('成就', message, 'text-warning fw-bold')
+            gameStore.showToast(`成就解锁：${achievement.name}`, 'success', 3500)
+            gameStore.showFeedback({
+              title: '成就解锁',
+              message,
+              kind: 'info',
+              autoCloseMs: 3500,
+            })
+          }
+          break
+        }
+
         case 'graduation': {
           const { finalStats, llmSummary: llmSummaryExtracted } = extractGraduationFinalStats(wsMsg)
 
@@ -383,18 +402,26 @@ export function useGameWebSocket() {
 
           const iqRaw = finalStats.iq
           const eqRaw = finalStats.eq
+          const charmRaw = finalStats.charm
           const goldRaw = finalStats.gold
           const achievementsRaw = finalStats.achievements
+          const achievementDetailsRaw = finalStats.achievement_details
 
           const achievementsArr = Array.isArray(achievementsRaw) ? achievementsRaw : []
+          const achievementDetails = Array.isArray(achievementDetailsRaw)
+            ? achievementDetailsRaw
+            : achievementsArr.map((code) => ({ code: String(code), name: String(code) }))
+          gameStore.setUnlockedAchievements(achievementDetails)
           const llmSummary = llmSummaryExtracted || '此子聪颖过人，勤勉有加...'
 
           gameStore.triggerEndGame('graduation', {
             gpa,
             iq: typeof iqRaw === 'number' ? iqRaw : Number(iqRaw ?? 100),
             eq: typeof eqRaw === 'number' ? eqRaw : Number(eqRaw ?? 100),
+            charm: typeof charmRaw === 'number' ? charmRaw : Number(charmRaw ?? 50),
             gold: typeof goldRaw === 'number' ? goldRaw : Number(goldRaw ?? 0),
-            achievements_count: achievementsArr.length,
+            achievements_count: achievementDetails.length || achievementsArr.length,
+            achievement_details: gameStore.unlockedAchievements,
             llm_summary: llmSummary,
           })
           break
@@ -531,6 +558,17 @@ export function useGameWebSocket() {
     stopHeartbeat()
   })
 
-  return { ws, isConnected, connect, send }
+  const disconnect = () => {
+    shouldReconnect = false
+    clearReconnectTimer()
+    stopHeartbeat()
+    if (ws.value) {
+      ws.value.close()
+      ws.value = null
+    }
+    isConnected.value = false
+  }
+
+  return { ws, isConnected, connect, send, disconnect }
 }
 

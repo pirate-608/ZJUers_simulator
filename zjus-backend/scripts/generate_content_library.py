@@ -420,7 +420,7 @@ def generate_events(target_count: int) -> List[Dict[str, Any]]:
 2. options 必须包含两个选项，每个选项必须有 id、text、effects
 3. effects 必须包含 desc 字段，以及以下任意字段：
    energy(-10~10)、sanity(-10~10)、stress(-10~10)、
-   luck(-5~5)、reputation(-5~5)
+   luck(-5~5)、charm(-5~5)、reputation(-5~5)
 4. 描述要生动有趣，符合浙大学生视角
 5. 事件适合{sanity_label}、{stress_label}的玩家
 

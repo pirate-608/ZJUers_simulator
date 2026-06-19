@@ -16,9 +16,23 @@ from app.core.input_safety import (
 
 
 def test_validate_initial_stats_accepts_budgeted_values():
+    req = InitCharacterRequest(
+        token="jwt",
+        major_abbr="CS",
+        iq=100,
+        eq=100,
+        luck=50,
+        charm=50,
+    )
+
+    _validate_initial_stats(req)
+
+
+def test_validate_initial_stats_accepts_default_charm_for_legacy_payload():
     req = InitCharacterRequest(token="jwt", major_abbr="CS", iq=100, eq=100, luck=50)
 
     _validate_initial_stats(req)
+    assert req.charm == 50
 
 
 def test_init_character_response_accepts_numeric_course_fields():
@@ -41,23 +55,38 @@ def test_init_character_response_accepts_numeric_course_fields():
 
 
 @pytest.mark.parametrize(
-    ("iq", "eq", "luck"),
+    ("iq", "eq", "luck", "charm"),
     [
-        (150, 100, 100),
-        (200, 25, 25),
-        (49, 101, 100),
-        (151, 50, 49),
+        (150, 100, 100, 50),
+        (200, 25, 25, 50),
+        (49, 101, 100, 50),
+        (151, 50, 49, 50),
+        (100, 100, 50, 49),
     ],
 )
-def test_validate_initial_stats_rejects_invalid_allocations(iq, eq, luck):
-    req = InitCharacterRequest(token="jwt", major_abbr="CS", iq=iq, eq=eq, luck=luck)
+def test_validate_initial_stats_rejects_invalid_allocations(iq, eq, luck, charm):
+    req = InitCharacterRequest(
+        token="jwt",
+        major_abbr="CS",
+        iq=iq,
+        eq=eq,
+        luck=luck,
+        charm=charm,
+    )
 
     with pytest.raises(HTTPException):
         _validate_initial_stats(req)
 
 
 def test_validate_initial_stats_preserves_major_bonus_budget_boundary():
-    req = InitCharacterRequest(token="jwt", major_abbr="CS", iq=150, eq=50, luck=50)
+    req = InitCharacterRequest(
+        token="jwt",
+        major_abbr="CS",
+        iq=150,
+        eq=50,
+        luck=50,
+        charm=50,
+    )
 
     _validate_initial_stats(req)
 

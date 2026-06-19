@@ -39,7 +39,7 @@
 
 ### 6. 游戏初始化与“开局数据”从哪里来？
 - 开局流程由 `GameService` 负责（初始化 stats/major/courses 等）。
-- 新玩家通过 `POST /api/init_character` 选择专业并分配 IQ/EQ/Luck；服务端会校验三项总和为 250。
+- 新玩家通过 `POST /api/init_character` 选择专业并分配 IQ/EQ/Luck/魅力；服务端会校验四项总和为 300。
 - 读取世界数据使用 `WorldService`，可做缓存优化。
 
 ### 7. 课程/专业/规则数据如何维护？

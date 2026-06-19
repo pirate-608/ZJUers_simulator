@@ -8,6 +8,11 @@ from openai import AsyncOpenAI
 from app.api.cache import RedisCache
 from app.content.state_vector import PlayerStateVector
 from app.core.input_safety import safe_username_for_prompt
+from app.schemas.dingtalk import (
+    build_contact_id,
+    is_replyable_role,
+    normalize_dingtalk_role,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -230,7 +235,8 @@ async def generate_random_event(
     prompt = (
         f"玩家状态：{state.to_prompt_fragment()}{history_hint}\n"
         f"生成 3 个浙大校园随机事件，风格迥异。\n"
-        f"每个事件含两个选项，effects 范围 -10~+10。\n"
+        f"每个事件含两个选项，effects 范围 -10~+10，"
+        f"可包含 energy/sanity/stress/eq/luck/charm/reputation/gold。\n"
         f'\n严格 JSON：{{ "events": [{{ "title": "...", "desc": "...", '
         f'"options": [{{"id": "A", "text": "...", '
         f'"effects": {{"energy": -5, "desc": "..."}}}}, '
@@ -328,6 +334,83 @@ async def generate_dingtalk_message(
         return None
 
 
+async def generate_dingtalk_message_for_character(
+    character: Dict[str, Any],
+    player_stats: dict,
+    context: str = "random",
+    llm_override: Optional[Dict[str, Any]] = None,
+) -> dict[str, Any] | None:
+    """Generate one opening DingTalk message for a specific character."""
+    try:
+        api_key, base_url, model = _resolve_llm_config(llm_override)
+        if not api_key:
+            return None
+
+        sender = str(character.get("name") or character.get("sender") or "对方")
+        role = normalize_dingtalk_role(str(character.get("role") or "unknown"))
+        persona = str(character.get("content") or f"你是{sender}。")
+        examples = character.get("examples")
+        example_hint = ""
+        if isinstance(examples, list) and examples:
+            example_hint = "角色说话示例：" + " / ".join(str(x) for x in examples[:3])
+
+        state = PlayerStateVector.from_stats(player_stats)
+        prompt = (
+            "你正在模拟浙江大学校园钉钉私聊。\n"
+            f"玩家状态：{state.to_prompt_fragment()}\n"
+            f"场景：{context}。\n"
+            f"NPC：{sender}，角色类型：{role}。\n"
+            f"NPC人设：{persona}\n"
+            f"{example_hint}\n"
+            "请生成这个 NPC 主动发给玩家的一条自然私聊消息，30 字内。"
+            '严格返回 JSON：{"content":"...",'
+            '"reply_options":["选项1","选项2","选项3"]}。'
+            "只有可回复角色需要 reply_options；不可回复角色可返回空数组。"
+        )
+
+        llm_client = _get_client(api_key, base_url)
+        response = await llm_client.chat.completions.create(
+            model=model,
+            messages=[{"role": "user", "content": prompt}],
+            max_tokens=320,
+        )
+        raw = response.choices[0].message.content
+        data = _json_from_text(raw)
+        content = str(
+            data.get("content") or data.get("message") or data.get("npc_reply") or raw
+        ).strip()
+        if not content:
+            return None
+
+        reply_options = [
+            {"option_id": f"opt_{idx + 1}", "text": text[:80]}
+            for idx, text in enumerate(_string_list(data.get("reply_options"))[:3])
+        ]
+        if not is_replyable_role(role):
+            reply_options = []
+
+        contact_id = build_contact_id(sender, role)
+        is_urgent = role in ("counselor", "system", "teacher")
+        return {
+            "sender": sender,
+            "role": role,
+            "content": content[:500],
+            "is_urgent": is_urgent,
+            "contact": {
+                "contact_id": contact_id,
+                "sender": sender,
+                "role": role,
+                "is_replyable": is_replyable_role(role),
+                "is_urgent": is_urgent,
+            },
+            "message": {"speaker": "npc", "content": content[:500]},
+            "reply_options": reply_options,
+        }
+    except Exception as e:
+        logger.warning("Generic DingTalk opening generation failed: %s", e)
+        return None
+
+
 async def generate_dingtalk_reply_message(
     character: Dict[str, Any],
     player_stats: dict,
@@ -357,7 +440,8 @@ async def generate_dingtalk_reply_message(
             f"玩家：{username}，{major}，{semester}。"
             f"心态 {player_stats.get('sanity', '--')}，"
             f"压力 {player_stats.get('stress', '--')}，"
-            f"GPA {player_stats.get('gpa', '--')}。"
+            f"GPA {player_stats.get('gpa', '--')}，"
+            f"魅力 {player_stats.get('charm', '--')}。"
         )
 
         history_lines = []
@@ -373,7 +457,7 @@ async def generate_dingtalk_reply_message(
             output_contract = (
                 '严格返回 JSON：{"npc_reply":"...",'
                 '"settlement":{"desc":"...","effects":{"sanity":1}}}。'
-                "effects 只能包含 energy/sanity/stress/eq/luck/reputation/gold，"
+                "effects 只能包含 energy/sanity/stress/eq/luck/charm/reputation/gold，"
                 "整数幅度要克制，通常在 -3 到 3。"
             )
         else:

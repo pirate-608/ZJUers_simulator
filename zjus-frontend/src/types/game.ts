@@ -19,6 +19,7 @@ export interface PlayerStats {
   iq?: number
   eq?: number
   luck?: number
+  charm?: number
   gpa?: number
   highest_gpa?: number
   reputation?: number
@@ -31,6 +32,7 @@ export interface PlayerStats {
   initial_iq?: number
   initial_eq?: number
   initial_luck?: number
+  initial_charm?: number
 
   courses: CoursesMap
 

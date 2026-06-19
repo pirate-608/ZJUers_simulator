@@ -6,12 +6,14 @@ import { PROLOGUE_LINES, PROLOGUE_SEEN_STORAGE_KEY } from './data/prologue'
 
 const webSocketMock = vi.hoisted(() => ({
   connect: vi.fn(),
+  disconnect: vi.fn(),
   send: vi.fn(),
 }))
 
 vi.mock('@/composables/useGameWebSocket.ts', () => ({
   useGameWebSocket: () => ({
     connect: webSocketMock.connect,
+    disconnect: webSocketMock.disconnect,
     isConnected: { value: false },
     send: webSocketMock.send,
   }),
@@ -46,6 +48,7 @@ describe('App.vue', () => {
     localStorage.clear()
     sessionStorage.clear()
     webSocketMock.connect.mockClear()
+    webSocketMock.disconnect.mockClear()
     webSocketMock.send.mockClear()
   })
 

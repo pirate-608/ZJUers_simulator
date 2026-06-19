@@ -17,6 +17,7 @@ from app.core.input_safety import safe_username_for_prompt
 from app.core.llm import (
     generate_cc98_post,
     generate_dingtalk_message,
+    generate_dingtalk_message_for_character,
     generate_dingtalk_reply_message,
     generate_random_event,
 )
@@ -57,6 +58,11 @@ class GameMode:
 
 
 class GameEngine:
+    _BASE_STAT_MIN = 0
+    _BASE_STAT_MAX = 200
+    _RELAX_OVERFLOW_TARGETS = ("energy", "sanity", "charm")
+    _RELAX_OVERFLOW_TRANSFER_CAP = 20
+    _RELAX_CHARM_TRANSFER_CAP = 1
     _FEEDBACK_FIELD_LABELS = {
         "energy": "精力",
         "sanity": "心态",
@@ -64,6 +70,7 @@ class GameEngine:
         "iq": "IQ",
         "eq": "EQ",
         "luck": "运气",
+        "charm": "魅力",
         "reputation": "声望",
         "efficiency": "效率",
         "gpa": "GPA",
@@ -119,6 +126,52 @@ class GameEngine:
             change["value"] = value
         return change
 
+    @staticmethod
+    def _safe_float(value: Any, default: float = 0.0) -> float:
+        try:
+            return float(value)
+        except (TypeError, ValueError):
+            return default
+
+    @staticmethod
+    def _safe_int(value: Any, default: int = 0) -> int:
+        try:
+            return int(value)
+        except (TypeError, ValueError):
+            return default
+
+    @classmethod
+    def _calculate_cumulative_gpa(
+        cls,
+        stats: dict[str, Any],
+        term_points: float,
+        term_credits: float,
+        term_gpa: float,
+    ) -> tuple[float, float, float]:
+        """Return cumulative GPA and updated weighted totals.
+
+        New saves keep exact weighted totals. Older saves only have the last
+        visible GPA, so fall back to treating it as the prior cumulative GPA
+        across the completed terms. That is approximate for very old saves but
+        avoids resetting CGPA to the current semester after this upgrade.
+        """
+        previous_points = cls._safe_float(stats.get("gpa_points_total"))
+        previous_credits = cls._safe_float(stats.get("gpa_credits_total"))
+
+        if previous_credits <= 0 and term_credits > 0:
+            previous_gpa = cls._safe_float(stats.get("gpa"))
+            completed_terms = max(0, cls._safe_int(stats.get("semester_idx"), 1) - 1)
+            if previous_gpa > 0 and completed_terms > 0:
+                previous_credits = term_credits * completed_terms
+                previous_points = previous_gpa * previous_credits
+
+        cumulative_points = previous_points + term_points
+        cumulative_credits = previous_credits + term_credits
+        if cumulative_credits <= 0:
+            return term_gpa, cumulative_points, cumulative_credits
+        cumulative_gpa = round(cumulative_points / cumulative_credits, 2)
+        return cumulative_gpa, cumulative_points, cumulative_credits
+
     async def _apply_stat_delta_for_feedback(
         self,
         field: str,
@@ -131,6 +184,80 @@ class GameEngine:
         else:
             new_value = await self.repo.update_stat_safe(field, delta)
         return self._feedback_change(field, delta, new_value)
+
+    def _positive_relax_overflow_units(
+        self,
+        field: str,
+        requested_delta: int,
+        actual_delta: int,
+    ) -> int:
+        if field == "stress" and requested_delta < 0:
+            return max(0, abs(requested_delta) - max(0, -actual_delta))
+        if field in {"energy", "sanity", "eq", "luck", "charm", "reputation"}:
+            if requested_delta > 0:
+                return max(0, requested_delta - max(0, actual_delta))
+        return 0
+
+    async def _apply_relax_delta(
+        self,
+        field: str,
+        delta: int,
+        base_stats: dict[str, Any],
+        changes: list[dict[str, Any]],
+    ) -> int:
+        if delta == 0:
+            return 0
+        current_value = self._safe_int(base_stats.get(field))
+        new_value = await self.repo.update_stat_safe(
+            field,
+            delta,
+            self._BASE_STAT_MIN,
+            self._BASE_STAT_MAX,
+        )
+        actual_delta = int(new_value) - current_value
+        base_stats[field] = int(new_value)
+        if actual_delta:
+            changes.append(self._feedback_change(field, actual_delta, int(new_value)))
+        return self._positive_relax_overflow_units(field, delta, actual_delta)
+
+    async def _transfer_relax_overflow(
+        self,
+        overflow_units: int,
+        base_stats: dict[str, Any],
+        changes: list[dict[str, Any]],
+    ) -> None:
+        remaining = min(max(0, overflow_units), self._RELAX_OVERFLOW_TRANSFER_CAP)
+        charm_transferred = 0
+        for field in self._RELAX_OVERFLOW_TARGETS:
+            if remaining <= 0:
+                break
+            current_value = self._safe_int(base_stats.get(field))
+            room = max(0, self._BASE_STAT_MAX - current_value)
+            if room <= 0:
+                continue
+            field_cap = remaining
+            if field == "charm":
+                field_cap = min(
+                    field_cap,
+                    max(0, self._RELAX_CHARM_TRANSFER_CAP - charm_transferred),
+                )
+            delta = min(remaining, room, field_cap)
+            if delta <= 0:
+                continue
+            new_value = await self.repo.update_stat_safe(
+                field,
+                delta,
+                self._BASE_STAT_MIN,
+                self._BASE_STAT_MAX,
+            )
+            actual_delta = int(new_value) - current_value
+            base_stats[field] = int(new_value)
+            if actual_delta <= 0:
+                continue
+            if field == "charm":
+                charm_transferred += actual_delta
+            remaining -= actual_delta
+            changes.append(self._feedback_change(field, actual_delta, int(new_value)))
 
     async def _get_items_state_payload(self) -> dict[str, Any]:
         return items.state_payload(await self.repo.get_items_state())
@@ -299,6 +426,100 @@ class GameEngine:
             options,
         )
 
+    def _closed_dingtalk_contacts(
+        self,
+        contacts: dict[str, DingTalkContact],
+    ) -> list[DingTalkContact]:
+        closed = [
+            contact
+            for contact in contacts.values()
+            if contact.round.status != "open"
+        ]
+        closed.sort(key=lambda c: c.last_message_at, reverse=True)
+        return closed
+
+    def _choose_reusable_dingtalk_contact(
+        self,
+        contacts: dict[str, DingTalkContact],
+        force: bool = False,
+    ) -> DingTalkContact | None:
+        closed = self._closed_dingtalk_contacts(contacts)
+        if not closed:
+            return None
+        should_reuse = force or (
+            random.random() < balance.dingtalk_reuse_closed_contact_probability
+        )
+        if not should_reuse:
+            return None
+        return random.choice(closed)
+
+    def _character_from_contact(self, contact: DingTalkContact) -> dict[str, Any]:
+        try:
+            from app.core.dingtalk_llm import get_character_by_contact_id
+
+            character = get_character_by_contact_id(contact.contact_id)
+            if character:
+                return character
+        except Exception as exc:
+            logger.debug("Could not load DingTalk character for reuse: %s", exc)
+        return {
+            "name": contact.sender,
+            "role": contact.role,
+            "content": f"你是{contact.sender}。",
+            "examples": [],
+        }
+
+    async def _generate_dingtalk_for_existing_contact(
+        self,
+        contact: DingTalkContact,
+        stats: dict[str, Any],
+        context: str,
+    ) -> dict[str, Any] | None:
+        character = self._character_from_contact(contact)
+        msg_data = None
+        rp_override = self.rp_llm_override
+        if rp_override or not self.llm_override:
+            try:
+                from app.core.dingtalk_llm import (
+                    generate_dingtalk_for_character_via_m2her,
+                )
+
+                msg_data = await generate_dingtalk_for_character_via_m2her(
+                    character,
+                    stats,
+                    context,
+                    llm_override=rp_override,
+                )
+            except Exception as exc:
+                logger.warning("M2-her DingTalk reuse fallback: %s", exc)
+        if not msg_data:
+            msg_data = await generate_dingtalk_message_for_character(
+                character,
+                stats,
+                context,
+                llm_override=self.llm_override,
+            )
+        if not msg_data:
+            return None
+
+        contact_payload = msg_data.get("contact")
+        if not isinstance(contact_payload, dict):
+            contact_payload = {}
+        contact_payload.update(
+            {
+                "contact_id": contact.contact_id,
+                "sender": contact.sender,
+                "role": contact.role,
+                "is_replyable": contact.is_replyable,
+                "is_urgent": contact.is_urgent,
+            }
+        )
+        msg_data["contact"] = contact_payload
+        msg_data["sender"] = contact.sender
+        msg_data["role"] = contact.role
+        msg_data["is_urgent"] = contact.is_urgent
+        return msg_data
+
     async def _emit_dingtalk_contact_update(self, contact: DingTalkContact):
         await self.emit(
             "dingtalk_thread_update",
@@ -313,9 +534,29 @@ class GameEngine:
             return None
         async with self._dingtalk_state_lock:
             state = await self.repo.get_dingtalk_state()
+            contact_limit = balance.dingtalk_max_contacts
             contact = state.contacts.get(contact_meta["contact_id"])
             if contact and contact.round.status == "open":
                 return None
+            if not contact:
+                force_reuse = len(state.contacts) >= contact_limit
+                reusable = self._choose_reusable_dingtalk_contact(
+                    state.contacts,
+                    force=force_reuse,
+                )
+                if reusable:
+                    contact_meta.update(
+                        {
+                            "contact_id": reusable.contact_id,
+                            "sender": reusable.sender,
+                            "role": reusable.role,
+                            "is_replyable": reusable.is_replyable,
+                            "is_urgent": reusable.is_urgent,
+                        }
+                    )
+                    contact = reusable
+                elif force_reuse:
+                    return None
             if not contact:
                 contact = DingTalkContact(**contact_meta)
             else:
@@ -343,6 +584,7 @@ class GameEngine:
             contact.last_message_at = message.created_at
             contact.trim_messages()
             state.contacts[contact.contact_id] = contact
+            state.compact(max_contacts=contact_limit)
             await self.repo.set_dingtalk_state(state)
             return contact
 
@@ -1097,7 +1339,8 @@ class GameEngine:
     async def _handle_final_exam(self):
         """期末考试结算逻辑"""
         snapshot = await self.repo.get_snapshot()
-        stats = await self._effective_stats(snapshot.stats.model_dump())
+        base_stats = snapshot.stats.model_dump()
+        stats = await self._effective_stats(base_stats)
         if int(stats.get("exam_completed", 0) or 0):
             await self._push_update("本学期已经结算过期末考试，请开启新学期。")
             return
@@ -1156,10 +1399,14 @@ class GameEngine:
             )
 
         term_gpa = round(total_gp / total_credits, 2) if total_credits > 0 else 0.0
-        # 尝试读取累计 GPA，如果没有就用当期 GPA
-        cgpa = float(stats.get("highest_gpa", 0) or 0)
-        if term_gpa > cgpa:
-            cgpa = term_gpa
+        cgpa, gpa_points_total, gpa_credits_total = self._calculate_cumulative_gpa(
+            base_stats,
+            total_gp,
+            total_credits,
+            term_gpa,
+        )
+        previous_highest_gpa = self._safe_float(base_stats.get("highest_gpa"))
+        highest_gpa = max(previous_highest_gpa, term_gpa)
 
         # 结果反馈（从配置读取惩罚/奖励）
         msg = f"期末考试结束！GPA: {term_gpa}"
@@ -1175,16 +1422,21 @@ class GameEngine:
         if gold_earned:
             await self.repo.update_stat_safe("gold", gold_earned, 0, 999999)
 
-        # 将当期 GPA 和累计 GPA 写回 Redis stats（HudBar 实时读取）
+        # gpa 作为当前累计 GPA 展示；highest_gpa 保留最高单学期 GPA。
         await self.repo.update_stats(
             {
-                "gpa": str(term_gpa),
-                "highest_gpa": str(cgpa),
+                "gpa": str(cgpa),
+                "highest_gpa": str(round(highest_gpa, 2)),
+                "gpa_points_total": str(round(gpa_points_total, 4)),
+                "gpa_credits_total": str(round(gpa_credits_total, 4)),
             }
         )
 
         # 异步更新持久化数据库，纳入 engine 生命周期，断线时可统一取消/记录异常。
-        self._track_task(self._update_db_highest_gpa(cgpa))
+        self._track_task(self._update_db_highest_gpa(highest_gpa))
+        new_achievements = await self._check_achievements(
+            {"failed_count": failed_count}
+        )
 
         # 发送结算弹窗 — 字段名严格匹配前端 TranscriptModal.vue
         await self.emit(
@@ -1196,6 +1448,7 @@ class GameEngine:
                     "gold_earned": gold_earned,
                     "failed_count": failed_count,
                     "courses": courses_result,
+                    "achievements": new_achievements,
                 }
             },
         )
@@ -1257,6 +1510,8 @@ class GameEngine:
 
         if mastery_delta > 0:
             await self.repo.update_course_mastery(course_id, mastery_delta)
+        if action_type in {"study", "fish", "skip"}:
+            await self.repo.increment_action_count(action_type)
 
         await self._push_update(msg)
 
@@ -1275,11 +1530,13 @@ class GameEngine:
             await self._push_update(msg)
             return
 
+        snapshot = await self.repo.get_snapshot()
+        base_stats = snapshot.stats.model_dump()
+        stats = await self._effective_stats(base_stats)
         msg = ""
         changes: list[dict[str, Any]] = []
+        overflow_units = 0
         if target == "gym":
-            snapshot = await self.repo.get_snapshot()
-            stats = await self._effective_stats(snapshot.stats.model_dump())
             current_energy = int(stats.get("energy", 0))
             min_energy = action_cfg.get("min_energy_required", 30)
 
@@ -1298,10 +1555,25 @@ class GameEngine:
                     ("sanity", sanity_gain),
                     ("stress", stress_change),
                 ):
-                    change = await self._apply_stat_delta_for_feedback(field, delta)
-                    if change:
-                        changes.append(change)
+                    overflow_units += await self._apply_relax_delta(
+                        field,
+                        int(delta),
+                        base_stats,
+                        changes,
+                    )
+                charm_probability = float(
+                    action_cfg.get("charm_gain_probability", 0) or 0
+                )
+                charm_gain = int(action_cfg.get("charm_gain", 0) or 0)
+                if charm_gain > 0 and random.random() < charm_probability:
+                    overflow_units += await self._apply_relax_delta(
+                        "charm",
+                        charm_gain,
+                        base_stats,
+                        changes,
+                    )
                 await self.repo.set_cooldown(target, time.time())
+                await self.repo.increment_action_count(target)
                 msg = "在风雨操场挥汗如雨，感觉整个人都升华了！"
         elif target == "game":
             energy_cost = action_cfg.get("energy_cost", -5)
@@ -1311,18 +1583,26 @@ class GameEngine:
                 ("energy", energy_cost),
                 ("sanity", sanity_gain),
             ):
-                change = await self._apply_stat_delta_for_feedback(field, delta)
-                if change:
-                    changes.append(change)
+                overflow_units += await self._apply_relax_delta(
+                    field,
+                    int(delta),
+                    base_stats,
+                    changes,
+                )
             await self.repo.set_cooldown(target, time.time())
+            await self.repo.increment_action_count(target)
             msg = "宿舍开黑连胜，这就是电子竞技的魅力吗？"
         elif target == "walk":
             stress_change = action_cfg.get("stress_change", -10)
 
-            change = await self._apply_stat_delta_for_feedback("stress", stress_change)
-            if change:
-                changes.append(change)
+            overflow_units += await self._apply_relax_delta(
+                "stress",
+                int(stress_change),
+                base_stats,
+                changes,
+            )
             await self.repo.set_cooldown(target, time.time())
+            await self.repo.increment_action_count(target)
             msg = "启真湖畔的黑天鹅还是那么高傲..."
         elif target == "cc98":
             # CC98随机效果从配置读取
@@ -1355,9 +1635,12 @@ class GameEngine:
                     delta = int(selected_effect[field])
                 except (TypeError, ValueError):
                     continue
-                change = await self._apply_stat_delta_for_feedback(field, delta)
-                if change:
-                    changes.append(change)
+                overflow_units += await self._apply_relax_delta(
+                    field,
+                    delta,
+                    base_stats,
+                    changes,
+                )
 
             # 生成对应效果描述
             effect_type = (
@@ -1426,7 +1709,11 @@ class GameEngine:
                 }
                 feedback = feedback_map.get(effect_type, "")
             await self.repo.set_cooldown(target, time.time())
+            await self.repo.increment_action_count(target)
             msg = f"你在CC98刷到了：\n{post_content}\n{feedback}"
+
+        if overflow_units > 0:
+            await self._transfer_relax_overflow(overflow_units, base_stats, changes)
 
         await self._push_update(msg)
         if msg:
@@ -1458,6 +1745,8 @@ class GameEngine:
             history = await self.repo.get_event_history()
             snapshot = await self.repo.get_snapshot()
             stats = await self._effective_stats(snapshot.stats.model_dump())
+            if not self.is_running:
+                return
             event_data = None
 
             if self.mode == GameMode.AI:
@@ -1466,7 +1755,11 @@ class GameEngine:
                     event_data = await generate_random_event(
                         stats, history, llm_override=self.llm_override
                     )
+                    if not self.is_running:
+                        return
                 if not event_data:
+                    if not self.is_running:
+                        return
                     self.llm_available = False
                     self.mode = GameMode.HYBRID
                     await self.emit(
@@ -1501,8 +1794,12 @@ class GameEngine:
                     event_data = await generate_random_event(
                         stats, history, llm_override=self.llm_override
                     )
+                    if not self.is_running:
+                        return
 
             if event_data:
+                if not self.is_running:
+                    return
                 # 统一按 event_id 去重：库事件直接使用 id；LLM 兜底生成稳定 id
                 event_id = event_data.get("id")
                 if not event_id:
@@ -1513,7 +1810,11 @@ class GameEngine:
                     event_data["id"] = event_id
 
                 await self.repo.add_event_to_history(event_id)
+                if not self.is_running:
+                    return
                 await self.repo.set_current_event(event_data)
+                if not self.is_running:
+                    return
                 await self.emit("random_event", {"data": event_data})
         except Exception as e:
             logger.error(f"Random event error: {e}", exc_info=True)
@@ -1527,6 +1828,7 @@ class GameEngine:
         "stress": 30,
         "eq": 20,
         "luck": 20,
+        "charm": 20,
         "reputation": 20,
         "gold": 200,
     }
@@ -1603,6 +1905,8 @@ class GameEngine:
         try:
             snapshot = await self.repo.get_snapshot()
             stats = await self._effective_stats(snapshot.stats.model_dump())
+            if not self.is_running:
+                return
 
             # 简单的上下文判断逻辑
             context = "random"
@@ -1617,16 +1921,35 @@ class GameEngine:
             elif gpa > 0 and gpa < 2.0:
                 context = "low_gpa"
 
+            state = await self.repo.get_dingtalk_state()
+            if not self.is_running:
+                return
+            reusable_contact = self._choose_reusable_dingtalk_contact(
+                state.contacts,
+                force=len(state.contacts) >= balance.dingtalk_max_contacts,
+            )
+
             # 优先使用 M2-her RP 模型；通用自定义 LLM 存在且未配置 RP key 时走通用 LLM。
             msg_data = None
             rp_override = self.rp_llm_override
-            if rp_override or not self.llm_override:
+            if reusable_contact:
+                msg_data = await self._generate_dingtalk_for_existing_contact(
+                    reusable_contact,
+                    stats,
+                    context,
+                )
+                if not self.is_running:
+                    return
+
+            if not msg_data and (rp_override or not self.llm_override):
                 try:
                     from app.core.dingtalk_llm import generate_dingtalk_via_m2her
 
                     msg_data = await generate_dingtalk_via_m2her(
                         stats, context, llm_override=rp_override
                     )
+                    if not self.is_running:
+                        return
                 except Exception as e:
                     logger.warning(f"M2-her dingtalk fallback: {e}")
 
@@ -1635,9 +1958,15 @@ class GameEngine:
                 msg_data = await generate_dingtalk_message(
                     stats, context, llm_override=self.llm_override
                 )
+                if not self.is_running:
+                    return
 
             if msg_data:
+                if not self.is_running:
+                    return
                 contact = await self._store_dingtalk_npc_message(msg_data)
+                if not self.is_running:
+                    return
                 if contact:
                     await self._emit_dingtalk_contact_update(contact)
             elif self.mode == GameMode.AI:
@@ -1660,9 +1989,37 @@ class GameEngine:
         finally:
             self._dingtalk_inflight = False
 
-    async def _check_achievements(self):
+    def _achievement_payload(self, code: str, item: Any) -> dict[str, Any]:
+        data = item if isinstance(item, dict) else {}
+        clean_code = str(code or "").strip()
+        return {
+            "code": clean_code,
+            "name": str(data.get("name") or clean_code),
+            "desc": str(data.get("desc") or data.get("description") or ""),
+            "icon": str(data.get("icon") or "🏅"),
+        }
+
+    def _achievement_details(self, codes: list[Any]) -> list[dict[str, Any]]:
+        config = self._load_achievement_config()
+        details: list[dict[str, Any]] = []
+        for raw_code in codes:
+            clean_code = str(raw_code or "").strip()
+            item = config.get(raw_code) or config.get(clean_code)
+            if item is None:
+                for candidate_code, candidate in config.items():
+                    if str(candidate_code).strip() == clean_code:
+                        item = candidate
+                        break
+            details.append(self._achievement_payload(clean_code, item or {}))
+        return details
+
+    async def _check_achievements(
+        self,
+        context: dict[str, Any] | None = None,
+    ) -> list[dict[str, Any]]:
         """成就系统判定逻辑"""
         try:
+            context = context or {}
             snapshot = await self.repo.get_snapshot()
             stats = await self._effective_stats(snapshot.stats.model_dump())
             action_counts = await self.repo.get_action_counts()
@@ -1671,36 +2028,52 @@ class GameEngine:
             gpa = float(stats.get("highest_gpa") or 0)
             sanity = int(stats.get("sanity") or 50)
             eq = int(stats.get("eq") or 50)
+            charm = int(stats.get("charm") or 50)
             study_count = int(action_counts.get("study") or 0)
+            cc98_count = int(action_counts.get("cc98") or 0)
+            failed_count = int(context.get("failed_count") or 0)
 
             ach_config = self._load_achievement_config()
             if not ach_config:
-                return
+                return []
 
             unlocked = await self.repo.get_unlocked_achievements()
+            newly_unlocked: list[dict[str, Any]] = []
 
             for code, item in ach_config.items():
-                if code in unlocked:
+                clean_code = str(code).strip()
+                normalized_code = clean_code.lower()
+                if code in unlocked or clean_code in unlocked:
                     continue
 
                 passed = False
-                if code == "gpa_king" and gpa >= 4.0:
+                if normalized_code == "gpa_king" and gpa >= 4.5:
                     passed = True
-                elif code == "broken_heart" and sanity < 10:
+                elif normalized_code == "broken_heart" and sanity < 10:
                     passed = True
-                elif code == "social_butterfly" and eq >= 95:
+                elif normalized_code == "social_butterfly" and (
+                    eq >= 95 or charm >= 95
+                ):
                     passed = True
-                elif code == "library_ghost" and study_count > 50:
+                elif normalized_code == "library_ghost" and study_count > 50:
+                    passed = True
+                elif normalized_code == "survivor" and failed_count >= 3:
+                    passed = True
+                elif normalized_code == "water_monster" and cc98_count >= 100:
                     passed = True
 
                 if passed:
                     await self.repo.unlock_achievement(code)
+                    payload = self._achievement_payload(clean_code, item)
+                    newly_unlocked.append(payload)
                     await self.emit(
                         "achievement_unlocked",
-                        {"data": item},
+                        {"data": payload},
                     )
+            return newly_unlocked
         except Exception as e:
             logger.error(f"Achievement check error: {e}")
+            return []
 
     def _load_achievement_config(self) -> dict[str, Any]:
         if self._achievement_config is not None:
@@ -1732,6 +2105,9 @@ class GameEngine:
 
         if transition.get("status") == "graduated":
             stats = await self._effective_stats(transition.get("stats") or {})
+            achievements = stats.get("achievements")
+            if isinstance(achievements, list):
+                stats["achievement_details"] = self._achievement_details(achievements)
             # 调用AI生成文言文结业总结
             from app.core.llm import generate_wenyan_report
 
@@ -1928,6 +2304,9 @@ class GameEngine:
             ),
             "luck": self._coerce_initial_stat(
                 stats.get("initial_luck") or stats.get("luck"), 50
+            ),
+            "charm": self._coerce_initial_stat(
+                stats.get("initial_charm") or stats.get("charm"), 50
             ),
         }
 

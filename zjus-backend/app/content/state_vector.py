@@ -1,5 +1,5 @@
 """
-PlayerStateVector — 将 30+ 字段的 player_stats 浓缩为 5 维语义标签
+PlayerStateVector — 将 30+ 字段的 player_stats 浓缩为 6 维语义标签
 
 用途：
   1. 作为事件库检索的过滤条件
@@ -16,6 +16,7 @@ class PlayerStateVector:
     mood: str           # "高昂" | "正常" | "低落" | "崩溃"
     stress_level: str   # "轻松" | "适中" | "高压" | "爆表"
     academic: str       # "学霸" | "普通" | "挂科边缘"
+    social: str         # "出众" | "普通" | "低调"
     semester: str       # e.g. "大一秋冬"
     major: str          # e.g. "计算机科学与技术"
 
@@ -24,6 +25,7 @@ class PlayerStateVector:
         sanity = int(stats.get("sanity", 50))
         stress = int(stats.get("stress", 0))
         gpa = float(stats.get("gpa", 0) or 0)
+        charm = int(stats.get("charm", 50) or 50)
 
         if sanity < 20:
             mood = "崩溃"
@@ -50,10 +52,18 @@ class PlayerStateVector:
         else:
             academic = "普通"
 
+        if charm >= 110:
+            social = "出众"
+        elif charm < 70:
+            social = "低调"
+        else:
+            social = "普通"
+
         return cls(
             mood=mood,
             stress_level=stress_level,
             academic=academic,
+            social=social,
             semester=str(stats.get("semester", "")),
             major=str(stats.get("major", "")),
         )
@@ -65,10 +75,11 @@ class PlayerStateVector:
         """生成 ~50 token 的 LLM 上下文摘要"""
         return (
             f"{self.major}·{self.semester}｜"
-            f"心态{self.mood}·压力{self.stress_level}·学业{self.academic}"
+            f"心态{self.mood}·压力{self.stress_level}·"
+            f"学业{self.academic}·魅力{self.social}"
         )
 
     def matches_tags(self, tags: list[str]) -> bool:
         """判断当前状态是否匹配事件的标签列表（任一命中即匹配）"""
-        state_tags = {self.mood, self.stress_level, self.academic}
+        state_tags = {self.mood, self.stress_level, self.academic, self.social}
         return bool(state_tags & set(tags))

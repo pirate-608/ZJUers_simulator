@@ -22,7 +22,7 @@ import EndScreen from './components/EndScreen.vue'
 
 const store = useGameStore()
 // 将 connect 暴露出来
-const { connect, isConnected, send } = useGameWebSocket()
+const { connect, disconnect, isConnected, send } = useGameWebSocket()
 const { startGuide } = useGameGuide()
 
 const hasSeenPrologue = () => {
@@ -110,6 +110,16 @@ watch(
 
 const handleEnterGame = () => {
   store.setPhase('loading')
+}
+
+const handleReturnHome = () => {
+  disconnect()
+  localStorage.removeItem('game_started')
+  localStorage.removeItem('selected_save_slot')
+  localStorage.removeItem('zju_token')
+  localStorage.removeItem('zju_jwt')
+  store.resetRuntimeStateForInit()
+  store.setPhase('login')
 }
 </script>
 
@@ -212,7 +222,11 @@ const handleEnterGame = () => {
       <ExitConfirmModal @send-action="send" />
     </div>
 
-    <EndScreen v-else-if="store.currentPhase === 'ended'" @send-action="send" />
+    <EndScreen
+      v-else-if="store.currentPhase === 'ended'"
+      @send-action="send"
+      @go-home="handleReturnHome"
+    />
   </template>
 </template>
 

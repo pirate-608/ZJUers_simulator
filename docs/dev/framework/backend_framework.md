@@ -114,9 +114,9 @@ graph TD
 ### `POST /api/init_character`
 
 - 解 JWT，检查账号限制。
-- 校验 `IQ` / `EQ` / `Luck`：
+- 校验 `IQ` / `EQ` / `Luck` / `魅力`：
   - 每项 `50-150`。
-  - 总和 `250`。
+  - 总和 `300`。
 - 调 `GameService.assign_major_and_init()` 初始化 Redis 状态。
 - 专业 IQ 增益在服务层叠加，保留当前设计。
 
@@ -176,6 +176,7 @@ graph TD
 - `iq=100`
 - `eq=100`
 - `luck=50`
+- `charm=50`
 - `semester_idx=1`
 - `semester="大一秋冬"`
 - `gold` 由 `world/items.json` 的 `economy.initial_gold` 写入。
@@ -194,7 +195,7 @@ graph TD
 - 随机事件、CC98、钉钉消息。
 - 钉钉联系人私聊、回复选项和三次回复一轮的数值结算。
 - 道具购买、出售、持有加成和金币变化反馈。
-- 休闲动作冷却计算和结果反馈弹窗消息。
+- 休闲动作冷却计算、端点溢出转移和结果反馈弹窗消息。
 - 内容生成模式切换：`library` / `hybrid` / `ai`。
 - 学期推进、毕业、Game Over。
 
@@ -206,6 +207,8 @@ graph TD
 
 - 随机事件结果：`auto_close_ms=5000`
 - 休闲动作结果：`auto_close_ms=3000`
+
+休闲动作的正向收益溢出只在 `_handle_relax()` 中处理：当精力/心态/魅力等正向收益或压力下降已经触及好端点时，最多把 20 点收益转移到精力、心态、魅力，且单次转移到魅力最多 +1。健身的魅力概率和数值由 `relax_actions.gym.charm_gain_probability` / `charm_gain` 控制。
 
 常用动作：
 
@@ -229,7 +232,7 @@ graph TD
 
 - `economy.initial_gold` 控制新玩家初始金币。
 - `economy.exam_income` 控制期末结算金币收入。
-- `items[].effects` 只允许影响 `energy` / `sanity` / `stress` / `iq` / `eq` / `luck` / `reputation` / `efficiency`。
+- `items[].effects` 只允许影响 `energy` / `sanity` / `stress` / `iq` / `eq` / `luck` / `charm` / `reputation` / `efficiency`。
 - v1 每个 `item_id` 同一时间最多拥有一件；支持出售，`sell_price` 缺省为原价 50%。
 
 道具为持有即生效的被动加成。基础属性仍保存在 Redis `stats` 中；`GameEngine` 读取时通过 `ItemCatalog.apply_bonuses_to_stats()` 生成 effective stats，并在推送给前端时附带 `item_bonuses`。这样保存、重登或出售不会造成加成重复写入。
@@ -243,6 +246,7 @@ graph TD
 - 事件/CC98：优先本地预构建 JSON 库；库文件由 `scripts/generate_content_library.py` 通过 OpenAI-compatible `chat/completions` 离线生成，可接云端模型或本地 Ollama `/v1`。
 - 钉钉：默认优先角色向量检索 + M2-her；玩家提供 `custom_rp_api_key` 时使用玩家 MiniMax key；玩家只提供通用自定义 LLM 时跳过平台默认 M2-her 并回退到通用 LLM。
 - 钉钉私聊状态保存在 Redis，并随存档写入 `game_saves.dingtalk_data`；学期切换不会清空联系人或历史。
+- 钉钉联系人由 `events.dingtalk.max_contacts` 限制，默认 12 位；新消息会按 `reuse_closed_contact_probability` 优先复用已关闭轮次的联系人，compact 时不能删除仍有打开轮次的联系人。
 - 文言文结业总结：仍使用 LLM。
 
 Docker 启动顺序：

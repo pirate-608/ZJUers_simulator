@@ -192,6 +192,28 @@ class GameBalance:
         """钉钉消息配置"""
         return self.events.get("dingtalk", {})
 
+    @property
+    def dingtalk_max_contacts(self) -> int:
+        """钉钉联系人列表上限"""
+        try:
+            value = int(self.get_dingtalk_config().get("max_contacts", 12))
+        except (TypeError, ValueError):
+            value = 12
+        return max(1, value)
+
+    @property
+    def dingtalk_reuse_closed_contact_probability(self) -> float:
+        """已关闭联系人被复用开新一轮对话的概率"""
+        try:
+            value = float(
+                self.get_dingtalk_config().get(
+                    "reuse_closed_contact_probability", 0.7
+                )
+            )
+        except (TypeError, ValueError):
+            value = 0.7
+        return max(0.0, min(1.0, value))
+
     # ==========================================
     # 考试配置
     # ==========================================

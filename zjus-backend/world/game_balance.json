@@ -97,6 +97,8 @@
       "energy_gain": 40,
       "sanity_gain": 5,
       "stress_change": -5,
+      "charm_gain_probability": 0.2,
+      "charm_gain": 1,
       "cooldown_seconds": 30,
       "min_energy_required": 30,
       "label": "健身房"
@@ -141,7 +143,9 @@
     },
     "dingtalk": {
       "check_interval_ticks": 12,
-      "trigger_probability": 0.5
+      "trigger_probability": 0.5,
+      "max_contacts": 12,
+      "reuse_closed_contact_probability": 0.7
     }
   },
   "exam": {

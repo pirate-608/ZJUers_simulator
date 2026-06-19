@@ -39,6 +39,12 @@
           >
             <span class="fs-5">⭐</span> <span class="fw-bold small">{{ store.currentStats.reputation ?? 0 }}</span>
           </div>
+          <div
+            class="text-center"
+            title="魅力影响部分社交互动和事件反馈"
+          >
+            <span class="fs-5">✨</span> <span class="fw-bold small">{{ store.currentStats.charm ?? 50 }}</span>
+          </div>
         </div>
       </div>
     </div>

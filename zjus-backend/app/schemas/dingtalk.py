@@ -34,6 +34,7 @@ DINGTALK_ROLE_ALIASES = {
 }
 
 DINGTALK_MAX_MESSAGES_PER_CONTACT = 50
+DINGTALK_DEFAULT_MAX_CONTACTS = 12
 
 
 def normalize_dingtalk_role(role: str) -> str:
@@ -111,8 +112,18 @@ class DingTalkState(BaseModel):
         except Exception:
             return cls(updated_at=now_ts())
 
-    def compact(self) -> "DingTalkState":
+    def compact(self, max_contacts: int | None = None) -> "DingTalkState":
         for contact in self.contacts.values():
             contact.trim_messages()
+        if max_contacts is not None and max_contacts > 0:
+            removable = [
+                contact
+                for contact in self.contacts.values()
+                if contact.round.status != "open"
+            ]
+            removable.sort(key=lambda c: (c.last_message_at, c.contact_id))
+            while len(self.contacts) > max_contacts and removable:
+                contact = removable.pop(0)
+                self.contacts.pop(contact.contact_id, None)
         self.updated_at = now_ts()
         return self

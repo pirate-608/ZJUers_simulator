@@ -77,8 +77,11 @@ class TestBuildInitial:
         assert ps.iq == 100
         assert ps.eq == 100
         assert ps.luck == 50
+        assert ps.charm == 50
         assert ps.gpa == "0.0"
         assert ps.highest_gpa == "0.0"
+        assert ps.gpa_points_total == "0.0"
+        assert ps.gpa_credits_total == "0.0"
         assert ps.reputation == 0
         assert ps.course_plan_json == ""
         assert ps.course_info_json == ""
@@ -86,7 +89,7 @@ class TestBuildInitial:
     def test_manual_allocation_defaults(self):
         """角色创建前的默认点数与前端预算一致"""
         ps = PlayerStats.build_initial()
-        assert ps.iq + ps.eq + ps.luck == 250
+        assert ps.iq + ps.eq + ps.luck + ps.charm == 300
 
     def test_semester_start_time_is_recent(self):
         before = int(time.time())
@@ -126,8 +129,11 @@ class TestBuildInitial:
             "iq",
             "eq",
             "luck",
+            "charm",
             "gpa",
             "highest_gpa",
+            "gpa_points_total",
+            "gpa_credits_total",
             "reputation",
             "efficiency",
             "gold",
@@ -135,6 +141,7 @@ class TestBuildInitial:
             "initial_iq",
             "initial_eq",
             "initial_luck",
+            "initial_charm",
             "course_plan_json",
             "course_info_json",
             "elapsed_game_time",

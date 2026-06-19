@@ -15,6 +15,7 @@ ALLOWED_ITEM_EFFECTS = {
     "iq",
     "eq",
     "luck",
+    "charm",
     "reputation",
     "efficiency",
 }
@@ -316,6 +317,7 @@ class ItemCatalog:
             "iq",
             "eq",
             "luck",
+            "charm",
             "reputation",
             "efficiency",
         }

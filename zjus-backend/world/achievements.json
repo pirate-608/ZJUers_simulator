@@ -13,8 +13,8 @@
   },
   "social_butterfly": {
     "name": "紫金港交际花",
-    "desc": "情商达到 95 以上",
-    "condition": "eq >= 95",
+    "desc": "情商或魅力达到 95 以上",
+    "condition": "eq >= 95 or charm >= 95",
     "icon": "🌸"
   },
   "broken_heart": {

@@ -65,7 +65,7 @@ We need you! Please don't hesitate to share your keyword inspirations, your sugg
 <summary>🧑‍🎓 Character Creation</summary>
 
 ![Character Creation](https://zjusim-docs.67656.fun/assets/images/create.png)
-New players log in with an invite code, select a major, and allocate initial IQ / EQ / Luck attributes.
+New players log in with an invite code, select a major, and allocate initial IQ / EQ / Luck / Charm attributes.
 
 </details>
 

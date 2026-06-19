@@ -200,6 +200,11 @@ export interface components {
              * @default 50
              */
             luck: number;
+            /**
+             * Charm
+             * @default 50
+             */
+            charm: number;
         };
         /** InitCharacterResponse */
         InitCharacterResponse: {

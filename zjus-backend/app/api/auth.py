@@ -69,6 +69,7 @@ class InitCharacterRequest(BaseModel):
     iq: int = 100
     eq: int = 100
     luck: int = 50
+    charm: int = 50
 
 
 class CourseOption(BaseModel):
@@ -103,17 +104,17 @@ def _validate_invite_code(code: str) -> bool:
 
 
 def _validate_initial_stats(req: InitCharacterRequest):
-    stats = {"iq": req.iq, "eq": req.eq, "luck": req.luck}
+    stats = {"iq": req.iq, "eq": req.eq, "luck": req.luck, "charm": req.charm}
     invalid = [name for name, value in stats.items() if value < 50 or value > 150]
     if invalid:
         raise HTTPException(
             status_code=422,
-            detail="IQ/EQ/Luck 必须都在 50 到 150 之间",
+            detail="IQ/EQ/Luck/魅力 必须都在 50 到 150 之间",
         )
-    if sum(stats.values()) != 250:
+    if sum(stats.values()) != 300:
         raise HTTPException(
             status_code=422,
-            detail="IQ/EQ/Luck 初始总点数必须等于 250",
+            detail="IQ/EQ/Luck/魅力 初始总点数必须等于 300",
         )
 
 
@@ -252,7 +253,7 @@ async def init_character(req: InitCharacterRequest, db: DbSessionDep):
     repo = RedisRepository(user_id, redis_client)
     game_service = GameService(str(user_id), repo, world)
 
-    stat_overrides = {"iq": req.iq, "eq": req.eq, "luck": req.luck}
+    stat_overrides = {"iq": req.iq, "eq": req.eq, "luck": req.luck, "charm": req.charm}
 
     result = await game_service.assign_major_and_init(
         major_abbr=req.major_abbr,

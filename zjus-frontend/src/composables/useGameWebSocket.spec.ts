@@ -138,6 +138,35 @@ describe('useGameWebSocket', () => {
     })
   })
 
+  it('stores achievement unlock events and shows feedback', () => {
+    const store = useGameStore()
+    const { connect } = useGameWebSocket()
+
+    connect('token', 'ws://game.test')
+    MockWebSocket.instances[0].emitMessage({
+      type: 'achievement_unlocked',
+      data: {
+        code: 'gpa_king',
+        name: '卷王之王',
+        desc: '单学期 GPA 达到 4.5',
+        icon: '👑',
+      },
+    })
+
+    expect(store.unlockedAchievements).toEqual([
+      {
+        code: 'gpa_king',
+        name: '卷王之王',
+        desc: '单学期 GPA 达到 4.5',
+        icon: '👑',
+      },
+    ])
+    expect(store.feedbackModal).toMatchObject({
+      title: '成就解锁',
+      message: '👑 卷王之王：单学期 GPA 达到 4.5',
+    })
+  })
+
   it('stores item state messages from the server', () => {
     const store = useGameStore()
     const { connect } = useGameWebSocket()
@@ -199,6 +228,49 @@ describe('useGameWebSocket', () => {
     expect(store.currentStats.courses.cs101).toMatchObject({ progress: 0, state: 1 })
   })
 
+  it('stores graduation achievement details', () => {
+    const store = useGameStore()
+    const { connect } = useGameWebSocket()
+
+    connect('token', 'ws://game.test')
+    MockWebSocket.instances[0].emitMessage({
+      type: 'graduation',
+      data: {
+        data: {
+          final_stats: {
+            gpa: '3.9',
+            iq: 110,
+            eq: 108,
+            charm: 95,
+            gold: 300,
+            achievements: ['social_butterfly'],
+            achievement_details: [
+              {
+                code: 'social_butterfly',
+                name: '紫金港交际花',
+                desc: '情商或魅力达到 95 以上',
+                icon: '🌸',
+              },
+            ],
+          },
+          wenyan_report: '学业既成。',
+        },
+      },
+    })
+
+    expect(store.currentPhase).toBe('ended')
+    expect(store.endType).toBe('graduation')
+    expect(store.endData.achievements_count).toBe(1)
+    expect(store.endData.achievement_details).toEqual([
+      {
+        code: 'social_butterfly',
+        name: '紫金港交际花',
+        desc: '情商或魅力达到 95 以上',
+        icon: '🌸',
+      },
+    ])
+  })
+
   it('refreshes course metadata from tick stats when the transition message is missed', () => {
     const store = useGameStore()
     const { connect } = useGameWebSocket()
@@ -245,6 +317,22 @@ describe('useGameWebSocket', () => {
     wrapper.unmount()
     vi.advanceTimersByTime(3000)
 
+    expect(MockWebSocket.instances).toHaveLength(1)
+  })
+
+  it('disconnects without scheduling a reconnect', () => {
+    const { connect, disconnect, isConnected } = useGameWebSocket()
+
+    connect('token', 'ws://game.test')
+    const socket = MockWebSocket.instances[0]
+    socket.onopen?.(new Event('open'))
+    socket.emitMessage({ type: 'auth_ok' })
+    expect(isConnected.value).toBe(true)
+
+    disconnect()
+    vi.advanceTimersByTime(3000)
+
+    expect(isConnected.value).toBe(false)
     expect(MockWebSocket.instances).toHaveLength(1)
   })
 

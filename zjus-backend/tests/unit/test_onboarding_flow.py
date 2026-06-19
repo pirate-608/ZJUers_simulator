@@ -1,8 +1,10 @@
+import json
 from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
 
 from app.game.engine import GameEngine
+from app.schemas.dingtalk import DingTalkState
 from app.services.game_service import GameService
 
 
@@ -86,7 +88,7 @@ async def test_assign_major_and_init_resets_existing_redis_state():
 
     await service.assign_major_and_init(
         "CS",
-        stat_overrides={"iq": 100, "eq": 100, "luck": 50},
+        stat_overrides={"iq": 100, "eq": 100, "luck": 50, "charm": 50},
         username="tester",
     )
 
@@ -95,10 +97,12 @@ async def test_assign_major_and_init_resets_existing_redis_state():
     assert stats["iq"] == 115
     assert stats["eq"] == 100
     assert stats["luck"] == 50
+    assert stats["charm"] == 50
     assert stats["initial_major_abbr"] == "CS"
     assert stats["initial_iq"] == 100
     assert stats["initial_eq"] == 100
     assert stats["initial_luck"] == 50
+    assert stats["initial_charm"] == 50
 
 
 @pytest.mark.asyncio
@@ -132,9 +136,10 @@ async def test_engine_restart_rebuilds_initial_profile_and_emits_complete_init()
                     "username": "tester",
                     "major_abbr": "CS",
                     "initial_major_abbr": "CS",
-                    "initial_iq": 100,
-                    "initial_eq": 110,
-                    "initial_luck": 40,
+                    "initial_iq": 90,
+                    "initial_eq": 100,
+                    "initial_luck": 50,
+                    "initial_charm": 60,
                     "semester_idx": 2,
                     "elapsed_game_time": 120,
                 }
@@ -144,9 +149,10 @@ async def test_engine_restart_rebuilds_initial_profile_and_emits_complete_init()
                     "username": "tester",
                     "major_abbr": "CS",
                     "initial_major_abbr": "CS",
-                    "initial_iq": 100,
-                    "initial_eq": 110,
-                    "initial_luck": 40,
+                    "initial_iq": 90,
+                    "initial_eq": 100,
+                    "initial_luck": 50,
+                    "initial_charm": 60,
                     "semester": "大一秋冬",
                     "semester_idx": 1,
                     "elapsed_game_time": 0,
@@ -184,7 +190,7 @@ async def test_engine_restart_rebuilds_initial_profile_and_emits_complete_init()
 
     game_service.assign_major_and_init.assert_awaited_once_with(
         "CS",
-        stat_overrides={"iq": 100, "eq": 110, "luck": 50},
+        stat_overrides={"iq": 90, "eq": 100, "luck": 50, "charm": 60},
         username="tester",
     )
     engine.emit.assert_awaited_once()
@@ -228,6 +234,107 @@ async def test_engine_next_semester_autosaves_selected_slot():
 
 
 @pytest.mark.asyncio
+async def test_final_exam_reports_credit_weighted_cumulative_gpa():
+    repo = Mock()
+    repo.get_snapshot = AsyncMock(
+        return_value=_Snapshot(
+            {
+                "sanity": 50,
+                "stress": 20,
+                "luck": 50,
+                "exam_completed": 0,
+                "semester_idx": 2,
+                "gpa": "3.0",
+                "highest_gpa": "3.2",
+                "gpa_points_total": "12.0",
+                "gpa_credits_total": "4.0",
+                "course_info_json": json.dumps(
+                    [
+                        {"id": "CS1001", "name": "数据结构", "credits": 4},
+                        {"id": "CS1002", "name": "面向对象", "credits": 2},
+                    ],
+                    ensure_ascii=False,
+                ),
+            },
+            courses={"CS1001": 100.0, "CS1002": 80.0},
+        )
+    )
+    repo.get_items_state = AsyncMock(
+        return_value={"version": 1, "owned": [], "updated_at": 0}
+    )
+    repo.update_stats = AsyncMock()
+    repo.update_stat_safe = AsyncMock(return_value=0)
+    repo.get_action_counts = AsyncMock(return_value={})
+    repo.get_unlocked_achievements = AsyncMock(return_value=set())
+
+    engine = GameEngine(
+        "1",
+        repo=repo,
+        save_service=Mock(),
+        game_service=Mock(),
+    )
+    engine.stop = Mock()
+    engine.emit = AsyncMock()
+    engine._push_update = AsyncMock()
+
+    def close_background_coro(coro):
+        coro.close()
+
+    engine._track_task = Mock(side_effect=close_background_coro)
+    engine._sanity_stress_exam_factor = Mock(return_value=0)
+
+    with patch("app.game.engine.random.uniform", return_value=0):
+        await engine._handle_final_exam()
+
+    stats_update = repo.update_stats.await_args.args[0]
+    assert stats_update["gpa"] == "3.84"
+    assert stats_update["highest_gpa"] == "4.4"
+    assert stats_update["gpa_points_total"] == "38.4"
+    assert stats_update["gpa_credits_total"] == "10.0"
+
+    summary = engine.emit.await_args_list[0].args[1]["data"]
+    assert summary["term_gpa"] == 4.4
+    assert summary["cgpa"] == 3.84
+
+
+@pytest.mark.asyncio
+async def test_push_update_sends_cumulative_gpa_for_hud():
+    repo = Mock()
+    repo.get_snapshot = AsyncMock(
+        return_value=_Snapshot(
+            {
+                "gpa": "3.84",
+                "highest_gpa": "4.4",
+                "semester_idx": 2,
+                "elapsed_game_time": 0,
+                "course_info_json": "[]",
+                "iq": 100,
+                "stress": 20,
+            }
+        )
+    )
+    repo.get_items_state = AsyncMock(
+        return_value={"version": 1, "owned": [], "updated_at": 0}
+    )
+    repo.get_cooldown_timestamp = AsyncMock(return_value=None)
+    engine = GameEngine(
+        "1",
+        repo=repo,
+        save_service=Mock(),
+        game_service=Mock(),
+    )
+    engine.emit = AsyncMock()
+
+    await engine._push_update("期末考试结束")
+
+    event_type, payload, message = engine.emit.await_args.args
+    assert event_type == "tick"
+    assert payload["stats"]["gpa"] == "3.84"
+    assert payload["stats"]["highest_gpa"] == "4.4"
+    assert message == "期末考试结束"
+
+
+@pytest.mark.asyncio
 async def test_dingtalk_uses_general_llm_when_custom_llm_has_no_rp_key():
     repo = Mock()
     repo.get_snapshot = AsyncMock(
@@ -236,6 +343,7 @@ async def test_dingtalk_uses_general_llm_when_custom_llm_has_no_rp_key():
     repo.get_items_state = AsyncMock(
         return_value={"version": 1, "owned": [], "updated_at": 0}
     )
+    repo.get_dingtalk_state = AsyncMock(return_value=DingTalkState())
     engine = GameEngine(
         "1",
         repo=repo,
@@ -275,6 +383,7 @@ async def test_dingtalk_uses_custom_rp_key_before_general_llm():
     repo.get_items_state = AsyncMock(
         return_value={"version": 1, "owned": [], "updated_at": 0}
     )
+    repo.get_dingtalk_state = AsyncMock(return_value=DingTalkState())
     rp_override = {"api_key": "rp-key", "model": "M2-her"}
     engine = GameEngine(
         "1",

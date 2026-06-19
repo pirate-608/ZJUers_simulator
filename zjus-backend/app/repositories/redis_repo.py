@@ -57,12 +57,14 @@ class RedisRepository:
             "iq",
             "eq",
             "luck",
+            "charm",
             "reputation",
             "efficiency",
             "gold",
             "initial_iq",
             "initial_eq",
             "initial_luck",
+            "initial_charm",
             "elapsed_game_time",
             "exam_completed",
         }
@@ -74,6 +76,8 @@ class RedisRepository:
             "semester",
             "gpa",
             "highest_gpa",
+            "gpa_points_total",
+            "gpa_credits_total",
             "course_plan_json",
             "course_info_json",
         }

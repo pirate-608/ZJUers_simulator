@@ -48,6 +48,32 @@ function readStoredConsoleTheme(): ConsoleTheme {
   }
 }
 
+function finiteNumber(value: unknown, fallback: number = 0): number {
+  const parsed = Number(value)
+  return Number.isFinite(parsed) ? parsed : fallback
+}
+
+function normalizeCourseMetadata(data: unknown): CourseMetadata[] {
+  if (!Array.isArray(data)) return []
+  return data.flatMap((item): CourseMetadata[] => {
+    if (!item || typeof item !== 'object') return []
+    const record = item as Record<string, unknown>
+    const id = typeof record.id === 'string' ? record.id : ''
+    if (!id) return []
+    const name = typeof record.name === 'string' && record.name.trim() !== ''
+      ? record.name
+      : id
+    const credit = finiteNumber(record.credit ?? record.credits, 0)
+    return [{
+      ...record,
+      id,
+      name,
+      credit,
+      credits: credit,
+    } as CourseMetadata]
+  })
+}
+
 export const useGameStore = defineStore('game', () => {
   // --- 核心状态 ---
   const currentPhase = ref<GamePhase>('login') // login, character_create, loading, playing, ended
@@ -146,7 +172,7 @@ export const useGameStore = defineStore('game', () => {
   }
 
   function setCourseMetadata(data: unknown) {
-    courseMetadata.value = Array.isArray(data) ? (data as CourseMetadata[]) : []
+    courseMetadata.value = normalizeCourseMetadata(data)
   }
 
   function resetForNewSemester(newCourseMetadata: CourseMetadata[]) {

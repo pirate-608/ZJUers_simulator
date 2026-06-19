@@ -69,7 +69,7 @@
                 <td class="text-start fw-bold">
                   {{ course.name }}
                 </td>
-                <td>{{ course.credit }}</td>
+                <td>{{ courseCredit(course) }}</td>
                 <td>{{ course.progress?.toFixed(1) }}%</td>
                 <td class="fw-bold fs-5">
                   {{ course.grade }}
@@ -97,6 +97,9 @@
         >
           {{ (store.currentStats.semester_idx ?? 1) >= 8 ? '🎓 参加毕业典礼 ➔' : '🚀 开启新学期 ➔' }}
         </button>
+        <div class="refresh-hint small text-muted mt-2">
+          如果开启后学期状态没有刷新，请手动刷新浏览器。
+        </div>
       </div>
     </div>
   </div>
@@ -121,6 +124,11 @@ const hasFailedCourse = computed(() => {
   if (!data.value.courses) return false
   return data.value.courses.some((c: TranscriptModalCourseRow) => c.grade < 60)
 })
+
+const courseCredit = (course: TranscriptModalCourseRow): string => {
+  const value = Number(course.credit ?? course.credits ?? 0)
+  return Number.isFinite(value) ? String(value) : '0'
+}
 
 const startNextSemester = () => {
   store.closeModal()

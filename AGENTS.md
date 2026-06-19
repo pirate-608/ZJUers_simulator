@@ -117,6 +117,7 @@ Backend:
 - `zjus-backend/app/services/save_service.py`: Redis/Postgres save load and persistence, including DingTalk and item state.
 - `zjus-backend/app/services/balance_admin.py`: admin form schema, validation, atomic file publish, audit snapshot restore.
 - `zjus-backend/app/repositories/redis_repo.py`: active game state, TTL, cooldowns, event history, DingTalk state, item state.
+- `zjus-backend/scripts/generate_content_library.py`: offline event/CC98 library generation through OpenAI-compatible `chat/completions`; can point at a cloud endpoint or local Ollama `/v1`, while embedding/query vectors stay on local Ollama `bge-m3`.
 - `zjus-backend/app/core/llm.py` and `dingtalk_llm.py`: LLM-backed content generation and fallbacks.
   MiniMax M2-her RP calls use the OpenAI SDK compatible base URL `MINIMAX_BASE_URL=https://api.minimaxi.com/v1` and the case-sensitive model name `M2-her`; keep templates, docs, and tests exact when touching this path. Send only documented `role`/`content` fields in M2-her messages; do not pass DingTalk display names such as `【室友】` through the API `name` field.
   DingTalk uses platform M2-her only when the player has not provided a general custom LLM, unless the player provides `custom_rp_api_key`; with a general custom LLM and no RP key, DingTalk falls back to the general custom LLM to avoid platform RP spend.

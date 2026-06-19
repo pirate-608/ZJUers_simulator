@@ -38,7 +38,7 @@ login -> save_select -> character_create -> loading -> playing -> ended
 ### 内容生成
 
 - 内容模式为 `library`、`hybrid`、`ai`。
-- 事件和 CC98 优先使用本地预构建 JSON 库。
+- 事件和 CC98 优先使用本地预构建 JSON 库；离线生成脚本 `zjus-backend/scripts/generate_content_library.py` 使用 OpenAI-compatible `chat/completions`，可指向云端模型或 Ollama `/v1`，而角色/query 向量仍由本地 Ollama `bge-m3` 生成。
 - 钉钉消息默认优先走 pgvector 角色检索 + MiniMax M2-her；若玩家提供 `custom_rp_api_key`，使用玩家 MiniMax key 调用 M2-her；若玩家只配置通用自定义 LLM，则不再使用平台默认 M2-her，而是回退到通用自定义 LLM。联系人私聊状态随存档保存，三次玩家回复后结算一轮数值影响。
 - AI/LLM 不可用时，AI 模式要向 hybrid/library 降级，并通过 `mode_changed` 或 `toast` 告知前端。
 - 用户自定义 LLM 配置只在浏览器 `sessionStorage` 和当前 WebSocket 会话中使用，不落库。

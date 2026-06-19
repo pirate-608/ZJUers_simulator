@@ -57,6 +57,13 @@ export function useGameWebSocket() {
   const isConnected = ref(false)
   const gameStore = useGameStore()
 
+  const syncCourseMetadataFromStats = (stats: Record<string, unknown>) => {
+    const courseInfoJson = stats.course_info_json
+    if (typeof courseInfoJson !== 'string') return
+    const metadata = parseCourseMetadataArray(courseInfoJson)
+    if (metadata.length > 0) gameStore.setCourseMetadata(metadata)
+  }
+
   let reconnectAttempts = 0
   const maxReconnectAttempts = 3
   const reconnectDelay = 3000
@@ -187,10 +194,7 @@ export function useGameWebSocket() {
           gameStore.userInfo = data
 
           // 静态元数据
-          const courseInfoJson = data.course_info_json
-          if (typeof courseInfoJson === 'string') {
-            gameStore.setCourseMetadata(parseCourseMetadataArray(courseInfoJson))
-          }
+          syncCourseMetadataFromStats(data)
 
           // 基础属性
           gameStore.updateStats(data)
@@ -231,6 +235,7 @@ export function useGameWebSocket() {
           const stats = wsMsg.stats
           if (isRecord(stats)) {
             gameStore.updateStats(stats)
+            syncCourseMetadataFromStats(stats)
           }
 
           if (isRecord(wsMsg.courses)) gameStore.updateCourseProgress(wsMsg.courses as Record<string, unknown>)
@@ -251,6 +256,7 @@ export function useGameWebSocket() {
           const data = wsMsg.data
           if (isRecord(data)) {
             gameStore.updateStats(data)
+            syncCourseMetadataFromStats(data)
             if (isRecord(data.courses)) {
               gameStore.updateCourseProgress(data.courses as Record<string, unknown>)
             }
@@ -395,7 +401,9 @@ export function useGameWebSocket() {
         }
 
         case 'new_semester': {
-          const nsData = isRecord(wsMsg.data) ? wsMsg.data : {}
+          gameStore.closeModal()
+          if (gameStore.currentPhase !== 'playing') gameStore.setPhase('playing')
+          const nsData = isRecord(wsMsg.data) ? wsMsg.data : wsMsg as Record<string, unknown>
           const stats = isRecord(nsData.stats) ? nsData.stats : {}
           const newCourseJson = typeof nsData.course_info_json === 'string'
             ? nsData.course_info_json as string

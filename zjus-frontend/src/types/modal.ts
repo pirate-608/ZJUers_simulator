@@ -1,6 +1,7 @@
 export interface TranscriptModalCourseRow {
   name: string
-  credit: number
+  credit?: number
+  credits?: number
   progress?: number
   grade: number
   gpa?: number

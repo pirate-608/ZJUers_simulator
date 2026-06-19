@@ -193,8 +193,36 @@ describe('useGameWebSocket', () => {
     expect(store.currentStats.semester).toBe('大一春夏')
     expect(store.currentStats.semester_idx).toBe(2)
     expect(store.semesterTimeLeft).toBe(180)
-    expect(store.courseMetadata).toEqual([{ id: 'cs101', name: '程序设计基础' }])
+    expect(store.courseMetadata).toEqual([
+      { id: 'cs101', name: '程序设计基础', credit: 0, credits: 0 },
+    ])
     expect(store.currentStats.courses.cs101).toMatchObject({ progress: 0, state: 1 })
+  })
+
+  it('refreshes course metadata from tick stats when the transition message is missed', () => {
+    const store = useGameStore()
+    const { connect } = useGameWebSocket()
+
+    connect('token', 'ws://game.test')
+    store.setCourseMetadata([{ id: 'old101', name: '旧学期课程', credit: 1 }])
+
+    MockWebSocket.instances[0].emitMessage({
+      type: 'tick',
+      stats: {
+        semester: '大一春夏',
+        semester_idx: 2,
+        course_info_json: '[{"id":"cs102","name":"数据结构","credits":4}]',
+      },
+      courses: { cs102: 12 },
+      course_states: { cs102: 2 },
+      semester_time_left: 180,
+    })
+
+    expect(store.currentStats.semester).toBe('大一春夏')
+    expect(store.courseMetadata).toEqual([
+      { id: 'cs102', name: '数据结构', credits: 4, credit: 4 },
+    ])
+    expect(store.currentStats.courses.cs102).toMatchObject({ progress: 12, state: 2 })
   })
 
   it('cancels a scheduled reconnect when the owning component unmounts', () => {

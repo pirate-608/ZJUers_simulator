@@ -11,6 +11,7 @@ export type CourseMetadata = {
   id: string
   name: string
   credit: number
+  credits?: number
   [k: string]: unknown
 }
 

@@ -117,30 +117,30 @@
       "label": "刷CC98",
       "effects": [
         {
-          "weight": 0.5,
+          "weight": 0.55,
           "sanity": 8,
           "stress": -5
         },
         {
-          "weight": 0.3,
-          "sanity": -10,
-          "stress": 8
+          "weight": 0.25,
+          "sanity": 2,
+          "stress": -1
         },
         {
           "weight": 0.2,
-          "sanity": -15,
-          "stress": 15
+          "sanity": -8,
+          "stress": 6
         }
       ]
     }
   },
   "events": {
     "random_event": {
-      "check_interval_ticks": 8,
+      "check_interval_ticks": 12,
       "trigger_probability": 0.5
     },
     "dingtalk": {
-      "check_interval_ticks": 8,
+      "check_interval_ticks": 12,
       "trigger_probability": 0.5
     }
   },

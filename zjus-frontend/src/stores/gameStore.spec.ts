@@ -75,6 +75,27 @@ describe('gameStore DingTalk threads', () => {
   })
 })
 
+describe('gameStore course metadata', () => {
+  beforeEach(() => {
+    localStorage.clear()
+    setActivePinia(createPinia())
+  })
+
+  it('normalizes backend credits into the frontend credit field', () => {
+    const store = useGameStore()
+
+    store.setCourseMetadata([
+      { id: 'logic', name: '逻辑设计', credits: 3.5 },
+      { id: 'military', name: '军事理论', credit: 2 },
+    ])
+
+    expect(store.courseMetadata).toEqual([
+      { id: 'logic', name: '逻辑设计', credits: 3.5, credit: 3.5 },
+      { id: 'military', name: '军事理论', credit: 2, credits: 2 },
+    ])
+  })
+})
+
 describe('gameStore console theme', () => {
   beforeEach(() => {
     localStorage.clear()

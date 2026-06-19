@@ -129,11 +129,31 @@ cd zjus-frontend
 
 ### 生成事件库与 CC98 库
 
-在 `zjus-backend` 目录执行：
+`zjus-backend/scripts/generate_content_library.py` 使用 OpenAI SDK 的兼容 `chat/completions` 接口。文本模型可以是云端兼容端点，也可以是本地 Ollama 的 OpenAI 兼容端点；角色向量仍由下一节的本地 Ollama `bge-m3` 单独生成。
+
+云端模型示例：
 
 ```bash
+cd zjus-backend
+OPENAI_API_BASE=https://dashscope.aliyuncs.com/compatible-mode/v1 \
+OPENAI_API_KEY=your-api-key \
+OPENAI_API_MODEL=qwen-plus \
 python scripts/generate_content_library.py --events 300 --cc98 500
 ```
+
+本地 Ollama 文本模型示例：
+
+```bash
+cd zjus-backend
+OPENAI_API_BASE=http://localhost:11434/v1 \
+OPENAI_API_KEY=ollama \
+OPENAI_API_MODEL=qwen3.5:4b \
+python scripts/generate_content_library.py --events 300 --cc98 500
+```
+
+如果目标端点不支持 `response_format={"type":"json_object"}`，可加 `--no-json-mode`，脚本仍会从普通文本中提取 JSON。
+
+CC98 帖子生成会按 `positive / neutral / negative` 三类尽量均衡产出；生产库发布前仍建议抽样检查正负反馈比例，避免算法模式体感过于惩罚。
 
 输出：
 

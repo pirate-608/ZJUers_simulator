@@ -240,7 +240,7 @@ graph TD
 
 运行时内容系统为：
 
-- 事件/CC98：优先本地预构建 JSON 库。
+- 事件/CC98：优先本地预构建 JSON 库；库文件由 `scripts/generate_content_library.py` 通过 OpenAI-compatible `chat/completions` 离线生成，可接云端模型或本地 Ollama `/v1`。
 - 钉钉：默认优先角色向量检索 + M2-her；玩家提供 `custom_rp_api_key` 时使用玩家 MiniMax key；玩家只提供通用自定义 LLM 时跳过平台默认 M2-her 并回退到通用 LLM。
 - 钉钉私聊状态保存在 Redis，并随存档写入 `game_saves.dingtalk_data`；学期切换不会清空联系人或历史。
 - 文言文结业总结：仍使用 LLM。
@@ -251,7 +251,7 @@ Docker 启动顺序：
 db -> migrate -> seed_embeddings -> backend
 ```
 
-`seed_embeddings` 会把 `world/character_embeddings.csv` 导入 pgvector 表，保证后端启动后可检索角色。
+`seed_embeddings` 会把 `world/character_embeddings.csv` 导入 pgvector 表，保证后端启动后可检索角色。事件/CC98 文本库生成不再绑定某个文本模型客户端；Embedding 生成仍固定依赖本地 Ollama `bge-m3`。
 
 ---
 

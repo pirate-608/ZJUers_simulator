@@ -8,6 +8,10 @@
 export OPENAI_API_BASE="https://dashscope.aliyuncs.com/compatible-mode/v1"
 export OPENAI_API_KEY="your_api_key_here"
 export OPENAI_API_MODEL="qwen3.5-flash"
+# 或使用本地 Ollama：
+# export OPENAI_API_BASE="http://localhost:11434/v1"
+# export OPENAI_API_KEY="ollama"
+# export OPENAI_API_MODEL="qwen3.5:4b"
 
 Usage:
     python scripts/generate_content_library.py --events 300 --cc98 500
@@ -20,23 +24,34 @@ import ast
 import json
 import os
 import random
-import re  # 添加这行
+import re
 import sys
 import time
 import uuid
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-import requests
+from openai import APIConnectionError, APITimeoutError, OpenAI, OpenAIError
 
 # ============================================================
 # 配置
 # ============================================================
 
 _config = {
-    "api_base": os.environ.get("OPENAI_API_BASE", "https://dashscope.aliyuncs.com/compatible-mode/v1"),
+    "api_base": (
+        os.environ.get("OPENAI_API_BASE")
+        or os.environ.get("OPENAI_BASE_URL")
+        or "https://dashscope.aliyuncs.com/compatible-mode/v1"
+    ),
     "api_key": os.environ.get("OPENAI_API_KEY", ""),
-    "model": os.environ.get("OPENAI_API_MODEL", "qwen3.5-flash")
+    "model": (
+        os.environ.get("OPENAI_API_MODEL")
+        or os.environ.get("OPENAI_MODEL")
+        or "qwen3.5-flash"
+    ),
+    "temperature": float(os.environ.get("OPENAI_TEMPERATURE", "0.7")),
+    "json_mode": os.environ.get("OPENAI_JSON_MODE", "1").lower()
+    not in {"0", "false", "no"},
 }
 WORLD_DIR = Path(__file__).resolve().parent.parent / "zjus-backend" / "world"
 
@@ -91,44 +106,95 @@ else:
 # OpenAI 兼容 API 调用
 # ============================================================
 
-def call_llm(messages: List[Dict[str, Any]], max_retries: int = 3) -> Optional[str]:
-    """调用 OpenAI 兼容 API，返回纯文本响应"""
-    api_base = _config.get("api_base", "https://api.openai.com/v1")
-    api_key = _config.get("api_key", "")
+def _api_base() -> str:
+    return str(_config.get("api_base") or "").rstrip("/")
 
-    url = f"{api_base.rstrip('/')}/chat/completions"
-    headers = {
-        "Content-Type": "application/json",
-    }
-    if api_key:
-        headers["Authorization"] = f"Bearer {api_key}"
 
-    payload = {
-        "model": _config["model"],
+def _api_key() -> str:
+    # Ollama 的 OpenAI 兼容接口不需要真实 key，但 SDK 要求传入非空字符串。
+    return str(_config.get("api_key") or "ollama")
+
+
+def build_openai_client() -> OpenAI:
+    """构建 OpenAI SDK 客户端，兼容 Ollama 与云端 OpenAI-like API。"""
+    return OpenAI(
+        api_key=_api_key(),
+        base_url=_api_base(),
+        timeout=120.0,
+        max_retries=0,
+    )
+
+
+def _completion_text(content: object) -> str:
+    if isinstance(content, str):
+        return content.strip()
+    if isinstance(content, list):
+        parts: list[str] = []
+        for part in content:
+            if isinstance(part, dict):
+                text = part.get("text") or part.get("content")
+                if isinstance(text, str):
+                    parts.append(text)
+            elif isinstance(part, str):
+                parts.append(part)
+        return "".join(parts).strip()
+    return ""
+
+
+def _chat_once(
+    client: OpenAI,
+    messages: list[dict[str, str]],
+    *,
+    use_json_mode: bool,
+) -> str:
+    kwargs: dict[str, Any] = {
+        "model": str(_config["model"]),
         "messages": messages,
-        "temperature": 0.7,
-        "response_format": {"type": "json_object"}
+        "temperature": float(_config.get("temperature", 0.7)),
     }
+    if use_json_mode:
+        kwargs["response_format"] = {"type": "json_object"}
+
+    response = client.chat.completions.create(**kwargs)
+    if not response.choices:
+        return ""
+    return _completion_text(response.choices[0].message.content)
+
+
+def call_llm(messages: List[Dict[str, str]], max_retries: int = 3) -> Optional[str]:
+    """调用 OpenAI 兼容 chat/completions，返回纯文本响应。"""
+    if not _api_base().startswith(("http://", "https://")):
+        print("  ⚠️ 无效的 API_BASE，必须以 http/https 开头")
+        return None
+
+    client = build_openai_client()
+    use_json_mode = bool(_config.get("json_mode", True))
 
     for attempt in range(max_retries):
         try:
-            # 连接超时 5 秒，读取超时 120 秒
-            resp = requests.post(url, json=payload, headers=headers, timeout=(5, 120))
-            if resp.status_code != 200:
-                print(f"  ⚠️ API 错误: {resp.status_code} - {resp.text}")
-            resp.raise_for_status()
-            data = resp.json()
-            content = data.get("choices", [{}])[0].get("message", {}).get("content", "")
-            return content.strip()
-        except requests.exceptions.Timeout:
-            print(f"  ⚠️ 请求超时 (尝试 {attempt+1}/{max_retries})")
-        except requests.exceptions.ConnectionError:
+            return _chat_once(client, messages, use_json_mode=use_json_mode)
+        except APITimeoutError:
+            print(f"  ⚠️ 请求超时 (尝试 {attempt + 1}/{max_retries})")
+        except APIConnectionError:
             print(
-                f"  ⚠️ API 连接失败 (尝试 {attempt+1}/{max_retries})，"
+                f"  ⚠️ API 连接失败 (尝试 {attempt + 1}/{max_retries})，"
                 "请确认网络和 API_BASE 设置"
             )
-        except Exception as e:
-            print(f"  ⚠️ 调用失败: {e} (尝试 {attempt+1}/{max_retries})")
+        except OpenAIError as exc:
+            if use_json_mode:
+                print("  ⚠️ 当前端点不支持 JSON mode，改用普通文本模式重试")
+                use_json_mode = False
+                try:
+                    return _chat_once(client, messages, use_json_mode=False)
+                except Exception as retry_exc:
+                    print(
+                        f"  ⚠️ 普通文本模式仍失败: {retry_exc} "
+                        f"(尝试 {attempt + 1}/{max_retries})"
+                    )
+            else:
+                print(f"  ⚠️ API 调用失败: {exc} (尝试 {attempt + 1}/{max_retries})")
+        except Exception as exc:
+            print(f"  ⚠️ 调用失败: {exc} (尝试 {attempt + 1}/{max_retries})")
 
         if attempt < max_retries - 1:
             time.sleep(2)
@@ -360,16 +426,7 @@ def generate_events(target_count: int) -> List[Dict[str, Any]]:
 
 现在请直接输出 JSON："""
 
-            messages = [{
-                "role": "user",
-                "content": [
-                    {
-                        "type": "text",
-                        "text": prompt,
-                        "cache_control": {"type": "ephemeral"}
-                    }
-                ]
-            }]
+            messages = [{"role": "user", "content": prompt}]
             raw = call_llm(messages)
 
             if not raw:
@@ -456,11 +513,21 @@ def generate_events(target_count: int) -> List[Dict[str, Any]]:
 
 CC98_EFFECTS = ["positive", "neutral", "negative"]
 
+def _choose_balanced_cc98_effect(effect_counts: Dict[str, int]) -> str:
+    """Pick the least-used effect bucket so generated libraries stay balanced."""
+    min_count = min(effect_counts.get(effect, 0) for effect in CC98_EFFECTS)
+    candidates = [
+        effect for effect in CC98_EFFECTS
+        if effect_counts.get(effect, 0) == min_count
+    ]
+    return random.choice(candidates)
+
 def generate_cc98_posts(target_count: int) -> List[Dict[str, Any]]:
     """批量生成 CC98 帖子"""
     posts = []
     batch_size = 5
     consecutive_failures = 0
+    effect_counts = {effect: 0 for effect in CC98_EFFECTS}
 
     print(f"\n🌊 开始生成 CC98 帖子库（目标 {target_count} 条）...\n")
 
@@ -471,7 +538,8 @@ def generate_cc98_posts(target_count: int) -> List[Dict[str, Any]]:
             else:
                 current_batch = batch_size
 
-            effect = random.choice(CC98_EFFECTS)
+            current_batch = min(current_batch, target_count - len(posts))
+            effect = _choose_balanced_cc98_effect(effect_counts)
             topic = random.choice(CC98_TOPICS)  # 使用动态生成的 CC98_TOPICS
 
             # 获取该版面的完整数据
@@ -519,16 +587,7 @@ def generate_cc98_posts(target_count: int) -> List[Dict[str, Any]]:
 
 现在请直接输出 JSON："""
 
-            messages = [{
-                "role": "user",
-                "content": [
-                    {
-                        "type": "text",
-                        "text": prompt,
-                        "cache_control": {"type": "ephemeral"}
-                    }
-                ]
-            }]
+            messages = [{"role": "user", "content": prompt}]
             raw = call_llm(messages)
 
             if not raw:
@@ -566,6 +625,7 @@ def generate_cc98_posts(target_count: int) -> List[Dict[str, Any]]:
                         "topic": topic,
                         "content": content.strip(),
                     })
+                    effect_counts[effect] += 1
                     valid_count += 1
 
             print(
@@ -582,6 +642,12 @@ def generate_cc98_posts(target_count: int) -> List[Dict[str, Any]]:
         print("\n⚠️ 用户中断，正在保存已生成的帖子...")
         return posts
 
+    print(
+        "  📊 CC98 情绪分布："
+        + ", ".join(
+            f"{effect}={effect_counts.get(effect, 0)}" for effect in CC98_EFFECTS
+        )
+    )
     return posts[:target_count]
 
 
@@ -590,7 +656,6 @@ def generate_cc98_posts(target_count: int) -> List[Dict[str, Any]]:
 # ============================================================
 
 def main():
-    print("DEBUG: 进入 main 函数", flush=True)
     parser = argparse.ArgumentParser(description="离线批量生成事件库和 CC98 帖子库")
     parser.add_argument("--events", type=int, default=0, help="生成随机事件数量")
     parser.add_argument("--cc98", type=int, default=0, help="生成 CC98 帖子数量")
@@ -608,12 +673,26 @@ def main():
     parser.add_argument(
         "--api-key", type=str, default=_config["api_key"], help="API Key"
     )
+    parser.add_argument(
+        "--temperature",
+        type=float,
+        default=float(_config["temperature"]),
+        help="采样温度",
+    )
+    parser.add_argument(
+        "--no-json-mode",
+        action="store_true",
+        help="禁用 response_format=json_object，用于兼容较旧端点",
+    )
     parser.add_argument("--append", action="store_true", help="追加到现有库而不是覆盖")
     args = parser.parse_args()
 
     _config["model"] = args.model
     _config["api_base"] = args.api_base
     _config["api_key"] = args.api_key
+    _config["temperature"] = args.temperature
+    if args.no_json_mode:
+        _config["json_mode"] = False
 
     event_count = args.events or args.events_only
     cc98_count = args.cc98 or args.cc98_only
@@ -625,31 +704,21 @@ def main():
         sys.exit(1)
 
     # 检查 API 可用性
-    if _config["api_base"].startswith("http"):
-        try:
-            url = f"{_config['api_base'].rstrip('/')}/models"
-            headers = {}
-            if _config["api_key"]:
-                headers["Authorization"] = f"Bearer {_config['api_key']}"
-            resp = requests.get(url, headers=headers, timeout=10)
-            if resp.status_code == 200:
-                models = [m["id"] for m in resp.json().get("data", [])]
-                print(f"✅ API 已连接，获取到 {len(models)} 个可用模型")
-                if _config["model"] not in models:
-                    print(
-                        f"⚠️  提示：目标模型 '{_config['model']}' "
-                        "可能不在可用模型列表中。请确认拼写正确。"
-                    )
-            else:
-                print(
-                    f"⚠️ 无法获取模型列表，HTTP 状态码: {resp.status_code}，"
-                    "将直接尝试调用..."
-                )
-        except Exception as e:
-            print(f"⚠️ API 连接测试失败: {e}，将直接尝试调用...")
-    else:
+    if not _api_base().startswith(("http://", "https://")):
         print("⚠️ 无效的 API_BASE，必须以 http/https 开头")
         sys.exit(1)
+
+    try:
+        models_page = build_openai_client().models.list()
+        models = [m.id for m in models_page.data if getattr(m, "id", None)]
+        print(f"✅ API 已连接，获取到 {len(models)} 个可用模型")
+        if models and _config["model"] not in models:
+            print(
+                f"⚠️  提示：目标模型 '{_config['model']}' "
+                "可能不在可用模型列表中。请确认拼写正确。"
+            )
+    except Exception as e:
+        print(f"⚠️ API 连接测试失败: {e}，将直接尝试调用...")
 
     events: List[Dict[str, Any]] = []
     posts: List[Dict[str, Any]] = []

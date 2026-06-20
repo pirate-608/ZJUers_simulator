@@ -1,0 +1,4 @@
+interface:
+  display_name: "ZJUS Game Stat"
+  short_description: "Add or update ZJUers Simulator gameplay stats."
+  default_prompt: "Use this skill to add or update a ZJUers Simulator gameplay stat through stat_definitions.json and validation."

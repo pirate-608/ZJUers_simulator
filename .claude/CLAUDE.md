@@ -106,12 +106,14 @@ Backend:
 - `zjus-backend/app/core/input_safety.py`: player username normalization, prompt-injection keyword checks, and prompt-safe fallback.
 - `zjus-backend/app/game/engine.py`: tick loop, actions, final exams, random events, relax cooldowns, feedback messages, content mode switching.
 - `zjus-backend/app/game/balance.py`: `world/game_balance.json` path resolution, runtime reads, and hot reload.
+- `zjus-backend/app/game/stat_definitions.py`: `world/stat_definitions.json` loading, stat defaults, initial allocation rules, effect allowlists, and frontend metadata source.
 - `zjus-backend/app/game/items.py`: `world/items.json` loading, item economy, passive bonuses, buy/sell state helpers.
 - `zjus-backend/app/services/game_service.py`: character/major initialization, semester transitions.
 - `zjus-backend/app/services/save_service.py`: Redis/Postgres save load and persistence, including DingTalk and item state.
 - `zjus-backend/app/services/balance_admin.py`: admin form schema, validation, atomic file publish, audit snapshot restore.
 - `zjus-backend/app/repositories/redis_repo.py`: active game state, TTL, cooldowns, event history, DingTalk state, item state.
 - `zjus-backend/scripts/generate_content_library.py`: offline event/CC98 library generation through OpenAI-compatible `chat/completions`; can point at a cloud endpoint or local Ollama `/v1`, while embedding/query vectors stay on local Ollama `bge-m3`.
+- `zjus-backend/scripts/sync_stat_definitions.py` and `validate_world_data.py`: keep frontend stat metadata and world effect fields in sync with `world/stat_definitions.json`.
 - `zjus-backend/app/core/llm.py` and `dingtalk_llm.py`: LLM-backed content generation and fallbacks.
   MiniMax M2-her RP calls use the OpenAI SDK compatible base URL `MINIMAX_BASE_URL=https://api.minimaxi.com/v1` and the case-sensitive model name `M2-her`; keep templates, docs, and tests exact when touching this path. Send only documented `role`/`content` fields in M2-her messages; do not pass DingTalk display names such as `【室友】` through the API `name` field.
   DingTalk uses platform M2-her only when the player has not provided a general custom LLM, unless the player provides `custom_rp_api_key`; with a general custom LLM and no RP key, DingTalk falls back to the general custom LLM to avoid platform RP spend.
@@ -124,7 +126,8 @@ Frontend:
 - `zjus-frontend/src/components/PrologueScene.vue` and `src/data/prologue.ts`: first-visit prologue text, image mapping, and seen-state key.
 - `zjus-frontend/src/components/LoginView.vue`: Invite-code login, plus session-scoped custom general LLM config and an optional custom RP MiniMax API key for DingTalk M2-her.
 - `zjus-frontend/src/components/SaveSelect.vue`: returning-user save selection or new game.
-- `zjus-frontend/src/components/CharacterCreate.vue`: major selection and stat budget UI.
+- `zjus-frontend/src/data/statDefinitions.generated.ts`: generated stat metadata from backend world data; regenerate via `scripts/sync_stat_definitions.py --write`.
+- `zjus-frontend/src/components/CharacterCreate.vue`: major selection and stat budget UI driven by generated stat metadata.
 - `zjus-frontend/src/composables/useGameWebSocket.ts`: auth handshake, heartbeat, message dispatch.
 - `zjus-frontend/src/stores/gameStore.ts`: global game state, feedback modal, pause/guide flags, cooldowns.
 - `zjus-frontend/src/components/RightPanel.vue`: relax actions, cooldown lockout, content generation mode switch.
@@ -150,8 +153,9 @@ Player usernames:
 
 Character creation:
 
-- `IQ`, `EQ`, `Luck`, and `Charm` each range from 50 to 150.
-- The client and server both enforce a total base budget of 300.
+- Initial allocatable stats come from `world/stat_definitions.json`; currently `IQ`, `EQ`, `Luck`, and `Charm` each range from 50 to 150.
+- The client and server both enforce `initial_budget` from the stat registry, currently 300.
+- `POST /api/init_character` accepts the preferred `stats` map plus legacy `iq`/`eq`/`luck`/`charm` fields for compatibility.
 - Major IQ bonus is added after the base-budget check and is intentionally retained.
 
 Returning users:
@@ -187,7 +191,7 @@ Random events:
 
 - Event choices are validated against the current server-side event.
 - Results show a feedback modal for 5 seconds and still append logs.
-- Event and DingTalk effects may include `gold` and `charm`; item passive bonuses are computed separately and should not be written back into base stats.
+- Event and DingTalk effects are limited by `allow_event_effect` in `world/stat_definitions.json`; item passive bonuses are computed separately and should not be written back into base stats.
 
 Achievements:
 
@@ -198,16 +202,23 @@ Achievements:
 Items:
 
 - Item definitions live in `zjus-backend/world/items.json`; `app/game/items.py` validates the catalog and falls back to an empty catalog on config errors.
+- Item `effects` are limited by `allow_item_effect` in `world/stat_definitions.json`; adding an ordinary item should only require editing `items.json` and running world-data validation.
 - `PlayerStats.gold` is real persisted currency. New games use `economy.initial_gold`; final exams use `economy.exam_income`; random events and DingTalk settlements may also change gold.
 - Items are v1 limited to one owned copy per `item_id`. They are hold-to-activate passive bonuses; selling removes the bonus and refunds `sell_price`.
 - Backpacks persist through Redis `player:{id}:items_state` and PostgreSQL `game_saves.items_data`.
 - Passive bonuses produce effective stats for tick/exam/Game Over/LLM context/UI and must not be repeatedly written into base Redis stats.
 
+World data:
+
+- `world/stat_definitions.json` is the stat single source of truth. After changing it, run `python scripts/sync_stat_definitions.py --write` from `zjus-backend/`, then `python scripts/validate_world_data.py`.
+- Use `scripts/scaffold_game_stat.py add <stat_id>` to draft a new stat definition and review checklist; it does not modify gameplay code unless called with `--write`.
+- `validate_world_data.py` checks stat definitions, item effects, event-library effects, and generated frontend stat metadata freshness.
+
 Content generation:
 
 - Modes are `library`, `hybrid`, and `ai`.
 - DingTalk model selection order is: player custom RP MiniMax key, platform M2-her when no general custom LLM is configured, then the active general LLM fallback.
-- DingTalk contact lists are capped by `events.dingtalk.max_contacts` (default 12). New messages should prefer reusable closed contacts using `reuse_closed_contact_probability` and must not compact away open-round contacts.
+- DingTalk contact lists are capped by `events.dingtalk.max_contacts` (default 12). New message generation applies `reuse_closed_contact_probability` exactly once before generation; reusable closed contacts are selected with a bias toward contacts that have been quiet longer, and compact must not remove open-round contacts.
 - When AI/LLM becomes unavailable, AI mode falls back toward hybrid mode(if still have issues, then fall back to library mode) behavior and emits mode/toast updates.
 
 Admin balance:
@@ -230,10 +241,12 @@ Common backend noise should be fixed by narrowing types rather than suppressing:
 
 ## Related Project Skills
 
-Claude Code can use `.claude/skills/code-review-skill/SKILL.md` for path-aware checks. The Codex-side workflows in `.codex/skills/` are also useful references:
+Claude Code can use project skills in `.claude/skills/`. The Codex-side workflows in `.codex/skills/` are also useful references:
 
 - `zjus-compose-openapi`: Docker Compose backend + OpenAPI regeneration.
 - `zjus-docs-sync`: docs synchronization after product/API changes.
+- `zjus-game-stat`: gameplay stat registry additions/updates, frontend metadata sync, and validation.
+- `zjus-game-item`: item catalog additions/updates, item effect allowlists, and validation.
 - `zjus-player-onboarding`: auth, saves, character creation, and stat-budget flow.
 - `zjus-pylance-noise`: project-specific Pylance/Pyright cleanup.
 - `zjus-change-review`: broad frontend/backend regression review.

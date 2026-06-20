@@ -18,7 +18,7 @@ Keep user-facing and developer-facing docs aligned with the actual app behavior.
 - General FAQ/index: `docs/faq.md`, `docs/index.md`
 - Repository landing docs: `README.md`, `README_en.md`
 - Agent handoff docs: `AGENTS.md`, `.claude/CLAUDE.md`
-- Agent skills/workflows: `.codex/skills/*`, `.agents/skills/*`
+- Agent skills/workflows: `.codex/skills/*`, `.claude/skills/*`, `.agents/skills/*`
 
 ## Workflow
 

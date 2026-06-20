@@ -1,0 +1,4 @@
+interface:
+  display_name: "ZJUS Game Item"
+  short_description: "Add or update ZJUers Simulator items."
+  default_prompt: "Use this skill to add or update a ZJUers Simulator item in world/items.json and run validation."

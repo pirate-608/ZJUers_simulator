@@ -14,7 +14,7 @@ This project's onboarding flow crosses HTTP, localStorage, Redis, Postgres saves
 1. `POST /api/auth` validates username, invite code, blacklist/restrictions, and optional persistent user token.
 2. New users receive a JWT plus a persistent `user_token`, then go to character creation.
 3. Returning users receive a JWT plus save summaries, then choose an existing save or start a new game.
-4. `POST /api/init_character` validates JWT, major, and IQ/EQ/Luck/Charm budget, then writes a fresh Redis state.
+4. `POST /api/init_character` validates JWT, major, and the stat-registry initial budget, then writes a fresh Redis state.
 5. The game WebSocket expects JWT auth in the first message. Loading an old save uses `load_save_slot`.
 
 ## Token Rules
@@ -26,10 +26,12 @@ This project's onboarding flow crosses HTTP, localStorage, Redis, Postgres saves
 
 ## Stat Rules
 
-- IQ/EQ/Luck/Charm must each be in `50..150`.
-- Their sum must equal `300`.
+- Allocatable stats come from `zjus-backend/world/stat_definitions.json`; currently IQ/EQ/Luck/Charm must each be in `50..150`.
+- Their sum must equal the registry `initial_budget`, currently `300`.
+- Prefer the `stats` map on `POST /api/init_character`; legacy `iq`/`eq`/`luck`/`charm` fields remain compatible.
 - Preserve the major IQ bonus after validation; do not count the major bonus against the 300-point user budget unless the user explicitly asks to change the design.
 - Enforce the budget server-side in `zjus-backend/app/api/auth.py`, not only in `CharacterCreate.vue`.
+- After changing allocatable stats, run `scripts/sync_stat_definitions.py --write`, `scripts/validate_world_data.py`, regenerate OpenAPI via Docker Compose, and update focused tests.
 
 ## Save Rules
 

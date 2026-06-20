@@ -31,7 +31,7 @@
   },
   "tick": {
     "interval_seconds": 3,
-    "base_energy_drain": 0.8,
+    "base_energy_drain": 0.4,
     "base_mastery_growth": 0.5
   },
   "course_states": {

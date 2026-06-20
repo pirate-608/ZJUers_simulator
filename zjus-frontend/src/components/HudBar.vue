@@ -6,7 +6,7 @@
     <div class="d-flex gap-4 flex-grow-1 me-4">
       <div class="stat-item flex-grow-1">
         <div class="d-flex justify-content-between small mb-1 fw-bold stat-row">
-          <span class="stat-label">精力</span>
+          <span class="stat-label">{{ statLabel('energy') }}</span>
           <span>{{ Math.floor(safeNumber(stats.energy, 100)) }} / 100</span>
         </div>
         <div
@@ -21,7 +21,7 @@
 
       <div class="stat-item flex-grow-1">
         <div class="d-flex justify-content-between small mb-1 fw-bold stat-row">
-          <span class="stat-label">心态</span>
+          <span class="stat-label">{{ statLabel('sanity') }}</span>
           <span>{{ Math.floor(safeNumber(stats.sanity, 100)) }} / 100</span>
         </div>
         <div
@@ -37,7 +37,7 @@
 
       <div class="stat-item flex-grow-1">
         <div class="d-flex justify-content-between small mb-1 fw-bold stat-row">
-          <span class="stat-label">压力</span>
+          <span class="stat-label">{{ statLabel('stress') }}</span>
           <span>{{ Math.floor(safeNumber(stats.stress, 0)) }} / 100</span>
         </div>
         <div
@@ -55,7 +55,7 @@
     <div class="d-flex gap-4 border-start ps-4 hud-metrics">
       <div class="text-center hud-metric-block">
         <div class="small text-muted fw-bold metric-label">
-          IQ / EQ / 魅力
+          {{ statLabel('iq') }} / {{ statLabel('eq') }} / {{ statLabel('charm') }}
         </div>
         <div class="fw-bold fs-5 metric-value">
           {{ Math.floor(safeNumber(stats.iq, 100)) }}
@@ -94,9 +94,12 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useGameStore } from '../stores/gameStore.ts'
+import { STAT_META_BY_ID } from '@/data/statDefinitions.generated'
 
 const store = useGameStore()
 const stats = computed(() => store.currentStats)
+
+const statLabel = (field: string) => STAT_META_BY_ID[field]?.label || field
 
 // 🌟 安全转换函数，防止 undefined / null / string 导致页面崩溃
 const safeNumber = (val: unknown, defaultVal: number = 0): number => {

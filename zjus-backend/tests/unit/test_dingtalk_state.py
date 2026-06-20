@@ -408,6 +408,80 @@ async def test_dingtalk_result_is_discarded_when_paused_during_generation():
     assert repo.state.contacts == {}
     engine.emit.assert_not_awaited()
 
+
+def test_engine_reusable_dingtalk_contact_prefers_stale_contacts():
+    contacts = {
+        "newest": DingTalkContact(
+            contact_id="newest",
+            sender="最近联系人",
+            role="roommate",
+            last_message_at=30,
+        ),
+        "oldest": DingTalkContact(
+            contact_id="oldest",
+            sender="很久没聊",
+            role="friend",
+            last_message_at=10,
+        ),
+        "middle": DingTalkContact(
+            contact_id="middle",
+            sender="普通联系人",
+            role="teacher",
+            last_message_at=20,
+        ),
+    }
+    engine = GameEngine("1", repo=Mock(), save_service=Mock(), game_service=Mock())  # type: ignore
+
+    with (
+        patch("app.game.engine.random.random", return_value=0.0),
+        patch(
+            "app.game.engine.random.choices",
+            return_value=[contacts["oldest"]],
+        ) as choices_mock,
+    ):
+        selected = engine._choose_reusable_dingtalk_contact(contacts)
+
+    assert selected == contacts["oldest"]
+    ordered_contacts = choices_mock.call_args.args[0]
+    assert [contact.contact_id for contact in ordered_contacts] == [
+        "oldest",
+        "middle",
+        "newest",
+    ]
+    assert choices_mock.call_args.kwargs["weights"] == [3, 2, 1]
+
+
+@pytest.mark.asyncio
+async def test_store_new_dingtalk_contact_does_not_double_apply_reuse_probability():
+    existing = DingTalkContact(
+        contact_id="dt_existing",
+        sender="老联系人",
+        role="roommate",
+        is_replyable=True,
+        last_message_at=1,
+    )
+    repo = _Repo(DingTalkState(contacts={existing.contact_id: existing}))
+    engine = GameEngine("1", repo=repo, save_service=Mock(), game_service=Mock())  # type: ignore
+
+    with patch("app.game.engine.random.random", return_value=0.0):
+        contact = await engine._store_dingtalk_npc_message(
+            {
+                "contact": {
+                    "contact_id": "dt_new",
+                    "sender": "新联系人",
+                    "role": "classmate",
+                    "is_replyable": True,
+                },
+                "content": "今天自习室还有座位吗？",
+                "reply_options": ["我看看"],
+            }
+        )
+
+    assert contact is not None
+    assert contact.contact_id == "dt_new"
+    assert set(repo.state.contacts) == {"dt_existing", "dt_new"}
+
+
 @pytest.mark.asyncio
 async def test_engine_reuses_existing_dingtalk_contact_when_contact_cap_is_reached():
     contacts = {

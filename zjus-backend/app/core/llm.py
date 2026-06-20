@@ -8,6 +8,7 @@ from openai import AsyncOpenAI
 from app.api.cache import RedisCache
 from app.content.state_vector import PlayerStateVector
 from app.core.input_safety import safe_username_for_prompt
+from app.game.stat_definitions import stat_definitions
 from app.schemas.dingtalk import (
     build_contact_id,
     is_replyable_role,
@@ -27,6 +28,10 @@ PROVIDER_BASE_URLS = {
 }
 
 DEFAULT_LLM_MODEL = "gpt-4o-mini"
+
+
+def _allowed_effect_fields_prompt() -> str:
+    return "/".join(sorted(stat_definitions.event_effect_fields))
 
 
 def _resolve_llm_config(
@@ -236,7 +241,7 @@ async def generate_random_event(
         f"玩家状态：{state.to_prompt_fragment()}{history_hint}\n"
         f"生成 3 个浙大校园随机事件，风格迥异。\n"
         f"每个事件含两个选项，effects 范围 -10~+10，"
-        f"可包含 energy/sanity/stress/eq/luck/charm/reputation/gold。\n"
+        f"可包含 {_allowed_effect_fields_prompt()}。\n"
         f'\n严格 JSON：{{ "events": [{{ "title": "...", "desc": "...", '
         f'"options": [{{"id": "A", "text": "...", '
         f'"effects": {{"energy": -5, "desc": "..."}}}}, '
@@ -457,7 +462,7 @@ async def generate_dingtalk_reply_message(
             output_contract = (
                 '严格返回 JSON：{"npc_reply":"...",'
                 '"settlement":{"desc":"...","effects":{"sanity":1}}}。'
-                "effects 只能包含 energy/sanity/stress/eq/luck/charm/reputation/gold，"
+                f"effects 只能包含 {_allowed_effect_fields_prompt()}，"
                 "整数幅度要克制，通常在 -3 到 3。"
             )
         else:

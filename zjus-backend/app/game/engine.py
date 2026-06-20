@@ -23,6 +23,7 @@ from app.core.llm import (
 )
 from app.game.balance import balance  # 游戏数值配置
 from app.game.items import items
+from app.game.stat_definitions import stat_definitions
 from app.models.user import User
 from app.repositories.redis_repo import RedisRepository
 from app.schemas.dingtalk import (
@@ -64,17 +65,8 @@ class GameEngine:
     _RELAX_OVERFLOW_TRANSFER_CAP = 20
     _RELAX_CHARM_TRANSFER_CAP = 1
     _FEEDBACK_FIELD_LABELS = {
-        "energy": "精力",
-        "sanity": "心态",
-        "stress": "压力",
-        "iq": "IQ",
-        "eq": "EQ",
-        "luck": "运气",
-        "charm": "魅力",
-        "reputation": "声望",
-        "efficiency": "效率",
+        **stat_definitions.feedback_labels,
         "gpa": "GPA",
-        "gold": "金币",
     }
 
     async def emit(self, event_type: str, data: dict, msg: str | None = None):
@@ -193,7 +185,12 @@ class GameEngine:
     ) -> int:
         if field == "stress" and requested_delta < 0:
             return max(0, abs(requested_delta) - max(0, -actual_delta))
-        if field in {"energy", "sanity", "eq", "luck", "charm", "reputation"}:
+        positive_fields = {
+            stat.id
+            for stat in stat_definitions.stats
+            if stat.positive_endpoint == "max"
+        }
+        if field in positive_fields:
             if requested_delta > 0:
                 return max(0, requested_delta - max(0, actual_delta))
         return 0
@@ -435,7 +432,7 @@ class GameEngine:
             for contact in contacts.values()
             if contact.round.status != "open"
         ]
-        closed.sort(key=lambda c: c.last_message_at, reverse=True)
+        closed.sort(key=lambda c: (c.last_message_at, c.contact_id))
         return closed
 
     def _choose_reusable_dingtalk_contact(
@@ -451,7 +448,12 @@ class GameEngine:
         )
         if not should_reuse:
             return None
-        return random.choice(closed)
+        if len(closed) == 1:
+            return closed[0]
+
+        # Prefer contacts that have been quiet for longer, while keeping variety.
+        weights = list(range(len(closed), 0, -1))
+        return random.choices(closed, weights=weights, k=1)[0]
 
     def _character_from_contact(self, contact: DingTalkContact) -> dict[str, Any]:
         try:
@@ -540,23 +542,24 @@ class GameEngine:
                 return None
             if not contact:
                 force_reuse = len(state.contacts) >= contact_limit
-                reusable = self._choose_reusable_dingtalk_contact(
-                    state.contacts,
-                    force=force_reuse,
-                )
-                if reusable:
-                    contact_meta.update(
-                        {
-                            "contact_id": reusable.contact_id,
-                            "sender": reusable.sender,
-                            "role": reusable.role,
-                            "is_replyable": reusable.is_replyable,
-                            "is_urgent": reusable.is_urgent,
-                        }
+                if force_reuse:
+                    reusable = self._choose_reusable_dingtalk_contact(
+                        state.contacts,
+                        force=True,
                     )
-                    contact = reusable
-                elif force_reuse:
-                    return None
+                    if reusable:
+                        contact_meta.update(
+                            {
+                                "contact_id": reusable.contact_id,
+                                "sender": reusable.sender,
+                                "role": reusable.role,
+                                "is_replyable": reusable.is_replyable,
+                                "is_urgent": reusable.is_urgent,
+                            }
+                        )
+                        contact = reusable
+                    else:
+                        return None
             if not contact:
                 contact = DingTalkContact(**contact_meta)
             else:
@@ -670,7 +673,7 @@ class GameEngine:
         effects_raw = effects_raw if isinstance(effects_raw, dict) else {}
         effects: dict[str, int] = {}
         for key, value in effects_raw.items():
-            max_delta = self._ALLOWED_EFFECT_FIELDS.get(str(key))
+            max_delta = self._allowed_effect_fields().get(str(key))
             if max_delta is None:
                 continue
             try:
@@ -1821,8 +1824,8 @@ class GameEngine:
         finally:
             self._random_event_inflight = False
 
-    # 事件效果允许修改的属性白名单及每次最大变化量
-    _ALLOWED_EFFECT_FIELDS = {
+    # 事件效果每次最大变化量；允许字段由 stat_definitions 决定。
+    _EFFECT_FIELD_MAX_DELTAS = {
         "energy": 50,
         "sanity": 30,
         "stress": 30,
@@ -1832,6 +1835,12 @@ class GameEngine:
         "reputation": 20,
         "gold": 200,
     }
+
+    def _allowed_effect_fields(self) -> dict[str, int]:
+        return {
+            field: self._EFFECT_FIELD_MAX_DELTAS.get(field, 20)
+            for field in stat_definitions.event_effect_fields
+        }
 
     async def _handle_event_choice(self, data):
         """处理随机事件的选择结果（只接受当前服务端事件的选项 id）。"""
@@ -1865,7 +1874,7 @@ class GameEngine:
             if key == "desc":
                 continue
             # 白名单校验：只允许修改预定义字段
-            max_delta = self._ALLOWED_EFFECT_FIELDS.get(key)
+            max_delta = self._allowed_effect_fields().get(key)
             if max_delta is None:
                 logger.warning(
                     "Blocked illegal effect field '%s' from user %s", key, self.user_id
@@ -2297,18 +2306,18 @@ class GameEngine:
                     )
             initial_iq = int(stats.get("iq", 100) or 100) - iq_buff
 
-        return {
-            "iq": self._coerce_initial_stat(initial_iq, 100),
-            "eq": self._coerce_initial_stat(
-                stats.get("initial_eq") or stats.get("eq"), 100
-            ),
-            "luck": self._coerce_initial_stat(
-                stats.get("initial_luck") or stats.get("luck"), 50
-            ),
-            "charm": self._coerce_initial_stat(
-                stats.get("initial_charm") or stats.get("charm"), 50
-            ),
-        }
+        overrides: dict[str, int] = {}
+        for stat in stat_definitions.allocatable:
+            raw_value = stats.get(f"initial_{stat.id}") or stats.get(stat.id)
+            if stat.id == "iq":
+                raw_value = initial_iq
+            overrides[stat.id] = self._coerce_initial_stat(
+                raw_value,
+                stat.default,
+                stat.min,
+                stat.max,
+            )
+        return overrides
 
     async def _emit_current_init(self):
         snapshot = await self.repo.get_snapshot()

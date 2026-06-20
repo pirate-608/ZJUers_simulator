@@ -5,6 +5,7 @@ from app.api.auth import (
     CourseOption,
     InitCharacterRequest,
     InitCharacterResponse,
+    _initial_stats_from_request,
     _validate_initial_stats,
 )
 from app.core.input_safety import (
@@ -33,6 +34,32 @@ def test_validate_initial_stats_accepts_default_charm_for_legacy_payload():
 
     _validate_initial_stats(req)
     assert req.charm == 50
+
+
+def test_validate_initial_stats_accepts_stats_map_payload():
+    req = InitCharacterRequest(
+        token="jwt",
+        major_abbr="CS",
+        stats={"iq": 90, "eq": 100, "luck": 50, "charm": 60},
+    )
+
+    assert _initial_stats_from_request(req) == {
+        "iq": 90,
+        "eq": 100,
+        "luck": 50,
+        "charm": 60,
+    }
+
+
+def test_validate_initial_stats_rejects_unknown_stats_map_field():
+    req = InitCharacterRequest(
+        token="jwt",
+        major_abbr="CS",
+        stats={"iq": 100, "eq": 100, "luck": 50, "charm": 50, "power": 1},
+    )
+
+    with pytest.raises(HTTPException):
+        _validate_initial_stats(req)
 
 
 def test_init_character_response_accepts_numeric_course_fields():

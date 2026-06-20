@@ -174,13 +174,13 @@ class TestFromRedis:
     def test_empty_dict(self):
         ps = PlayerStats.from_redis({})
         assert ps.username == ""
-        assert ps.energy == 0
+        assert ps.energy == 100
         assert ps.semester_idx == 1  # default
 
     def test_none_input(self):
         ps = PlayerStats.from_redis(None)
         assert ps.username == ""
-        assert ps.energy == 0
+        assert ps.energy == 100
 
     def test_string_numbers(self):
         """Redis 返回的值都是字符串，验证类型转换"""
@@ -199,7 +199,7 @@ class TestFromRedis:
         """损坏数据不应抛异常，应回退到默认值"""
         ps = PlayerStats.from_redis(sample_player_stats_corrupted)
         assert ps.username == "CorruptedPlayer"
-        assert ps.energy == 0  # "not_a_number" → default 0
+        assert ps.energy == 100  # "not_a_number" -> registry default
         assert ps.gpa == "0.0"  # None → _to_str(None, "0.0") → default "0.0"
 
 

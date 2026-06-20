@@ -16,6 +16,7 @@ from openai import APITimeoutError, AsyncOpenAI, OpenAIError
 from app.api.cache import RedisCache
 from app.core.config import settings
 from app.core.input_safety import safe_username_for_prompt
+from app.game.stat_definitions import stat_definitions
 from app.schemas.dingtalk import (
     build_contact_id,
     is_replyable_role,
@@ -23,6 +24,10 @@ from app.schemas.dingtalk import (
 )
 
 logger = logging.getLogger(__name__)
+
+
+def _allowed_effect_fields_prompt() -> str:
+    return "/".join(sorted(stat_definitions.event_effect_fields))
 
 _M2HER_ALLOWED_ROLES = {
     "system",
@@ -578,7 +583,7 @@ async def generate_dingtalk_reply_via_m2her(
             f"{history_text}\n玩家刚回复：{player_reply}\n"
             "请生成 NPC 的下一条回复，并对这一轮三次往返对话"
             "产生的游戏数值影响做轻量结算。"
-            "影响只能包含 energy/sanity/stress/eq/luck/charm/reputation/gold，"
+            f"影响只能包含 {_allowed_effect_fields_prompt()}，"
             "数值为整数，幅度要克制。"
             '严格返回 JSON：{"npc_reply":"...",'
             '"settlement":{"desc":"...","effects":{"sanity":1}}}'

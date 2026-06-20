@@ -81,7 +81,7 @@
 
 ### POST `/api/init_character`
 
-作用：新游戏初始化。玩家选择专业并分配 `IQ` / `EQ` / `Luck` / `魅力` 基础属性。
+作用：新游戏初始化。玩家选择专业并分配 `world/stat_definitions.json` 中 `allocatable=true` 的基础属性。
 
 请求体：
 
@@ -89,6 +89,12 @@
 {
   "token": "<JWT>",
   "major_abbr": "CS",
+  "stats": {
+    "iq": 100,
+    "eq": 100,
+    "luck": 50,
+    "charm": 50
+  },
   "iq": 100,
   "eq": 100,
   "luck": 50,
@@ -98,8 +104,8 @@
 
 服务端约束：
 
-- `iq`、`eq`、`luck`、`charm` 每项必须在 `50-150`。
-- 四项总和必须等于 `300`。
+- 推荐使用 `stats` 映射提交初始属性；旧的 `iq`、`eq`、`luck`、`charm` 字段仍保留兼容。
+- 可分配属性、范围和预算来自 `world/stat_definitions.json`；当前为 `IQ` / `EQ` / `Luck` / `魅力`，每项 `50-150`，总和 `300`。
 - 专业 IQ 增益在 `GameService.assign_major_and_init()` 中额外叠加，不计入 300 点预算。
 
 响应：
@@ -211,7 +217,7 @@
 
 `feedback` 用于随机事件结果和休闲动作结果。日志仍由 `event` 消息保留；前端应同时展示日志和弹窗。休闲和事件结算如果改变数值，应尽量通过 `changes` 列出实际变化，便于玩家理解本次结果。
 
-钉钉联系人只在有消息后显示。可回复角色包括 `roommate`、`classmate`、`friend`、`teaching_assistant`、`teacher`、`crush`。玩家通过回复选项完成三次回复后，后端生成 NPC 第三条回复并结算本轮数值影响，影响字段只允许 `energy` / `sanity` / `stress` / `eq` / `luck` / `charm` / `reputation` / `gold`。联系人列表默认上限为 12，超限时优先复用已结束轮次的旧联系人。
+钉钉联系人只在有消息后显示。可回复角色包括 `roommate`、`classmate`、`friend`、`teaching_assistant`、`teacher`、`crush`。玩家通过回复选项完成三次回复后，后端生成 NPC 第三条回复并结算本轮数值影响，影响字段来自 `world/stat_definitions.json` 中 `allow_event_effect=true` 的属性。联系人列表默认上限为 12，超限时优先复用已结束轮次的旧联系人。
 
 `items_state` 示例：
 

@@ -45,13 +45,15 @@ zjus-backend/world/
 ├── achievements.json  # 成就系统
 ├── characters.json    # 角色系统
 ├── game_balance.json  # 游戏平衡
+├── items.json         # 道具系统
 ├── keywords.json      # 关键词
 ├── majors.json        # 专业系统
+├── stat_definitions.json # 属性定义
 ├── notice.md          # 公告
 └── rules.html         # 游戏规则
 ```
 
-其中`courses`文件夹下的文件是课程系统（数据来源：[本科教学管理信息服务平台](https://zdbk.zju.edu.cn)），其与`achievements.json`、`characters.json`、`majors.json`、`game_balance.json`、`keywords.json`等文件都直接被后端加载。
+其中`courses`文件夹下的文件是课程系统（数据来源：[本科教学管理信息服务平台](https://zdbk.zju.edu.cn)），其与`achievements.json`、`characters.json`、`majors.json`、`game_balance.json`、`items.json`、`stat_definitions.json`、`keywords.json`等文件都直接被后端加载。
 
 世界观文件集和llm共同构成了这个游戏的灵魂，llm需要付费来用API，但world/文件夹下的内容是无价的，它的成长依赖于每一个致力于构建 ZJUers 模拟器世界观的校友。
 

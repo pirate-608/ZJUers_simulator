@@ -46,50 +46,23 @@
                 <span class="text-muted"> 剩余点数</span>
               </div>
 
-              <!-- IQ -->
-              <div class="mb-4">
+              <div
+                v-for="stat in ALLOCATABLE_STATS"
+                :key="stat.id"
+                class="mb-4"
+              >
                 <div class="d-flex justify-content-between mb-1">
-                  <span class="fw-bold small">🧠 IQ (智力)</span>
-                  <span class="fw-bold small">{{ stats.iq }}</span>
+                  <span class="fw-bold small">{{ stat.icon }} {{ stat.label }}</span>
+                  <span class="fw-bold small">{{ stats[stat.id] }}</span>
                 </div>
-                <input type="range" class="form-range" :min="50" :max="150" v-model.number="stats.iq" @input="onSliderChange">
-                <div class="d-flex justify-content-between"><small class="text-muted">50</small><small class="text-muted">150</small></div>
-              </div>
-
-              <!-- EQ -->
-              <div class="mb-4">
-                <div class="d-flex justify-content-between mb-1">
-                  <span class="fw-bold small">💖 EQ (情商)</span>
-                  <span class="fw-bold small">{{ stats.eq }}</span>
-                </div>
-                <input type="range" class="form-range" :min="50" :max="150" v-model.number="stats.eq" @input="onSliderChange">
-                <div class="d-flex justify-content-between"><small class="text-muted">50</small><small class="text-muted">150</small></div>
-              </div>
-
-              <!-- Luck -->
-              <div class="mb-4">
-                <div class="d-flex justify-content-between mb-1">
-                  <span class="fw-bold small">🍀 Luck (运气)</span>
-                  <span class="fw-bold small">{{ stats.luck }}</span>
-                </div>
-                <input type="range" class="form-range" :min="50" :max="150" v-model.number="stats.luck" @input="onSliderChange">
-                <div class="d-flex justify-content-between"><small class="text-muted">50</small><small class="text-muted">150</small></div>
-              </div>
-
-              <!-- 魅力 -->
-              <div class="mb-4">
-                <div class="d-flex justify-content-between mb-1">
-                  <span class="fw-bold small">✨ 魅力 (Charm)</span>
-                  <span class="fw-bold small">{{ stats.charm }}</span>
-                </div>
-                <input type="range" class="form-range" :min="50" :max="150" v-model.number="stats.charm" @input="onSliderChange">
-                <div class="d-flex justify-content-between"><small class="text-muted">50</small><small class="text-muted">150</small></div>
+                <input type="range" class="form-range" :min="stat.min" :max="stat.max" v-model.number="stats[stat.id]" @input="onSliderChange">
+                <div class="d-flex justify-content-between"><small class="text-muted">{{ stat.min }}</small><small class="text-muted">{{ stat.max }}</small></div>
               </div>
 
               <hr>
               <div class="small text-muted mb-3">
                 ⚡ 精力固定 100 ｜ 💖 心态固定 80<br>
-                总预算 <b>300</b> 点，默认 IQ 100 | EQ 100 | Luck 50 | 魅力 50
+                总预算 <b>{{ STAT_INITIAL_BUDGET }}</b> 点，默认 {{ defaultStatsText }}
               </div>
 
               <button
@@ -112,29 +85,43 @@ import { ref, reactive, computed, onMounted } from 'vue'
 import { useGameStore } from '../stores/gameStore.ts'
 import { fetchMajors, initCharacter } from '@/api/client'
 import type { MajorOption } from '@/api/client'
+import {
+  ALLOCATABLE_STATS,
+  STAT_INITIAL_BUDGET,
+} from '@/data/statDefinitions.generated'
 
-const STAT_BUDGET = 300
 const store = useGameStore()
 
 const loading = ref(true)
 const majors = ref<MajorOption[]>([])
 const selectedMajor = ref<string | null>(null)
 
-const stats = reactive({ iq: 100, eq: 100, luck: 50, charm: 50 })
+const stats = reactive<Record<string, number>>(
+  Object.fromEntries(
+    ALLOCATABLE_STATS.map((stat) => [stat.id, stat.default]),
+  ),
+)
 
 const totalUsed = computed(() => (
-  Number(stats.iq) +
-  Number(stats.eq) +
-  Number(stats.luck) +
-  Number(stats.charm)
+  ALLOCATABLE_STATS.reduce(
+    (total, stat) => total + Number(stats[stat.id] ?? stat.default),
+    0,
+  )
 ))
-const remainingPoints = computed(() => STAT_BUDGET - totalUsed.value)
+const remainingPoints = computed(() => STAT_INITIAL_BUDGET - totalUsed.value)
+const defaultStatsText = computed(() => (
+  ALLOCATABLE_STATS
+    .map((stat) => `${stat.label} ${stat.default}`)
+    .join(' | ')
+))
 
 function onSliderChange() {
-  stats.iq = Math.min(150, Math.max(50, Number(stats.iq) || 50))
-  stats.eq = Math.min(150, Math.max(50, Number(stats.eq) || 50))
-  stats.luck = Math.min(150, Math.max(50, Number(stats.luck) || 50))
-  stats.charm = Math.min(150, Math.max(50, Number(stats.charm) || 50))
+  for (const stat of ALLOCATABLE_STATS) {
+    stats[stat.id] = Math.min(
+      stat.max,
+      Math.max(stat.min, Number(stats[stat.id]) || stat.default),
+    )
+  }
 }
 
 onMounted(async () => {
@@ -151,7 +138,8 @@ const confirmCreate = async () => {
   if (!selectedMajor.value) return
   onSliderChange()
   if (remainingPoints.value !== 0) {
-    alert('IQ/EQ/Luck/魅力 初始总点数必须等于 300')
+    const labels = ALLOCATABLE_STATS.map((stat) => stat.label).join('/')
+    alert(`${labels} 初始总点数必须等于 ${STAT_INITIAL_BUDGET}`)
     return
   }
   const jwt = localStorage.getItem('zju_jwt')
@@ -163,14 +151,19 @@ const confirmCreate = async () => {
 
   loading.value = true
   try {
-    await initCharacter({
+    const statPayload = Object.fromEntries(
+      ALLOCATABLE_STATS.map((stat) => [stat.id, stats[stat.id] ?? stat.default]),
+    ) as Record<string, number>
+    const payload = {
       token: jwt,
       major_abbr: selectedMajor.value,
-      iq: stats.iq,
-      eq: stats.eq,
-      luck: stats.luck,
-      charm: stats.charm,
-    })
+      iq: statPayload.iq ?? 100,
+      eq: statPayload.eq ?? 100,
+      luck: statPayload.luck ?? 50,
+      charm: statPayload.charm ?? 50,
+      stats: statPayload,
+    }
+    await initCharacter(payload)
     localStorage.setItem('game_started', '1')
     localStorage.removeItem('selected_save_slot')
     store.setPhase('loading')

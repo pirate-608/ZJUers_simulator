@@ -39,12 +39,13 @@
 
 ### 6. 游戏初始化与“开局数据”从哪里来？
 - 开局流程由 `GameService` 负责（初始化 stats/major/courses 等）。
-- 新玩家通过 `POST /api/init_character` 选择专业并分配 IQ/EQ/Luck/魅力；服务端会校验四项总和为 300。
+- 新玩家通过 `POST /api/init_character` 选择专业并提交 `stats` 映射；可分配属性、范围和总预算来自 `world/stat_definitions.json`。
 - 读取世界数据使用 `WorldService`，可做缓存优化。
 
 ### 7. 课程/专业/规则数据如何维护？
 - 静态数据位于 `zjus-backend/world`。
 - 课程在 `zjus-backend/world/courses` 下以专业缩写命名的 JSON 文件维护。
+- 属性定义由 `world/stat_definitions.json` 维护，更新后运行 `scripts/sync_stat_definitions.py --write` 和 `scripts/validate_world_data.py`。
 
 ### 8. 存档数据是如何保存与恢复的？
 - `SaveService` 负责从 Redis 快照生成 DB 存档与恢复。

@@ -33,6 +33,12 @@ from typing import Any, Dict, List, Optional
 
 from openai import APIConnectionError, APITimeoutError, OpenAI, OpenAIError
 
+BACKEND_ROOT = Path(__file__).resolve().parent.parent
+if str(BACKEND_ROOT) not in sys.path:
+    sys.path.insert(0, str(BACKEND_ROOT))
+
+from app.game.stat_definitions import stat_definitions  # noqa: E402
+
 # ============================================================
 # 配置
 # ============================================================
@@ -58,6 +64,18 @@ WORLD_DIR = Path(__file__).resolve().parent.parent / "zjus-backend" / "world"
 # 如果从 zjus-backend 目录运行
 if not WORLD_DIR.exists():
     WORLD_DIR = Path(__file__).resolve().parent.parent / "world"
+
+ALLOWED_EVENT_EFFECT_FIELDS = set(stat_definitions.event_effect_fields) | {"desc"}
+
+
+def allowed_event_effect_prompt() -> str:
+    """Return a compact prompt fragment aligned with stat_definitions.json."""
+    labels = stat_definitions.feedback_labels
+    parts = [
+        f"{field}（{labels.get(field, field)}）"
+        for field in sorted(stat_definitions.event_effect_fields)
+    ]
+    return "、".join(parts)
 
 # ============================================================
 # 加载 CC98 版面完整数据
@@ -419,8 +437,8 @@ def generate_events(target_count: int) -> List[Dict[str, Any]]:
 1. 每个事件必须包含 title、desc、tags、options
 2. options 必须包含两个选项，每个选项必须有 id、text、effects
 3. effects 必须包含 desc 字段，以及以下任意字段：
-   energy(-10~10)、sanity(-10~10)、stress(-10~10)、
-   luck(-5~5)、charm(-5~5)、reputation(-5~5)
+   {allowed_event_effect_prompt()}
+   数值变化请保持克制，常规字段建议控制在 -10 到 10 之间
 4. 描述要生动有趣，符合浙大学生视角
 5. 事件适合{sanity_label}、{stress_label}的玩家
 
@@ -477,7 +495,7 @@ def generate_events(target_count: int) -> List[Dict[str, Any]]:
                         opt["effects"] = {
                             k: v
                             for k, v in opt["effects"].items()
-                            if v is not None
+                            if v is not None and k in ALLOWED_EVENT_EFFECT_FIELDS
                         }
 
                 evt["id"] = f"evt_{uuid.uuid4().hex[:8]}"

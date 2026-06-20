@@ -116,6 +116,7 @@ export default defineConfig({
             { text: '角色', link: '/world/characters' },
             { text: '成就', link: '/world/achievements' },
             { text: '数值', link: '/world/game_balance' },
+            { text: '属性定义', link: '/world/stat_definitions' },
             { text: '关键词', link: '/world/keywords' },
             { text: '专业', link: '/world/majors' },
           ],

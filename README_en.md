@@ -40,13 +40,15 @@ zjus-backend/world/
 ├── achievements.json  # Achievement system
 ├── characters.json    # Character system
 ├── game_balance.json  # Game balance
+├── items.json         # Item system
 ├── keywords.json      # Keywords
 ├── majors.json        # Major system
+├── stat_definitions.json # Stat definitions
 ├── notice.md          # Announcements
 └── rules.html         # Game rules
 ```
 
-The files within the `courses` folder constitute the course system (data source: [Undergraduate Academic Management Information Service Platform](https://zdbk.zju.edu.cn)). These files, along with `achievements.json`, `characters.json`, `majors.json`, `game_balance.json`, `keywords.json`, and others, are loaded directly by the backend.
+The files within the `courses` folder constitute the course system (data source: [Undergraduate Academic Management Information Service Platform](https://zdbk.zju.edu.cn)). These files, along with `achievements.json`, `characters.json`, `majors.json`, `game_balance.json`, `items.json`, `stat_definitions.json`, `keywords.json`, and others, are loaded directly by the backend.
 
 The world-building files and the LLM together form the soul of this game. Using the LLM requires a paid API, but the contents of the `world/` folder are priceless. Its growth depends on every alumnus dedicated to building the world of the ZJUers Simulator.
 

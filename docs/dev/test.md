@@ -4,7 +4,7 @@
 
 ## 后端
 
-后端测试位于 `zjus-backend/tests/unit/`，覆盖游戏状态、数值配置、Admin 数值平衡表单发布、道具配置/买卖/存档、钉钉私聊状态、DingTalk LLM 降级、认证校验和玩家入口/存档流程。
+后端测试位于 `zjus-backend/tests/unit/`，覆盖游戏状态、属性定义注册表、数值配置、Admin 数值平衡表单发布、道具配置/买卖/存档、钉钉私聊状态、DingTalk LLM 降级、认证校验和玩家入口/存档流程。
 
 常用命令：
 
@@ -28,6 +28,7 @@ cd zjus-backend
 - `src/App.spec.js`：登录前序章闸门、登录/存档启动分流、WebSocket 不应在序章期间提前连接。
 - `src/stores/gameStore.spec.ts`：钉钉联系人状态恢复、未读数、本地已读更新和成就详情归一化。
 - `src/stores/gameStore.spec.ts`：道具目录、已拥有道具和持有加成的状态恢复。
+- `src/components/CharacterCreate.spec.js`：属性定义元数据驱动的角色创建表单和 `stats` map 提交。
 - `src/components/MidPanel.spec.js`：钉钉回复锁定、道具搜索、购买/出售和暂停锁定。
 - `src/components/EndScreen.spec.js`：Game Over / 毕业页的重开与回首页入口。
 
@@ -88,6 +89,7 @@ cd zjus-frontend
 | 前端 UI/状态 | `vue-tsc --noEmit`、`vitest run` 或 focused spec |
 | 后端引擎/状态 | `pytest tests\unit`、`py_compile`、`ruff check` |
 | API/模型 | Docker Compose 后端、OpenAPI 生成、前端类型检查 |
+| 属性/道具/world 数据 | `scripts/validate_world_data.py`、`scripts/sync_stat_definitions.py --check`、相关单测 |
 | Docker/部署 | `docker compose config`、服务启动日志、生产 smoke |
 
 pytest 可能出现依赖库弃用警告；只要测试结果通过且警告与本次改动无关，可以在交付说明中记录为残余风险。

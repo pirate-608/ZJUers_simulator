@@ -322,6 +322,7 @@
 <script setup lang="ts">
 import { computed, nextTick, ref, watch } from 'vue'
 import { useGameStore } from '../stores/gameStore.ts'
+import { STAT_META_BY_ID } from '@/data/statDefinitions.generated'
 import type { GameItem } from '@/types/items'
 import type { DingTalkContact } from '@/types/modal'
 import type { WsClientAction } from '@/types/websocket'
@@ -349,24 +350,12 @@ const goldAmount = computed(() => Math.floor(Number(store.currentStats.gold ?? 0
 
 const ownedItemIds = computed(() => new Set(store.ownedItems))
 
-const fieldLabels: Record<string, string> = {
-  energy: '精力',
-  sanity: '心态',
-  stress: '压力',
-  iq: 'IQ',
-  eq: 'EQ',
-  luck: '运气',
-  charm: '魅力',
-  reputation: '声望',
-  efficiency: '效率',
-}
-
 const bonusRows = computed(() => (
   Object.entries(store.itemBonuses)
     .filter(([, delta]) => Number.isFinite(Number(delta)) && Number(delta) !== 0)
     .map(([field, delta]) => ({
       field,
-      label: fieldLabels[field] || field,
+      label: STAT_META_BY_ID[field]?.label || field,
       delta: Number(delta),
     }))
 ))
@@ -447,7 +436,7 @@ function itemEffectRows(item: GameItem) {
     .filter(([, delta]) => Number(delta) !== 0)
     .map(([field, delta]) => ({
       field,
-      label: fieldLabels[field] || field,
+      label: STAT_META_BY_ID[field]?.label || field,
       delta: Number(delta),
     }))
 }

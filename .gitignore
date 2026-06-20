@@ -11,6 +11,9 @@ zjus-backend/__pycache__/
 # 测试和代码质量工具
 .pytest_cache/
 pytest-temp/
+zjus-backend/pytest-temp*/
+zjus-backend/release-health-temp/
+zjus-backend/.tmp/
 zjus-backend/.pytest_cache/
 zjus-backend/.pytest-basetemp-run/
 zjus-backend/.pytest-tmp/

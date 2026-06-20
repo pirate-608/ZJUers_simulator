@@ -7,6 +7,7 @@ from redis import asyncio as aioredis
 
 from app.api.cache import RedisCache
 from app.core.config import settings
+from app.game.stat_definitions import stat_definitions
 from app.schemas.dingtalk import DingTalkState
 from app.schemas.game_state import GameStateSnapshot
 
@@ -51,23 +52,9 @@ class RedisRepository:
         int_fields = {
             "semester_idx",
             "semester_start_time",
-            "energy",
-            "sanity",
-            "stress",
-            "iq",
-            "eq",
-            "luck",
-            "charm",
-            "reputation",
-            "efficiency",
-            "gold",
-            "initial_iq",
-            "initial_eq",
-            "initial_luck",
-            "initial_charm",
             "elapsed_game_time",
             "exam_completed",
-        }
+        } | stat_definitions.redis_int_fields
         str_fields = {
             "username",
             "major",

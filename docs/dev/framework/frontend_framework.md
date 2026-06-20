@@ -23,6 +23,8 @@ zjus-frontend/src/
 │   └── gameStore.ts         # Pinia 全局状态
 ├── composables/
 │   └── useGameWebSocket.ts  # WebSocket 连接、鉴权、消息分发
+├── data/
+│   └── statDefinitions.generated.ts # 从后端属性定义生成的前端元数据
 └── components/
     ├── PrologueScene.vue    # 首次访问登录前序章
     ├── LoginView.vue        # 邀请码登录 + 自定义通用/RP 模型配置
@@ -128,10 +130,9 @@ graph TD
 ### `CharacterCreate.vue`
 
 - 调 `fetchMajors()` 展示专业。
-- `IQ` / `EQ` / `Luck` / `魅力` 四个 slider：
-  - 每项范围 50-150。
-  - 总和必须等于 300。
-- 调 `initCharacter()` 后设置 `game_started=1` 并进入 `loading`。
+- 从 `statDefinitions.generated.ts` 读取 `allocatable=true` 的属性并动态渲染 slider。
+- 当前可分配属性为 `IQ` / `EQ` / `Luck` / `魅力`，每项范围 50-150，总和必须等于 300。
+- 调 `initCharacter()` 时推荐提交 `stats` 映射，同时保留旧显式字段兼容；成功后设置 `game_started=1` 并进入 `loading`。
 
 ### `RightPanel.vue`
 

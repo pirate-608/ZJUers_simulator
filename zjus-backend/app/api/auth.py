@@ -1,5 +1,5 @@
 import secrets
-from typing import Annotated, List, Optional
+from typing import Annotated, Dict, List, Optional
 
 from fastapi import APIRouter, Depends, Header, HTTPException
 from jose import JWTError, jwt
@@ -12,6 +12,7 @@ from app.api.cache import RedisCache
 from app.core.config import settings
 from app.core.input_safety import validate_username
 from app.core.security import create_access_token
+from app.game.stat_definitions import stat_definitions
 from app.game.state import RedisState
 from app.models.user import User
 from app.repositories.redis_repo import RedisRepository
@@ -70,6 +71,7 @@ class InitCharacterRequest(BaseModel):
     eq: int = 100
     luck: int = 50
     charm: int = 50
+    stats: Optional[Dict[str, int]] = None
 
 
 class CourseOption(BaseModel):
@@ -103,19 +105,29 @@ def _validate_invite_code(code: str) -> bool:
     return any(secrets.compare_digest(candidate, valid_code) for valid_code in codes)
 
 
+def _initial_stats_from_request(req: InitCharacterRequest) -> Dict[str, int]:
+    raw_stats = req.stats
+    allow_missing = False
+    if raw_stats is None:
+        raw_stats = {
+            stat.id: getattr(req, stat.id, stat.default)
+            for stat in stat_definitions.allocatable
+        }
+        allow_missing = True
+    try:
+        return stat_definitions.normalize_initial_allocations(
+            raw_stats,
+            allow_missing=allow_missing,
+        )
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=422,
+            detail=str(exc),
+        ) from exc
+
+
 def _validate_initial_stats(req: InitCharacterRequest):
-    stats = {"iq": req.iq, "eq": req.eq, "luck": req.luck, "charm": req.charm}
-    invalid = [name for name, value in stats.items() if value < 50 or value > 150]
-    if invalid:
-        raise HTTPException(
-            status_code=422,
-            detail="IQ/EQ/Luck/魅力 必须都在 50 到 150 之间",
-        )
-    if sum(stats.values()) != 300:
-        raise HTTPException(
-            status_code=422,
-            detail="IQ/EQ/Luck/魅力 初始总点数必须等于 300",
-        )
+    _initial_stats_from_request(req)
 
 
 # ─── 路由 ───
@@ -213,7 +225,7 @@ async def get_majors():
 @router.post("/init_character", response_model=InitCharacterResponse)
 async def init_character(req: InitCharacterRequest, db: DbSessionDep):
     """初始化角色：选择专业并分配初始属性"""
-    _validate_initial_stats(req)
+    stat_overrides = _initial_stats_from_request(req)
     # 解码 JWT
     try:
         payload = jwt.decode(
@@ -252,8 +264,6 @@ async def init_character(req: InitCharacterRequest, db: DbSessionDep):
     redis_client = RedisCache.get_client()
     repo = RedisRepository(user_id, redis_client)
     game_service = GameService(str(user_id), repo, world)
-
-    stat_overrides = {"iq": req.iq, "eq": req.eq, "luck": req.luck, "charm": req.charm}
 
     result = await game_service.assign_major_and_init(
         major_abbr=req.major_abbr,

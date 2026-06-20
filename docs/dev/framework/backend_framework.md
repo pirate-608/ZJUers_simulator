@@ -39,6 +39,7 @@ zjus-backend/app/
 │   ├── engine.py            # Tick 循环 + 动作处理
 │   ├── balance.py           # 数值配置
 │   ├── items.py             # 道具目录、经济与持有加成
+│   ├── stat_definitions.py  # 属性定义注册表
 │   └── state.py             # RedisState 兼容门面
 └── websockets/
     └── manager.py           # 连接管理 + 心跳
@@ -114,9 +115,10 @@ graph TD
 ### `POST /api/init_character`
 
 - 解 JWT，检查账号限制。
-- 校验 `IQ` / `EQ` / `Luck` / `魅力`：
-  - 每项 `50-150`。
+- 校验 `world/stat_definitions.json` 中 `allocatable=true` 的初始属性：
+  - 当前为 `IQ` / `EQ` / `Luck` / `魅力`，每项 `50-150`。
   - 总和 `300`。
+  - 推荐请求体使用 `stats` 映射；旧显式字段保留兼容。
 - 调 `GameService.assign_major_and_init()` 初始化 Redis 状态。
 - 专业 IQ 增益在服务层叠加，保留当前设计。
 
@@ -232,7 +234,7 @@ graph TD
 
 - `economy.initial_gold` 控制新玩家初始金币。
 - `economy.exam_income` 控制期末结算金币收入。
-- `items[].effects` 只允许影响 `energy` / `sanity` / `stress` / `iq` / `eq` / `luck` / `charm` / `reputation` / `efficiency`。
+- `items[].effects` 只允许影响 `world/stat_definitions.json` 中 `allow_item_effect=true` 的属性。
 - v1 每个 `item_id` 同一时间最多拥有一件；支持出售，`sell_price` 缺省为原价 50%。
 
 道具为持有即生效的被动加成。基础属性仍保存在 Redis `stats` 中；`GameEngine` 读取时通过 `ItemCatalog.apply_bonuses_to_stats()` 生成 effective stats，并在推送给前端时附带 `item_bonuses`。这样保存、重登或出售不会造成加成重复写入。
@@ -246,7 +248,7 @@ graph TD
 - 事件/CC98：优先本地预构建 JSON 库；库文件由 `scripts/generate_content_library.py` 通过 OpenAI-compatible `chat/completions` 离线生成，可接云端模型或本地 Ollama `/v1`。
 - 钉钉：默认优先角色向量检索 + M2-her；玩家提供 `custom_rp_api_key` 时使用玩家 MiniMax key；玩家只提供通用自定义 LLM 时跳过平台默认 M2-her 并回退到通用 LLM。
 - 钉钉私聊状态保存在 Redis，并随存档写入 `game_saves.dingtalk_data`；学期切换不会清空联系人或历史。
-- 钉钉联系人由 `events.dingtalk.max_contacts` 限制，默认 12 位；新消息会按 `reuse_closed_contact_probability` 优先复用已关闭轮次的联系人，compact 时不能删除仍有打开轮次的联系人。
+- 钉钉联系人由 `events.dingtalk.max_contacts` 限制，默认 12 位；新消息生成前只应用一次 `reuse_closed_contact_probability` 来决定是否复用已关闭轮次的联系人，复用选择偏向较久未活跃联系人；compact 时不能删除仍有打开轮次的联系人。
 - 文言文结业总结：仍使用 LLM。
 
 Docker 启动顺序：
@@ -304,6 +306,18 @@ cd zjus-frontend
 ```
 
 `api.generated.ts` 是生成的契约类型来源，不手写修改；`client.ts` 是手写请求封装。
+
+## 属性与世界数据校验
+
+`world/stat_definitions.json` 是属性事实源。新增可分配属性、道具效果字段或事件效果字段时，先更新该文件，再运行：
+
+```powershell
+cd zjus-backend
+..\.venv\Scripts\python.exe scripts\sync_stat_definitions.py --write
+..\.venv\Scripts\python.exe scripts\validate_world_data.py
+```
+
+`sync_stat_definitions.py` 会生成前端属性元数据；`validate_world_data.py` 会检查属性定义、道具 effects、事件库 effects 和生成文件同步状态。需要新增属性模板时可先运行 `scripts\scaffold_game_stat.py add <stat_id>` 查看模板和复核清单。
 
 ---
 

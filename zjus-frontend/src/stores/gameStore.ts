@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import { computed, ref, reactive } from 'vue'
+import { STAT_DEFINITIONS } from '@/data/statDefinitions.generated'
 import type { GamePhase, PlayerStats } from '../types/game'
 import type { CoursesMap, CourseMetadata, CourseProgressUpdate } from '../types/course'
 import type { GameItem, ItemsState } from '../types/items'
@@ -36,6 +37,9 @@ type EventLog = {
 
 const CONSOLE_THEME_STORAGE_KEY = 'zjus_console_theme'
 const CONSOLE_THEMES: ConsoleTheme[] = ['lantian', 'yunfeng', 'danqing']
+const DEFAULT_STAT_VALUES = Object.fromEntries(
+  STAT_DEFINITIONS.map((stat) => [stat.id, stat.default]),
+) as Record<string, number>
 
 function isConsoleTheme(value: unknown): value is ConsoleTheme {
   return typeof value === 'string' && CONSOLE_THEMES.includes(value as ConsoleTheme)
@@ -91,6 +95,7 @@ export const useGameStore = defineStore('game', () => {
 
   // 🌟 修复：使用 reactive 初始化，确保所有后端可能发来的核心属性都是响应式的！
   const currentStats = reactive<PlayerStats>({
+    ...DEFAULT_STAT_VALUES,
     username: '',
     major: '',
     major_abbr: '',

@@ -205,6 +205,10 @@ export interface components {
              * @default 50
              */
             charm: number;
+            /** Stats */
+            stats?: {
+                [key: string]: number;
+            } | null;
         };
         /** InitCharacterResponse */
         InitCharacterResponse: {

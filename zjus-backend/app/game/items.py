@@ -6,19 +6,9 @@ import time
 from pathlib import Path
 from typing import Any
 
-logger = logging.getLogger(__name__)
+from app.game.stat_definitions import stat_definitions
 
-ALLOWED_ITEM_EFFECTS = {
-    "energy",
-    "sanity",
-    "stress",
-    "iq",
-    "eq",
-    "luck",
-    "charm",
-    "reputation",
-    "efficiency",
-}
+logger = logging.getLogger(__name__)
 
 
 class ItemCatalog:
@@ -130,7 +120,7 @@ class ItemCatalog:
             if not isinstance(effects, dict):
                 continue
             for field, value in effects.items():
-                if field not in ALLOWED_ITEM_EFFECTS:
+                if field not in stat_definitions.item_effect_fields:
                     continue
                 delta = self._to_int(value, 0, minimum=-50, maximum=50)
                 if delta:
@@ -246,7 +236,7 @@ class ItemCatalog:
         effects = effects if isinstance(effects, dict) else {}
         normalized_effects: dict[str, int] = {}
         for field, raw_delta in effects.items():
-            if field not in ALLOWED_ITEM_EFFECTS:
+            if field not in stat_definitions.item_effect_fields:
                 raise ValueError(f"unsupported item effect field: {field}")
             delta = self._to_int(raw_delta, 0, minimum=-50, maximum=50)
             if delta:
@@ -310,17 +300,7 @@ class ItemCatalog:
 
     @staticmethod
     def _clamp_effective_stat(field: str, value: float) -> int | float:
-        bounded_fields = {
-            "energy",
-            "sanity",
-            "stress",
-            "iq",
-            "eq",
-            "luck",
-            "charm",
-            "reputation",
-            "efficiency",
-        }
+        bounded_fields = stat_definitions.item_effect_fields
         if field in bounded_fields:
             return int(max(0, min(300, round(value))))
         return value

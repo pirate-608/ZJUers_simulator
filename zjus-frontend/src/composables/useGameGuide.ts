@@ -2,6 +2,7 @@ import { driver } from 'driver.js'
 import 'driver.js/dist/driver.css'
 import { useGameStore } from '@/stores/gameStore'
 import type { WsClientAction } from '@/types/websocket'
+import { statLabel } from '@/utils/statDisplay'
 
 const GUIDE_FLAG = 'zjus_guide_shown'
 
@@ -12,6 +13,11 @@ interface GuideStep {
   side?: 'top' | 'bottom' | 'left' | 'right'
   align?: 'start' | 'center' | 'end'
 }
+
+const coreStateLabels = ['energy', 'sanity', 'stress'].map(statLabel).join('、')
+const learningStatLabel = statLabel('iq')
+const efficiencyStatLabel = statLabel('efficiency')
+const socialStatLabels = [statLabel('eq'), statLabel('charm')].join(' 与 ')
 
 const STEPS: GuideStep[] = [
   {
@@ -26,7 +32,7 @@ const STEPS: GuideStep[] = [
     element: '#hud-bars',
     title: '⚡ 核心状态条',
     description:
-      '精力、心态、压力是三大核心状态。IQ 影响学习效率，EQ 与魅力影响社交互动，GPA 决定你的学业成绩。时刻关注这些数值，精力或心态归零游戏即告结束。',
+      `${coreStateLabels}是三大核心状态。${learningStatLabel} 影响${efficiencyStatLabel}，${socialStatLabels}影响社交互动，GPA 决定你的学业成绩。时刻关注这些数值，${statLabel('energy')}或${statLabel('sanity')}归零游戏即告结束。`,
     side: 'bottom',
     align: 'center',
   },

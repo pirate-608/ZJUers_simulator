@@ -260,8 +260,17 @@ class RedisRepository:
             await pipe.execute()
 
     async def update_stat_safe(
-        self, field: str, delta: int, min_val: int = 0, max_val: int = 200
+        self,
+        field: str,
+        delta: int,
+        min_val: int | None = None,
+        max_val: int | None = None,
     ) -> int:
+        definition = stat_definitions.by_id.get(field)
+        if min_val is None:
+            min_val = definition.min if definition else 0
+        if max_val is None:
+            max_val = definition.max if definition else 200
         script = """
         local current = tonumber(redis.call('HGET', KEYS[1], ARGV[1]) or 0)
         local delta = tonumber(ARGV[2])

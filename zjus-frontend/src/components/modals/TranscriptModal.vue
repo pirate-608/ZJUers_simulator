@@ -39,7 +39,7 @@
               奖学金 / 兼职收入
             </div>
             <div class="fs-2 fw-bold text-warning">
-              +{{ data.gold_earned ?? 0 }} 💰
+              +{{ data.gold_earned ?? 0 }} {{ statIcon('gold') }}
             </div>
           </div>
         </div>
@@ -133,6 +133,7 @@ import { computed } from 'vue'
 import { useGameStore } from '../../stores/gameStore.ts'
 import type { WsClientAction } from '@/types/websocket'
 import type { TranscriptModalData, TranscriptModalCourseRow } from '@/types/modal'
+import { statIcon } from '@/utils/statDisplay'
 
 const store = useGameStore()
 const emit = defineEmits<{

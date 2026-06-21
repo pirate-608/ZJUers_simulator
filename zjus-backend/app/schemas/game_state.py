@@ -25,6 +25,10 @@ def _to_str(value: Any, default: str = "") -> str:
     return str(value)
 
 
+def _stat_default(stat_id: str) -> int:
+    return stat_definitions.by_id[stat_id].default
+
+
 class PlayerStats(BaseModel):
     model_config = ConfigDict(extra="allow")
 
@@ -34,20 +38,20 @@ class PlayerStats(BaseModel):
     semester: str = ""
     semester_idx: int = 1
     semester_start_time: int = 0
-    energy: int = 0
-    sanity: int = 0
-    stress: int = 0
-    iq: int = 0
-    eq: int = 0
-    luck: int = 0
-    charm: int = 0
+    energy: int = _stat_default("energy")
+    sanity: int = _stat_default("sanity")
+    stress: int = _stat_default("stress")
+    iq: int = _stat_default("iq")
+    eq: int = _stat_default("eq")
+    luck: int = _stat_default("luck")
+    charm: int = _stat_default("charm")
     gpa: str = "0.0"
     highest_gpa: str = "0.0"
     gpa_points_total: str = "0.0"
     gpa_credits_total: str = "0.0"
-    reputation: int = 0
-    efficiency: int = 100
-    gold: int = 0
+    reputation: int = _stat_default("reputation")
+    efficiency: int = _stat_default("efficiency")
+    gold: int = _stat_default("gold")
     initial_major_abbr: str = ""
     initial_iq: int = 0
     initial_eq: int = 0
@@ -83,20 +87,20 @@ class PlayerStats(BaseModel):
             semester=_to_str(raw.get("semester"), ""),
             semester_idx=_to_int(raw.get("semester_idx"), 1),
             semester_start_time=_to_int(raw.get("semester_start_time"), 0),
-            energy=_to_int(raw.get("energy"), defaults.get("energy", 0)),
-            sanity=_to_int(raw.get("sanity"), defaults.get("sanity", 0)),
-            stress=_to_int(raw.get("stress"), defaults.get("stress", 0)),
-            iq=_to_int(raw.get("iq"), defaults.get("iq", 0)),
-            eq=_to_int(raw.get("eq"), defaults.get("eq", 0)),
-            luck=_to_int(raw.get("luck"), defaults.get("luck", 0)),
-            charm=_to_int(raw.get("charm"), defaults.get("charm", 50)),
+            energy=_to_int(raw.get("energy"), defaults["energy"]),
+            sanity=_to_int(raw.get("sanity"), defaults["sanity"]),
+            stress=_to_int(raw.get("stress"), defaults["stress"]),
+            iq=_to_int(raw.get("iq"), defaults["iq"]),
+            eq=_to_int(raw.get("eq"), defaults["eq"]),
+            luck=_to_int(raw.get("luck"), defaults["luck"]),
+            charm=_to_int(raw.get("charm"), defaults["charm"]),
             gpa=_to_str(raw.get("gpa"), "0.0"),
             highest_gpa=_to_str(raw.get("highest_gpa"), "0.0"),
             gpa_points_total=_to_str(raw.get("gpa_points_total"), "0.0"),
             gpa_credits_total=_to_str(raw.get("gpa_credits_total"), "0.0"),
-            reputation=_to_int(raw.get("reputation"), 0),
-            efficiency=_to_int(raw.get("efficiency"), 100),
-            gold=_to_int(raw.get("gold"), 0),
+            reputation=_to_int(raw.get("reputation"), defaults["reputation"]),
+            efficiency=_to_int(raw.get("efficiency"), defaults["efficiency"]),
+            gold=_to_int(raw.get("gold"), defaults["gold"]),
             initial_major_abbr=_to_str(raw.get("initial_major_abbr"), ""),
             initial_iq=_to_int(
                 raw.get("initial_iq"), initial_defaults.get("initial_iq", 0)
@@ -121,12 +125,12 @@ class PlayerStats(BaseModel):
     def build_initial(cls, username: str = "", **overrides) -> "PlayerStats":
         """全局唯一的玩家初始状态工厂方法（Single Source of Truth）"""
         import time as _time
-        defaults = stat_definitions.default_stats()
+        stat_defaults = stat_definitions.default_stats()
         initial_defaults = stat_definitions.initial_field_defaults()
         explicit_fields = set(cls.model_fields)
         extra_stats = {
             stat_id: value
-            for stat_id, value in defaults.items()
+            for stat_id, value in stat_defaults.items()
             if stat_id not in explicit_fields
         }
         extra_stats.update(
@@ -144,20 +148,20 @@ class PlayerStats(BaseModel):
             semester="大一秋冬",
             semester_idx=1,
             semester_start_time=int(_time.time()),
-            energy=defaults.get("energy", 100),
-            sanity=defaults.get("sanity", 80),
-            stress=defaults.get("stress", 0),
-            iq=defaults.get("iq", 100),
-            eq=defaults.get("eq", 100),
-            luck=defaults.get("luck", 50),
-            charm=defaults.get("charm", 50),
+            energy=stat_defaults["energy"],
+            sanity=stat_defaults["sanity"],
+            stress=stat_defaults["stress"],
+            iq=stat_defaults["iq"],
+            eq=stat_defaults["eq"],
+            luck=stat_defaults["luck"],
+            charm=stat_defaults["charm"],
             gpa="0.0",
             highest_gpa="0.0",
             gpa_points_total="0.0",
             gpa_credits_total="0.0",
-            reputation=0,
-            efficiency=100,
-            gold=0,
+            reputation=stat_defaults["reputation"],
+            efficiency=stat_defaults["efficiency"],
+            gold=stat_defaults["gold"],
             initial_major_abbr="",
             initial_iq=0,
             initial_eq=0,

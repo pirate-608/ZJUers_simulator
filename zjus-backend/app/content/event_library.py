@@ -10,6 +10,8 @@ import random
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Set
 
+from app.game.stat_definitions import stat_definitions
+
 logger = logging.getLogger(__name__)
 
 # ============================================================
@@ -32,6 +34,15 @@ def _world_dir() -> Path:
 _event_library: List[Dict[str, Any]] = []
 
 
+def _stat_default(stat_id: str) -> int:
+    return stat_definitions.by_id[stat_id].default
+
+
+def _stat_range(stat_id: str) -> list[int]:
+    definition = stat_definitions.by_id[stat_id]
+    return [definition.min, definition.max]
+
+
 def _load_event_library() -> List[Dict[str, Any]]:
     global _event_library
     if _event_library:
@@ -50,8 +61,8 @@ def _load_event_library() -> List[Dict[str, Any]]:
 
 
 def pick_random_event(
-    sanity: int = 50,
-    stress: int = 0,
+    sanity: int | None = None,
+    stress: int | None = None,
     seen_ids: Optional[Set[str]] = None,
 ) -> Optional[Dict[str, Any]]:
     """
@@ -64,13 +75,15 @@ def pick_random_event(
     if not library:
         return None
 
+    sanity = _stat_default("sanity") if sanity is None else sanity
+    stress = _stat_default("stress") if stress is None else stress
     seen = seen_ids or set()
     candidates = []
     for evt in library:
         if evt.get("id") in seen:
             continue
-        sr = evt.get("sanity_range", [0, 200])
-        tr = evt.get("stress_range", [0, 200])
+        sr = evt.get("sanity_range", _stat_range("sanity"))
+        tr = evt.get("stress_range", _stat_range("stress"))
         if sr[0] <= sanity <= sr[1] and tr[0] <= stress <= tr[1]:
             candidates.append(evt)
 

@@ -2,7 +2,7 @@
 
 配置来源：`world/stat_definitions.json`。
 
-该文件是游戏属性的单一事实源，用来减少新增属性或道具效果时的重复手工修改。后端从这里读取属性默认值、初始分配规则、效果白名单和展示标签；前端属性元数据由脚本同步生成。
+该文件是游戏属性的单一事实源，用来减少新增属性或道具效果时的重复手工修改。后端从这里读取属性默认值、初始分配规则、效果白名单、数值 clamp 范围和展示标签；前端属性元数据由脚本同步生成。
 
 ## 当前属性
 
@@ -32,3 +32,9 @@ cd zjus-backend
 如果新增的是可初始分配属性，还需要通过 Docker Compose 后端重新生成 OpenAPI 类型，并补充角色创建页测试。
 
 普通道具新增只需要改 `world/items.json` 并跑 `validate_world_data.py`；道具 `effects` 字段必须出现在属性定义中且 `allow_item_effect=true`。
+
+## 运行时消费
+
+- 后端 `PlayerStats` 初始值、Redis `update_stat_safe()`、道具 effective stats、事件库检索、钉钉/LLM 上下文都会读取该定义。
+- 前端 `CharacterCreate.vue`、`HudBar.vue`、`RightPanel.vue`、`MidPanel.vue`、`EndScreen.vue` 和新手引导文案通过 `src/data/statDefinitions.generated.ts` 或 `src/utils/statDisplay.ts` 获取展示信息。
+- 组件中不应重新写死属性中文名、默认值或范围；如果页面显示不符合设定，优先检查生成文件是否同步。

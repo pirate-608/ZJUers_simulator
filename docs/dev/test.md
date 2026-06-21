@@ -29,6 +29,7 @@ cd zjus-backend
 - `src/stores/gameStore.spec.ts`：钉钉联系人状态恢复、未读数、本地已读更新和成就详情归一化。
 - `src/stores/gameStore.spec.ts`：道具目录、已拥有道具和持有加成的状态恢复。
 - `src/components/CharacterCreate.spec.js`：属性定义元数据驱动的角色创建表单和 `stats` map 提交。
+- `src/components/HudBar.spec.js`：HUD 标签、默认值、上限和进度条宽度读取生成的属性元数据。
 - `src/components/MidPanel.spec.js`：钉钉回复锁定、道具搜索、购买/出售和暂停锁定。
 - `src/components/EndScreen.spec.js`：Game Over / 毕业页的重开与回首页入口。
 

@@ -127,6 +127,7 @@ Frontend:
 - `zjus-frontend/src/components/LoginView.vue`: Invite-code login, plus session-scoped custom general LLM config and an optional custom RP MiniMax API key for DingTalk M2-her.
 - `zjus-frontend/src/components/SaveSelect.vue`: returning-user save selection or new game.
 - `zjus-frontend/src/data/statDefinitions.generated.ts`: generated stat metadata from backend world data; regenerate via `scripts/sync_stat_definitions.py --write`.
+- `zjus-frontend/src/utils/statDisplay.ts`: shared frontend helper for stat labels, icons, defaults, min/max ranges, values, and progress percentages.
 - `zjus-frontend/src/components/CharacterCreate.vue`: major selection and stat budget UI driven by generated stat metadata.
 - `zjus-frontend/src/composables/useGameWebSocket.ts`: auth handshake, heartbeat, message dispatch.
 - `zjus-frontend/src/stores/gameStore.ts`: global game state, feedback modal, pause/guide flags, cooldowns.
@@ -157,6 +158,8 @@ Character creation:
 - The client and server both enforce `initial_budget` from the stat registry, currently 300.
 - `POST /api/init_character` accepts the preferred `stats` map plus legacy `iq`/`eq`/`luck`/`charm` fields for compatibility.
 - Major IQ bonus is added after the base-budget check and is intentionally retained.
+- Frontend stat display must read labels/defaults/caps from `statDefinitions.generated.ts` or `statDisplay.ts`; do not hardcode stat labels such as `金币`/`魅力` or numeric caps such as `100`/`200` inside components.
+- Backend stat defaults and clamps should use `stat_definitions`: `PlayerStats`, `RedisRepository.update_stat_safe()`, item effective stats, event library filtering, and LLM/DingTalk context all consume the registry.
 
 Returning users:
 

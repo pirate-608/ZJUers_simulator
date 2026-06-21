@@ -69,6 +69,18 @@ class GameEngine:
         "gpa": "GPA",
     }
 
+    @classmethod
+    def _stat_bounds(cls, field: str) -> tuple[int, int]:
+        definition = stat_definitions.by_id.get(field)
+        if definition is None:
+            return cls._BASE_STAT_MIN, cls._BASE_STAT_MAX
+        return definition.min, definition.max
+
+    @staticmethod
+    def _stat_default(field: str, fallback: int = 0) -> int:
+        definition = stat_definitions.by_id.get(field)
+        return definition.default if definition else fallback
+
     async def emit(self, event_type: str, data: dict, msg: str | None = None):
         if msg:
             await self.event_queue.put(
@@ -171,10 +183,7 @@ class GameEngine:
     ) -> dict[str, Any] | None:
         if delta == 0:
             return None
-        if field == "gold":
-            new_value = await self.repo.update_stat_safe(field, delta, 0, 999999)
-        else:
-            new_value = await self.repo.update_stat_safe(field, delta)
+        new_value = await self.repo.update_stat_safe(field, delta)
         return self._feedback_change(field, delta, new_value)
 
     def _positive_relax_overflow_units(
@@ -205,12 +214,8 @@ class GameEngine:
         if delta == 0:
             return 0
         current_value = self._safe_int(base_stats.get(field))
-        new_value = await self.repo.update_stat_safe(
-            field,
-            delta,
-            self._BASE_STAT_MIN,
-            self._BASE_STAT_MAX,
-        )
+        min_value, max_value = self._stat_bounds(field)
+        new_value = await self.repo.update_stat_safe(field, delta, min_value, max_value)
         actual_delta = int(new_value) - current_value
         base_stats[field] = int(new_value)
         if actual_delta:
@@ -229,7 +234,8 @@ class GameEngine:
             if remaining <= 0:
                 break
             current_value = self._safe_int(base_stats.get(field))
-            room = max(0, self._BASE_STAT_MAX - current_value)
+            min_value, max_value = self._stat_bounds(field)
+            room = max(0, max_value - current_value)
             if room <= 0:
                 continue
             field_cap = remaining
@@ -244,8 +250,8 @@ class GameEngine:
             new_value = await self.repo.update_stat_safe(
                 field,
                 delta,
-                self._BASE_STAT_MIN,
-                self._BASE_STAT_MAX,
+                min_value,
+                max_value,
             )
             actual_delta = int(new_value) - current_value
             base_stats[field] = int(new_value)
@@ -761,9 +767,9 @@ class GameEngine:
         if not stats:
             return False
         try:
-            # 使用 get(..., 100) 确保即便 Key 不存在也能逻辑运行
-            sanity = int(stats.get("sanity", 100))
-            energy = int(stats.get("energy", 100))
+            # 使用 registry 默认值确保即便 Key 不存在也能逻辑运行
+            sanity = int(stats.get("sanity", self._stat_default("sanity")))
+            energy = int(stats.get("energy", self._stat_default("energy")))
 
             reason = ""
             if sanity <= 0:
@@ -949,11 +955,12 @@ class GameEngine:
                         state_val, self.COURSE_STATE_COEFFS[1]
                     )
                     # A. 计算擅长度增量
-                    iq_buff = (int(stats.get("iq", 100)) - 100) * 0.01
+                    iq_default = self._stat_default("iq")
+                    iq_buff = (int(stats.get("iq", iq_default)) - iq_default) * 0.01
                     # 仅在摸/卷状态下引入心态压力修正
                     if state_val in (1, 2):
-                        sanity = int(stats.get("sanity", 80))
-                        stress = int(stats.get("stress", 40))
+                        sanity = int(stats.get("sanity", self._stat_default("sanity")))
+                        stress = int(stats.get("stress", self._stat_default("stress")))
                         factor = self._sanity_stress_growth_factor(sanity, stress)
                     else:
                         factor = 1.0
@@ -1272,16 +1279,17 @@ class GameEngine:
             snapshot = await self.repo.get_snapshot()
             current_gold = int(snapshot.stats.gold or 0)
             if current_gold < price:
+                gold_label = self._FEEDBACK_FIELD_LABELS.get("gold", "gold")
                 await self.emit(
                     "toast",
                     {
-                        "message": f"金币不足，还差 {price - current_gold} 枚",
+                        "message": f"{gold_label}不足，还差 {price - current_gold} 枚",
                         "level": "warning",
                     },
                 )
                 return
 
-            gold_after = await self.repo.update_stat_safe("gold", -price, 0, 999999)
+            gold_after = await self.repo.update_stat_safe("gold", -price)
             await self.repo.set_items_state(new_state)
 
         changes = [self._feedback_change("gold", -price, gold_after)]
@@ -1320,9 +1328,7 @@ class GameEngine:
                 return
 
             sell_price = int(item.get("sell_price", 0) or 0)
-            gold_after = await self.repo.update_stat_safe(
-                "gold", sell_price, 0, 999999
-            )
+            gold_after = await self.repo.update_stat_safe("gold", sell_price)
             await self.repo.set_items_state(new_state)
 
         changes = [self._feedback_change("gold", sell_price, gold_after)]
@@ -1368,18 +1374,19 @@ class GameEngine:
         total_credits, total_gp, failed_count = 0, 0, 0
         courses_result = []  # 前端 TranscriptModal 需要的 courses 数组
 
-        sanity = int(stats.get("sanity", 50))
-        luck = int(stats.get("luck", 50))
+        sanity = int(stats.get("sanity", self._stat_default("sanity")))
+        luck_default = self._stat_default("luck")
+        luck = int(stats.get("luck", luck_default))
 
         for course in course_info:
             c_id = str(course.get("id"))
             mastery = float(course_mastery.get(c_id, 0))
             credits = float(course.get("credits", 1))
             # 考试表现计算公式：擅长度占大头，心态和运气波动
-            sanity = int(stats.get("sanity", 50))
-            stress = int(stats.get("stress", 40))
+            sanity = int(stats.get("sanity", self._stat_default("sanity")))
+            stress = int(stats.get("stress", self._stat_default("stress")))
             exam_bonus = self._sanity_stress_exam_factor(sanity, stress)
-            luck_bonus = random.uniform(-2, 5) + (luck - 50) / 20
+            luck_bonus = random.uniform(-2, 5) + (luck - luck_default) / 20
             final_score = max(0, min(100, mastery * 0.9 + exam_bonus + luck_bonus + 10))
 
             # 5分制绩点计算：绩点 = 分数 / 10 - 5，最低0分
@@ -1423,7 +1430,7 @@ class GameEngine:
 
         gold_earned = items.calculate_exam_gold(term_gpa, failed_count)
         if gold_earned:
-            await self.repo.update_stat_safe("gold", gold_earned, 0, 999999)
+            await self.repo.update_stat_safe("gold", gold_earned)
 
         # gpa 作为当前累计 GPA 展示；highest_gpa 保留最高单学期 GPA。
         await self.repo.update_stats(
@@ -1777,15 +1784,15 @@ class GameEngine:
                         },
                     )
                     event_data = pick_random_event(
-                        sanity=int(stats.get("sanity", 50)),
-                        stress=int(stats.get("stress", 0)),
+                        sanity=int(stats.get("sanity", self._stat_default("sanity"))),
+                        stress=int(stats.get("stress", self._stat_default("stress"))),
                         seen_ids=set(history) if history else None,
                     )
             else:
                 # Hybrid / Library 模式：优先从预编译事件库检索（零 token 消耗）
                 event_data = pick_random_event(
-                    sanity=int(stats.get("sanity", 50)),
-                    stress=int(stats.get("stress", 0)),
+                    sanity=int(stats.get("sanity", self._stat_default("sanity"))),
+                    stress=int(stats.get("stress", self._stat_default("stress"))),
                     seen_ids=set(history) if history else None,
                 )
                 # Hybrid 模式下库耗尽时 fallback 到 LLM；Library 模式直接跳过
@@ -1919,8 +1926,8 @@ class GameEngine:
 
             # 简单的上下文判断逻辑
             context = "random"
-            sanity = int(stats.get("sanity", 50))
-            stress = int(stats.get("stress", 0))
+            sanity = int(stats.get("sanity", self._stat_default("sanity")))
+            stress = int(stats.get("stress", self._stat_default("stress")))
             gpa = float(stats.get("gpa", 0))
 
             if sanity < 30:
@@ -2208,17 +2215,23 @@ class GameEngine:
 
             # 新增：真正下发综合效率（用于前端渲染）
             # 基于 iq 和 stress 计算并存入将下发的 new_stats 中
-            iq = int(new_stats.get("iq", 100))
-            stress = int(new_stats.get("stress", 0))
+            iq_default = self._stat_default("iq")
+            efficiency_default = self._stat_default("efficiency")
+            iq = int(new_stats.get("iq", iq_default))
+            stress = int(new_stats.get("stress", self._stat_default("stress")))
             item_bonuses = new_stats.get("item_bonuses")
             efficiency_bonus = (
                 int(item_bonuses.get("efficiency", 0))
                 if isinstance(item_bonuses, dict)
                 else 0
             )
-            # 基准 100，每高出一点智商提高 1%，每多一点压力降低 0.5%
+            # 以配置默认效率/IQ 为基准：IQ 每高出一点提高 1%，压力每多一点降低 0.5%。
             calculated_efficiency = max(
-                10, 100 + (iq - 100) * 1 - int(stress * 0.5) + efficiency_bonus
+                10,
+                efficiency_default
+                + (iq - iq_default)
+                - int(stress * 0.5)
+                + efficiency_bonus,
             )
             new_stats["efficiency"] = calculated_efficiency
 
@@ -2279,8 +2292,8 @@ class GameEngine:
         self,
         value: Any,
         default: int,
-        minimum: int = 50,
-        maximum: int = 150,
+        minimum: int,
+        maximum: int,
     ) -> int:
         try:
             parsed = int(value)
@@ -2304,7 +2317,8 @@ class GameEngine:
                     logger.warning(
                         "Could not infer major IQ buff for restart: %s", exc
                     )
-            initial_iq = int(stats.get("iq", 100) or 100) - iq_buff
+            iq_default = stat_definitions.by_id["iq"].default
+            initial_iq = int(stats.get("iq", iq_default) or iq_default) - iq_buff
 
         overrides: dict[str, int] = {}
         for stat in stat_definitions.allocatable:

@@ -29,6 +29,23 @@ logger = logging.getLogger(__name__)
 def _allowed_effect_fields_prompt() -> str:
     return "/".join(sorted(stat_definitions.event_effect_fields))
 
+
+def _stat_value(stats: Dict[str, Any], stat_id: str) -> int:
+    definition = stat_definitions.by_id[stat_id]
+    try:
+        return int(stats.get(stat_id, definition.default))
+    except (TypeError, ValueError):
+        return definition.default
+
+
+def _stat_ratio(value: int, stat_id: str) -> float:
+    definition = stat_definitions.by_id[stat_id]
+    span = definition.max - definition.min
+    if span <= 0:
+        return 0.0
+    return max(0.0, min(1.0, (value - definition.min) / span))
+
+
 _M2HER_ALLOWED_ROLES = {
     "system",
     "user",
@@ -249,9 +266,13 @@ def _build_m2her_messages(
     username = safe_username_for_prompt(player_stats.get("username", "同学"))
     major = player_stats.get("major", "未知专业")
     semester = player_stats.get("semester", "大一秋冬")
-    stress = int(player_stats.get("stress", 0))
-    sanity = int(player_stats.get("sanity", 50))
-    charm = int(player_stats.get("charm", 50))
+    stress = _stat_value(player_stats, "stress")
+    sanity = _stat_value(player_stats, "sanity")
+    charm = _stat_value(player_stats, "charm")
+    stress_ratio = _stat_ratio(stress, "stress")
+    sanity_ratio = _stat_ratio(sanity, "sanity")
+    charm_ratio = _stat_ratio(charm, "charm")
+    charm_label = stat_definitions.by_id["charm"].label
 
     messages = []
 
@@ -264,15 +285,15 @@ def _build_m2her_messages(
     # 2. user_system — 玩家身份/状态
     player_desc = (
         f"你是一位浙江大学{major}专业的学生，名叫{username}，"
-        f"目前处于{semester}，魅力值约为{charm}。"
+        f"目前处于{semester}，{charm_label}值约为{charm}。"
     )
-    if stress > 70:
+    if stress_ratio > 0.35:
         player_desc += "你最近压力很大，看起来很疲惫。"
-    elif sanity < 30:
+    elif sanity_ratio < 0.15:
         player_desc += "你最近心态不太好，情绪低落。"
-    if charm >= 110:
+    if charm_ratio >= 0.6:
         player_desc += "你在人际互动中很有亲和力。"
-    elif charm <= 60:
+    elif charm_ratio <= 0.1:
         player_desc += "你最近在社交表达上稍显拘谨。"
 
     messages.append({

@@ -207,7 +207,7 @@
               Backpack
             </div>
             <div class="item-gold">
-              金币 {{ goldAmount }}
+              {{ statLabel('gold') }} {{ goldAmount }}
             </div>
           </div>
           <input
@@ -284,7 +284,7 @@
             </div>
             <div class="item-card-action">
               <div class="item-price">
-                {{ isItemOwned(item.id) ? `回收 ${item.sell_price}` : `${item.price} 金币` }}
+                {{ isItemOwned(item.id) ? `回收 ${item.sell_price}` : `${item.price} ${statLabel('gold')}` }}
               </div>
               <button
                 type="button"
@@ -322,10 +322,10 @@
 <script setup lang="ts">
 import { computed, nextTick, ref, watch } from 'vue'
 import { useGameStore } from '../stores/gameStore.ts'
-import { STAT_META_BY_ID } from '@/data/statDefinitions.generated'
 import type { GameItem } from '@/types/items'
 import type { DingTalkContact } from '@/types/modal'
 import type { WsClientAction } from '@/types/websocket'
+import { statLabel, statValue } from '@/utils/statDisplay'
 
 const emit = defineEmits<{
   'send-action': [payload: WsClientAction]
@@ -346,7 +346,7 @@ const activeContact = computed(() => (
   activeContactId.value ? store.dingtalkContacts[activeContactId.value] : null
 ))
 
-const goldAmount = computed(() => Math.floor(Number(store.currentStats.gold ?? 0) || 0))
+const goldAmount = computed(() => Math.floor(statValue(store.currentStats, 'gold')))
 
 const ownedItemIds = computed(() => new Set(store.ownedItems))
 
@@ -355,7 +355,7 @@ const bonusRows = computed(() => (
     .filter(([, delta]) => Number.isFinite(Number(delta)) && Number(delta) !== 0)
     .map(([field, delta]) => ({
       field,
-      label: STAT_META_BY_ID[field]?.label || field,
+      label: statLabel(field),
       delta: Number(delta),
     }))
 ))
@@ -436,7 +436,7 @@ function itemEffectRows(item: GameItem) {
     .filter(([, delta]) => Number(delta) !== 0)
     .map(([field, delta]) => ({
       field,
-      label: STAT_META_BY_ID[field]?.label || field,
+      label: statLabel(field),
       delta: Number(delta),
     }))
 }
@@ -453,8 +453,8 @@ function itemActionDisabled(item: GameItem): boolean {
 
 function itemActionTitle(item: GameItem): string {
   if (store.isPaused) return '游戏暂停中，暂不能买卖道具'
-  if (isItemOwned(item.id)) return `出售后回收 ${item.sell_price} 金币`
-  if (goldAmount.value < item.price) return `金币不足，还差 ${item.price - goldAmount.value} 枚`
+  if (isItemOwned(item.id)) return `出售后回收 ${item.sell_price} ${statLabel('gold')}`
+  if (goldAmount.value < item.price) return `${statLabel('gold')}不足，还差 ${item.price - goldAmount.value} 枚`
   return `购买 ${item.name}`
 }
 

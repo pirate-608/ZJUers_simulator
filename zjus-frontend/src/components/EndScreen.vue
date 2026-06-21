@@ -66,12 +66,12 @@
             <strong>{{ finalGpa.toFixed(2) }}</strong>
           </div>
           <div class="stat-tile">
-            <span>智商 / 情商 / 魅力</span>
-            <strong>{{ store.endData.iq ?? 100 }} / {{ store.endData.eq ?? 100 }} / {{ store.endData.charm ?? 50 }}</strong>
+            <span>{{ allocatableStatSummary.label }}</span>
+            <strong>{{ allocatableStatSummary.value }}</strong>
           </div>
           <div class="stat-tile">
-            <span>累计财富</span>
-            <strong>{{ store.endData.gold ?? 0 }} 金币</strong>
+            <span>累计{{ statLabel('gold') }}</span>
+            <strong>{{ endStatValue('gold') }} {{ statLabel('gold') }}</strong>
           </div>
           <div class="stat-tile">
             <span>解锁成就</span>
@@ -175,6 +175,12 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useGameStore } from '../stores/gameStore.ts'
 import type { WsClientAction } from '@/types/websocket'
+import { ALLOCATABLE_STATS } from '@/data/statDefinitions.generated'
+import {
+  statDefault,
+  statLabel,
+  safeNumber,
+} from '@/utils/statDisplay'
 
 const store = useGameStore()
 const emit = defineEmits<{
@@ -197,6 +203,19 @@ const achievements = computed(() => (
     ? store.endData.achievement_details
     : []
 ))
+const endStatValue = (field: string) => (
+  Math.floor(safeNumber(store.endData[field], statDefault(field)))
+)
+const allocatableStatSummary = computed(() => {
+  const rows = ALLOCATABLE_STATS.map((stat) => ({
+    label: stat.label,
+    value: endStatValue(stat.id),
+  }))
+  return {
+    label: rows.map((row) => row.label).join(' / '),
+    value: rows.map((row) => row.value).join(' / '),
+  }
+})
 
 const baseUrl = import.meta.env.BASE_URL || '/'
 const bgImages = [

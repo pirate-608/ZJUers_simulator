@@ -15,7 +15,7 @@
             <span
               class="text-muted"
               style="font-size: 0.8rem;"
-            >学习效率</span>
+            >{{ statLabel('efficiency') }}</span>
             <div
               class="small text-muted"
               style="font-size: 0.7rem;"
@@ -23,27 +23,17 @@
               {{ efficiencyHint }}
             </div>
           </div>
-          <span class="fw-bold text-primary fs-5">{{ store.currentStats.efficiency ?? 100 }}%</span>
+          <span class="fw-bold text-primary fs-5">{{ formatStatValue(store.currentStats, 'efficiency') }}%</span>
         </div>
 
         <div class="d-flex justify-content-around align-items-center pt-2 border-top mini-metrics">
           <div
+            v-for="stat in miniStats"
+            :key="stat.id"
             class="text-center"
-            title="运气影响随机事件的好坏"
+            :title="stat.title"
           >
-            <span class="fs-5">🍀</span> <span class="fw-bold small">{{ store.currentStats.luck ?? '--' }}</span>
-          </div>
-          <div
-            class="text-center"
-            title="风评影响部分课程和NPC互动"
-          >
-            <span class="fs-5">⭐</span> <span class="fw-bold small">{{ store.currentStats.reputation ?? 0 }}</span>
-          </div>
-          <div
-            class="text-center"
-            title="魅力影响部分社交互动和事件反馈"
-          >
-            <span class="fs-5">✨</span> <span class="fw-bold small">{{ store.currentStats.charm ?? 50 }}</span>
+            <span class="fs-5">{{ stat.icon }}</span> <span class="fw-bold small">{{ stat.value }}</span>
           </div>
         </div>
       </div>
@@ -197,6 +187,13 @@
 import { ref, watch, computed, onMounted, onUnmounted } from 'vue'
 import { useGameStore } from '../stores/gameStore.ts'
 import type { WsClientAction, RelaxTarget } from '@/types/websocket'
+import {
+  formatStatValue,
+  statDefault,
+  statIcon,
+  statLabel,
+  statValue,
+} from '@/utils/statDisplay'
 
 const store = useGameStore()
 const emit = defineEmits<{
@@ -266,12 +263,34 @@ const formattedTime = computed(() => {
 
 // 计算效率的文案提示
 const efficiencyHint = computed(() => {
-  const eff = store.currentStats.efficiency ?? 100
-  if (eff >= 120) return '卓越状态'
-  if (eff >= 100) return '稳定运行'
-  if (eff >= 80) return '略有疲态'
+  const baseline = statDefault('efficiency')
+  const eff = statValue(store.currentStats, 'efficiency')
+  if (eff >= baseline * 1.2) return '卓越状态'
+  if (eff >= baseline) return '稳定运行'
+  if (eff >= baseline * 0.8) return '略有疲态'
   return '需调整节奏'
 })
+
+const miniStats = computed(() => [
+  {
+    id: 'luck',
+    icon: statIcon('luck'),
+    value: formatStatValue(store.currentStats, 'luck'),
+    title: `${statLabel('luck')}影响随机事件的好坏`,
+  },
+  {
+    id: 'reputation',
+    icon: statIcon('reputation'),
+    value: formatStatValue(store.currentStats, 'reputation'),
+    title: `${statLabel('reputation')}影响部分课程和NPC互动`,
+  },
+  {
+    id: 'charm',
+    icon: statIcon('charm'),
+    value: formatStatValue(store.currentStats, 'charm'),
+    title: `${statLabel('charm')}影响部分社交互动和事件反馈`,
+  },
+])
 
 // 计算课程平均掌握度 (动态从 store 的课程数据中读取)
 const averageProgress = computed(() => {

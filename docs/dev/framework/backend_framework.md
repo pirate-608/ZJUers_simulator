@@ -116,7 +116,7 @@ graph TD
 
 - 解 JWT，检查账号限制。
 - 校验 `world/stat_definitions.json` 中 `allocatable=true` 的初始属性：
-  - 当前为 `IQ` / `EQ` / `Luck` / `魅力`，每项 `50-150`。
+  - 当前默认配置为 `IQ` / `EQ` / `Luck` / `魅力`，每项 `50-150`。
   - 总和 `300`。
   - 推荐请求体使用 `stats` 映射；旧显式字段保留兼容。
 - 调 `GameService.assign_major_and_init()` 初始化 Redis 状态。
@@ -167,18 +167,15 @@ graph TD
 - `player:{id}:dingtalk_state`
 - `player:{id}:items_state`
 
-`RedisRepository` 负责字段归一化、批量写入、TTL 刷新、安全数值更新、钉钉私聊状态和道具背包状态读写。`efficiency`、`elapsed_game_time`、`gold` 等运行时字段也在归一化层维护。
+`RedisRepository` 负责字段归一化、批量写入、TTL 刷新、安全数值更新、钉钉私聊状态和道具背包状态读写。可归一化的数值属性来自 `stat_definitions.redis_int_fields`；`update_stat_safe()` 默认使用对应属性的 `min/max` 做 clamp，而不是统一写死 0-200。
 
 ### PlayerStats 初始值
 
-`PlayerStats.build_initial()` 提供统一默认值：
+`PlayerStats.build_initial()` 提供统一默认值，核心属性来自 `world/stat_definitions.json`：
 
-- `energy=100`
-- `sanity=80`
-- `iq=100`
-- `eq=100`
-- `luck=50`
-- `charm=50`
+- `energy` / `sanity` / `stress`
+- `iq` / `eq` / `luck` / `charm`
+- `reputation` / `efficiency` / `gold`
 - `semester_idx=1`
 - `semester="大一秋冬"`
 - `gold` 由 `world/items.json` 的 `economy.initial_gold` 写入。
@@ -201,7 +198,7 @@ graph TD
 - 内容生成模式切换：`library` / `hybrid` / `ai`。
 - 学期推进、毕业、Game Over。
 
-学期推进由 `GameService.process_semester_transition()` 编排。进入新学期时会重置课程和课程策略，并把精力向 100 回调一半（`ceil((100 + 当前精力) / 2)`），避免低精力跨学期直接形成不可恢复开局。
+学期推进由 `GameService.process_semester_transition()` 编排。进入新学期时会重置课程和课程策略，并把精力向属性定义中的默认精力回调一半（`ceil((默认精力 + 当前精力) / 2)`），避免低精力跨学期直接形成不可恢复开局。
 
 `api/game.py` 通过 `engine.start()` 启动单一主循环；`pause` 会停止 tick，`resume` 会重新启动。WebSocket 断开时调用 `engine.shutdown()` 取消主循环和仍在挂起的后台内容生成任务。
 
@@ -210,7 +207,7 @@ graph TD
 - 随机事件结果：`auto_close_ms=5000`
 - 休闲动作结果：`auto_close_ms=3000`
 
-休闲动作的正向收益溢出只在 `_handle_relax()` 中处理：当精力/心态/魅力等正向收益或压力下降已经触及好端点时，最多把 20 点收益转移到精力、心态、魅力，且单次转移到魅力最多 +1。健身的魅力概率和数值由 `relax_actions.gym.charm_gain_probability` / `charm_gain` 控制。
+休闲动作的正向收益溢出只在 `_handle_relax()` 中处理：当精力/心态/魅力等正向收益或压力下降已经触及属性定义中的好端点时，最多把 20 点收益转移到精力、心态、魅力，且单次转移到魅力最多 +1。健身的魅力概率和数值由 `relax_actions.gym.charm_gain_probability` / `charm_gain` 控制。
 
 常用动作：
 

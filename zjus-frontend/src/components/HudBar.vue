@@ -7,14 +7,14 @@
       <div class="stat-item flex-grow-1">
         <div class="d-flex justify-content-between small mb-1 fw-bold stat-row">
           <span class="stat-label">{{ statLabel('energy') }}</span>
-          <span>{{ Math.floor(safeNumber(stats.energy, 100)) }} / 100</span>
+          <span>{{ formatStatValue(stats, 'energy', { showMax: true }) }}</span>
         </div>
         <div
           class="progress"
         >
           <div
             class="progress-bar stat-bar-energy"
-            :style="{ width: `${Math.min(100, Math.max(0, safeNumber(stats.energy, 100)))}%` }"
+            :style="{ width: `${statPercent(stats, 'energy')}%` }"
           />
         </div>
       </div>
@@ -22,7 +22,7 @@
       <div class="stat-item flex-grow-1">
         <div class="d-flex justify-content-between small mb-1 fw-bold stat-row">
           <span class="stat-label">{{ statLabel('sanity') }}</span>
-          <span>{{ Math.floor(safeNumber(stats.sanity, 100)) }} / 100</span>
+          <span>{{ formatStatValue(stats, 'sanity', { showMax: true }) }}</span>
         </div>
         <div
           class="progress"
@@ -30,7 +30,7 @@
           <div
             class="progress-bar"
             :class="sanityColorClass"
-            :style="{ width: `${Math.min(100, Math.max(0, safeNumber(stats.sanity, 100)))}%` }"
+            :style="{ width: `${statPercent(stats, 'sanity')}%` }"
           />
         </div>
       </div>
@@ -38,7 +38,7 @@
       <div class="stat-item flex-grow-1">
         <div class="d-flex justify-content-between small mb-1 fw-bold stat-row">
           <span class="stat-label">{{ statLabel('stress') }}</span>
-          <span>{{ Math.floor(safeNumber(stats.stress, 0)) }} / 100</span>
+          <span>{{ formatStatValue(stats, 'stress', { showMax: true }) }}</span>
         </div>
         <div
           class="progress"
@@ -46,7 +46,7 @@
           <div
             class="progress-bar"
             :class="stressColorClass"
-            :style="{ width: `${Math.min(100, Math.max(0, safeNumber(stats.stress, 0)))}%` }"
+            :style="{ width: `${statPercent(stats, 'stress')}%` }"
           />
         </div>
       </div>
@@ -58,11 +58,11 @@
           {{ statLabel('iq') }} / {{ statLabel('eq') }} / {{ statLabel('charm') }}
         </div>
         <div class="fw-bold fs-5 metric-value">
-          {{ Math.floor(safeNumber(stats.iq, 100)) }}
+          {{ formatStatValue(stats, 'iq') }}
           <span class="text-muted fs-6">/</span>
-          {{ Math.floor(safeNumber(stats.eq, 100)) }}
+          {{ formatStatValue(stats, 'eq') }}
           <span class="text-muted fs-6">/</span>
-          {{ Math.floor(safeNumber(stats.charm, 50)) }}
+          {{ formatStatValue(stats, 'charm') }}
         </div>
       </div>
       
@@ -81,10 +81,10 @@
 
       <div class="text-center hud-metric-block">
         <div class="small text-muted fw-bold metric-label">
-          金币
+          {{ statLabel('gold') }}
         </div>
         <div class="fw-bold fs-5 metric-value metric-gold">
-          {{ Math.floor(safeNumber(stats.gold, 0)) }}
+          {{ formatStatValue(stats, 'gold') }}
         </div>
       </div>
     </div>
@@ -94,24 +94,20 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useGameStore } from '../stores/gameStore.ts'
-import { STAT_META_BY_ID } from '@/data/statDefinitions.generated'
+import {
+  formatStatValue,
+  safeNumber,
+  statLabel,
+  statPercent,
+} from '@/utils/statDisplay'
 
 const store = useGameStore()
 const stats = computed(() => store.currentStats)
 
-const statLabel = (field: string) => STAT_META_BY_ID[field]?.label || field
-
-// 🌟 安全转换函数，防止 undefined / null / string 导致页面崩溃
-const safeNumber = (val: unknown, defaultVal: number = 0): number => {
-  if (val === null || val === undefined) return defaultVal
-  const num = Number(val)
-  return isNaN(num) ? defaultVal : num
-}
-
 const sanityColorClass = computed(() => {
-  const sanity = safeNumber(stats.value.sanity, 100)
-  if (sanity > 70) return 'stat-bar-good'
-  if (sanity > 30) return 'stat-bar-normal'
+  const sanityPercent = statPercent(stats.value, 'sanity')
+  if (sanityPercent > 70) return 'stat-bar-good'
+  if (sanityPercent > 30) return 'stat-bar-normal'
   return 'stat-bar-alert'
 })
 
@@ -124,9 +120,9 @@ const gpaColorClass = computed(() => {
 })
 
 const stressColorClass = computed(() => {
-  const stress = safeNumber(stats.value.stress, 0)
-  if (stress > 70) return 'stat-bar-alert'
-  if (stress > 40) return 'stat-bar-energy'
+  const stressPercent = statPercent(stats.value, 'stress')
+  if (stressPercent > 70) return 'stat-bar-alert'
+  if (stressPercent > 40) return 'stat-bar-energy'
   return 'stat-bar-good'
 })
 </script>

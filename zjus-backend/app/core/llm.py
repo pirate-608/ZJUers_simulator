@@ -34,6 +34,11 @@ def _allowed_effect_fields_prompt() -> str:
     return "/".join(sorted(stat_definitions.event_effect_fields))
 
 
+def _stat_label(stat_id: str) -> str:
+    definition = stat_definitions.by_id.get(stat_id)
+    return definition.label if definition else stat_id
+
+
 def _resolve_llm_config(
     llm_override: Optional[Dict[str, Any]] = None,
 ) -> Tuple[str | None, str | None, str]:
@@ -443,10 +448,10 @@ async def generate_dingtalk_reply_message(
         semester = str(player_stats.get("semester") or "当前学期")
         stats_hint = (
             f"玩家：{username}，{major}，{semester}。"
-            f"心态 {player_stats.get('sanity', '--')}，"
-            f"压力 {player_stats.get('stress', '--')}，"
+            f"{_stat_label('sanity')} {player_stats.get('sanity', '--')}，"
+            f"{_stat_label('stress')} {player_stats.get('stress', '--')}，"
             f"GPA {player_stats.get('gpa', '--')}，"
-            f"魅力 {player_stats.get('charm', '--')}。"
+            f"{_stat_label('charm')} {player_stats.get('charm', '--')}。"
         )
 
         history_lines = []

@@ -25,6 +25,7 @@ router = APIRouter()
 
 DbSessionDep = Annotated[AsyncSession, Depends(deps.get_db)]
 AuthorizationHeader = Annotated[str, Header(..., description="Bearer <JWT>")]
+LEGACY_INITIAL_STAT_DEFAULTS = stat_definitions.initial_default_stats()
 
 # ─── 模型 ───
 
@@ -67,10 +68,10 @@ class MajorOption(BaseModel):
 class InitCharacterRequest(BaseModel):
     token: str  # JWT
     major_abbr: str
-    iq: int = 100
-    eq: int = 100
-    luck: int = 50
-    charm: int = 50
+    iq: int = LEGACY_INITIAL_STAT_DEFAULTS["iq"]
+    eq: int = LEGACY_INITIAL_STAT_DEFAULTS["eq"]
+    luck: int = LEGACY_INITIAL_STAT_DEFAULTS["luck"]
+    charm: int = LEGACY_INITIAL_STAT_DEFAULTS["charm"]
     stats: Optional[Dict[str, int]] = None
 
 

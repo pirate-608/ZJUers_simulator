@@ -131,8 +131,14 @@ graph TD
 
 - 调 `fetchMajors()` 展示专业。
 - 从 `statDefinitions.generated.ts` 读取 `allocatable=true` 的属性并动态渲染 slider。
-- 当前可分配属性为 `IQ` / `EQ` / `Luck` / `魅力`，每项范围 50-150，总和必须等于 300。
+- 当前默认可分配属性为 `IQ` / `EQ` / `Luck` / `魅力`，每项范围 50-150，总和必须等于 300；具体列表、范围和预算以生成元数据为准。
 - 调 `initCharacter()` 时推荐提交 `stats` 映射，同时保留旧显式字段兼容；成功后设置 `game_started=1` 并进入 `loading`。
+
+### 属性展示 helper
+
+- `src/utils/statDisplay.ts` 是组件读取属性 label/icon/default/min/max 的轻量入口。
+- `HudBar.vue`、`RightPanel.vue`、`MidPanel.vue`、`EndScreen.vue` 和新手引导文案应优先使用该 helper 或 `statDefinitions.generated.ts`。
+- 不要在组件里重新写死 `100`、`50-150`、`金币`、`魅力` 等属性默认值、上限或标签；新增属性时先更新后端 world 数据并同步生成文件。
 
 ### `RightPanel.vue`
 

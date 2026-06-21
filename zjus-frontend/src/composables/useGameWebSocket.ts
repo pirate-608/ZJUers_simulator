@@ -4,6 +4,8 @@ import type { CourseMetadata } from '../types/course'
 import type { FeedbackChange } from '../types/modal'
 import type { WsMessage, WsClientAction } from '../types/websocket'
 import { extractGraduationFinalStats, extractNewSemesterName } from '../types/websocket'
+import { ALLOCATABLE_STATS } from '@/data/statDefinitions.generated'
+import { safeNumber, statDefault } from '@/utils/statDisplay'
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null
@@ -400,12 +402,14 @@ export function useGameWebSocket() {
           const gpaRaw = finalStats.gpa
           const gpa = typeof gpaRaw === 'number' ? gpaRaw : parseFloat(String(gpaRaw ?? 0)) || 0
 
-          const iqRaw = finalStats.iq
-          const eqRaw = finalStats.eq
-          const charmRaw = finalStats.charm
-          const goldRaw = finalStats.gold
           const achievementsRaw = finalStats.achievements
           const achievementDetailsRaw = finalStats.achievement_details
+          const finalStatPayload = Object.fromEntries(
+            ALLOCATABLE_STATS.map((stat) => [
+              stat.id,
+              safeNumber(finalStats[stat.id], stat.default),
+            ]),
+          )
 
           const achievementsArr = Array.isArray(achievementsRaw) ? achievementsRaw : []
           const achievementDetails = Array.isArray(achievementDetailsRaw)
@@ -416,10 +420,8 @@ export function useGameWebSocket() {
 
           gameStore.triggerEndGame('graduation', {
             gpa,
-            iq: typeof iqRaw === 'number' ? iqRaw : Number(iqRaw ?? 100),
-            eq: typeof eqRaw === 'number' ? eqRaw : Number(eqRaw ?? 100),
-            charm: typeof charmRaw === 'number' ? charmRaw : Number(charmRaw ?? 50),
-            gold: typeof goldRaw === 'number' ? goldRaw : Number(goldRaw ?? 0),
+            ...finalStatPayload,
+            gold: safeNumber(finalStats.gold, statDefault('gold')),
             achievements_count: achievementDetails.length || achievementsArr.length,
             achievement_details: gameStore.unlockedAchievements,
             llm_summary: llmSummary,

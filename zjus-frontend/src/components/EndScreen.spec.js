@@ -1,6 +1,7 @@
 import { mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { ALLOCATABLE_STATS } from '@/data/statDefinitions.generated'
 import EndScreen from './EndScreen.vue'
 import { useGameStore } from '../stores/gameStore'
 
@@ -50,6 +51,10 @@ describe('EndScreen navigation actions', () => {
     })
 
     expect(wrapper.text()).toContain('虽然仍旧平凡，但这一次我问心无愧')
+    for (const stat of ALLOCATABLE_STATS) {
+      expect(wrapper.text()).toContain(stat.label)
+      expect(wrapper.text()).toContain(String(stat.default))
+    }
     wrapper.unmount()
   })
 })

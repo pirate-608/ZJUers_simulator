@@ -155,7 +155,11 @@ class ItemCatalog:
         pass_all_bonus = self._to_int(cfg.get("pass_all_bonus"), 0)
         failed_penalty = self._to_int(cfg.get("failed_penalty_per_course"), 0)
         minimum = self._to_int(cfg.get("min"), 0)
-        maximum = self._to_int(cfg.get("max"), 999999, minimum=minimum)
+        maximum = self._to_int(
+            cfg.get("max"),
+            stat_definitions.by_id["gold"].max,
+            minimum=minimum,
+        )
         raw = int(round(base + term_gpa * gpa_multiplier))
         if failed_count <= 0:
             raw += pass_all_bonus
@@ -300,9 +304,9 @@ class ItemCatalog:
 
     @staticmethod
     def _clamp_effective_stat(field: str, value: float) -> int | float:
-        bounded_fields = stat_definitions.item_effect_fields
-        if field in bounded_fields:
-            return int(max(0, min(300, round(value))))
+        definition = stat_definitions.by_id.get(field)
+        if definition and field in stat_definitions.item_effect_fields:
+            return int(max(definition.min, min(definition.max, round(value))))
         return value
 
 

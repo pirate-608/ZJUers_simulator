@@ -61,7 +61,7 @@
 
               <hr>
               <div class="small text-muted mb-3">
-                ⚡ 精力固定 100 ｜ 💖 心态固定 80<br>
+                {{ fixedCoreStatsText }}<br>
                 总预算 <b>{{ STAT_INITIAL_BUDGET }}</b> 点，默认 {{ defaultStatsText }}
               </div>
 
@@ -89,6 +89,7 @@ import {
   ALLOCATABLE_STATS,
   STAT_INITIAL_BUDGET,
 } from '@/data/statDefinitions.generated'
+import { statDefault, statIcon, statLabel } from '@/utils/statDisplay'
 
 const store = useGameStore()
 
@@ -113,6 +114,11 @@ const defaultStatsText = computed(() => (
   ALLOCATABLE_STATS
     .map((stat) => `${stat.label} ${stat.default}`)
     .join(' | ')
+))
+const fixedCoreStatsText = computed(() => (
+  ['energy', 'sanity']
+    .map((field) => `${statIcon(field)} ${statLabel(field)}固定 ${statDefault(field)}`)
+    .join(' ｜ ')
 ))
 
 function onSliderChange() {
@@ -157,10 +163,10 @@ const confirmCreate = async () => {
     const payload = {
       token: jwt,
       major_abbr: selectedMajor.value,
-      iq: statPayload.iq ?? 100,
-      eq: statPayload.eq ?? 100,
-      luck: statPayload.luck ?? 50,
-      charm: statPayload.charm ?? 50,
+      iq: statPayload.iq ?? statDefault('iq'),
+      eq: statPayload.eq ?? statDefault('eq'),
+      luck: statPayload.luck ?? statDefault('luck'),
+      charm: statPayload.charm ?? statDefault('charm'),
       stats: statPayload,
     }
     await initCharacter(payload)

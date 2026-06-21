@@ -105,8 +105,9 @@
 服务端约束：
 
 - 推荐使用 `stats` 映射提交初始属性；旧的 `iq`、`eq`、`luck`、`charm` 字段仍保留兼容。
-- 可分配属性、范围和预算来自 `world/stat_definitions.json`；当前为 `IQ` / `EQ` / `Luck` / `魅力`，每项 `50-150`，总和 `300`。
+- 可分配属性、范围和预算来自 `world/stat_definitions.json` 中的 `allocatable=true` 定义；当前默认配置为 `IQ` / `EQ` / `Luck` / `魅力`，每项 `50-150`，总和 `300`。
 - 专业 IQ 增益在 `GameService.assign_major_and_init()` 中额外叠加，不计入 300 点预算。
+- 前端展示标签、默认值和范围来自生成文件 `src/data/statDefinitions.generated.ts`；不要在组件中重新写一套属性上限或中文标签。
 
 响应：
 

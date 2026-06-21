@@ -26,15 +26,17 @@ class GameService:
 
     @staticmethod
     def recover_energy_for_new_semester(current_energy: Any) -> int:
-        """Recover halfway from the current energy toward a full 100."""
+        """Recover halfway from current energy toward the configured baseline."""
+        energy_stat = stat_definitions.by_id["energy"]
+        baseline = energy_stat.default
         try:
             energy = int(current_energy)
         except (TypeError, ValueError):
-            return 100
-        if energy >= 100:
+            return baseline
+        if energy >= baseline:
             return energy
-        energy = max(0, energy)
-        return min(100, (100 + energy + 1) // 2)
+        energy = max(energy_stat.min, energy)
+        return min(baseline, (baseline + energy + 1) // 2)
 
     async def prepare_game_context(
         self,
@@ -91,6 +93,7 @@ class GameService:
         )
 
         safe_username = safe_username_for_prompt(username)
+        stat_defaults = stat_definitions.default_stats()
         initial_stats = PlayerStats.build_initial(username=safe_username).model_dump()
         allocated_fields = {
             stat_id: value for stat_id, value in overrides.items()
@@ -110,13 +113,13 @@ class GameService:
             "major_abbr": major_info["abbr"],
             "initial_major_abbr": major_info["abbr"],
             "stress": major_info.get("stress_base", 0),
-            "energy": 100,
-            "sanity": 80,
+            "energy": stat_defaults["energy"],
+            "sanity": stat_defaults["sanity"],
             "gpa": "0.0",
             "highest_gpa": "0.0",
             "gpa_points_total": "0.0",
             "gpa_credits_total": "0.0",
-            "reputation": 0,
+            "reputation": stat_defaults["reputation"],
             "gold": items.initial_gold,
             "semester": "大一秋冬",
             "semester_idx": 1,
@@ -162,10 +165,11 @@ class GameService:
             else f"延毕学期 {semester_idx}"
         )
 
+        energy_default = stat_definitions.by_id["energy"].default
         try:
-            current_energy = int(stats.get("energy", 100))
+            current_energy = int(stats.get("energy", energy_default))
         except (TypeError, ValueError):
-            current_energy = 100
+            current_energy = energy_default
         recovered_energy = self.recover_energy_for_new_semester(current_energy)
         update_fields = {
             "semester": term_name,

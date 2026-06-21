@@ -10,6 +10,24 @@ PlayerStateVector — 将 30+ 字段的 player_stats 浓缩为 6 维语义标签
 from dataclasses import asdict, dataclass
 from typing import Any, Dict
 
+from app.game.stat_definitions import stat_definitions
+
+
+def _stat_value(stats: Dict[str, Any], stat_id: str) -> int:
+    definition = stat_definitions.by_id[stat_id]
+    try:
+        return int(stats.get(stat_id, definition.default))
+    except (TypeError, ValueError):
+        return definition.default
+
+
+def _stat_ratio(value: int, stat_id: str) -> float:
+    definition = stat_definitions.by_id[stat_id]
+    span = definition.max - definition.min
+    if span <= 0:
+        return 0.0
+    return max(0.0, min(1.0, (value - definition.min) / span))
+
 
 @dataclass(frozen=True)
 class PlayerStateVector:
@@ -22,25 +40,28 @@ class PlayerStateVector:
 
     @classmethod
     def from_stats(cls, stats: Dict[str, Any]) -> "PlayerStateVector":
-        sanity = int(stats.get("sanity", 50))
-        stress = int(stats.get("stress", 0))
+        sanity = _stat_value(stats, "sanity")
+        stress = _stat_value(stats, "stress")
         gpa = float(stats.get("gpa", 0) or 0)
-        charm = int(stats.get("charm", 50) or 50)
+        charm = _stat_value(stats, "charm")
+        sanity_ratio = _stat_ratio(sanity, "sanity")
+        stress_ratio = _stat_ratio(stress, "stress")
+        charm_ratio = _stat_ratio(charm, "charm")
 
-        if sanity < 20:
+        if sanity_ratio < 0.1:
             mood = "崩溃"
-        elif sanity < 40:
+        elif sanity_ratio < 0.2:
             mood = "低落"
-        elif sanity < 80:
+        elif sanity_ratio < 0.4:
             mood = "正常"
         else:
             mood = "高昂"
 
-        if stress > 80:
+        if stress_ratio > 0.4:
             stress_level = "爆表"
-        elif stress > 50:
+        elif stress_ratio > 0.25:
             stress_level = "高压"
-        elif stress > 20:
+        elif stress_ratio > 0.1:
             stress_level = "适中"
         else:
             stress_level = "轻松"
@@ -52,9 +73,9 @@ class PlayerStateVector:
         else:
             academic = "普通"
 
-        if charm >= 110:
+        if charm_ratio >= 0.6:
             social = "出众"
-        elif charm < 70:
+        elif charm_ratio < 0.2:
             social = "低调"
         else:
             social = "普通"
@@ -76,7 +97,7 @@ class PlayerStateVector:
         return (
             f"{self.major}·{self.semester}｜"
             f"心态{self.mood}·压力{self.stress_level}·"
-            f"学业{self.academic}·魅力{self.social}"
+            f"学业{self.academic}·{stat_definitions.by_id['charm'].label}{self.social}"
         )
 
     def matches_tags(self, tags: list[str]) -> bool:

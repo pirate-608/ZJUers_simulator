@@ -67,7 +67,9 @@ We need you! Please don't hesitate to share your keyword inspirations, your sugg
 <summary>🧑‍🎓 Character Creation</summary>
 
 ![Character Creation](https://zjusim-docs.67656.fun/assets/images/create.png)
-New players log in with an invite code, select a major, and allocate initial IQ / EQ / Luck / Charm attributes.
+New players log in with an invite code, select a major, and allocate the
+initial stats marked `allocatable=true` in `world/stat_definitions.json`.
+The current default set is IQ / EQ / Luck / Charm.
 
 </details>
 

@@ -59,20 +59,19 @@ describe('CharacterCreate stat registry integration', () => {
     await wrapper.find('.major-card').trigger('click')
     await wrapper.find('button.btn-primary').trigger('click')
 
+    const expectedStats = Object.fromEntries(
+      ALLOCATABLE_STATS.map((stat) => [stat.id, stat.default]),
+    )
+
     expect(apiMocks.initCharacter).toHaveBeenCalledWith(
       expect.objectContaining({
         token: 'jwt-token',
         major_abbr: 'CS',
-        iq: 100,
-        eq: 100,
-        luck: 50,
-        charm: 50,
-        stats: {
-          iq: 100,
-          eq: 100,
-          luck: 50,
-          charm: 50,
-        },
+        iq: expectedStats.iq,
+        eq: expectedStats.eq,
+        luck: expectedStats.luck,
+        charm: expectedStats.charm,
+        stats: expectedStats,
       }),
     )
   })

@@ -14,14 +14,14 @@ login -> save_select -> character_create -> loading -> playing -> ended
 
 首次访问站点时，前端会在上述 `GamePhase` 流程前播放一次可跳过的登录前序章，并用 `localStorage.zjus_prologue_seen_v1` 记录已看过；序章期间不执行登录分流，也不建立 WebSocket。
 
-没有入学考试或招生考试流程。新玩家通过邀请码登录后选择专业并分配 `IQ` / `EQ` / `Luck` / `魅力`；老玩家通过昵称、邀请码和长期学生凭证登录后选择已有存档或新开一局。
+没有入学考试或招生考试流程。新玩家通过邀请码登录后选择专业并分配 `world/stat_definitions.json` 中 `allocatable=true` 的初始属性；老玩家通过昵称、邀请码和长期学生凭证登录后选择已有存档或新开一局。
 
 ## 关键合同
 
 ### 玩家入口与存档
 
 - `POST /api/auth` 只接收昵称、邀请码和可选长期学生凭证；新用户返回 JWT 与 `user_token`，老用户返回 JWT 与存档摘要。
-- `POST /api/init_character` 校验 `world/stat_definitions.json` 中可分配属性的范围和总预算；当前 `IQ` / `EQ` / `Luck` / `魅力` 每项 `50-150`，总和必须为 `300`。请求体推荐使用 `stats` 映射，旧显式字段仍兼容；专业 IQ 加成在服务端初始化时额外叠加。
+- `POST /api/init_character` 校验 `world/stat_definitions.json` 中可分配属性的范围和总预算；当前默认 `IQ` / `EQ` / `Luck` / `魅力` 每项 `50-150`，总和必须为 `300`。请求体推荐使用 `stats` 映射，旧显式字段仍兼容；专业 IQ 加成在服务端初始化时额外叠加。
 - WebSocket 首条消息必须携带 `{ token }`，可选 `load_save_slot`、会话级 `custom_llm_*` 字段和钉钉 RP 专用 `custom_rp_api_key`。
 - 指定 `load_save_slot` 时，后端必须强制从 PostgreSQL 存档恢复；存档不存在则返回 `auth_error`。
 - `auth_ok` 只表示连接可用，前端不应自动发送 `resume`；后端在上下文初始化完成后启动引擎。
@@ -31,9 +31,9 @@ login -> save_select -> character_create -> loading -> playing -> ended
 - `GameEngine` 负责 tick、暂停/恢复、期末考试、学期推进、随机事件、休闲冷却、反馈弹窗、毕业和 Game Over。
 - Redis 是单局实时状态源，PostgreSQL 是持久化存档源；保存/学期推进通过 `SaveService.persist_to_db()` upsert。
 - `init` 与 `tick` 都应携带 `relax_cooldowns`，前端据此禁用休闲按钮并显示剩余秒数；`init` 还会携带 `items_state`，购买/出售后通过独立 `items_state` 消息同步。
-- 属性定义来自 `world/stat_definitions.json`，前端属性元数据由 `scripts/sync_stat_definitions.py` 生成。道具配置来自 `world/items.json`，其 effect 字段必须通过属性定义允许；背包在 Redis `items_state` 与 `game_saves.items_data` 间同步。道具持有即生效，但加成作为 effective stats 计算，不直接写入基础属性。
+- 属性定义来自 `world/stat_definitions.json`，前端属性元数据由 `scripts/sync_stat_definitions.py` 生成。HUD、右侧状态卡、角色创建、道具页和结局页应通过 `src/utils/statDisplay.ts` / `statDefinitions.generated.ts` 获取标签、默认值和范围，不再手写属性上限。道具配置来自 `world/items.json`，其 effect 字段必须通过属性定义允许；背包在 Redis `items_state` 与 `game_saves.items_data` 间同步。道具持有即生效，但加成作为 effective stats 计算，不直接写入基础属性。
 - 随机事件和休闲结果同时保留 `event` 日志，并通过 `feedback` 展示短时弹窗；休闲结果应附带本次实际数值变化。
-- 新学期切换重置课程和学期计时，并将精力向 100 回调一半，保留经营压力但避免低精力锁死。
+- 新学期切换重置课程和学期计时，并将精力向属性定义中的默认精力回调一半，保留经营压力但避免低精力锁死。
 - 期末考试同时维护单学期 GPA 和累计加权 GPA：`stats.gpa` 是累计 GPA，`highest_gpa` 是最高单学期 GPA，成绩单 payload 会携带本学期新解锁成就。
 
 ### 内容生成

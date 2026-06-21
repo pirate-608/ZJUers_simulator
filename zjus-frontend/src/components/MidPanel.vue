@@ -320,6 +320,9 @@
 </template>
 
 <script setup lang="ts">
+/**
+ * Center panel for event logs, DingTalk private chats, and item inventory.
+ */
 import { computed, nextTick, ref, watch } from 'vue'
 import { useGameStore } from '../stores/gameStore.ts'
 import type { GameItem } from '@/types/items'

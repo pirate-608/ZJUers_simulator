@@ -1,3 +1,10 @@
+"""Player-facing text normalization and prompt-safety checks.
+
+Copyright (c) 2026 pirate-608. Licensed under the MIT License.
+Usernames enter auth, persistence, and LLM prompts, so this module centralizes
+normalization, reserved-word rejection, and prompt-safe fallbacks.
+"""
+
 import re
 import unicodedata
 from typing import Any
@@ -31,6 +38,7 @@ _PROMPT_INJECTION_KEYWORDS = {
 
 
 def normalize_username(value: Any) -> str:
+    """Normalize raw username input before validation or prompt use."""
     if value is None:
         return ""
     normalized = unicodedata.normalize("NFKC", str(value)).strip()
@@ -55,6 +63,7 @@ def _is_allowed_username_char(char: str) -> bool:
 
 
 def validate_username(value: Any) -> tuple[bool, str, str | None]:
+    """Validate a username and return normalized value plus rejection reason."""
     username = normalize_username(value)
     if not username:
         return False, username, "用户名不能为空"
@@ -79,9 +88,11 @@ def validate_username(value: Any) -> tuple[bool, str, str | None]:
 
 
 def is_username_safe(value: Any) -> bool:
+    """Return whether a username is safe for auth and prompt contexts."""
     return validate_username(value)[0]
 
 
 def safe_username_for_prompt(value: Any) -> str:
+    """Return a prompt-safe username, falling back for unsafe legacy values."""
     is_safe, username, _reason = validate_username(value)
     return username if is_safe else SAFE_USERNAME_FALLBACK

@@ -1,7 +1,10 @@
-"""
-预编译事件库与帖子库加载 / 检索模块
+"""Precompiled event and CC98 library retrieval.
 
-运行时零 LLM 调用，通过标签 + 范围匹配从本地 JSON 库选取内容。
+Copyright (c) 2026 pirate-608. Licensed under the MIT License.
+
+Notes:
+    Runtime selection avoids LLM calls by matching local JSON content against
+    state ranges, tags, and recent event history.
 """
 
 import json
@@ -15,12 +18,12 @@ from app.game.stat_definitions import stat_definitions
 logger = logging.getLogger(__name__)
 
 # ============================================================
-# 世界文件根目录探测
+# World data path resolution.
 # ============================================================
 
 
 def _world_dir() -> Path:
-    """Docker 优先 /app/world，本地开发回退到相对路径"""
+    """Prefer Docker's `/app/world`, then fall back to the local repo path."""
     docker_path = Path("/app/world")
     if docker_path.exists():
         return docker_path
@@ -28,7 +31,7 @@ def _world_dir() -> Path:
 
 
 # ============================================================
-# 事件库
+# Random event library.
 # ============================================================
 
 _event_library: List[Dict[str, Any]] = []
@@ -66,9 +69,10 @@ def pick_random_event(
     seen_ids: Optional[Set[str]] = None,
 ) -> Optional[Dict[str, Any]]:
     """
-    从预编译事件库中按玩家状态范围筛选，随机返回一条未见过的事件。
+    Pick an unseen event from the precompiled library by player state range.
 
-    返回格式兼容旧结构，并附带 id 供历史去重：
+    The returned shape remains compatible with the LLM event payload and carries
+    `id` for history-based deduplication:
     {"id": "evt_xxx", "title": ..., "desc": ..., "options": [...]}。
     """
     library = _load_event_library()
@@ -88,14 +92,14 @@ def pick_random_event(
             candidates.append(evt)
 
     if not candidates:
-        # 放宽条件：忽略范围限制，仅去重
+        # Relax state matching before giving up, but still avoid seen events.
         candidates = [e for e in library if e.get("id") not in seen]
 
     if not candidates:
         return None
 
     chosen = random.choice(candidates)
-    # 返回纯净结构（与 LLM 版兼容），并显式暴露 id 用于去重
+    # Return the clean LLM-compatible shape and expose `id` for deduplication.
     return {
         "id": chosen.get("id"),
         "title": chosen["title"],
@@ -105,7 +109,7 @@ def pick_random_event(
 
 
 # ============================================================
-# CC98 帖子库
+# CC98 post library.
 # ============================================================
 
 _cc98_library: List[Dict[str, Any]] = []
@@ -133,24 +137,24 @@ def pick_cc98_post(
     trigger: str = "",
 ) -> Optional[str]:
     """
-        从预编译 CC98 帖子库中优先按 trigger + effect 匹配选取。
+        Pick a CC98 post from the precompiled library by trigger and effect.
 
-        匹配策略：
-            1) 先按 effect 过滤
-            2) 在候选中优先选择 topic/content 命中 trigger 的帖子
-            3) 若无 trigger 命中则回退 effect 候选随机
+        Matching strategy:
+            1) Filter by effect first.
+            2) Prefer topic/content hits for the trigger.
+            3) Fall back to a random effect-matched candidate.
 
     Returns:
-        帖子内容字符串，或 None（库为空时回退到 LLM）
+        Post content, or None when the library is empty and LLM fallback should run.
     """
     library = _load_cc98_library()
     if not library:
         return None
 
-    # 按 effect 过滤
+    # Filter by effect before applying the optional trigger preference.
     candidates = [p for p in library if p.get("effect") == effect]
     if not candidates:
-        candidates = library  # 兜底：不过滤
+        candidates = library
 
     trigger_norm = (trigger or "").strip().lower()
     if trigger_norm:
@@ -158,7 +162,7 @@ def pick_cc98_post(
         for post in candidates:
             topic = str(post.get("topic", "")).lower()
             content = str(post.get("content", "")).lower()
-            # 优先精确包含 trigger；同时支持 trigger 去空格后再匹配一次
+            # Match the literal trigger first, then retry after removing spaces.
             if (
                 trigger_norm in topic
                 or trigger_norm in content

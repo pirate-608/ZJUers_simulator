@@ -42,6 +42,9 @@
 </template>
 
 <script setup lang="ts">
+/**
+ * Returning-player save-slot selector.
+ */
 import { computed } from 'vue'
 import { useGameStore } from '../stores/gameStore.ts'
 import type { SaveSummary } from '@/api/client'

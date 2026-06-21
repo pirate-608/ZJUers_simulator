@@ -1,5 +1,8 @@
 name: Build and Publish Docker Images
 
+# Release workflow triggered by semantic version tags. It validates required
+# world-data assets before publishing multi-arch backend and frontend images.
+
 on:
   push:
     tags:

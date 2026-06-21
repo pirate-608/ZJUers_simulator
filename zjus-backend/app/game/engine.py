@@ -1,3 +1,10 @@
+"""Real-time game simulation engine.
+
+Copyright (c) 2026 pirate-608. Licensed under the MIT License.
+`GameEngine` owns the per-player tick loop, actions, exams, random events,
+DingTalk conversations, item effects, saves, graduation, and Game Over flow.
+"""
+
 import asyncio
 import hashlib
 import json
@@ -21,7 +28,7 @@ from app.core.llm import (
     generate_dingtalk_reply_message,
     generate_random_event,
 )
-from app.game.balance import balance  # 游戏数值配置
+from app.game.balance import balance
 from app.game.items import items
 from app.game.stat_definitions import stat_definitions
 from app.models.user import User
@@ -44,12 +51,15 @@ logger = logging.getLogger(__name__)
 
 
 class GameMode:
+    """Content-generation mode identifiers accepted by the running engine."""
+
     LIBRARY = "library"
     AI = "ai"
     HYBRID = "hybrid"
 
     @classmethod
     def from_str(cls, s: str):
+        """Normalize a client-provided mode string into a supported mode."""
         s = s.lower()
         if s == "ai":
             return cls.AI
@@ -59,8 +69,24 @@ class GameMode:
 
 
 class GameEngine:
+    """Per-player real-time simulation loop.
+
+    The engine deliberately owns WebSocket-facing side effects: it reads Redis
+    state, applies actions, emits UI events, and tracks background content tasks
+    so slow LLM calls do not block the receive loop.
+    """
+
+    # Fallback bounds for legacy or unknown stat fields. Registered gameplay
+    # stats use `world/stat_definitions.json`; these 0-200 bounds preserve the
+    # historical player-stat range when old saves or external effects contain a
+    # field not yet present in the registry.
     _BASE_STAT_MIN = 0
     _BASE_STAT_MAX = 200
+
+    # Relax overflow turns wasted positive feedback into useful but capped
+    # benefits. Energy is most visible to moment-to-moment play, sanity is the
+    # next recovery target, and charm is intentionally capped at +1 to avoid a
+    # single relax action becoming the main charm-growth path.
     _RELAX_OVERFLOW_TARGETS = ("energy", "sanity", "charm")
     _RELAX_OVERFLOW_TRANSFER_CAP = 20
     _RELAX_CHARM_TRANSFER_CAP = 1
@@ -71,6 +97,7 @@ class GameEngine:
 
     @classmethod
     def _stat_bounds(cls, field: str) -> tuple[int, int]:
+        """Return registry bounds for a stat, with a safe legacy fallback."""
         definition = stat_definitions.by_id.get(field)
         if definition is None:
             return cls._BASE_STAT_MIN, cls._BASE_STAT_MAX
@@ -78,10 +105,18 @@ class GameEngine:
 
     @staticmethod
     def _stat_default(field: str, fallback: int = 0) -> int:
+        """Return the registry default for a stat if it exists."""
         definition = stat_definitions.by_id.get(field)
         return definition.default if definition else fallback
 
     async def emit(self, event_type: str, data: dict, msg: str | None = None):
+        """Queue a WebSocket event for the connection manager.
+
+        Args:
+            event_type: Server-to-client event type.
+            data: Payload already shaped for the frontend store.
+            msg: Optional legacy log text emitted as a normal event first.
+        """
         if msg:
             await self.event_queue.put(
                 GameEvent(
@@ -102,6 +137,7 @@ class GameEngine:
         auto_close_ms: int = 3000,
         changes: list[dict[str, Any]] | None = None,
     ):
+        """Emit a user-facing feedback popup."""
         payload: dict[str, Any] = {
             "title": title,
             "message": message,
@@ -121,6 +157,7 @@ class GameEngine:
         delta: int | float,
         value: int | float | None = None,
     ) -> dict[str, Any]:
+        """Format one numeric delta for feedback modals."""
         change: dict[str, Any] = {
             "field": field,
             "label": self._FEEDBACK_FIELD_LABELS.get(field, field),
@@ -181,6 +218,7 @@ class GameEngine:
         field: str,
         delta: int,
     ) -> dict[str, Any] | None:
+        """Apply a stat delta and return a feedback entry if it changed."""
         if delta == 0:
             return None
         new_value = await self.repo.update_stat_safe(field, delta)
@@ -192,6 +230,7 @@ class GameEngine:
         requested_delta: int,
         actual_delta: int,
     ) -> int:
+        """Calculate relax-only benefit lost to a stat's good endpoint."""
         if field == "stress" and requested_delta < 0:
             return max(0, abs(requested_delta) - max(0, -actual_delta))
         positive_fields = {
@@ -211,6 +250,7 @@ class GameEngine:
         base_stats: dict[str, Any],
         changes: list[dict[str, Any]],
     ) -> int:
+        """Apply a relax effect and return overflow units for redistribution."""
         if delta == 0:
             return 0
         current_value = self._safe_int(base_stats.get(field))
@@ -228,6 +268,7 @@ class GameEngine:
         base_stats: dict[str, Any],
         changes: list[dict[str, Any]],
     ) -> None:
+        """Redistribute relax-only overflow to still-useful positive stats."""
         remaining = min(max(0, overflow_units), self._RELAX_OVERFLOW_TRANSFER_CAP)
         charm_transferred = 0
         for field in self._RELAX_OVERFLOW_TARGETS:
@@ -263,27 +304,30 @@ class GameEngine:
             changes.append(self._feedback_change(field, actual_delta, int(new_value)))
 
     async def _get_items_state_payload(self) -> dict[str, Any]:
+        """Build the item-state payload expected by the frontend."""
         return items.state_payload(await self.repo.get_items_state())
 
     async def _effective_stats(self, stats: dict[str, Any]) -> dict[str, Any]:
+        """Return stats with passive item bonuses applied for reads only."""
         return items.apply_bonuses_to_stats(stats, await self.repo.get_items_state())
 
     async def _push_items_state(self):
+        """Push the latest item catalog, backpack, and passive bonuses."""
         await self.emit(
             "items_state",
             {"data": await self._get_items_state_payload()},
         )
 
     def resume(self):
+        """Resume ticking and notify the frontend."""
         if not self.is_running:
             self.start()
-            # 推送最新状态和通知消息
             asyncio.create_task(self._push_update())
             asyncio.create_task(self.emit("resumed", {"msg": "游戏已继续。"}))
 
     def pause(self):
+        """Pause ticking while keeping the WebSocket session open."""
         self.is_running = False
-        # 可选：通知前端已暂停
         asyncio.create_task(self.emit("paused", {"msg": "游戏已暂停，可随时继续。"}))
 
     def __init__(
@@ -297,6 +341,7 @@ class GameEngine:
         rp_llm_override: Optional[dict[str, Any]] = None,
         save_slot: int = 1,
     ):
+        """Initialize one active engine instance for a WebSocket session."""
         self.user_id = user_id
         self.repo = repo
         self.save_service = save_service
@@ -316,15 +361,15 @@ class GameEngine:
         self._items_lock = asyncio.Lock()
         self._ttl_refresh_interval_seconds = 600
         self._last_ttl_refresh = 0.0
-        # ✨ 新增：倍速乘数，默认为 1.0
+        # Speed is session-local; the persisted world balance keeps available modes.
         self.speed_multiplier = 1.0
 
-        # 内容生成模式
+        # Content mode starts conservative and can be changed by the player.
         self.mode: str = GameMode.HYBRID
         self.llm_available: bool = True
         self._llm_probed: bool = False
 
-        # 预设成就路径
+        # Docker images mount world data at /app/world; local tests use repo paths.
         self.achievement_path = Path("/app/world/achievements.json")
         if not self.achievement_path.exists():
             self.achievement_path = (
@@ -334,8 +379,7 @@ class GameEngine:
             )
         self._achievement_config: dict[str, Any] | None = None
 
-        # ========== 从配置文件加载数值参数 ==========
-        # 状态定义: 0=摆(Lay Flat), 1=摸(Chill), 2=卷(Hardcore)
+        # Course strategy values: 0=lay flat, 1=balanced, 2=hardcore.
         self.COURSE_STATE_COEFFS = balance.get_course_state_coeffs()
         self.BASE_ENERGY_DRAIN = balance.base_energy_drain
         self.BASE_MASTERY_GROWTH = balance.base_mastery_growth
@@ -346,6 +390,7 @@ class GameEngine:
         content: str,
         round_id: str | None = None,
     ) -> DingTalkMessage:
+        """Create a DingTalk message with consistent IDs and timestamps."""
         return DingTalkMessage(
             message_id=new_message_id(),
             speaker=speaker,
@@ -357,6 +402,7 @@ class GameEngine:
     def _coerce_dingtalk_options(
         self, raw_options: Any, role: str
     ) -> list[DingTalkReplyOption]:
+        """Normalize LLM reply options and provide role-specific fallbacks."""
         if not is_replyable_role(role):
             return []
         options: list[DingTalkReplyOption] = []
@@ -398,6 +444,7 @@ class GameEngine:
     def _normalize_dingtalk_payload(
         self, msg_data: dict[str, Any]
     ) -> tuple[dict[str, Any], str, list[DingTalkReplyOption]]:
+        """Normalize raw LLM/library DingTalk data into contact and message parts."""
         contact_raw = msg_data.get("contact")
         contact = contact_raw if isinstance(contact_raw, dict) else {}
         sender = str(contact.get("sender") or msg_data.get("sender") or "未知")
@@ -433,6 +480,7 @@ class GameEngine:
         self,
         contacts: dict[str, DingTalkContact],
     ) -> list[DingTalkContact]:
+        """Return reusable closed contacts ordered from quietest to newest."""
         closed = [
             contact
             for contact in contacts.values()
@@ -446,6 +494,7 @@ class GameEngine:
         contacts: dict[str, DingTalkContact],
         force: bool = False,
     ) -> DingTalkContact | None:
+        """Pick an existing contact to balance variety against inbox growth."""
         closed = self._closed_dingtalk_contacts(contacts)
         if not closed:
             return None
@@ -462,6 +511,7 @@ class GameEngine:
         return random.choices(closed, weights=weights, k=1)[0]
 
     def _character_from_contact(self, contact: DingTalkContact) -> dict[str, Any]:
+        """Recover character-library metadata for a persisted DingTalk contact."""
         try:
             from app.core.dingtalk_llm import get_character_by_contact_id
 
@@ -483,6 +533,7 @@ class GameEngine:
         stats: dict[str, Any],
         context: str,
     ) -> dict[str, Any] | None:
+        """Generate a new NPC message for an existing contact."""
         character = self._character_from_contact(contact)
         msg_data = None
         rp_override = self.rp_llm_override
@@ -725,6 +776,7 @@ class GameEngine:
         return {"summary": message, "effects": applied}
 
     def _track_task(self, coro: Coroutine[Any, Any, Any]) -> asyncio.Task[Any]:
+        """Run a background task without blocking the WebSocket receive loop."""
         task = asyncio.create_task(coro)
         self._background_tasks.add(task)
 
@@ -750,6 +802,7 @@ class GameEngine:
             self._relax_inflight.discard(target)
 
     def start(self):
+        """Start or restart the ticking task for this engine."""
         if self.is_running and self._run_task and not self._run_task.done():
             return
         if self._run_task and not self._run_task.done():
@@ -760,14 +813,14 @@ class GameEngine:
     async def check_and_trigger_gameover(
         self, stats: dict[str, Any] | None = None
     ) -> bool:
-        """检测精力/心态是否归零并触发game over"""
+        """Trigger Game Over when energy or sanity reaches its fail endpoint."""
         if stats is None:
             snapshot = await self.repo.get_snapshot()
             stats = await self._effective_stats(snapshot.stats.model_dump())
         if not stats:
             return False
         try:
-            # 使用 registry 默认值确保即便 Key 不存在也能逻辑运行
+            # Registry defaults keep old or partial saves evaluable.
             sanity = int(stats.get("sanity", self._stat_default("sanity")))
             energy = int(stats.get("energy", self._stat_default("energy")))
 
@@ -789,16 +842,15 @@ class GameEngine:
         return False
 
     def _sanity_stress_growth_factor(self, sanity, stress):
+        """Return the learning-growth multiplier from sanity and stress.
+
+        Sanity uses 50 as a neutral baseline. Stress rewards the configured
+        optimal range and penalizes extreme values.
         """
-        心态修正：50为基准，低于50负面影响，极低(<20)最大-40%；高于50正面提升，最佳(80+)+20%
-        压力修正：40-70为最佳区间，区间内+30%，区间外-15%，极端（<20或>90）-40%
-        """
-        # 从配置加载参数
         growth_mod = balance.get_growth_modifiers()
         sanity_cfg = growth_mod.get("sanity", {})
         stress_cfg = growth_mod.get("stress", {})
 
-        # 心态修正
         critical_threshold = sanity_cfg.get("critical_low", {}).get("threshold", 20)
         critical_factor = sanity_cfg.get("critical_low", {}).get("factor", 0.6)
         low_slope = sanity_cfg.get("low_slope", 0.013)
@@ -817,7 +869,6 @@ class GameEngine:
         else:
             sanity_factor = 1.0
 
-        # 压力修正
         optimal_range = stress_cfg.get("optimal_range", [40, 70])
         optimal_factor = stress_cfg.get("optimal_factor", 1.3)
         suboptimal_factor = stress_cfg.get("suboptimal_factor", 0.85)
@@ -833,16 +884,14 @@ class GameEngine:
         return sanity_factor * stress_factor
 
     def _sanity_stress_exam_factor(self, sanity, stress):
+        """Return the final-exam score adjustment from sanity and stress.
+
+        The exact slopes and bonuses are read from `game_balance.json`.
         """
-        心态修正：50为基准，低于50分数线性下滑，最低-15分，高于50最多+6分
-        压力修正：40-70区间+6分，区间外-5分，极端（<20或>90）-10分
-        """
-        # 从配置加载参数
         exam_mod = balance.get_exam_modifiers()
         sanity_cfg = exam_mod.get("sanity", {})
         stress_cfg = exam_mod.get("stress", {})
 
-        # 心态
         low_slope = sanity_cfg.get("low_slope", 0.3)
         high_slope = sanity_cfg.get("high_slope", 0.12)
         excellent_bonus = sanity_cfg.get("excellent_bonus", 6)
@@ -856,7 +905,6 @@ class GameEngine:
         else:
             sanity_bonus = 0
 
-        # 压力
         optimal_bonus = stress_cfg.get("optimal_bonus", 6)
         suboptimal_penalty = stress_cfg.get("suboptimal_penalty", -5)
         extreme_penalty = stress_cfg.get("extreme_penalty", -10)
@@ -871,28 +919,26 @@ class GameEngine:
         return sanity_bonus + stress_bonus
 
     async def run_loop(self):
-        """核心循环：基于状态的资源分配计算"""
+        """Run the tick loop and apply course, event, and DingTalk progression."""
         logger.info(f"State-based Game loop started for {self.user_id}")
 
         tick_count = 0
         try:
             while self.is_running:
-                # ✨ 核心：真实的睡眠时间被倍速缩短！
-                # 例如 2.0 倍速下，真实世界只睡 1.5 秒
+                # Real-time sleep shortens under speed-up, while game time
+                # remains discrete.
                 await asyncio.sleep(3.0 / self.speed_multiplier)
                 if not self.is_running:
                     break
                 tick_count += 1
 
-                # ✨ 核心：但游戏内的虚拟时间，永远坚定地往前走 3 秒！
-                # 注意：不能用 update_stat_safe，
-                # 因为它的 max_val 默认值 200 会截断计时器
+                # Do not clamp elapsed time through update_stat_safe; timer values
+                # intentionally exceed ordinary stat max bounds.
                 elapsed = await self.repo.update_stat("elapsed_game_time", 3)
 
                 snapshot = await self.repo.get_snapshot()
                 stats = await self._effective_stats(snapshot.stats.model_dump())
 
-                # 动态获取当前学期时长上限
                 sem_idx = int(stats.get("semester_idx") or 1)
                 sem_duration = balance.get_semester_duration(sem_idx)
                 if elapsed >= sem_duration:
@@ -904,7 +950,7 @@ class GameEngine:
                     await self._handle_final_exam()
                     break
 
-                # 低频 TTL 刷新：仅对活跃玩家做防线更新
+                # Refresh TTLs infrequently for active players.
                 now_ts = asyncio.get_running_loop().time()
                 if (
                     now_ts - self._last_ttl_refresh
@@ -913,31 +959,27 @@ class GameEngine:
                     await self.repo.touch_ttl()
                     self._last_ttl_refresh = now_ts
 
-                # 1. 基础检查
                 if await self.check_and_trigger_gameover(stats):
                     break
 
-                # 2. 获取计算所需数据
                 course_states_raw = snapshot.course_states
 
-                # 解析课程信息
                 try:
                     course_info = json.loads(stats.get("course_info_json", "[]"))
                 except (TypeError, json.JSONDecodeError):
                     course_info = []
 
-                # 如果没有课程（如假期），只自然恢复或轻微消耗
+                # Empty-course periods behave like a light recovery break.
                 if not course_info:
                     logger.warning(
                         "[%s] course_info is EMPTY, skipping mastery growth",
                         self.user_id,
                     )
-                    await self.repo.update_stat_safe("energy", 1)  # 假期回血
+                    await self.repo.update_stat_safe("energy", 1)
                     await self._push_update()
                     continue
 
-                # 3. 核心算法：加权计算
-                # -------------------------------------------------
+                # Course mastery and drain are credit-weighted each tick.
                 total_credits = sum(c.get("credits", 1.0) for c in course_info)
                 if total_credits <= 0:
                     total_credits = 1.0
@@ -945,19 +987,15 @@ class GameEngine:
                 total_drain_factor = 0.0
                 mastery_updates = {}
 
-                # 遍历每门课，计算这一跳的进度和对总精力的负担
                 for course in course_info:
                     c_id = str(course.get("id"))
                     credits = float(course.get("credits", 1.0))
-                    # 获取该课当前状态 (默认1:摸)
                     state_val = int(course_states_raw.get(c_id, 1))
                     coeffs = self.COURSE_STATE_COEFFS.get(
                         state_val, self.COURSE_STATE_COEFFS[1]
                     )
-                    # A. 计算擅长度增量
                     iq_default = self._stat_default("iq")
                     iq_buff = (int(stats.get("iq", iq_default)) - iq_default) * 0.01
-                    # 仅在摸/卷状态下引入心态压力修正
                     if state_val in (1, 2):
                         sanity = int(stats.get("sanity", self._stat_default("sanity")))
                         stress = int(stats.get("stress", self._stat_default("stress")))
@@ -972,16 +1010,12 @@ class GameEngine:
                     )
                     if actual_growth > 0:
                         mastery_updates[c_id] = actual_growth
-                    # B. 计算精力消耗权重
                     weight = credits / total_credits
                     total_drain_factor += weight * coeffs["drain"]
 
-                # 4. 执行更新
-                # -------------------------------------------------
-                # 批量更新课程进度
                 if mastery_updates:
                     await self.repo.batch_update_course_mastery(mastery_updates)
-                    if tick_count <= 3:  # 只在前几个 tick 打印诊断信息
+                    if tick_count <= 3:
                         logger.info(
                             "[%s] tick#%s mastery_updates: %s",
                             self.user_id,
@@ -996,24 +1030,19 @@ class GameEngine:
                             tick_count,
                         )
 
-                # 结算总精力消耗
-                # 最终消耗 = 基础消耗 * 加权系数（保留浮点数精度）
                 final_energy_cost_float = self.BASE_ENERGY_DRAIN * total_drain_factor
 
-                # 修复：只有drain系数真正接近0（全摆烂）才回血
-                # 避免"全摸"状态因int截断误判为摆烂
-                if final_energy_cost_float < 0.3:  # 真正的摆烂阈值
+                # Only near-zero drain counts as true recovery; avoid integer
+                # truncation.
+                if final_energy_cost_float < 0.3:
                     await self.repo.update_stat_safe("energy", 2)
-                    await self.repo.update_stat_safe("stress", -2)  # 摆烂降压
+                    await self.repo.update_stat_safe("stress", -2)
                 else:
-                    # 向上取整，确保至少消耗1点精力
                     final_energy_cost = max(1, math.ceil(final_energy_cost_float))
                     await self.repo.update_stat_safe("energy", -final_energy_cost)
-                    # 卷多了压力大：如果消耗系数高，增加压力
                     if total_drain_factor > 1.5:
                         await self.repo.update_stat_safe("stress", 1)
 
-                # 5. 随机事件与成就 (从配置读取频率) - 仅在游戏运行时触发
                 if self.is_running:
                     event_cfg = balance.get_random_event_config()
                     event_interval = event_cfg.get("check_interval_ticks", 5)
@@ -1025,7 +1054,6 @@ class GameEngine:
                                 self._track_task(self._trigger_random_event())
                         await self._check_achievements()
 
-                    # [新增] 6. 钉钉消息 (从配置读取频率) - 仅在游戏运行时触发
                     dingtalk_cfg = balance.get_dingtalk_config()
                     dingtalk_interval = dingtalk_cfg.get("check_interval_ticks", 10)
                     dingtalk_probability = dingtalk_cfg.get("trigger_probability", 0.3)
@@ -1044,9 +1072,30 @@ class GameEngine:
             self.stop()
 
     async def process_action(self, action_data: dict):
+        """Dispatch one client action from the WebSocket receive loop.
+
+        State transition summary:
+
+        | action | Engine state | Redis/game state | Emitted state |
+        | --- | --- | --- | --- |
+        | start/get_state | unchanged | unchanged | tick snapshot |
+        | pause | `is_running=False` | unchanged | none |
+        | resume | `is_running=True` | unchanged | tick loop resumes |
+        | restart | loop resets | stats/courses/items reset | init/tick flow |
+        | set_speed | speed multiplier changes | unchanged | none |
+        | set_mode | content mode changes | unchanged | mode_changed |
+        | change_course_state | unchanged | course strategy hash | tick snapshot |
+        | dingtalk_mark_read | unchanged | DingTalk unread state | dingtalk_update |
+        | dingtalk_reply | background task | DingTalk messages | update/feedback |
+        | item_buy/item_sell | unchanged | gold/items state | items_state/tick |
+        | relax | background task | cooldowns/stats/logs | update/feedback |
+        | exam | loop stops for modal | GPA/gold/achievements | semester_summary |
+        | event_choice | unchanged | stats/current event | update/feedback |
+        | next_semester | restart/end | semester/courses | new_semester/graduation |
+        """
         action = action_data.get("action")
-        target = action_data.get("target")  # 通常是 course_id
-        value = action_data.get("value")  # 新增: 状态值 0/1/2
+        target = action_data.get("target")
+        value = action_data.get("value")
         if action in {"start", "get_state"}:
             await self._push_update()
             return
@@ -1060,7 +1109,6 @@ class GameEngine:
             await self._handle_restart()
             return
 
-        # ✨ 新增：真正接管全局倍速
         if action == "set_speed":
             try:
                 speed = float(action_data.get("speed", 1.0))
@@ -1071,7 +1119,6 @@ class GameEngine:
             self.speed_multiplier = speed
             return
 
-        # 切换内容生成模式
         if action == "set_mode":
             raw = action_data.get("mode", "hybrid")
             new_mode = GameMode.from_str(raw)
@@ -1086,18 +1133,16 @@ class GameEngine:
                     "mode_changed",
                     {"mode": self.mode, "llm_available": self.llm_available},
                 )
-            # 首次收到 mode 相关请求时触发后台探测
+            # Probe custom/general LLM availability on the first mode request.
             if not self._llm_probed:
                 self._llm_probed = True
                 self._track_task(self._probe_llm())
             return
 
-        # [新增] 切换课程状态指令
         if action == "change_course_state":
             if target and value is not None:
-                # 更新 Redis 状态
                 await self.repo.set_course_state(target, int(value))
-                # 立即推送一次更新，让前端看到精力预估变化(可选，run_loop也会推)
+                # Push immediately so strategy buttons reflect server state.
                 await self._push_update()
             return
 
@@ -1123,7 +1168,6 @@ class GameEngine:
             await self._handle_item_sell(action_data)
             return
 
-        # [保留] 其它一次性动作 (Relax/Event)
         try:
             if action == "relax":
                 if not isinstance(target, str) or not target:
@@ -1346,7 +1390,7 @@ class GameEngine:
         await self.check_and_trigger_gameover()
 
     async def _handle_final_exam(self):
-        """期末考试结算逻辑"""
+        """Settle final exams, GPA, rewards, achievements, and transcript data."""
         snapshot = await self.repo.get_snapshot()
         base_stats = snapshot.stats.model_dump()
         stats = await self._effective_stats(base_stats)
@@ -1372,7 +1416,7 @@ class GameEngine:
             course_info = []
 
         total_credits, total_gp, failed_count = 0, 0, 0
-        courses_result = []  # 前端 TranscriptModal 需要的 courses 数组
+        courses_result = []
 
         sanity = int(stats.get("sanity", self._stat_default("sanity")))
         luck_default = self._stat_default("luck")
@@ -1382,14 +1426,13 @@ class GameEngine:
             c_id = str(course.get("id"))
             mastery = float(course_mastery.get(c_id, 0))
             credits = float(course.get("credits", 1))
-            # 考试表现计算公式：擅长度占大头，心态和运气波动
+            # Final score is mastery-led, with sanity/stress and luck variation.
             sanity = int(stats.get("sanity", self._stat_default("sanity")))
             stress = int(stats.get("stress", self._stat_default("stress")))
             exam_bonus = self._sanity_stress_exam_factor(sanity, stress)
             luck_bonus = random.uniform(-2, 5) + (luck - luck_default) / 20
             final_score = max(0, min(100, mastery * 0.9 + exam_bonus + luck_bonus + 10))
 
-            # 5分制绩点计算：绩点 = 分数 / 10 - 5，最低0分
             gp = max(0.0, round(final_score / 10 - 5, 2))
             fail_threshold = balance.fail_threshold
             if final_score < fail_threshold:
@@ -1397,7 +1440,6 @@ class GameEngine:
 
             total_credits += credits
             total_gp += gp * credits
-            # 按前端 TranscriptModal.vue 期望的字段名
             courses_result.append(
                 {
                     "name": course.get("name", "未知课程"),
@@ -1418,7 +1460,6 @@ class GameEngine:
         previous_highest_gpa = self._safe_float(base_stats.get("highest_gpa"))
         highest_gpa = max(previous_highest_gpa, term_gpa)
 
-        # 结果反馈（从配置读取惩罚/奖励）
         msg = f"期末考试结束！GPA: {term_gpa}"
         if failed_count > 0:
             penalty = balance.fail_sanity_penalty * failed_count
@@ -1432,7 +1473,7 @@ class GameEngine:
         if gold_earned:
             await self.repo.update_stat_safe("gold", gold_earned)
 
-        # gpa 作为当前累计 GPA 展示；highest_gpa 保留最高单学期 GPA。
+        # HUD GPA is cumulative; highest_gpa keeps the best single-term GPA.
         await self.repo.update_stats(
             {
                 "gpa": str(cgpa),
@@ -1442,13 +1483,12 @@ class GameEngine:
             }
         )
 
-        # 异步更新持久化数据库，纳入 engine 生命周期，断线时可统一取消/记录异常。
+        # Track persistence so disconnect cleanup can observe failures.
         self._track_task(self._update_db_highest_gpa(highest_gpa))
         new_achievements = await self._check_achievements(
             {"failed_count": failed_count}
         )
 
-        # 发送结算弹窗 — 字段名严格匹配前端 TranscriptModal.vue
         await self.emit(
             "semester_summary",
             {
@@ -1466,7 +1506,7 @@ class GameEngine:
         await self._push_update(msg)
 
     async def _update_db_highest_gpa(self, gpa: float):
-        """内部方法：持久化最高 GPA 到数据库"""
+        """Persist the user's best single-term GPA summary."""
         try:
             async with AsyncSessionLocal() as db:
                 stmt = (
@@ -1499,7 +1539,6 @@ class GameEngine:
 
         mastery_delta = 0
         if action_type == "study":
-            # 提升了学习收益率
             efficiency = 4.0 + (iq - 100) * 0.1
             mastery_delta = max(1.0, efficiency / (1 + difficulty))
             await self.repo.update_stat_safe("energy", -5)
@@ -1526,14 +1565,14 @@ class GameEngine:
         await self._push_update(msg)
 
     async def _handle_relax(self, target: str):
-        # 检查冷却时间
+        # Enforce the server-side cooldown before applying an action.
         remaining_cd = await self._check_cooldown(target)
         if remaining_cd > 0:
             msg = f"该操作还在冷却中，请等待 {remaining_cd} 秒后再试。"
             await self._push_update(msg)
             return
 
-        # 从配置读取摸鱼动作参数
+        # Load relax-action tuning from the hot-reloadable balance config.
         action_cfg = balance.get_relax_action(target)
         if not action_cfg:
             msg = f"未知的休闲动作: {target}"
@@ -1553,7 +1592,7 @@ class GameEngine:
             if current_energy < min_energy:
                 msg = "你太累了，现在去健身只会晕过去..."
             else:
-                # 从配置读取数值
+                # Charm gain is balance-configured and independent of overflow.
                 energy_cost = action_cfg.get("energy_cost", -30)
                 energy_gain = action_cfg.get("energy_gain", 40)
                 sanity_gain = action_cfg.get("sanity_gain", 5)
@@ -1615,21 +1654,21 @@ class GameEngine:
             await self.repo.increment_action_count(target)
             msg = "启真湖畔的黑天鹅还是那么高傲..."
         elif target == "cc98":
-            # CC98随机效果从配置读取
+            # CC98 effects are weighted in the balance config.
             effects = action_cfg.get("effects", [])
             if not effects:
-                # 兜底默认值
+                # Keep a safe fallback if the config omits effects.
                 effects = [
                     {"weight": 0.5, "sanity": 8, "stress": -5},
                     {"weight": 0.3, "sanity": -10, "stress": 8},
                     {"weight": 0.2, "sanity": -15, "stress": 15},
                 ]
 
-            # 根据权重随机选择效果
+            # Select one effect by weight.
             total_weight = sum(e.get("weight", 0) for e in effects)
             roll = random.uniform(0, total_weight)
             cumulative = 0
-            selected_effect = effects[0]  # 默认
+            selected_effect = effects[0]
 
             for effect in effects:
                 cumulative += effect.get("weight", 0)
@@ -1637,7 +1676,7 @@ class GameEngine:
                     selected_effect = effect
                     break
 
-            # 应用效果
+            # Apply the selected stat effects.
             for field in ("sanity", "stress"):
                 if field not in selected_effect:
                     continue
@@ -1652,11 +1691,11 @@ class GameEngine:
                     changes,
                 )
 
-            # 生成对应效果描述
+            # Pick a prompt trigger that matches the effect direction.
             effect_type = (
                 "positive" if selected_effect.get("sanity", 0) > 0 else "negative"
             )
-            roll = random.randint(1, 100)  # 用于触发词
+            roll = random.randint(1, 100)
 
             if effect_type == "positive":
                 trigger_words = [
@@ -1678,13 +1717,13 @@ class GameEngine:
 
             trigger = random.choice(trigger_words)
             if self.mode == GameMode.AI:
-                # AI 模式：跳过帖子库，直接走 LLM（含 Redis 缓存）
+                # AI mode bypasses the local post library and uses the LLM path.
                 post_content = None
             else:
-                # Hybrid / Library 模式：优先从预编译帖子库获取（零 token 消耗）
+                # Hybrid and library modes prefer zero-token precompiled posts.
                 post_content = pick_cc98_post(effect=effect_type, trigger=trigger)
             if not post_content and self.mode != GameMode.LIBRARY:
-                # 库未命中且非纯算法模式：fallback 到 LLM
+                # Non-library modes can fall back to LLM generation on a miss.
                 snapshot = await self.repo.get_snapshot()
                 stats = await self._effective_stats(snapshot.stats.model_dump())
                 post_content, feedback = await generate_cc98_post(
@@ -1708,10 +1747,10 @@ class GameEngine:
                     if fallback_post:
                         post_content = fallback_post
             elif not post_content:
-                # Library 模式库耗尽：跳过本次 cc98
+                # Library mode skips the action if the library has no match.
                 post_content, feedback = "服务器繁忙，论坛暂时打不开...", ""
             else:
-                # 帖子库命中，用固定 feedback
+                # Library hits use deterministic feedback by effect direction.
                 feedback_map = {
                     "positive": "心情不错，继续冲浪~",
                     "neutral": "就这样吧，继续划水。",
@@ -1744,7 +1783,7 @@ class GameEngine:
     # app/game/engine.py
 
     async def _trigger_random_event(self):
-        """触发随机事件（优先事件库，LLM 兜底）"""
+        """Trigger a random event through library-first or LLM fallback flow."""
         if not self.is_running:
             return
         if self._random_event_inflight:
@@ -1760,7 +1799,7 @@ class GameEngine:
             event_data = None
 
             if self.mode == GameMode.AI:
-                # AI 模式：跳过事件库，直接走 LLM（含 Redis 缓存）
+                # AI mode bypasses the event library and uses the LLM path.
                 if self.llm_available:
                     event_data = await generate_random_event(
                         stats, history, llm_override=self.llm_override
@@ -1789,13 +1828,13 @@ class GameEngine:
                         seen_ids=set(history) if history else None,
                     )
             else:
-                # Hybrid / Library 模式：优先从预编译事件库检索（零 token 消耗）
+                # Hybrid and library modes prefer zero-token precompiled events.
                 event_data = pick_random_event(
                     sanity=int(stats.get("sanity", self._stat_default("sanity"))),
                     stress=int(stats.get("stress", self._stat_default("stress"))),
                     seen_ids=set(history) if history else None,
                 )
-                # Hybrid 模式下库耗尽时 fallback 到 LLM；Library 模式直接跳过
+                # Hybrid can fall back to LLM generation; library mode skips.
                 if (
                     not event_data
                     and self.mode == GameMode.HYBRID
@@ -1810,7 +1849,7 @@ class GameEngine:
             if event_data:
                 if not self.is_running:
                     return
-                # 统一按 event_id 去重：库事件直接使用 id；LLM 兜底生成稳定 id
+                # Deduplicate both library and LLM events through a stable event ID.
                 event_id = event_data.get("id")
                 if not event_id:
                     seed = f"{event_data.get('title', '')}|{event_data.get('desc', '')}"
@@ -1831,7 +1870,7 @@ class GameEngine:
         finally:
             self._random_event_inflight = False
 
-    # 事件效果每次最大变化量；允许字段由 stat_definitions 决定。
+    # Per-event effect caps; allowed fields come from stat_definitions.
     _EFFECT_FIELD_MAX_DELTAS = {
         "energy": 50,
         "sanity": 30,
@@ -1850,7 +1889,7 @@ class GameEngine:
         }
 
     async def _handle_event_choice(self, data):
-        """处理随机事件的选择结果（只接受当前服务端事件的选项 id）。"""
+        """Apply one validated option from the current server-side random event."""
         option_id = str(data.get("option_id", "")).strip()
         current_event = await self.repo.pop_current_event()
         if not current_event:
@@ -1880,7 +1919,7 @@ class GameEngine:
         for key, val in effects.items():
             if key == "desc":
                 continue
-            # 白名单校验：只允许修改预定义字段
+            # Only stat-registry-approved fields may be changed by events.
             max_delta = self._allowed_effect_fields().get(key)
             if max_delta is None:
                 logger.warning(
@@ -1889,7 +1928,7 @@ class GameEngine:
                 continue
             try:
                 delta = int(val)
-                # 限制单次变化幅度
+                # Clamp each individual event effect before applying it.
                 delta = max(-max_delta, min(max_delta, delta))
                 change = await self._apply_stat_delta_for_feedback(key, delta)
                 if change:
@@ -1907,13 +1946,13 @@ class GameEngine:
         )
 
     async def _trigger_dingtalk_message(self):
-        """触发钉钉消息推送（优先使用 M2-her RP 模型）"""
+        """Trigger a DingTalk message, preferring the M2-her RP pipeline."""
         if not self.is_running:
             return
         if self._dingtalk_inflight:
             return
 
-        # 纯算法模式：跳过钉钉消息（暂未建设 dingtalk_library）
+        # Library mode has no DingTalk library yet, so it skips AI messages.
         if self.mode == GameMode.LIBRARY or not self.llm_available:
             return
 
@@ -1924,7 +1963,7 @@ class GameEngine:
             if not self.is_running:
                 return
 
-            # 简单的上下文判断逻辑
+            # Choose a coarse context for role and prompt selection.
             context = "random"
             sanity = int(stats.get("sanity", self._stat_default("sanity")))
             stress = int(stats.get("stress", self._stat_default("stress")))
@@ -1945,7 +1984,7 @@ class GameEngine:
                 force=len(state.contacts) >= balance.dingtalk_max_contacts,
             )
 
-            # 优先使用 M2-her RP 模型；通用自定义 LLM 存在且未配置 RP key 时走通用 LLM。
+            # Prefer M2-her RP unless a general custom LLM should absorb the cost.
             msg_data = None
             rp_override = self.rp_llm_override
             if reusable_contact:
@@ -1969,7 +2008,7 @@ class GameEngine:
                 except Exception as e:
                     logger.warning(f"M2-her dingtalk fallback: {e}")
 
-            # Fallback 到旧接口
+            # Fall back to the general DingTalk generator.
             if not msg_data:
                 msg_data = await generate_dingtalk_message(
                     stats, context, llm_override=self.llm_override
@@ -2033,14 +2072,14 @@ class GameEngine:
         self,
         context: dict[str, Any] | None = None,
     ) -> list[dict[str, Any]]:
-        """成就系统判定逻辑"""
+        """Evaluate achievements and emit only newly unlocked details."""
         try:
             context = context or {}
             snapshot = await self.repo.get_snapshot()
             stats = await self._effective_stats(snapshot.stats.model_dump())
             action_counts = await self.repo.get_action_counts()
 
-            # 防御性转换
+            # Normalize persisted values before comparing achievement thresholds.
             gpa = float(stats.get("highest_gpa") or 0)
             sanity = int(stats.get("sanity") or 50)
             eq = int(stats.get("eq") or 50)
@@ -2107,8 +2146,8 @@ class GameEngine:
         return self._achievement_config
 
     async def _next_semester(self):
-        """进入下一学期逻辑"""
-        self.stop()  # 先暂停游戏循环，防止过渡期间 tick 继续消耗精力
+        """Advance to the next semester or emit graduation payloads."""
+        self.stop()
 
         async with self.db_factory() as db:
             transition = await self.game_service.process_semester_transition(
@@ -2124,7 +2163,7 @@ class GameEngine:
             achievements = stats.get("achievements")
             if isinstance(achievements, list):
                 stats["achievement_details"] = self._achievement_details(achievements)
-            # 调用AI生成文言文结业总结
+            # Generate the graduation summary after final stats are known.
             from app.core.llm import generate_wenyan_report
 
             if self.mode == GameMode.LIBRARY:
@@ -2143,10 +2182,10 @@ class GameEngine:
                     }
                 },
             )
-            # self.stop() 已在函数开头调用，毕业后无需重启
+            # Graduation is terminal, so the loop remains stopped.
             return
 
-        # 获取新学期的最新快照（含新课程数据）
+        # Re-read Redis after the service writes the new semester state.
         new_snapshot = await self.repo.get_snapshot()
         new_stats = await self._effective_stats(new_snapshot.stats.model_dump())
         semester_idx = int(new_stats.get("semester_idx") or current_semester_idx or 1)
@@ -2175,7 +2214,7 @@ class GameEngine:
         self.start()
 
     async def _probe_llm(self):
-        """后台探测 LLM API 是否可用"""
+        """Probe LLM availability in the background and downgrade if needed."""
         try:
             from app.core.llm import check_llm_availability
 
@@ -2198,7 +2237,7 @@ class GameEngine:
             logger.warning(f"LLM probe failed: {e}")
 
     async def _push_update(self, msg: str | None = None):
-        """统一数据推送接口"""
+        """Push the canonical frontend state payload."""
         try:
             snapshot = await self.repo.get_snapshot()
             new_stats = await self._effective_stats(snapshot.stats.model_dump())
@@ -2206,15 +2245,14 @@ class GameEngine:
             course_states = snapshot.course_states
             relax_cooldowns = await self._get_relax_cooldowns()
 
-            # 计算学期剩余时间
+            # Compute remaining time from the persisted virtual elapsed clock.
             semester_idx = int(new_stats.get("semester_idx", 1))
             base_duration = balance.get_semester_duration(semester_idx)
-            # ✨ 传入我们在 Redis 中累加的虚拟流逝时间
             elapsed = int(new_stats.get("elapsed_game_time", 0))
             semester_time_left = self._get_semester_time_left(elapsed, base_duration)
 
-            # 新增：真正下发综合效率（用于前端渲染）
-            # 基于 iq 和 stress 计算并存入将下发的 new_stats 中
+            # Include derived efficiency in the frontend payload without
+            # persisting it into base stats.
             iq_default = self._stat_default("iq")
             efficiency_default = self._stat_default("efficiency")
             iq = int(new_stats.get("iq", iq_default))
@@ -2225,7 +2263,7 @@ class GameEngine:
                 if isinstance(item_bonuses, dict)
                 else 0
             )
-            # 以配置默认效率/IQ 为基准：IQ 每高出一点提高 1%，压力每多一点降低 0.5%。
+            # Relative to defaults: IQ adds 1% per point and stress costs 0.5%.
             calculated_efficiency = max(
                 10,
                 efficiency_default
@@ -2250,7 +2288,7 @@ class GameEngine:
             logger.error(f"Push failed: {e}")
 
     def stop(self):
-        """安全停止游戏循环"""
+        """Stop the tick loop without cancelling the current caller task."""
         self.is_running = False
         current_task = asyncio.current_task()
         if (
@@ -2262,7 +2300,7 @@ class GameEngine:
         self._run_task = None
 
     def shutdown(self):
-        """停止游戏循环并取消挂起的后台生成任务。"""
+        """Stop the tick loop and cancel pending background generation tasks."""
         self.stop()
         for task in list(self._background_tasks):
             task.cancel()
@@ -2272,13 +2310,12 @@ class GameEngine:
         self, elapsed_game_time: int, duration_seconds: int
     ) -> int:
         try:
-            # 尝试将传入的值强制转换为整型，防范 Redis 中的脏数据或 None
+            # Coerce defensively because Redis data can be stale or malformed.
             elapsed = int(elapsed_game_time)
             duration = int(duration_seconds)
             return max(0, duration - elapsed)
         except (TypeError, ValueError):
-            # 如果解析失败，兜底返回初始的 duration_seconds
-            # 若 duration_seconds 本身也有问题，则返回一个安全的硬编码值（如 360）
+            # Fall back to the configured duration, then a conservative default.
             if isinstance(duration_seconds, (int, float)):
                 return int(duration_seconds)
             return 360

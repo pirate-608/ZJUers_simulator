@@ -1,3 +1,10 @@
+"""General OpenAI-compatible LLM helpers for game content generation.
+
+Copyright (c) 2026 pirate-608. Licensed under the MIT License.
+The functions here generate random events, CC98 posts, and non-RP DingTalk
+fallbacks while preserving deterministic library-mode fallbacks.
+"""
+
 import json
 import logging
 import os
@@ -42,7 +49,7 @@ def _stat_label(stat_id: str) -> str:
 def _resolve_llm_config(
     llm_override: Optional[Dict[str, Any]] = None,
 ) -> Tuple[str | None, str | None, str]:
-    """根据用户配置或环境变量确定 LLM 配置"""
+    """Resolve model credentials from player override or environment settings."""
     override = llm_override or {}
     model = str(override.get("model") or os.getenv("LLM") or DEFAULT_LLM_MODEL)
     api_key_value = override.get("api_key") or os.getenv("LLM_API_KEY")
@@ -95,7 +102,7 @@ def _dict_list(value: object) -> list[dict[str, Any]]:
 
 
 async def check_llm_availability(llm_override: Optional[Dict[str, Any]] = None) -> bool:
-    """探测 LLM API 是否可用（轻量调用，不消耗 token）"""
+    """Probe whether the configured OpenAI-compatible endpoint is reachable."""
     try:
         api_key, base_url, _model = _resolve_llm_config(llm_override)
         if not api_key:
@@ -119,7 +126,7 @@ _KEYWORDS_CACHE: list[Any] = []
 
 
 def _load_keywords():
-    """加载 world/keywords.json 供 LLM 提示词使用"""
+    """Load `world/keywords.json` for prompt grounding."""
     global _KEYWORDS_CACHE_LOADED, _KEYWORDS_CACHE
     if _KEYWORDS_CACHE_LOADED:
         return _KEYWORDS_CACHE
@@ -148,7 +155,7 @@ async def generate_cc98_post(
     trigger: str,
     llm_override: Optional[Dict[str, Any]] = None,
 ):
-    """生成 CC98 帖子内容和反馈（批量缓存优化版）"""
+    """Generate a CC98 post and feedback with Redis-backed batch caching."""
     feedback_map = {
         "positive": [
             "你刷到了一个{trigger}，心态+5",
@@ -168,14 +175,13 @@ async def generate_cc98_post(
 
     feedback = _random.choice(feedback_map[effect]).format(trigger=trigger)
 
-    # 1. 优先从 Redis 队列获取（库存消耗）
+    # Consume from the Redis pool first so cached content is not duplicated.
     cc98_key = "cc98:posts"
     post_content = await RedisCache.lpop(cc98_key)
     if post_content:
-        # 队列里有货，直接返回，不再存回去（避免重复）
         return post_content, feedback
 
-    # 2. LLM 补货 (状态浓缩: ~50 tok 代替 ~300 tok)
+    # Refill the pool with compact state context to keep token usage bounded.
     state = PlayerStateVector.from_stats(player_stats)
     messages: List[Any] = []
     prompt = (
@@ -203,9 +209,8 @@ async def generate_cc98_post(
         if not posts:
             return "CC98 现在只有烂坑和吐槽...", feedback
 
-        # 3. 分配货源
-        current_post = posts[0]  # 第一条直接给用户
-        remaining_posts = posts[1:]  # 剩下的存入仓库
+        current_post = posts[0]
+        remaining_posts = posts[1:]
 
         await RedisCache.rpush_many_with_limit(
             cc98_key,
@@ -225,18 +230,16 @@ async def generate_random_event(
     player_stats: dict,
     history: list | None = None,
     llm_override: Optional[Dict[str, Any]] = None,
-):  # [修复] 增加了 history 参数
-    """
-    生成随机事件（批量缓存版）
-    """
+) -> dict[str, Any] | None:
+    """Generate a random event with Redis-backed batch caching."""
     event_key = "game:events_pool"
 
-    # 1. 尝试从缓存获取
+    # Use the cached pool before paying for another LLM batch.
     cached_event = await RedisCache.lpop(event_key)
     if cached_event:
         return _coerce_cached_json(cached_event)
 
-    # 2. LLM 补货 (状态浓缩: ~50 tok 代替 ~300 tok + keywords ~800 tok)
+    # Compact player state and recent history keep the generation prompt small.
     state = PlayerStateVector.from_stats(player_stats)
     messages: List[Any] = []
     history_hint = ""
@@ -269,7 +272,6 @@ async def generate_random_event(
         if not events:
             return None
 
-        # 分配：第一条直接用，剩下的存入 Redis
         current_event = events[0]
         remaining_events = [json.dumps(e, ensure_ascii=False) for e in events[1:]]
         await RedisCache.rpush_many_with_limit(
@@ -290,17 +292,15 @@ async def generate_dingtalk_message(
     context: str = "random",
     llm_override: Optional[Dict[str, Any]] = None,
 ):
-    """
-    生成钉钉消息（批量缓存版）
-    """
-    msg_key = f"game:dingtalk_pool:{context}"  # 根据上下文分类缓存
+    """Generate a DingTalk message with context-scoped Redis batch caching."""
+    msg_key = f"game:dingtalk_pool:{context}"
 
-    # 1. 尝试从缓存获取
+    # Use a context-scoped cached pool before generating a new batch.
     cached_msg = await RedisCache.lpop(msg_key)
     if cached_msg:
         return _coerce_cached_json(cached_msg)
 
-    # 2. LLM 补货 (状态浓缩: ~50 tok 代替 ~2300 tok)
+    # Compact state context avoids shipping the full game snapshot to the model.
     state = PlayerStateVector.from_stats(player_stats)
     request_messages: List[Any] = []
     prompt = (
@@ -429,7 +429,7 @@ async def generate_dingtalk_reply_message(
     reply_count: int,
     llm_override: Optional[Dict[str, Any]] = None,
 ) -> dict[str, Any] | None:
-    """用通用 OpenAI-compatible LLM 生成钉钉私聊回复。"""
+    """Generate a DingTalk private-chat reply with the generic LLM."""
     try:
         api_key, base_url, model = _resolve_llm_config(llm_override)
         if not api_key:
@@ -521,9 +521,7 @@ async def generate_dingtalk_reply_message(
 async def generate_wenyan_report(
     final_stats: dict, llm_override: Optional[Dict[str, Any]] = None
 ) -> str:
-    """
-    根据玩家final_stats生成一段文言文风格的结业总结。
-    """
+    """Generate a classical-Chinese-style graduation summary from final stats."""
     keywords = _load_keywords()
     messages: List[Any] = []
     if keywords:
@@ -543,11 +541,14 @@ async def generate_wenyan_report(
     if "username" in safe_stats:
         safe_stats["username"] = safe_username_for_prompt(safe_stats.get("username"))
 
-    prompt = f"""
-    玩家数据：{json.dumps(safe_stats, ensure_ascii=False)}
-    你是一位古风文案大师。请根据以上玩家的折姜大学结业数据，为其撰写一段100字左右的文言文结业总结，内容需涵盖其专业、能力、GPA、性格、成就等主要信息，风格典雅、用词考究，严肃中不失诙谐风趣，结尾可有调侃或祝福。
-    只需返回文言文内容本身，不要任何解释。
-    """
+    prompt = (
+        f"玩家数据：{json.dumps(safe_stats, ensure_ascii=False)}\n"
+        "你是一位古风文案大师。请根据以上玩家的折姜大学结业数据，"
+        "为其撰写一段100字左右的文言文结业总结，内容需涵盖其专业、"
+        "能力、GPA、性格、成就等主要信息，风格典雅、用词考究，"
+        "严肃中不失诙谐风趣，结尾可有调侃或祝福。\n"
+        "只需返回文言文内容本身，不要任何解释。"
+    )
     messages.append({"role": "user", "content": prompt})
     try:
         api_key, base_url, model = _resolve_llm_config(llm_override)

@@ -1,3 +1,10 @@
+"""Redis repository for active player-session state.
+
+Copyright (c) 2026 pirate-608. Licensed under the MIT License.
+The repository normalizes Redis payloads, refreshes TTLs, and provides atomic
+updates for stats, courses, cooldowns, achievements, DingTalk, and items.
+"""
+
 import inspect
 import json
 import logging
@@ -22,7 +29,7 @@ async def _await_if_needed(value: T | Awaitable[T]) -> T:
 
 
 class RedisRepository:
-    """处理玩家状态在 Redis 中的原子读写"""
+    """Atomic Redis gateway for one player's active game session."""
 
     def __init__(self, user_id: str, redis_client: aioredis.Redis):
         self.user_id = user_id
@@ -44,9 +51,11 @@ class RedisRepository:
         )
 
     def all_keys(self) -> List[str]:
+        """Return every Redis key owned by this player session."""
         return list(self.keys.values())
 
     def _normalize_stats_update(self, stats: Dict) -> Dict:
+        """Convert registry-backed stat updates into Redis-friendly values."""
         if not stats:
             return {}
         int_fields = {
@@ -82,6 +91,7 @@ class RedisRepository:
         return normalized
 
     def _normalize_course_map(self, data: Optional[Dict], cast_type):
+        """Normalize course IDs and values before writing Redis hashes."""
         normalized = {}
         for key, value in (data or {}).items():
             try:
@@ -91,10 +101,11 @@ class RedisRepository:
         return normalized
 
     async def exists(self) -> bool:
+        """Return whether this player has an active Redis stats hash."""
         return await _await_if_needed(self.redis.exists(self.keys["stats"])) > 0
 
     async def get_all_game_data(self) -> Dict[str, Any]:
-        """批量获取玩家所有核心数据"""
+        """Fetch all active game data for startup or save handoff."""
         async with self.redis.pipeline() as pipe:
             pipe.hgetall(self.keys["stats"])
             pipe.hgetall(self.keys["courses"])
@@ -111,7 +122,7 @@ class RedisRepository:
         return data
 
     async def get_snapshot(self) -> GameStateSnapshot:
-        """返回已规范化的快照对象"""
+        """Return a normalized typed snapshot of active game state."""
         async with self.redis.pipeline() as pipe:
             pipe.hgetall(self.keys["stats"])
             pipe.hgetall(self.keys["courses"])
@@ -124,16 +135,20 @@ class RedisRepository:
         )
 
     async def get_action_counts(self) -> Dict[str, str]:
+        """Return accumulated action counters for achievements and analytics."""
         return await _await_if_needed(self.redis.hgetall(self.keys["actions"]))
 
     async def get_unlocked_achievements(self) -> Set[str]:
+        """Return unlocked achievement codes."""
         res = await _await_if_needed(self.redis.smembers(self.keys["achievements"]))
         return set(res) if res else set()
 
     async def get_event_history(self) -> List[str]:
+        """Return recent event IDs used to reduce immediate repeats."""
         return await _await_if_needed(self.redis.lrange(self.keys["history"], 0, -1))
 
     async def get_dingtalk_state(self) -> DingTalkState:
+        """Read DingTalk inbox state with corruption-tolerant fallback."""
         raw = await _await_if_needed(self.redis.get(self.keys["dingtalk"]))
         if not raw:
             return DingTalkState()
@@ -144,6 +159,7 @@ class RedisRepository:
         return DingTalkState.from_raw(parsed)
 
     async def get_items_state(self) -> Dict[str, Any]:
+        """Read persisted item inventory state for this active session."""
         raw = await _await_if_needed(self.redis.get(self.keys["items"]))
         if not raw:
             return {"version": 1, "owned": [], "updated_at": 0}
@@ -154,6 +170,7 @@ class RedisRepository:
         return parsed if isinstance(parsed, dict) else {}
 
     async def set_items_state(self, state: Dict[str, Any]):
+        """Persist item inventory state and refresh its TTL."""
         await _await_if_needed(
             self.redis.set(
                 self.keys["items"],
@@ -163,6 +180,7 @@ class RedisRepository:
         )
 
     async def set_dingtalk_state(self, state: DingTalkState | Dict[str, Any]):
+        """Persist compact DingTalk state and refresh its TTL."""
         normalized = DingTalkState.from_raw(state).compact()
         await _await_if_needed(
             self.redis.set(
@@ -173,6 +191,7 @@ class RedisRepository:
         )
 
     async def mark_dingtalk_read(self, contact_id: str) -> DingTalkState:
+        """Clear unread count for one DingTalk contact."""
         state = await self.get_dingtalk_state()
         contact = state.contacts.get(contact_id)
         if contact:
@@ -181,6 +200,7 @@ class RedisRepository:
         return state
 
     async def get_cooldown_timestamp(self, action_type: str) -> Optional[float]:
+        """Return a relax-action cooldown timestamp if present."""
         value = await _await_if_needed(
             self.redis.hget(self.keys["cooldowns"], action_type)
         )
@@ -199,7 +219,7 @@ class RedisRepository:
         achievements: Optional[List[str]] = None,
         items_state: Optional[Dict[str, Any]] = None,
     ):
-        """写入玩家状态并刷新 TTL"""
+        """Replace the active session with a complete game snapshot."""
         stats = self._normalize_stats_update(stats)
         courses = self._normalize_course_map(courses, float)
         states = self._normalize_course_map(states, int)
@@ -223,9 +243,11 @@ class RedisRepository:
             await pipe.execute()
 
     async def delete_all(self):
+        """Delete every active Redis key for this player."""
         await _await_if_needed(self.redis.delete(*self.keys.values()))
 
     async def touch_ttl(self):
+        """Refresh all active-session TTLs."""
         await RedisCache.touch_ttl(self.all_keys(), self.ttl)
 
     async def update_courses_and_states(
@@ -234,7 +256,7 @@ class RedisRepository:
         courses: Optional[Dict] = None,
         states: Optional[Dict] = None,
     ):
-        """更新学期课程数据并刷新 TTL（不清空成就/历史等）"""
+        """Replace semester courses while preserving achievements/history."""
         stats_update = self._normalize_stats_update(stats_update)
         courses = self._normalize_course_map(courses, float)
         states = self._normalize_course_map(states, int)
@@ -251,6 +273,7 @@ class RedisRepository:
             await pipe.execute()
 
     async def update_stats(self, stats_update: Dict):
+        """Patch player stats without touching other Redis structures."""
         stats_update = self._normalize_stats_update(stats_update)
         if not stats_update:
             return
@@ -266,6 +289,7 @@ class RedisRepository:
         min_val: int | None = None,
         max_val: int | None = None,
     ) -> int:
+        """Atomically update a stat while clamping it to registry bounds."""
         definition = stat_definitions.by_id.get(field)
         if min_val is None:
             min_val = definition.min if definition else 0
@@ -294,16 +318,19 @@ class RedisRepository:
         return int(result)
 
     async def update_stat(self, field: str, delta: int) -> int:
+        """Increment one stat without clamping; prefer `update_stat_safe`."""
         return await _await_if_needed(
             self.redis.hincrby(self.keys["stats"], field, delta)
         )
 
     async def update_course_mastery(self, course_id: str, delta: float) -> float:
+        """Increment mastery for one course."""
         return await _await_if_needed(
             self.redis.hincrbyfloat(self.keys["courses"], course_id, delta)
         )
 
     async def batch_update_course_mastery(self, updates: Dict[str, float]):
+        """Increment mastery for multiple courses in one pipeline."""
         if not updates:
             return
         async with self.redis.pipeline() as pipe:
@@ -312,35 +339,42 @@ class RedisRepository:
             await pipe.execute()
 
     async def set_course_state(self, course_id: str, state_val: int):
+        """Set one course strategy value."""
         await _await_if_needed(
             self.redis.hset(self.keys["course_states"], course_id, str(state_val))
         )
 
     async def increment_action_count(self, action_type: str) -> int:
+        """Increment the counter for a player action."""
         return await _await_if_needed(
             self.redis.hincrby(self.keys["actions"], action_type, 1)
         )
 
     async def unlock_achievement(self, code: str) -> int:
+        """Add an achievement code and return Redis `sadd` result."""
         return await _await_if_needed(self.redis.sadd(self.keys["achievements"], code))
 
     async def set_cooldown(self, action_type: str, timestamp: float):
+        """Store the next-available timestamp for a relax action."""
         await _await_if_needed(
             self.redis.hset(self.keys["cooldowns"], action_type, str(timestamp))
         )
 
     async def add_event_to_history(self, event_id: str, limit: int = 10):
+        """Record a recent event ID while keeping history bounded."""
         async with self.redis.pipeline() as pipe:
             pipe.lpush(self.keys["history"], event_id)
             pipe.ltrim(self.keys["history"], 0, limit - 1)
             await pipe.execute()
 
     async def increment_semester(self) -> int:
+        """Atomically increment and return the current semester index."""
         return await _await_if_needed(
             self.redis.hincrby(self.keys["stats"], "semester_idx", 1)
         )
 
     async def set_current_event(self, event_data: Dict[str, Any]):
+        """Cache the currently pending random event choice payload."""
         await _await_if_needed(
             self.redis.set(
                 self.keys["current_event"],
@@ -350,6 +384,7 @@ class RedisRepository:
         )
 
     async def pop_current_event(self) -> Optional[Dict[str, Any]]:
+        """Consume and return the pending random event choice payload."""
         raw = await _await_if_needed(self.redis.getdel(self.keys["current_event"]))
         if not raw:
             return None

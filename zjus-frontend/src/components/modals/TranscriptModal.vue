@@ -129,6 +129,9 @@
 </template>
 
 <script setup lang="ts">
+/**
+ * End-of-semester transcript modal with GPA, gold, courses, and achievements.
+ */
 import { computed } from 'vue'
 import { useGameStore } from '../../stores/gameStore.ts'
 import type { WsClientAction } from '@/types/websocket'
@@ -140,10 +143,10 @@ const emit = defineEmits<{
   'send-action': [payload: WsClientAction]
 }>()
 
-// 动态获取模态框附带的数据
+/** Modal payload for the current semester transcript. */
 const data = computed(() => store.modalData as TranscriptModalData)
 
-// 计算是否有挂科
+/** Whether any course in the transcript failed. */
 const hasFailedCourse = computed(() => {
   if (!data.value.courses) return false
   return data.value.courses.some((c: TranscriptModalCourseRow) => c.grade < 60)
@@ -158,13 +161,13 @@ const courseCredit = (course: TranscriptModalCourseRow): string => {
 
 const startNextSemester = () => {
   store.closeModal()
-  // 永远只发送 next_semester，让后端自己去算是不是该毕业了
+  // The backend decides whether the next step is another semester or graduation.
   emit('send-action', { action: 'next_semester' }) 
 }
 </script>
 
 <style scoped>
-/* 半透明黑色遮罩，覆盖全屏 */
+/* Full-screen translucent overlay for the semester transcript. */
 .modal-backdrop-custom {
   position: fixed;
   top: 0;
@@ -175,7 +178,7 @@ const startNextSemester = () => {
   overflow-y: auto;
   background-color: rgba(0, 0, 0, 0.6);
   z-index: 9999;
-  backdrop-filter: blur(3px); /* 背景模糊效果 */
+  backdrop-filter: blur(3px);
 }
 
 .modal-card {
@@ -184,7 +187,7 @@ const startNextSemester = () => {
   border: 1px solid #d8d0bd !important;
 }
 
-/* 简单的入场动画 */
+/* Lightweight entrance animations for the modal shell. */
 .fade-in { animation: fadeIn 0.3s ease-out; }
 .scale-in { animation: scaleIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
 

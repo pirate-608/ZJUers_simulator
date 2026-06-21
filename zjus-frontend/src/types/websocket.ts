@@ -3,6 +3,9 @@ import type { PlayerStats } from './game'
 import type { ItemsState } from './items'
 import type { AchievementSummary, DingTalkContact, DingTalkMessage, DingTalkState, FeedbackModalData, RandomEventModalData, TranscriptModalData } from './modal'
 
+/**
+ * Server-to-client game WebSocket messages accepted by the frontend store.
+ */
 export type WsMessage =
   | { type: 'auth_ok' }
   | { type: 'auth_error'; message?: string }
@@ -48,7 +51,6 @@ export type WsMessage =
   | {
       type: 'graduation'
       data?: {
-        // 你现在前端兼容的嵌套结构：msg.data.data.final_stats + msg.data.data.wenyan_report
         data?: {
           final_stats?: Record<string, unknown>
           wenyan_report?: string
@@ -74,6 +76,9 @@ export type WsMessage =
   | { type: 'save_result'; message?: string; success?: boolean }
   | { type: 'exit_confirmed' }
 
+/**
+ * Extract final stats from both legacy and current graduation payload shapes.
+ */
 export function extractGraduationFinalStats(msg: Extract<WsMessage, { type: 'graduation' }>): {
   finalStats: Record<string, unknown>
   llmSummary?: string
@@ -89,6 +94,9 @@ export function extractGraduationFinalStats(msg: Extract<WsMessage, { type: 'gra
   return { finalStats, llmSummary }
 }
 
+/**
+ * Extract the semester label from nested or top-level transition payloads.
+ */
 export function extractNewSemesterName(msg: Extract<WsMessage, { type: 'new_semester' }>): string {
   const fromNested = msg.data?.semester_name
   if (typeof fromNested === 'string' && fromNested.trim() !== '') return fromNested
@@ -97,10 +105,14 @@ export function extractNewSemesterName(msg: Extract<WsMessage, { type: 'new_seme
   return '新学期'
 }
 
-// ─── 客户端 → 服务器 动作类型（覆盖全部合法 action） ───
-
+/**
+ * Relax action targets accepted by the backend.
+ */
 export type RelaxTarget = 'gym' | 'game' | 'walk' | 'cc98'
 
+/**
+ * Client-to-server WebSocket actions currently emitted by the UI.
+ */
 export type WsClientAction =
   | { action: 'ping' }
   | { action: 'start' }
@@ -123,8 +135,9 @@ export type WsClientAction =
   | { action: 'item_sell'; item_id: string }
   | { action: 'restart' }
 
-// ─── 运行时类型守卫 ───
-
+/**
+ * Runtime guard for parsed WebSocket messages.
+ */
 export function isWsMessage(raw: unknown): raw is WsMessage {
   return typeof raw === 'object' && raw !== null && typeof (raw as Record<string, unknown>).type === 'string'
 }

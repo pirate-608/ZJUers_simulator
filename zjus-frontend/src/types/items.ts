@@ -1,3 +1,6 @@
+/**
+ * Public item definition delivered in `items_state` WebSocket messages.
+ */
 export interface GameItem {
   id: string
   name: string
@@ -9,6 +12,9 @@ export interface GameItem {
   effects: Record<string, number>
 }
 
+/**
+ * Frontend item inventory state, including catalog and passive bonuses.
+ */
 export interface ItemsState {
   version?: string | number
   economy?: Record<string, unknown>

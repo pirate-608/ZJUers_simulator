@@ -1,9 +1,17 @@
 import type { CoursesMap } from './course'
 
+/**
+ * Top-level app phase used by `App.vue` to route the player entry flow.
+ */
 export type GamePhase = 'login' | 'save_select' | 'character_create' | 'loading' | 'playing' | 'ended'
 
-// 后端会推送一个“当前学期/角色”的大对象，这里先按你现有字段做一个尽量宽松的定义。
-// 重点是把关键数值字段收口，避免后续迁移时各处散落类型。
+/**
+ * Runtime player stats pushed by the backend.
+ *
+ * Core fields are typed explicitly, while the index signature allows new
+ * stat-registry fields to flow through before every component knows about
+ * them.
+ */
 export interface PlayerStats {
   username?: string
   major?: string
@@ -36,7 +44,6 @@ export interface PlayerStats {
 
   courses: CoursesMap
 
-  // 兼容后端可能新增字段
   [k: string]: unknown
 }
 

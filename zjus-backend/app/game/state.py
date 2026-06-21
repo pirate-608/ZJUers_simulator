@@ -1,3 +1,10 @@
+"""Redis-backed low-level state access helpers.
+
+Copyright (c) 2026 pirate-608. Licensed under the MIT License.
+This compatibility layer wraps Redis hash operations used by older game-state
+paths and keeps async/sync Redis client stubs testable.
+"""
+
 import inspect
 import logging
 from typing import Any, Awaitable, Dict, TypeVar
@@ -18,28 +25,19 @@ async def _await_if_needed(value: T | Awaitable[T]) -> T:
 
 
 class RedisState:
-    """
-    轻量级游戏状态门面。
+    """Compatibility facade over `RedisRepository`.
 
-    核心读写逻辑统一在 RedisRepository 中实现。
-    本类仅保留：
-      - 全局工具方法（cleanup_orphan_player_keys）
-      - 游戏初始化（init_game）
-      - 便捷方法（get_stats 等仅在 auth.py 中少量使用的快捷接口）
-
-    不再维护独立连接池，统一使用 RedisCache 的连接池。
+    New game-state code should prefer `RedisRepository` directly. This facade
+    remains for auth/startup helpers and older call sites that expect a compact
+    state object.
     """
 
     def __init__(self, user_id: str):
         self.user_id = user_id
-        # 统一使用 RedisCache 连接池（不再创建独立的 ConnectionPool）
         self.redis = RedisCache.get_client()
         self.repo = RedisRepository(self.user_id, self.redis)
         self.key = f"player:{user_id}:stats"
 
-    # ==========================================
-    # 全局工具方法
-    # ==========================================
     @classmethod
     async def cleanup_orphan_player_keys(cls, ttl_seconds: int, delete: bool = False):
         """Ensure legacy player keys have TTL; optionally delete them."""
@@ -72,36 +70,30 @@ class RedisState:
                 "Redis cleanup updated %s/%s legacy keys with no TTL", fixed, scanned
             )
 
-    # ==========================================
-    # 生命周期
-    # ==========================================
     async def clear_all(self):
-        """清空玩家所有存档数据"""
+        """Delete all active Redis data for this player."""
         await self.repo.delete_all()
 
     async def close(self):
-        """关闭 Redis 连接（使用共享池时实际为 noop，保留兼容性）"""
-        # 使用共享连接池时不需要关闭，保留接口以兼容旧调用方
+        """Compatibility no-op for callers that used to close per-state clients."""
         pass
 
     async def exists(self) -> bool:
+        """Return whether the legacy stats key exists."""
         return await _await_if_needed(self.redis.exists(self.key)) > 0
 
-    # ==========================================
-    # 游戏初始化逻辑
-    # ==========================================
     async def init_game(self, username: str) -> Dict[str, Any]:
+        """Initialize only the base player stats for a new session."""
         safe_username = safe_username_for_prompt(username)
         initial_stats = PlayerStats.build_initial(username=safe_username).model_dump()
         await self.repo.set_game_data(initial_stats)
         return initial_stats
 
-    # ==========================================
-    # 便捷查询接口（auth.py 等少量外部引用）
-    # ==========================================
     async def get_stats(self) -> Dict[str, str]:
+        """Return raw Redis stats for legacy callers."""
         return await _await_if_needed(self.redis.hgetall(self.key))
 
     async def get_stats_typed(self) -> Dict[str, Any]:
+        """Return registry-repaired player stats for legacy callers."""
         raw = await _await_if_needed(self.redis.hgetall(self.key))
         return PlayerStats.from_redis(raw).model_dump()

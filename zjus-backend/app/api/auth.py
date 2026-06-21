@@ -1,3 +1,10 @@
+"""Authentication, major listing, and character initialization endpoints.
+
+Copyright (c) 2026 pirate-608. Licensed under the MIT License.
+The routes here own invite-code login, returning-user save discovery, JWT
+validation, and stat-registry based new-character creation.
+"""
+
 import secrets
 from typing import Annotated, Dict, List, Optional
 
@@ -27,16 +34,17 @@ DbSessionDep = Annotated[AsyncSession, Depends(deps.get_db)]
 AuthorizationHeader = Annotated[str, Header(..., description="Bearer <JWT>")]
 LEGACY_INITIAL_STAT_DEFAULTS = stat_definitions.initial_default_stats()
 
-# ─── 模型 ───
-
-
 class AuthRequest(BaseModel):
+    """Invite-code auth payload, optionally including a persistent user token."""
+
     username: str
     invite_code: str
-    token: Optional[str] = None  # 老玩家凭证
+    token: Optional[str] = None
 
 
 class SaveSummary(BaseModel):
+    """Small save-slot summary returned to returning players."""
+
     save_slot: int
     major: str
     major_abbr: str
@@ -48,9 +56,11 @@ class SaveSummary(BaseModel):
 
 
 class AuthResponse(BaseModel):
-    status: str  # "new_user" | "returning"
+    """Auth result for both new and returning player entry flows."""
+
+    status: str
     jwt: Optional[str] = None
-    user_token: Optional[str] = None  # 持久凭证（新用户）
+    user_token: Optional[str] = None
     username: str
     user_id: Optional[int] = None
     message: Optional[str] = None
@@ -58,6 +68,8 @@ class AuthResponse(BaseModel):
 
 
 class MajorOption(BaseModel):
+    """Major option displayed on the character creation screen."""
+
     name: str
     abbr: str
     iq_buff: int
@@ -66,7 +78,9 @@ class MajorOption(BaseModel):
 
 
 class InitCharacterRequest(BaseModel):
-    token: str  # JWT
+    """Character initialization payload with legacy and registry stat fields."""
+
+    token: str
     major_abbr: str
     iq: int = LEGACY_INITIAL_STAT_DEFAULTS["iq"]
     eq: int = LEGACY_INITIAL_STAT_DEFAULTS["eq"]
@@ -76,6 +90,8 @@ class InitCharacterRequest(BaseModel):
 
 
 class CourseOption(BaseModel):
+    """Initial course summary returned after character creation."""
+
     id: str
     name: str
     credits: float
@@ -83,6 +99,8 @@ class CourseOption(BaseModel):
 
 
 class InitCharacterResponse(BaseModel):
+    """Response sent after a major and initial stats are accepted."""
+
     success: bool
     major: str
     major_abbr: str
@@ -90,14 +108,15 @@ class InitCharacterResponse(BaseModel):
 
 
 class AdmissionInfoResponse(BaseModel):
+    """Legacy admission-info response kept for compatibility."""
+
     username: str
     assigned_major: str
     token: str
 
 
-# ─── 安全校验 ───
-
 def _validate_invite_code(code: str) -> bool:
+    """Validate an invite code with constant-time string comparison."""
     raw = settings.INVITE_CODES.strip()
     if not raw:
         return False
@@ -107,6 +126,7 @@ def _validate_invite_code(code: str) -> bool:
 
 
 def _initial_stats_from_request(req: InitCharacterRequest) -> Dict[str, int]:
+    """Normalize initial stat allocation from preferred or legacy fields."""
     raw_stats = req.stats
     allow_missing = False
     if raw_stats is None:
@@ -131,12 +151,9 @@ def _validate_initial_stats(req: InitCharacterRequest):
     _initial_stats_from_request(req)
 
 
-# ─── 路由 ───
-
-
 @router.post("/auth", response_model=AuthResponse)
 async def auth(data: AuthRequest, db: DbSessionDep):
-    """邀请码认证：验证用户名+邀请码，返回 JWT 和持久凭证"""
+    """Authenticate a player and return JWT/save metadata."""
     is_safe_username, username, username_error = validate_username(data.username)
     if not is_safe_username:
         return AuthResponse(
@@ -167,7 +184,6 @@ async def auth(data: AuthRequest, db: DbSessionDep):
     user = result.scalars().first()
 
     if not user:
-        # 新用户
         user_token = secrets.token_urlsafe(16)
         user = User(
             username=username,
@@ -188,7 +204,6 @@ async def auth(data: AuthRequest, db: DbSessionDep):
             user_id=user.id,
         )
 
-    # 老用户
     if data.token and user.token == data.token:
         restriction = await RestrictionService.get_active_restriction(db, user.id)
         if restriction:
@@ -217,7 +232,7 @@ async def auth(data: AuthRequest, db: DbSessionDep):
 
 @router.get("/majors", response_model=List[MajorOption])
 async def get_majors():
-    """返回 majors.json 中所有可选专业"""
+    """Return all selectable majors from world data."""
     world = WorldService()
     all_majors = await world.get_all_majors()
     return [MajorOption(**m) for m in all_majors]
@@ -225,9 +240,8 @@ async def get_majors():
 
 @router.post("/init_character", response_model=InitCharacterResponse)
 async def init_character(req: InitCharacterRequest, db: DbSessionDep):
-    """初始化角色：选择专业并分配初始属性"""
+    """Create the initial game state for a selected major and stat allocation."""
     stat_overrides = _initial_stats_from_request(req)
-    # 解码 JWT
     try:
         payload = jwt.decode(
             req.token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM]
@@ -255,13 +269,11 @@ async def init_character(req: InitCharacterRequest, db: DbSessionDep):
             status_code=403, detail=f"账号受限：{restriction.restriction_type}"
         )
 
-    # 查找专业
     world = WorldService()
     major = await world.get_major_by_abbr(req.major_abbr)
     if not major:
         raise HTTPException(status_code=404, detail=f"专业 {req.major_abbr} 不存在")
 
-    # 初始化 Redis 游戏状态
     redis_client = RedisCache.get_client()
     repo = RedisRepository(user_id, redis_client)
     game_service = GameService(str(user_id), repo, world)
@@ -280,7 +292,7 @@ async def init_character(req: InitCharacterRequest, db: DbSessionDep):
     )
 
 
-# ─── 入学信息查询（admission_info） ───
+# Legacy admission information endpoint.
 
 
 @router.get("/admission_info", response_model=AdmissionInfoResponse)
@@ -288,7 +300,7 @@ async def get_admission_info(
     authorization: AuthorizationHeader,
     db: DbSessionDep,
 ):
-    """查询当前用户的用户名和已分配专业"""
+    """Return legacy admission info for an authenticated user."""
     if not authorization.lower().startswith("bearer "):
         raise HTTPException(status_code=401, detail="Missing or invalid token")
     token = authorization.split(" ", 1)[1]

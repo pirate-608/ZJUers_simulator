@@ -1,4 +1,10 @@
-# app/services/game_service.py
+"""Game lifecycle orchestration service.
+
+Copyright (c) 2026 pirate-608. Licensed under the MIT License.
+`GameService` prepares new/loaded contexts, initializes majors, and advances
+semesters while coordinating Redis state and PostgreSQL persistence.
+"""
+
 import json
 import logging
 from typing import Any, Dict, Optional
@@ -17,7 +23,7 @@ logger = logging.getLogger(__name__)
 
 
 class GameService:
-    """负责游戏生命周期的核心逻辑编排"""
+    """Coordinate game lifecycle operations outside the real-time engine."""
 
     def __init__(self, user_id: str, repo: RedisRepository, world: WorldService):
         self.user_id = user_id
@@ -45,7 +51,17 @@ class GameService:
         save_slot: int = 1,
         force_load_save: bool = False,
     ) -> Dict[str, Any]:
-        """初始化或恢复游戏上下文"""
+        """Load an existing active/save-slot context or report a new game.
+
+        Args:
+            username: Current player's prompt-safe username.
+            db: Optional database session used to restore persistent saves.
+            save_slot: Save slot to load when PostgreSQL persistence is used.
+            force_load_save: Skip active Redis reuse and require a DB save.
+
+        Returns:
+            A status/data pair consumed by the WebSocket startup route.
+        """
         if force_load_save and db:
             loaded = await SaveService.load_from_db(
                 self.user_id, self.repo, db, save_slot=save_slot
@@ -81,7 +97,7 @@ class GameService:
         stat_overrides: Optional[Dict[str, int]] = None,
         username: str = "",
     ) -> Dict[str, Any]:
-        """按指定专业和属性初始化游戏状态"""
+        """Initialize a new game with a major and registry-validated stats."""
         assignment = await self.world.get_major_by_abbr(major_abbr)
         if not assignment:
             raise ValueError(f"专业 {major_abbr} 不存在")
@@ -150,6 +166,7 @@ class GameService:
         }
 
     async def reset_courses_for_new_semester(self, semester_idx: int):
+        """Replace course state and recover energy for a newly entered semester."""
         snapshot = await self.repo.get_snapshot()
         stats = snapshot.stats.model_dump() or {}
         major_abbr = stats.get("major_abbr", "")
@@ -201,6 +218,7 @@ class GameService:
         holiday_event_factory=None,
         save_slot: int = 1,
     ) -> Dict[str, Any]:
+        """Advance to the next semester, auto-save, or return graduation state."""
         current_semester_idx = await self.repo.increment_semester()
 
         autosave_ok = False

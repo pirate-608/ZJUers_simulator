@@ -41,8 +41,8 @@
         <div class="d-flex justify-content-between align-items-center">
           <small class="text-muted fw-bold">掌握度: {{ course.progress.toFixed(1) }}%</small>
           
-          <!-- 策略切换按钮组 (0:摆, 1:摸, 2:卷) -->
-          <!-- 🌟 修复：绑定 :disabled="store.isPaused" 冻结交互 -->
+          <!-- Study intensity controls: 0 = low, 1 = steady, 2 = intense. -->
+          <!-- The disabled binding freezes course interactions while paused. -->
           <div
             class="btn-group btn-group-sm shadow-sm"
             role="group"
@@ -79,6 +79,9 @@
 </template>
 
 <script setup lang="ts">
+/**
+ * Course list with per-course strategy controls.
+ */
 import { computed } from 'vue'
 import { useGameStore } from '../stores/gameStore.ts'
 import type { WsClientAction } from '@/types/websocket'
@@ -88,16 +91,13 @@ const emit = defineEmits<{
   'send-action': [payload: WsClientAction]
 }>()
 
-// 🌟 核心魔法：数据缝合计算属性
-// 我们将 courseMetadata(静态数据), courses(进度数据), courseStates(策略数据) 缝合成一个数组
+/** Merge static metadata, mastery progress, and strategy state for rendering. */
 const enrichedCourses = computed(() => {
   if (!store.courseMetadata || store.courseMetadata.length === 0) return []
   if (!store.currentStats?.courses) return []
 
   return store.courseMetadata.map(meta => {
-    // 获取当前这门课的进度数据，如果没有则默认为 0
     const progressData = store.currentStats.courses[meta.id] || { progress: 0 }
-    // 获取当前这门课的策略状态，如果没有则默认为 1 (摸)
     const state = store.currentCourseStates[meta.id] ?? 1
 
     return {
@@ -110,14 +110,14 @@ const enrichedCourses = computed(() => {
   })
 })
 
-// 根据进度改变进度条颜色
+/** Return the visual progress class for a course mastery percentage. */
 const getProgressColor = (progress: number): string => {
   if (progress >= 85) return 'course-progress-high'
   if (progress >= 60) return 'course-progress-mid'
   return 'course-progress-low'
 }
 
-// 切换课程策略的方法
+/** Emit a course-strategy change after updating local optimistic state. */
 const changeStrategy = (courseId: string, newState: number) => {
   store.setCourseState(courseId, newState)
   emit('send-action', {
@@ -172,7 +172,7 @@ const changeStrategy = (courseId: string, newState: number) => {
   background: var(--console-low-gradient) !important;
 }
 
-/* 给按钮组增加一点点击时的缩放动画，提升手感 */
+/* Adds a subtle press animation to make study actions feel responsive. */
 .btn-group .btn {
   transition: all 0.2s ease-in-out;
 }

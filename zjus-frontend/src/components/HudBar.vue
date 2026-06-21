@@ -92,6 +92,9 @@
 </template>
 
 <script setup lang="ts">
+/**
+ * Top HUD for primary stats, cumulative GPA, and item-adjusted values.
+ */
 import { computed } from 'vue'
 import { useGameStore } from '../stores/gameStore.ts'
 import {

@@ -1,3 +1,9 @@
+"""SQLAlchemy models for admin authentication and audit trails.
+
+Copyright (c) 2026 pirate-608. Licensed under the MIT License.
+The admin audit log records operational balance changes and restore actions.
+"""
+
 from datetime import datetime
 from typing import Any
 
@@ -9,6 +15,8 @@ from app.core.database import Base
 
 
 class UserRestriction(Base):
+    """Temporary or permanent account-level play restriction."""
+
     __tablename__ = "user_restrictions"
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
@@ -28,6 +36,8 @@ class UserRestriction(Base):
 
 
 class UserBlacklist(Base):
+    """Identifier blacklist entry used before user lookup completes."""
+
     __tablename__ = "user_blacklist"
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
@@ -42,6 +52,8 @@ class UserBlacklist(Base):
 
 
 class AdminAuditLog(Base):
+    """Append-only audit row for privileged admin actions."""
+
     __tablename__ = "admin_audit_logs"
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)

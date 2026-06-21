@@ -1,3 +1,10 @@
+"""HTTP and WebSocket entry points for running game sessions.
+
+Copyright (c) 2026 pirate-608. Licensed under the MIT License.
+The WebSocket route performs auth, save-slot loading, engine lifecycle
+management, client action dispatch, and server event fan-out.
+"""
+
 import asyncio
 import json
 import logging
@@ -13,7 +20,7 @@ from app.api.cache import RedisCache
 from app.core.config import settings
 from app.core.database import AsyncSessionLocal
 from app.core.events import GameEvent
-from app.game.balance import balance  # 修复: 原缺失导致 get_game_config NameError
+from app.game.balance import balance
 from app.game.engine import GameEngine
 from app.repositories.redis_repo import RedisRepository
 from app.services.game_service import GameService
@@ -21,21 +28,18 @@ from app.services.restriction_service import RestrictionService
 from app.services.save_service import SaveService
 from app.websockets.manager import manager
 
-# 配置日志
 logger = logging.getLogger(__name__)
 
-# WebSocket 消息限流：最小间隔（秒）
+# WebSocket messages are rate-limited so rapid UI clicks do not starve ticks.
 _WS_MIN_MSG_INTERVAL = 0.05
 _SAVE_TIMEOUT_SECONDS = 12.0
 _VALID_COURSE_STATES = {0, 1, 2}
 
-# 1. 必须先实例化 router
 router = APIRouter()
 
 
-# 2. 存档管理辅助函数
 async def cleanup_redis_data(repo: RedisRepository):
-    """清理用户的 Redis 数据"""
+    """Delete a player's active Redis session after logout/restart cleanup."""
     try:
         await repo.delete_all()
         logger.info("Redis data cleaned for user %s", repo.user_id)
@@ -65,9 +69,8 @@ async def persist_save_with_timeout(
         return False, "保存超时，请检查网络后重试"
 
 
-# 3. 辅助函数
 async def get_current_user_id(token: str) -> tuple[str | None, str | None]:
-    """从 Token 解析 User ID"""
+    """Decode a JWT and return its user ID and username claims."""
     try:
         payload = jwt.decode(
             token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM]
@@ -82,7 +85,7 @@ async def get_current_user_id(token: str) -> tuple[str | None, str | None]:
 
 
 def _parse_token(token: str) -> dict[str, str]:
-    """解析 JWT token，返回用户信息字典，失败返回空字典"""
+    """Decode a JWT into a small user-info dict, returning `{}` on failure."""
     try:
         payload = jwt.decode(
             token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM]
@@ -117,12 +120,16 @@ def _string_field(data: dict[str, Any], key: str) -> str:
 
 
 class SemesterConfigResponse(BaseModel):
+    """Runtime semester and speed configuration exposed to the frontend."""
+
     durations: Dict[str, int]
     default_duration: int
     speed_modes: Dict[str, float]
 
 
 class GameConfigResponse(BaseModel):
+    """Public game-balance subset used by the frontend UI."""
+
     version: str
     semester: SemesterConfigResponse
     course_states: Dict[str, Dict[str, str]]
@@ -131,10 +138,9 @@ class GameConfigResponse(BaseModel):
     base_drain: int
 
 
-# 2.5 游戏配置API
 @router.get("/config", response_model=GameConfigResponse)
 async def get_game_config():
-    """获取游戏配置（供前端使用）"""
+    """Return the frontend-visible game balance configuration."""
     return {
         "version": balance.version,
         "semester": {
@@ -154,17 +160,12 @@ async def get_game_config():
     }
 
 
-# 3. WebSocket 路由主入口
-#    Token 通过首条消息传递（不再放在 URL Query String 中）
-#    DB Session 按需创建（不再在整个连接期间持有）
 @router.websocket("/ws/game")
 async def websocket_endpoint(websocket: WebSocket):
-    # ========================================
-    # 阶段 1：接受连接，等待首条消息进行鉴权
-    # ========================================
+    """Run one authenticated game WebSocket session."""
     await websocket.accept()
 
-    # 等待客户端发送 auth 消息（10 秒超时）
+    # Authentication is a first-message handshake so tokens stay out of URLs.
     try:
         auth_text = await asyncio.wait_for(websocket.receive_text(), timeout=10.0)
         auth_payload = json.loads(auth_text)
@@ -190,7 +191,7 @@ async def websocket_endpoint(websocket: WebSocket):
         return
     username = user_info.get("username") or user_id
 
-    # 鉴权通过后检查是否被限制（短生命周期 DB Session）
+    # Check restrictions with a short-lived DB session after JWT auth.
     llm_override = None
     rp_llm_override = None
     custom_model = _string_field(auth_data, "custom_llm_model").strip()
@@ -225,11 +226,7 @@ async def websocket_endpoint(websocket: WebSocket):
         await websocket.close(code=1008, reason="restricted")
         return
 
-    # ========================================
-    # 阶段 2：注册连接（会自动踢掉旧连接）
-    # ========================================
-    # 注意：connect 内部会 close 旧 ws，但不会再 accept（因为我们已经 accept 了）
-    # 所以这里要用一个特殊方式：先注册，不重复 accept
+    # Register the accepted socket and replace any older session for this user.
     if user_id in manager.active_connections:
         old_ws = manager.active_connections[user_id]
         logger.warning("Kicking old connection for user %s", user_id)
@@ -245,12 +242,9 @@ async def websocket_endpoint(websocket: WebSocket):
         "User %s connected. Total: %d", user_id, len(manager.active_connections)
     )
 
-    # 告知客户端鉴权成功
     await manager.send_personal_message({"type": "auth_ok"}, user_id)
 
-    # ========================================
-    # 阶段 3：初始化游戏上下文
-    # ========================================
+    # Initialize or restore game context after auth succeeds.
     redis_client = RedisCache.get_client()
     repo = RedisRepository(user_id, redis_client)
     world_service = deps.get_world_service()
@@ -261,7 +255,6 @@ async def websocket_endpoint(websocket: WebSocket):
     forwarder_task = None
 
     try:
-        # 初始化游戏（使用短生命周期 DB Session）
         selected_save_slot = None
         if load_save_slot is not None:
             try:
@@ -328,7 +321,7 @@ async def websocket_endpoint(websocket: WebSocket):
                 user_id,
             )
 
-        # --- 启动游戏引擎 ---
+        # Start the per-user engine after Redis state exists.
         engine = GameEngine(
             user_id,
             repo=repo,
@@ -341,7 +334,7 @@ async def websocket_endpoint(websocket: WebSocket):
         )
         final_stats = await engine._effective_stats(final_stats)
 
-        # 计算学期剩余时间（init 时就下发，避免前端等 tick 才拿到）
+        # Send time-left in init so the frontend does not wait for first tick.
         semester_idx = int(final_stats.get("semester_idx", 1))
         base_duration = balance.get_semester_duration(semester_idx)
         elapsed = int(final_stats.get("elapsed_game_time", 0))
@@ -350,7 +343,6 @@ async def websocket_endpoint(websocket: WebSocket):
         dingtalk_state = await repo.get_dingtalk_state()
         items_state = await engine._get_items_state_payload()
 
-        # 发送初始化数据包（携带完整的课程进度 + 策略 + 倒计时）
         await manager.send_personal_message(
             {
                 "type": "init",
@@ -399,15 +391,12 @@ async def websocket_endpoint(websocket: WebSocket):
         await engine._push_update()
         engine.start()
 
-        # ========================================
-        # 阶段 4：消息接收循环（带限流）
-        # ========================================
+        # Receive loop with lightweight rate limiting.
         last_msg_time = 0.0
 
         while True:
             data_text = await websocket.receive_text()
 
-            # 消息限流
             now = time.time()
             if now - last_msg_time < _WS_MIN_MSG_INTERVAL:
                 continue
@@ -417,13 +406,11 @@ async def websocket_endpoint(websocket: WebSocket):
                 data_json = json.loads(data_text)
                 action = data_json.get("action")
 
-                # 处理心跳消息
                 if action == "ping":
                     manager.update_heartbeat(user_id)
                     await repo.touch_ttl()
                     await manager.send_personal_message({"type": "pong"}, user_id)
 
-                # 处理保存并退出（按需获取 DB Session）
                 elif action == "save_and_exit":
                     logger.info("User %s requested save_and_exit", username)
                     success, failure_reason = await persist_save_with_timeout(
@@ -445,7 +432,6 @@ async def websocket_endpoint(websocket: WebSocket):
                         await cleanup_redis_data(repo)
                         break
 
-                # 处理仅保存（不退出）
                 elif action == "save_game":
                     logger.info("User %s requested save_game", username)
                     success, failure_reason = await persist_save_with_timeout(
@@ -464,7 +450,6 @@ async def websocket_endpoint(websocket: WebSocket):
                         user_id,
                     )
 
-                # 处理不保存直接退出
                 elif action == "exit_without_save":
                     logger.info("User %s exiting without save", username)
                     await cleanup_redis_data(repo)
@@ -559,7 +544,7 @@ async def websocket_endpoint(websocket: WebSocket):
     except Exception as e:
         logger.error("WebSocket error for %s: %s", username, e, exc_info=True)
     finally:
-        # --- 资源清理 ---
+        # Cleanup is best-effort so disconnects do not cascade.
         if engine:
             engine.shutdown()
         if forwarder_task:

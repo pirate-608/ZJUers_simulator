@@ -1,3 +1,9 @@
+/**
+ * VitePress configuration for the documentation site.
+ *
+ * The docs theme imports selected frontend components for the homepage demo, so
+ * this config keeps aliases and dependency dedupe aligned with the app.
+ */
 import { defineConfig } from 'vitepress'
 import { fileURLToPath, URL } from 'node:url'
 

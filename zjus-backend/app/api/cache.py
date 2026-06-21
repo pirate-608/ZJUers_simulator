@@ -1,3 +1,11 @@
+"""Redis connection lifecycle and cache utility helpers.
+
+Copyright (c) 2026 pirate-608. Licensed under the MIT License.
+The backend treats Redis as the active game-state store, so this module keeps
+connection creation, teardown, TTL normalization, and async-call compatibility
+in one place.
+"""
+
 import inspect
 import logging
 from typing import Any, Awaitable, Optional, Sequence, TypeVar
@@ -18,10 +26,13 @@ async def _await_if_needed(value: T | Awaitable[T]) -> T:
 
 
 class RedisCache:
+    """Shared Redis client pool and small cache/list helper methods."""
+
     _connection_pool: ConnectionPool | None = None
 
     @staticmethod
     def normalize_ttl(ttl_seconds: int) -> int:
+        """Clamp Redis TTLs to a practical minimum."""
         try:
             ttl_int = int(ttl_seconds)
         except (TypeError, ValueError):
@@ -30,6 +41,7 @@ class RedisCache:
 
     @staticmethod
     def build_player_keys(user_id: str) -> list[str]:
+        """Return legacy active-state keys for one player."""
         return [
             f"player:{user_id}:stats",
             f"player:{user_id}:courses",
@@ -42,6 +54,7 @@ class RedisCache:
 
     @classmethod
     def get_client(cls) -> aioredis.Redis:
+        """Return a Redis client backed by a process-wide connection pool."""
         if cls._connection_pool is None:
             cls._connection_pool = aioredis.ConnectionPool.from_url(
                 settings.REDIS_URL, decode_responses=True, max_connections=20
@@ -50,11 +63,13 @@ class RedisCache:
 
     @classmethod
     async def lpop(cls, key: str) -> Any | None:
+        """Pop one value from the left side of a Redis list."""
         redis = cls.get_client()
         return await _await_if_needed(redis.lpop(key))
 
     @classmethod
     async def rpush(cls, key: str, value: Any) -> int:
+        """Append one value to the right side of a Redis list."""
         redis = cls.get_client()
         return await _await_if_needed(redis.rpush(key, value))
 
@@ -66,6 +81,7 @@ class RedisCache:
         max_len: Optional[int] = None,
         ttl_seconds: Optional[int] = None,
     ) -> list[Any]:
+        """Append one value to a list, trim it, and optionally refresh TTL."""
         redis = cls.get_client()
         async with redis.pipeline() as pipe:
             pipe.rpush(key, value)
@@ -84,6 +100,7 @@ class RedisCache:
         max_len: Optional[int] = None,
         ttl_seconds: Optional[int] = None,
     ) -> list[Any] | None:
+        """Append many values to a list, trim it, and optionally refresh TTL."""
         if not values:
             return None
         redis = cls.get_client()
@@ -98,36 +115,43 @@ class RedisCache:
 
     @classmethod
     async def llen(cls, key: str) -> int:
+        """Return the length of a Redis list."""
         redis = cls.get_client()
         return await _await_if_needed(redis.llen(key))
 
     @classmethod
     async def set(cls, key: str, value: Any, ex: Optional[int] = None) -> bool:
+        """Set a Redis string value with an optional expiry."""
         redis = cls.get_client()
         return await _await_if_needed(redis.set(key, value, ex=ex))
 
     @classmethod
     async def get(cls, key: str) -> Any | None:
+        """Get a Redis string value."""
         redis = cls.get_client()
         return await _await_if_needed(redis.get(key))
 
     @classmethod
     async def delete(cls, key: str) -> int:
+        """Delete one Redis key."""
         redis = cls.get_client()
         return await _await_if_needed(redis.delete(key))
 
     @classmethod
     async def exists(cls, key: str) -> int:
+        """Return Redis existence count for one key."""
         redis = cls.get_client()
         return await _await_if_needed(redis.exists(key))
 
     @classmethod
     async def expire(cls, key: str, seconds: int) -> bool:
+        """Set a key expiry in seconds."""
         redis = cls.get_client()
         return await _await_if_needed(redis.expire(key, seconds))
 
     @classmethod
     async def touch_ttl(cls, keys: Sequence[str], ttl_seconds: int) -> list[Any] | None:
+        """Refresh TTL on a group of keys using one Redis pipeline."""
         if not keys:
             return None
         ttl_seconds = cls.normalize_ttl(ttl_seconds)
@@ -137,10 +161,3 @@ class RedisCache:
                 pipe.expire(key, ttl_seconds)
             result = await pipe.execute()
         return result
-
-
-# 用法示例：
-# await RedisCache.lpop('cc98:posts')
-# await RedisCache.rpush('cc98:posts', '一条新段子')
-# await RedisCache.set('foo', 'bar', ex=60)
-# await RedisCache.get('foo')

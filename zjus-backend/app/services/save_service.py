@@ -1,4 +1,10 @@
-# app/services/save_service.py
+"""Persistence bridge between Redis active state and PostgreSQL save slots.
+
+Copyright (c) 2026 pirate-608. Licensed under the MIT License.
+Save slots include stats, courses, actions, achievements, DingTalk contacts,
+and item inventory data.
+"""
+
 import logging
 from typing import Any, Dict, List
 
@@ -16,13 +22,18 @@ logger = logging.getLogger(__name__)
 
 
 class SaveService:
-    """处理 Redis 与 PostgreSQL 之间的持久化同步"""
+    """Synchronize active Redis sessions with PostgreSQL save slots."""
 
     @staticmethod
     async def persist_to_db(
         repo: RedisRepository, db: AsyncSession, save_slot: int = 1
     ) -> bool:
-        """将 Redis 数据同步至数据库"""
+        """Persist the current Redis session into one save slot.
+
+        Returns:
+            True when the save write was committed, otherwise False after
+            rollback and logging.
+        """
         try:
             snapshot = await repo.get_snapshot()
             if not snapshot.stats:
@@ -65,7 +76,11 @@ class SaveService:
     async def load_from_db(
         user_id: str, repo: RedisRepository, db: AsyncSession, save_slot: int = 1
     ) -> bool:
-        """从数据库加载存档写回 Redis"""
+        """Load a save slot from PostgreSQL back into Redis.
+
+        Returns:
+            True when a save exists and was restored into active state.
+        """
         try:
             stmt = select(GameSave).where(
                 GameSave.user_id == int(user_id), GameSave.save_slot == save_slot
@@ -95,7 +110,7 @@ class SaveService:
 
     @staticmethod
     async def list_saves(user_id: str, db: AsyncSession) -> List[Dict[str, Any]]:
-        """列出用户可加载的存档摘要，供前端选择。"""
+        """Return save-slot summaries shown by the frontend save selector."""
         stmt = (
             select(GameSave)
             .where(GameSave.user_id == int(user_id))

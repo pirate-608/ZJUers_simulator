@@ -1,3 +1,9 @@
+/**
+ * Static first-visit prologue copy and image mapping.
+ *
+ * The text is intentionally bundled in the frontend so the pre-login scene can
+ * play before any backend/API/WebSocket dependency is touched.
+ */
 const baseUrl = import.meta.env.BASE_URL || '/'
 const imageUrl = (name: string) => `${baseUrl}images/${name}`
 
@@ -41,6 +47,9 @@ const PROLOGUE_SCENES: Array<{ from: number; scene: PrologueScene }> = [
   { from: 17, scene: { image: imageUrl('qiushimen.webp'), tone: 'threshold' } },
 ]
 
+/**
+ * Return the most recent scene mapping for the active line index.
+ */
 export const getPrologueScene = (lineIndex: number): PrologueScene => {
   const matched = PROLOGUE_SCENES
     .slice()

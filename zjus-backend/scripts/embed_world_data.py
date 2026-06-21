@@ -1,21 +1,21 @@
-"""
-离线 Embedding 生成脚本（仅在开发机上运行）
+"""Generate offline embeddings for character and query-vector retrieval.
 
-功能：
-  1. 读取 world/characters.json，用 Ollama bge-m3 生成角色 embedding
-  2. 生成 4 个 context 查询向量，保存到 world/query_embeddings.json
-  3. 将角色 embedding 写入 PostgreSQL character_embeddings 表（pgvector）
-  4. 导出 CSV 作为备份
+Copyright (c) 2026 pirate-608. Licensed under the MIT License.
 
-前置条件：
-  - 本地运行 `ollama serve` + `ollama pull bge-m3`
-  - Docker PostgreSQL 可达 (localhost:15432)
+Notes:
+    This development-only script reads `world/characters.json`, generates
+    bge-m3 embeddings through local Ollama, writes pgvector rows, and exports
+    backup CSV/query-vector files.
+
+Prerequisites:
+    - Local `ollama serve` with `bge-m3` pulled.
+    - Docker PostgreSQL reachable at `localhost:15432`.
 
 Usage:
-    # 完整流程（生成 embedding + 写入数据库）
+    # Full flow: generate embeddings and write them to PostgreSQL.
     python scripts/embed_world_data.py
 
-    # 仅导出 CSV + query_embeddings.json（不写入数据库）
+    # Export CSV and query_embeddings.json without writing PostgreSQL rows.
     python scripts/embed_world_data.py --csv-only
 """
 
@@ -29,12 +29,11 @@ from typing import Any, Dict, List
 
 import requests
 
-# 将项目根目录加入 sys.path
+# Make backend imports available when the script is run directly.
 _project_root = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(_project_root))
 
-# 加载 .env（可能在 zjus-backend/ 或项目根目录）
-
+# Load `.env` from either `zjus-backend/` or the repository root.
 for env_candidate in [_project_root / ".env", _project_root.parent / ".env"]:
     if env_candidate.exists():
         from dotenv import load_dotenv
@@ -42,7 +41,7 @@ for env_candidate in [_project_root / ".env", _project_root.parent / ".env"]:
         break
 
 # ============================================================
-# 配置
+# Configuration.
 # ============================================================
 
 OLLAMA_EMBED_URL = "http://localhost:11434/api/embed"
@@ -52,7 +51,7 @@ WORLD_DIR = _project_root / "world"
 if not WORLD_DIR.exists():
     WORLD_DIR = _project_root / "zjus-backend" / "world"
 
-# 4 种 context 的查询文本（用于预计算查询向量）
+# Context prompts used to precompute DingTalk character-retrieval query vectors.
 CONTEXT_QUERIES = {
     "random": "浙江大学 日常校园生活 同学 室友 社团 聊天",
     "low_sanity": "浙江大学 学生情绪低落 心态崩了 需要关心安慰 室友 暗恋对象 辅导员",
@@ -62,11 +61,11 @@ CONTEXT_QUERIES = {
 
 
 # ============================================================
-# Ollama embedding（同步版，脚本用）
+# Ollama embedding client for this offline script.
 # ============================================================
 
 def get_embedding(text: str) -> List[float]:
-    """调用 Ollama bge-m3 获取 embedding"""
+    """Fetch one bge-m3 embedding from local Ollama."""
     resp = requests.post(
         OLLAMA_EMBED_URL,
         json={"model": OLLAMA_EMBED_MODEL, "input": text},
@@ -81,10 +80,11 @@ def get_embedding(text: str) -> List[float]:
 
 
 # ============================================================
-# 加载 characters.json
+# Load `characters.json`.
 # ============================================================
 
 def load_characters() -> List[Dict[str, Any]]:
+    """Load character records before generating embedding artifacts."""
     path = WORLD_DIR / "characters.json"
     if not path.exists():
         print(f"❌ characters.json 未找到: {path}")
@@ -94,11 +94,11 @@ def load_characters() -> List[Dict[str, Any]]:
 
 
 # ============================================================
-# 生成角色 embeddings
+# Generate character embeddings.
 # ============================================================
 
 def generate_character_embeddings(characters: List[Dict]) -> List[Dict[str, Any]]:
-    """为所有角色生成 embedding"""
+    """Generate one embedding record for each character."""
     results = []
     for i, char in enumerate(characters):
         name = char.get("name", "未知")
@@ -126,11 +126,11 @@ def generate_character_embeddings(characters: List[Dict]) -> List[Dict[str, Any]
 
 
 # ============================================================
-# 生成预计算查询向量
+# Generate precomputed query vectors.
 # ============================================================
 
 def generate_query_embeddings() -> Dict[str, List[float]]:
-    """为 4 种 context 生成预计算的查询向量"""
+    """Generate precomputed query vectors for all DingTalk contexts."""
     print("\n🔎 生成预计算查询向量...")
     query_vecs = {}
     for context, query_text in CONTEXT_QUERIES.items():
@@ -142,7 +142,7 @@ def generate_query_embeddings() -> Dict[str, List[float]]:
         except Exception as e:
             print(f"❌ {e}")
 
-    # 保存到 JSON
+    # Persist vectors for runtime SQL-only retrieval.
     out_path = WORLD_DIR / "query_embeddings.json"
     with open(out_path, "w", encoding="utf-8") as f:
         json.dump(query_vecs, f)
@@ -152,11 +152,11 @@ def generate_query_embeddings() -> Dict[str, List[float]]:
 
 
 # ============================================================
-# CSV 导出
+# CSV export.
 # ============================================================
 
 def export_csv(records: List[Dict], output_path: Path):
-    """导出 embedding 到 CSV"""
+    """Export embedding records to a CSV backup file."""
     with open(output_path, "w", encoding="utf-8", newline="") as f:
         writer = csv.writer(f)
         writer.writerow(["char_name", "char_role", "source_text", "embedding", "char_json"])  # noqa: E501
@@ -173,18 +173,18 @@ def export_csv(records: List[Dict], output_path: Path):
 
 
 # ============================================================
-# 写入 pgvector
+# pgvector import.
 # ============================================================
 
 async def write_to_pgvector(records: List[Dict]):
-    """将 embedding 写入 PostgreSQL character_embeddings 表（自动建表）"""
+    """Write embeddings to PostgreSQL, creating pgvector objects if needed."""
     from sqlalchemy import delete, text
 
     from app.core.database import AsyncSessionLocal
     from app.models.embedding import EMBEDDING_DIM, CharacterEmbedding
 
     async with AsyncSessionLocal() as db:
-        # 自动启用 pgvector 扩展 + 建表（幂等操作）
+        # Ensure the pgvector extension, table, and index exist idempotently.
         await db.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
         await db.execute(text(f"""
             CREATE TABLE IF NOT EXISTS character_embeddings (
@@ -203,7 +203,7 @@ async def write_to_pgvector(records: List[Dict]):
         """))
         await db.commit()
 
-        # 清空旧数据并写入
+        # Replace old vectors so retrieval always matches the current world data.
         await db.execute(delete(CharacterEmbedding))
         for rec in records:
             row = CharacterEmbedding(
@@ -220,10 +220,11 @@ async def write_to_pgvector(records: List[Dict]):
 
 
 # ============================================================
-# 主入口
+# CLI entry point.
 # ============================================================
 
 def main():
+    """CLI entry point for generating character embeddings and query vectors."""
     import argparse
     parser = argparse.ArgumentParser(
         description="生成角色 embedding + 查询向量（仅在开发机运行）"
@@ -238,18 +239,18 @@ def main():
     )
     args = parser.parse_args()
 
-    # 脚本在宿主机运行，需要用 localhost:15432 而非 Docker 内部的 db:5432
+    # This script runs on the host, so Docker's internal `db:5432` must be
+    # converted to the host-published PostgreSQL port.
     if not args.csv_only:
         if args.db_url:
             os.environ["DATABASE_URL"] = args.db_url
         elif "db:" in os.environ.get("DATABASE_URL", ""):
-            # 自动将 Docker 内部地址替换为宿主机地址
             original = os.environ["DATABASE_URL"]
             fixed = original.replace("@db:", "@localhost:").replace(":5432/", ":15432/")
             os.environ["DATABASE_URL"] = fixed
             print("📌 DATABASE_URL 已自动修正为宿主机地址: ...@localhost:15432/...")
 
-    # 1. 检查 Ollama
+    # Check local Ollama and the required embedding model.
     print("🔍 检查 Ollama bge-m3...")
     try:
         resp = requests.get("http://localhost:11434/api/tags", timeout=5)
@@ -265,12 +266,12 @@ def main():
         print("  请确保 `ollama serve` 已启动")
         sys.exit(1)
 
-    # 2. 加载角色数据
+    # Load world characters.
     print("\n📂 加载 characters.json...")
     characters = load_characters()
     print(f"  找到 {len(characters)} 个角色")
 
-    # 3. 生成角色 embeddings
+    # Generate one embedding per character.
     print("\n🧠 生成角色 bge-m3 embeddings...")
     records = generate_character_embeddings(characters)
 
@@ -278,14 +279,14 @@ def main():
         print("\n❌ 没有生成任何 embedding")
         sys.exit(1)
 
-    # 4. 生成预计算查询向量
+    # Generate context query vectors for runtime retrieval.
     generate_query_embeddings()
 
-    # 5. 导出 CSV
+    # Export a CSV backup alongside runtime JSON artifacts.
     csv_path = WORLD_DIR / "character_embeddings.csv"
     export_csv(records, csv_path)
 
-    # 6. 写入 pgvector
+    # Write vectors into the development pgvector table unless skipped.
     if not args.csv_only:
         print("\n🗃️  写入 pgvector（连接 Docker PostgreSQL）...")
         try:

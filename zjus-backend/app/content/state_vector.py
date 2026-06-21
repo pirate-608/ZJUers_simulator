@@ -1,10 +1,10 @@
-"""
-PlayerStateVector — 将 30+ 字段的 player_stats 浓缩为 6 维语义标签
+"""Compact player state into semantic tags for content retrieval.
 
-用途：
-  1. 作为事件库检索的过滤条件
-  2. 作为 LLM 补货时的精简上下文（~50 token vs ~300 token）
-  3. 作为向量化角色检索的查询文本
+Copyright (c) 2026 pirate-608. Licensed under the MIT License.
+
+Notes:
+    The vector is used as an event-library filter, a compact LLM context, and a
+    query text seed for role retrieval.
 """
 
 from dataclasses import asdict, dataclass
@@ -31,15 +31,18 @@ def _stat_ratio(value: int, stat_id: str) -> float:
 
 @dataclass(frozen=True)
 class PlayerStateVector:
-    mood: str           # "高昂" | "正常" | "低落" | "崩溃"
-    stress_level: str   # "轻松" | "适中" | "高压" | "爆表"
-    academic: str       # "学霸" | "普通" | "挂科边缘"
-    social: str         # "出众" | "普通" | "低调"
-    semester: str       # e.g. "大一秋冬"
-    major: str          # e.g. "计算机科学与技术"
+    """Categorical state summary for retrieval and prompt context."""
+
+    mood: str
+    stress_level: str
+    academic: str
+    social: str
+    semester: str
+    major: str
 
     @classmethod
     def from_stats(cls, stats: Dict[str, Any]) -> "PlayerStateVector":
+        """Build a categorical vector from raw or effective player stats."""
         sanity = _stat_value(stats, "sanity")
         stress = _stat_value(stats, "stress")
         gpa = float(stats.get("gpa", 0) or 0)
@@ -90,10 +93,11 @@ class PlayerStateVector:
         )
 
     def to_dict(self) -> Dict[str, str]:
+        """Return the vector as a plain dictionary."""
         return asdict(self)
 
     def to_prompt_fragment(self) -> str:
-        """生成 ~50 token 的 LLM 上下文摘要"""
+        """Return a compact prompt fragment for LLM content generation."""
         return (
             f"{self.major}·{self.semester}｜"
             f"心态{self.mood}·压力{self.stress_level}·"
@@ -101,6 +105,6 @@ class PlayerStateVector:
         )
 
     def matches_tags(self, tags: list[str]) -> bool:
-        """判断当前状态是否匹配事件的标签列表（任一命中即匹配）"""
+        """Return whether any event tag matches the current state vector."""
         state_tags = {self.mood, self.stress_level, self.academic, self.social}
         return bool(state_tags & set(tags))

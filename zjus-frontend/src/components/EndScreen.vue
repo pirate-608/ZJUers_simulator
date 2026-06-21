@@ -172,6 +172,9 @@
 </template>
 
 <script setup lang="ts">
+/**
+ * End-state screen for Game Over and graduation ceremonies.
+ */
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useGameStore } from '../stores/gameStore.ts'
 import type { WsClientAction } from '@/types/websocket'
@@ -187,7 +190,7 @@ const emit = defineEmits<{
   'send-action': [payload: WsClientAction]
   'go-home': []
 }>()
-// 判断是否是好结局
+/** Graduation is treated as the successful end state. */
 const isSuccess = computed(() => store.endType === 'graduation')
 const finalGpa = computed(() => {
   const parsed = Number(store.endData.gpa ?? 0)
@@ -240,7 +243,7 @@ const switchBg = () => {
   }, fadeDuration)
 }
 
-// 打字机特效状态
+/** Typewriter state for end-screen narrative text. */
 const typedText = ref('')
 const isTyping = ref(false)
 
@@ -269,7 +272,7 @@ const clearTypewriter = () => {
   }
 }
 
-// 打字机特效函数
+/** Start the end-screen typewriter animation. */
 const startTypewriter = (text: string) => {
   clearTypewriter()
   isTyping.value = true
@@ -284,12 +287,11 @@ const startTypewriter = (text: string) => {
       clearTypewriter()
       isTyping.value = false
     }
-  }, 50) // 每 50ms 吐出一个字
+  }, 50)
 }
 
-// 重新开始游戏逻辑
+/** Ask the backend to reset the current save into a fresh run. */
 const restartGame = () => {
-  // 发送重开指令
   emit('send-action', { action: 'restart' })
 }
 

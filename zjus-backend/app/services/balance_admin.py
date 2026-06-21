@@ -1,3 +1,10 @@
+"""Admin balance-editor validation and atomic publishing service.
+
+Copyright (c) 2026 pirate-608. Licensed under the MIT License.
+This module converts SQLAdmin form submissions into validated
+`game_balance.json` documents, writes them atomically, and records audit data.
+"""
+
 import copy
 import json
 import os
@@ -21,6 +28,8 @@ class BalanceConfigError(ValueError):
 
 @dataclass(frozen=True)
 class BalanceField:
+    """Editable scalar field mapped to a path in `game_balance.json`."""
+
     name: str
     label: str
     path: tuple[str | int, ...]
@@ -32,11 +41,14 @@ class BalanceField:
 
     @property
     def input_type(self) -> str:
+        """Return the HTML input type for this editable field."""
         return "text" if self.value_type is str else "number"
 
 
 @dataclass(frozen=True)
 class BalanceSection:
+    """A grouped set of balance fields rendered together in SQLAdmin."""
+
     title: str
     description: str
     fields: list[BalanceField]
@@ -44,6 +56,8 @@ class BalanceSection:
 
 @dataclass(frozen=True)
 class BalanceAuditSnapshot:
+    """Previous balance config recovered from an audit-log entry."""
+
     log_id: int
     old_config: dict[str, Any]
 
@@ -665,6 +679,7 @@ def _make_balance_sections(config: Mapping[str, Any]) -> list[BalanceSection]:
 
 
 def config_to_form_data(config: Mapping[str, Any]) -> dict[str, str]:
+    """Flatten a balance config into HTML form field values."""
     form: dict[str, str] = {}
     for field in iter_balance_fields(config):
         value = _get_path(config, field.path)
@@ -673,6 +688,7 @@ def config_to_form_data(config: Mapping[str, Any]) -> dict[str, str]:
 
 
 def iter_balance_fields(config: Mapping[str, Any]) -> Iterable[BalanceField]:
+    """Yield all editable fields supported by the current admin UI."""
     for section in build_balance_sections(config):
         yield from section.fields
 
@@ -681,6 +697,7 @@ def build_config_from_form(
     original_config: Mapping[str, Any],
     form_data: Mapping[str, Any],
 ) -> dict[str, Any]:
+    """Build and validate a complete config from submitted form values."""
     next_config = copy.deepcopy(dict(original_config))
     fields = list(iter_balance_fields(original_config))
     errors: list[str] = []
@@ -707,6 +724,7 @@ def build_config_from_form(
 
 
 def parse_field_value(field: BalanceField, raw_value: str) -> int | float | str:
+    """Parse and validate one raw form value for a balance field."""
     if field.value_type is str:
         if raw_value == "":
             raise BalanceConfigError(f"{field.label} 不能为空")
@@ -735,6 +753,7 @@ def validate_balance_config(
     config: Mapping[str, Any],
     sections: list[BalanceSection] | None = None,
 ) -> None:
+    """Validate editable balance fields plus cross-field invariants."""
     sections = sections or _make_balance_sections(config)
     for section in sections:
         for field in section.fields:
@@ -756,6 +775,7 @@ def validate_balance_config(
 
 
 def summarize_balance_config(config: Mapping[str, Any]) -> dict[str, Any]:
+    """Return the compact audit summary for a balance config."""
     return {
         "version": config.get("version"),
         "tick_interval": _get_path(config, ("tick", "interval_seconds")),
@@ -779,6 +799,7 @@ def diff_balance_configs(
     old_config: Mapping[str, Any],
     new_config: Mapping[str, Any],
 ) -> list[str]:
+    """Return editable paths whose values changed between two configs."""
     changed: list[str] = []
     for field in iter_balance_fields(old_config):
         old_value = _get_path(old_config, field.path)
@@ -793,6 +814,7 @@ def write_balance_config_atomic(
     config: Mapping[str, Any],
     replace_func: ReplaceFunc = os.replace,
 ) -> None:
+    """Validate and atomically replace `game_balance.json` on disk."""
     validate_balance_config(config)
     path.parent.mkdir(parents=True, exist_ok=True)
     tmp_path = path.with_name(f".{path.name}.tmp")
@@ -812,11 +834,13 @@ def publish_balance_config(
     config: Mapping[str, Any],
     reload_func: Callable[[str], Any],
 ) -> None:
+    """Write a balance config and immediately reload runtime readers."""
     write_balance_config_atomic(path, config)
     reload_func(str(path))
 
 
 def latest_balance_update_snapshot(session: Session) -> BalanceAuditSnapshot | None:
+    """Return the latest restorable pre-update config from audit logs."""
     log = (
         session.query(AdminAuditLog)
         .filter(

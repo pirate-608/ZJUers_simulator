@@ -1,8 +1,11 @@
-"""
-MiniMax M2-her 钉钉消息生成模块
+"""MiniMax M2-her DingTalk role-play message generation.
 
-将 characters.json 中的角色映射到 M2-her 的 RP 角色系统，
-通过 OpenAI SDK 兼容接口生成高质量角色扮演钉钉消息。
+Copyright (c) 2026 pirate-608. Licensed under the MIT License.
+
+Notes:
+    Character definitions from `characters.json` are mapped into M2-her's
+    OpenAI-compatible chat API while preserving player-provided RP keys and
+    fallback behavior.
 """
 
 import json
@@ -56,10 +59,10 @@ _M2HER_ALLOWED_ROLES = {
     "sample_message_ai",
 }
 
-# Redis 缓存配置
+# Redis-backed cache for platform-default generated messages.
 _CACHE_KEY = "game:dingtalk_m2her"
 _CACHE_MAX_LEN = 100
-_CACHE_TTL_SECONDS = 6 * 60 * 60  # 6 小时
+_CACHE_TTL_SECONDS = 6 * 60 * 60
 _CHARACTER_CACHE: List[Dict[str, Any]] | None = None
 _M2HER_CLIENTS: dict[tuple[str, str], AsyncOpenAI] = {}
 _DEFAULT_M2HER_BASE_URL = "https://api.minimaxi.com/v1"
@@ -75,11 +78,11 @@ _FALLBACK_REPLY_OPTIONS = {
 
 
 # ==========================================
-# 数据加载
+# Data loading.
 # ==========================================
 
 def _load_characters() -> List[Dict[str, Any]]:
-    """加载 characters.json"""
+    """Load character-library records from world data."""
     global _CHARACTER_CACHE
     if _CHARACTER_CACHE is not None:
         return _CHARACTER_CACHE
@@ -101,6 +104,7 @@ def _load_characters() -> List[Dict[str, Any]]:
 
 
 def get_character_by_contact_id(contact_id: str) -> Optional[Dict[str, Any]]:
+    """Find a character-library record by deterministic DingTalk contact ID."""
     for character in _load_characters():
         sender = str(character.get("name") or "未知")
         role = str(character.get("role") or "unknown")
@@ -242,7 +246,7 @@ async def generate_dingtalk_for_character_via_m2her(
 
 
 # ==========================================
-# M2-her 消息构建
+# M2-her message construction.
 # ==========================================
 
 def _build_m2her_messages(
@@ -251,13 +255,13 @@ def _build_m2her_messages(
     context: str,
 ) -> List[Dict[str, Any]]:
     """
-    将一个 character 条目映射为 M2-her 的结构化 messages。
+    Map one character-library entry to MiniMax M2-her structured messages.
 
-    利用 M2-her 独有的角色类型：
-    - system: AI 角色设定
-    - user_system: 用户/玩家身份设定
-    - group: 场景/背景设定
-    - sample_message_ai / sample_message_user: 示例对话
+    Uses M2-her-specific roles:
+        system: NPC persona.
+        user_system: Player identity and state.
+        group: Scene and background.
+        sample_message_ai / sample_message_user: Conversation examples.
     """
     char_name = character.get("name", "未知")
     char_content = character.get("content", "")
@@ -276,13 +280,13 @@ def _build_m2her_messages(
 
     messages = []
 
-    # 1. system — AI 角色人设
+    # system: NPC persona.
     messages.append({
         "role": "system",
         "content": f"你当前扮演：{char_name}。\n{char_content}",
     })
 
-    # 2. user_system — 玩家身份/状态
+    # user_system: player identity and current state.
     player_desc = (
         f"你是一位浙江大学{major}专业的学生，名叫{username}，"
         f"目前处于{semester}，{charm_label}值约为{charm}。"
@@ -301,7 +305,7 @@ def _build_m2her_messages(
         "content": player_desc,
     })
 
-    # 3. group — 场景设定
+    # group: scene and situational framing.
     context_desc_map = {
         "random": "日常校园生活",
         "low_sanity": "学生情绪低落需要关心",
@@ -314,21 +318,21 @@ def _build_m2her_messages(
         "content": f"场景：浙江大学校园，{semester}，钉钉消息对话。当前情境：{scene}。",
     })
 
-    # 4. sample_message — 从 examples 中选取示例对话
+    # sample_message_*: examples from the character library.
     sample_examples = examples[:3] if len(examples) > 3 else examples
     for i, example in enumerate(sample_examples):
         messages.append({
             "role": "sample_message_ai",
             "content": example,
         })
-        # 穿插用户回复（简短的通用回复）
+        # Interleave short player replies so examples read like a dialogue.
         if i < len(sample_examples) - 1:
             messages.append({
                 "role": "sample_message_user",
                 "content": random.choice(["好的收到", "了解~", "嗯嗯", "OK"]),
             })
 
-    # 5. user — 触发 AI 生成
+    # user: trigger the assistant to produce the next DingTalk message.
     messages.append({
         "role": "user",
         "content": f"（{username}打开了钉钉，看到一条新消息）",
@@ -338,7 +342,7 @@ def _build_m2her_messages(
 
 
 # ==========================================
-# API 调用
+# API calls.
 # ==========================================
 
 async def _call_m2her_api(
@@ -346,7 +350,7 @@ async def _call_m2her_api(
     max_completion_tokens: int = 200,
     llm_override: Optional[dict[str, Any]] = None,
 ) -> Optional[str]:
-    """通过 OpenAI SDK 兼容接口调用 MiniMax M2-her"""
+    """Call MiniMax M2-her through the OpenAI-compatible SDK surface."""
     api_key, model, base_url = _resolve_m2her_config(llm_override)
     payload_messages = _sanitize_m2her_messages(messages)
 
@@ -442,13 +446,14 @@ async def _get_m2her_client(api_key: str, base_url: str) -> AsyncOpenAI:
 
 
 async def close_m2her_client() -> None:
+    """Close cached platform MiniMax clients during application shutdown."""
     for client in list(_M2HER_CLIENTS.values()):
         await client.close()
     _M2HER_CLIENTS.clear()
 
 
 # ==========================================
-# 向量化角色选取
+# Vectorized character selection.
 # ==========================================
 
 
@@ -458,13 +463,13 @@ async def _select_characters_vectorized(
     top_k: int = 3,
 ) -> List[Dict[str, Any]]:
     """
-    通过 pgvector 余弦相似度检索选取最匹配的角色。
+    Select matching characters by pgvector cosine similarity.
 
-    使用预计算的 context 查询向量（零运行时推理）在
-    character_embeddings 表中检索 Top-K 最相似的角色。
+    Uses precomputed context query vectors and performs no runtime embedding
+    inference while retrieving Top-K matches from `character_embeddings`.
 
     Returns:
-        角色 dict 列表，或空列表（不可用时由调用方 fallback）
+        Character dictionaries, or an empty list for caller fallback.
     """
     try:
         from app.content.vector_store import search_similar_characters
@@ -490,7 +495,7 @@ async def _select_characters_vectorized(
 
 
 # ==========================================
-# 主入口
+# Public generation entry point.
 # ==========================================
 
 async def generate_dingtalk_via_m2her(
@@ -499,19 +504,18 @@ async def generate_dingtalk_via_m2her(
     llm_override: Optional[dict[str, Any]] = None,
 ) -> Optional[Dict[str, Any]]:
     """
-    使用 M2-her 生成单条角色扮演钉钉消息。
+    Generate one role-play DingTalk message through M2-her.
 
     Returns:
-        {"sender": "【室友】", "role": "roommate", "content": "...", "is_urgent": false}
-        或 None（失败时由调用方 fallback）
+        A DingTalk payload dictionary, or None so the caller can fall back.
     """
-    # 0. 无 API key 直接返回 None（由调用方 fallback）
+    # Missing credentials mean the engine should use its fallback generator.
     api_key, _, _ = _resolve_m2her_config(llm_override)
     if not api_key:
         return None
 
     use_shared_cache = llm_override is None
-    # 1. 平台默认 key 才使用共享 Redis 缓存；玩家自带 RP key 不混入平台缓存。
+    # Shared cache is only safe for the platform key, not user RP keys.
     if use_shared_cache:
         cached = await RedisCache.lpop(_CACHE_KEY)
         if cached:
@@ -521,17 +525,16 @@ async def generate_dingtalk_via_m2her(
             except (json.JSONDecodeError, TypeError):
                 pass
 
-    # 2. 向量化角色选取（优先）→ 随机兜底
+    # Prefer vector-selected characters, then fall back to random sampling.
     unique_chars = await _select_characters_vectorized(player_stats, context)
 
     if not unique_chars:
-        # pgvector 不可用时回退到随机选取
         characters = _load_characters()
         if not characters:
             return None
         unique_chars = random.sample(characters, min(3, len(characters)))
 
-    # 3. 并发调用 M2-her 生成多条消息
+    # Generate multiple candidate messages concurrently.
     import asyncio
 
     async def _generate_one(char: Dict) -> Optional[Dict[str, Any]]:
@@ -555,7 +558,7 @@ async def generate_dingtalk_via_m2her(
     if not valid_results:
         return None
 
-    # 4. 第一条直接返回，剩余存入 Redis 缓存
+    # Return the first candidate and cache the rest for platform-key sessions.
     current_msg = valid_results[0]
     remaining = [json.dumps(m, ensure_ascii=False) for m in valid_results[1:]]
 
@@ -578,7 +581,7 @@ async def generate_dingtalk_reply_via_m2her(
     reply_count: int,
     llm_override: Optional[dict[str, Any]] = None,
 ) -> Optional[Dict[str, Any]]:
-    """根据玩家选择生成 NPC 回复；第三次玩家回复后返回一轮结算。"""
+    """Generate an NPC reply and settle the round after the third player reply."""
     api_key, _, _ = _resolve_m2her_config(llm_override)
     if not api_key:
         return None

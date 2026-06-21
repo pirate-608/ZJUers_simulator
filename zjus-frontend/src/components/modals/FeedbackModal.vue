@@ -64,6 +64,9 @@
 </template>
 
 <script setup lang="ts">
+/**
+ * Generic result feedback modal with optional stat-delta rows.
+ */
 import { computed } from 'vue'
 import { useGameStore } from '../../stores/gameStore.ts'
 import type { FeedbackChange } from '@/types/modal'

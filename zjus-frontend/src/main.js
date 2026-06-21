@@ -1,3 +1,6 @@
+/**
+ * Browser entry point for the Vue game client.
+ */
 import { createApp } from 'vue'
 import { createPinia } from 'pinia'
 import './style.css'

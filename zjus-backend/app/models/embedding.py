@@ -1,8 +1,8 @@
-"""
-角色 Embedding 模型 — 用于 pgvector 向量相似度检索
+"""SQLAlchemy model for character embeddings.
 
-存储 characters.json 中每个角色的 bge-m3 embedding，
-运行时通过余弦距离选取最匹配当前玩家状态的角色。
+Copyright (c) 2026 pirate-608. Licensed under the MIT License.
+Embeddings come from `characters.json` and are searched with pgvector cosine
+distance to select roles matching the current player state.
 """
 
 from datetime import datetime
@@ -14,23 +14,25 @@ from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.database import Base
 
-# bge-m3 输出维度为 1024
+# bge-m3 emits 1024-dimensional vectors.
 EMBEDDING_DIM = 1024
 
 
 class CharacterEmbedding(Base):
+    """Precomputed role embedding used by DingTalk character retrieval."""
+
     __tablename__ = "character_embeddings"
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
-    # 角色名，对应 characters.json 中的 name 字段
+    # Mirrors the `name` field in `characters.json`.
     char_name: Mapped[str] = mapped_column(String(128), index=True)
-    # 角色的 role 标签 (counselor / roommate / crush / ...)
+    # Role tag such as counselor, roommate, or crush.
     char_role: Mapped[str] = mapped_column(String(64), index=True)
-    # 用于生成 embedding 的原文摘要
+    # Source text used to generate the embedding.
     source_text: Mapped[str] = mapped_column(Text)
-    # bge-m3 embedding 向量
+    # bge-m3 embedding vector.
     embedding: Mapped[Any] = mapped_column(Vector(EMBEDDING_DIM))
-    # 角色的完整 JSON（方便检索后直接使用，无需再查 characters.json）
+    # Full character JSON avoids a second world-file lookup after retrieval.
     char_json: Mapped[str] = mapped_column(Text)
 
     created_at: Mapped[datetime] = mapped_column(

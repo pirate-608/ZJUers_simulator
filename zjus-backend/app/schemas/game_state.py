@@ -1,3 +1,10 @@
+"""Pydantic snapshots for player state and Redis game data.
+
+Copyright (c) 2026 pirate-608. Licensed under the MIT License.
+The models bridge Redis hash values, registry-driven defaults, and typed
+payloads sent to the simulation engine.
+"""
+
 from typing import Any, Dict, List
 
 from pydantic import BaseModel, ConfigDict
@@ -30,6 +37,12 @@ def _stat_default(stat_id: str) -> int:
 
 
 class PlayerStats(BaseModel):
+    """Registry-aware player stats with typed core fields.
+
+    The model keeps high-traffic fields explicit for route and engine code while
+    allowing extra stat-registry fields to round-trip through saves.
+    """
+
     model_config = ConfigDict(extra="allow")
 
     username: str = ""
@@ -64,6 +77,15 @@ class PlayerStats(BaseModel):
 
     @classmethod
     def from_redis(cls, raw: Dict[str, Any]) -> "PlayerStats":
+        """Convert Redis hash data into typed player stats.
+
+        Args:
+            raw: Stringly typed Redis hash values for the player.
+
+        Returns:
+            Player stats with defaults and registry-defined dynamic fields
+            repaired into concrete Python values.
+        """
         raw = raw or {}
         defaults = stat_definitions.default_stats()
         initial_defaults = stat_definitions.initial_field_defaults()
@@ -123,7 +145,16 @@ class PlayerStats(BaseModel):
 
     @classmethod
     def build_initial(cls, username: str = "", **overrides) -> "PlayerStats":
-        """全局唯一的玩家初始状态工厂方法（Single Source of Truth）"""
+        """Build the canonical initial player-stat snapshot.
+
+        Args:
+            username: Prompt-safe username to store with the new game.
+            **overrides: Explicit field overrides applied after registry
+                defaults are assembled.
+
+        Returns:
+            Initial player stats ready to persist into Redis.
+        """
         import time as _time
         stat_defaults = stat_definitions.default_stats()
         initial_defaults = stat_definitions.initial_field_defaults()
@@ -177,7 +208,12 @@ class PlayerStats(BaseModel):
         return defaults
 
     def get_repair_fields(self) -> Dict[str, Any]:
-        """返回需要修复的字段字典（用于补全缺失/异常数据）"""
+        """Return missing or invalid fields that should be repaired in Redis.
+
+        Returns:
+            Mapping of field names to repaired values. The caller decides when
+            to persist the patch so read paths can remain side-effect aware.
+        """
         import random as _random
         import time as _time
 
@@ -199,6 +235,8 @@ class PlayerStats(BaseModel):
 
 
 class GameStateSnapshot(BaseModel):
+    """Typed aggregate snapshot of the active Redis game state."""
+
     stats: PlayerStats
     courses: Dict[str, float]
     course_states: Dict[str, int]
@@ -212,6 +250,17 @@ class GameStateSnapshot(BaseModel):
         states_raw: Dict[str, Any],
         achievements_raw: Any,
     ) -> "GameStateSnapshot":
+        """Create a full game snapshot from independent Redis structures.
+
+        Args:
+            stats_raw: Player stat hash.
+            courses_raw: Course mastery hash.
+            states_raw: Course state hash.
+            achievements_raw: Redis set/list of achievement codes.
+
+        Returns:
+            A typed snapshot used by services and the simulation engine.
+        """
         stats = PlayerStats.from_redis(stats_raw)
         courses = {str(k): _to_float(v, 0.0) for k, v in (courses_raw or {}).items()}
         course_states = {str(k): _to_int(v, 1) for k, v in (states_raw or {}).items()}

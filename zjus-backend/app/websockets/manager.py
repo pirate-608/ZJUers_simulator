@@ -1,3 +1,10 @@
+"""Connection registry and heartbeat helpers for game WebSockets.
+
+Copyright (c) 2026 pirate-608. Licensed under the MIT License.
+The manager tracks active sockets by user, serializes sends, and handles
+heartbeat timeout cleanup.
+"""
+
 import asyncio
 import json
 import logging
@@ -10,27 +17,23 @@ logger = logging.getLogger(__name__)
 
 
 class ConnectionManager:
+    """Track active game WebSocket connections and heartbeat liveness."""
+
     def __init__(self):
-        # 存放活跃连接: user_id -> WebSocket
+        """Create an empty connection registry."""
         self.active_connections: Dict[str, WebSocket] = {}
-        # 心跳时间戳记录: user_id -> last_heartbeat_time
         self.heartbeat_timestamps: Dict[str, float] = {}
-        # 心跳超时时间（秒）
         self.heartbeat_timeout = 60
-        # 全局心跳任务引用
         self._heartbeat_task: Optional[asyncio.Task] = None
 
-    # ==========================================
-    # 全局心跳任务（单例）
-    # ==========================================
     def start_heartbeat_checker(self):
-        """启动全局心跳检测任务，保证只运行一个"""
+        """Start the singleton heartbeat cleanup task."""
         if self._heartbeat_task is None or self._heartbeat_task.done():
             self._heartbeat_task = asyncio.create_task(self._heartbeat_loop())
             logger.info("Global heartbeat checker started")
 
     async def _heartbeat_loop(self):
-        """全局心跳检测循环，每 30 秒清理一次僵尸连接"""
+        """Periodically close sockets that stopped sending heartbeats."""
         try:
             while True:
                 await asyncio.sleep(30)
@@ -40,12 +43,8 @@ class ConnectionManager:
         except Exception as e:
             logger.error("Heartbeat loop error: %s", e, exc_info=True)
 
-    # ==========================================
-    # 连接管理
-    # ==========================================
     async def connect(self, websocket: WebSocket, user_id: str):
-        """接受新连接，如果用户已有连接则踢掉旧连接"""
-        # 踢掉旧连接（互斥策略）
+        """Accept a WebSocket and replace any older session for that user."""
         if user_id in self.active_connections:
             old_ws = self.active_connections[user_id]
             logger.warning(
@@ -54,8 +53,7 @@ class ConnectionManager:
             try:
                 await old_ws.close(code=4001, reason="duplicate_session")
             except Exception:
-                pass  # 旧连接可能已断开
-            # 清理旧记录
+                pass
             self._remove(user_id)
 
         await websocket.accept()
@@ -66,7 +64,7 @@ class ConnectionManager:
         )
 
     def disconnect(self, user_id: str, websocket: Optional[WebSocket] = None):
-        """从管理器中移除连接（不负责关闭 WebSocket 本身）。
+        """Remove a connection from manager state without closing the socket.
 
         When websocket is provided, only remove the active record if it still
         points to that same connection. This prevents an old duplicate session
@@ -75,7 +73,7 @@ class ConnectionManager:
         self._remove(user_id, websocket)
 
     def _remove(self, user_id: str, websocket: Optional[WebSocket] = None):
-        """内部清理方法"""
+        """Remove a connection record if it still points at the expected socket."""
         removed = False
         current = self.active_connections.get(user_id)
         if current is not None and (websocket is None or current is websocket):
@@ -88,12 +86,12 @@ class ConnectionManager:
             )
 
     def update_heartbeat(self, user_id: str):
-        """更新心跳时间戳"""
+        """Refresh the heartbeat timestamp for a connected user."""
         if user_id in self.active_connections:
             self.heartbeat_timestamps[user_id] = time.time()
 
     async def check_dead_connections(self):
-        """检查并清理超时的僵尸连接（先关闭再删除）"""
+        """Close and remove heartbeat-expired connections."""
         now = time.time()
         dead_users = [
             uid
@@ -105,20 +103,16 @@ class ConnectionManager:
             logger.warning(
                 "Cleaning up dead connection for user %s (heartbeat timeout)", user_id
             )
-            # 先尝试关闭 WebSocket
             ws = self.active_connections.get(user_id)
             if ws:
                 try:
                     await ws.close(code=1001, reason="heartbeat_timeout")
                 except Exception as e:
                     logger.debug("Error closing dead connection for %s: %s", user_id, e)
-            # 再从字典中移除
             self._remove(user_id)
 
-    # ==========================================
-    # 消息发送
-    # ==========================================
     async def send_personal_message(self, message: dict, user_id: str):
+        """Send one JSON message to a user if the socket is still active."""
         ws = self.active_connections.get(user_id)
         if ws is None:
             logger.debug("Skip send to disconnected user %s", user_id)
@@ -131,7 +125,7 @@ class ConnectionManager:
             self._remove(user_id)
 
     async def broadcast(self, message: dict):
-        """广播给所有人（并行发送，单个失败不影响其余）"""
+        """Broadcast one JSON message, isolating per-socket send failures."""
         json_msg = json.dumps(message, ensure_ascii=False)
         disconnected = []
 
@@ -144,7 +138,6 @@ class ConnectionManager:
         await asyncio.gather(
             *[_safe_send(uid, ws) for uid, ws in self.active_connections.items()]
         )
-        # 清理发送失败的连接
         for uid in disconnected:
             self._remove(uid)
 

@@ -1,4 +1,4 @@
-# .github/workflows/mirror-to-gitee.yml
+# Fast-forward mirror from GitHub main/master to the Gitee repository.
 name: Mirror to Gitee
 on:
   push:

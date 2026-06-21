@@ -65,6 +65,9 @@
 </template>
 
 <script setup lang="ts">
+/**
+ * Exit confirmation modal with save, discard, and pending-save states.
+ */
 import { onUnmounted, watch } from 'vue'
 import { useGameStore } from '../../stores/gameStore.ts'
 import type { WsClientAction } from '@/types/websocket'
@@ -89,8 +92,7 @@ const exitWithoutSave = () => {
 }
 
 const saveAndExit = () => {
-  // 🌟 修复：不再使用 setTimeout，而是设置等待标记，发送保存指令
-  // 配合 useGameWebSocket.ts 里的 save_result 拦截，实现完美闭环
+  // The WebSocket save_result handler owns the final exit after persistence.
   store.isPendingExit = true
   clearSaveExitTimer()
   saveExitTimer = setTimeout(() => {

@@ -45,6 +45,9 @@
 </template>
 
 <script setup lang="ts">
+/**
+ * Skippable first-visit prologue shown before any normal startup flow.
+ */
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import {
   getPrologueScene,

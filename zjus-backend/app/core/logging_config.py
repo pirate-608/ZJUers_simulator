@@ -1,11 +1,10 @@
-"""
-统一结构化日志配置
+"""Structured logging configuration.
 
-支持两种输出格式：
-- development: 彩色可读格式，便于本地调试
-- production:  JSON 结构化格式，便于 ELK/Loki 等日志系统采集
+Copyright (c) 2026 pirate-608. Licensed under the MIT License.
 
-所有现有的 logger.info/error/warning 调用无需修改。
+Notes:
+    Development uses a readable console format, while production emits JSON
+    suitable for ELK, Loki, or similar collectors.
 """
 
 import json
@@ -16,9 +15,10 @@ from typing import Any, Optional
 
 
 class JSONFormatter(logging.Formatter):
-    """JSON 结构化日志格式器（生产环境）"""
+    """Production JSON log formatter."""
 
     def format(self, record: logging.LogRecord) -> str:
+        """Format a log record as structured JSON."""
         log_entry: dict[str, Any] = {
             "timestamp": datetime.fromtimestamp(
                 record.created, tz=timezone.utc
@@ -28,12 +28,10 @@ class JSONFormatter(logging.Formatter):
             "message": record.getMessage(),
         }
 
-        # 附加上下文字段（通过 extra 传入）
         for key in ("user_id", "action", "duration_ms"):
             if key in record.__dict__:
                 log_entry[key] = record.__dict__[key]
 
-        # 异常信息
         if record.exc_info and record.exc_info[1]:
             exc_type = record.exc_info[0]
             log_entry["exception"] = {
@@ -47,7 +45,6 @@ class JSONFormatter(logging.Formatter):
                     record.exc_info
                 )
 
-        # 来源定位
         if record.levelno >= logging.WARNING:
             log_entry["source"] = {
                 "file": record.pathname,
@@ -59,7 +56,7 @@ class JSONFormatter(logging.Formatter):
 
 
 class DevFormatter(logging.Formatter):
-    """彩色可读日志格式器（开发环境）"""
+    """Readable colorized log formatter for development."""
 
     COLORS = {
         "DEBUG": "\033[36m",     # cyan
@@ -71,6 +68,7 @@ class DevFormatter(logging.Formatter):
     RESET = "\033[0m"
 
     def format(self, record: logging.LogRecord) -> str:
+        """Format a log record for local console output."""
         color = self.COLORS.get(record.levelname, self.RESET)
         timestamp = datetime.fromtimestamp(record.created).strftime("%H:%M:%S")
         level = f"{color}{record.levelname:<8}{self.RESET}"
@@ -78,7 +76,6 @@ class DevFormatter(logging.Formatter):
 
         msg = f"{timestamp} {level} {name} │ {record.getMessage()}"
 
-        # 附加 extra 字段
         extras = []
         for key in ("user_id", "action", "duration_ms"):
             if hasattr(record, key):
@@ -86,7 +83,6 @@ class DevFormatter(logging.Formatter):
         if extras:
             msg += f"  \033[90m({', '.join(extras)})\033[0m"
 
-        # 异常信息
         if record.exc_info and record.exc_info[1]:
             msg += f"\n{self.formatException(record.exc_info)}"
 
@@ -97,12 +93,12 @@ def setup_logging(
     environment: str = "development",
     level: Optional[str] = None,
 ) -> None:
-    """
-    初始化全局日志配置。应在应用启动时调用一次。
+    """Initialize global logging once during application startup.
 
     Args:
-        environment: "development" 或 "production"
-        level: 日志级别，默认 dev=DEBUG / prod=INFO
+        environment: Runtime environment, usually `development` or `production`.
+        level: Optional explicit logging level. Defaults to DEBUG in
+            development and INFO in production.
     """
     is_prod = environment.lower() in ("production", "prod")
 
@@ -111,25 +107,22 @@ def setup_logging(
     else:
         log_level = getattr(logging, level.upper(), logging.INFO)
 
-    # 选择格式器
     if is_prod:
         formatter = JSONFormatter()
     else:
         formatter = DevFormatter()
 
-    # 配置 root handler
     handler = logging.StreamHandler(sys.stdout)
     handler.setFormatter(formatter)
 
-    # 配置根 logger
     root_logger = logging.getLogger()
     root_logger.setLevel(log_level)
 
-    # 清除已有 handler（避免重复）
+    # Replace existing handlers to avoid duplicate records after reloads/tests.
     root_logger.handlers.clear()
     root_logger.addHandler(handler)
 
-    # 降低第三方库噪音
+    # Keep dependency noise below application logs.
     for noisy_logger in (
         "uvicorn.access",
         "uvicorn.error",
@@ -140,7 +133,7 @@ def setup_logging(
     ):
         logging.getLogger(noisy_logger).setLevel(logging.WARNING)
 
-    # uvicorn 主日志保留 INFO
+    # Uvicorn startup/shutdown lines should remain visible in production.
     logging.getLogger("uvicorn").setLevel(logging.INFO)
 
     logging.getLogger(__name__).info(

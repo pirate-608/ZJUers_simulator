@@ -1,3 +1,9 @@
+/**
+ * Global Pinia store for the game console.
+ *
+ * The store keeps WebSocket state, player stats, modals, DingTalk inbox,
+ * item inventory, toasts, and session presentation preferences in one place.
+ */
 import { defineStore } from 'pinia'
 import { computed, ref, reactive } from 'vue'
 import { STAT_DEFINITIONS } from '@/data/statDefinitions.generated'
@@ -41,10 +47,16 @@ const DEFAULT_STAT_VALUES = Object.fromEntries(
   STAT_DEFINITIONS.map((stat) => [stat.id, stat.default]),
 ) as Record<string, number>
 
+/**
+ * Narrow a persisted string to a supported console theme.
+ */
 function isConsoleTheme(value: unknown): value is ConsoleTheme {
   return typeof value === 'string' && CONSOLE_THEMES.includes(value as ConsoleTheme)
 }
 
+/**
+ * Read theme preference without letting storage failures break startup.
+ */
 function readStoredConsoleTheme(): ConsoleTheme {
   try {
     const storedTheme = localStorage.getItem(CONSOLE_THEME_STORAGE_KEY)
@@ -54,11 +66,17 @@ function readStoredConsoleTheme(): ConsoleTheme {
   }
 }
 
+/**
+ * Parse an unknown backend value into a finite number.
+ */
 function finiteNumber(value: unknown, fallback: number = 0): number {
   const parsed = Number(value)
   return Number.isFinite(parsed) ? parsed : fallback
 }
 
+/**
+ * Normalize course metadata from stats JSON or WebSocket payloads.
+ */
 function normalizeCourseMetadata(data: unknown): CourseMetadata[] {
   if (!Array.isArray(data)) return []
   return data.flatMap((item): CourseMetadata[] => {
@@ -81,19 +99,16 @@ function normalizeCourseMetadata(data: unknown): CourseMetadata[] {
 }
 
 export const useGameStore = defineStore('game', () => {
-  // --- 核心状态 ---
-  const currentPhase = ref<GamePhase>('login') // login, character_create, loading, playing, ended
+  const currentPhase = ref<GamePhase>('login')
   const userInfo = ref<Record<string, unknown>>({})
 
-  // toast：供 App.vue 顶部提示使用
   const toast = ref<ToastState | null>(null)
   let toastTimer: ReturnType<typeof setTimeout> | null = null
 
-  // 结局信息：供 EndScreen.vue 使用
   const endType = ref<EndType | null>(null)
   const endData = ref<EndData>({})
 
-  // 🌟 修复：使用 reactive 初始化，确保所有后端可能发来的核心属性都是响应式的！
+  /** Reactive stat object; dynamic registry fields can be assigned in place. */
   const currentStats = reactive<PlayerStats>({
     ...DEFAULT_STAT_VALUES,
     username: '',
@@ -105,13 +120,12 @@ export const useGameStore = defineStore('game', () => {
     gpa: 0.0,
     highest_gpa: 0.0,
     item_bonuses: {},
-    courses: {}, // 存放实时的掌握度进度
+    courses: {},
     exam_completed: 0,
   })
 
-  const courseMetadata = ref<CourseMetadata[]>([]) // 静态课程信息
+  const courseMetadata = ref<CourseMetadata[]>([])
 
-  // 课程策略（0:摆 1:摸 2:卷）
   const currentCourseStates = reactive<Record<string, number>>({})
 
   const semesterTimeLeft = ref<number>(0)
@@ -147,11 +161,16 @@ export const useGameStore = defineStore('game', () => {
 
   const isPendingExit = ref<boolean>(false)
 
-  // --- 动作与方法 ---
+  /**
+   * Set the current high-level route phase.
+   */
   function setPhase(phase: GamePhase) {
     currentPhase.value = phase
   }
 
+  /**
+   * Show a transient global toast.
+   */
   function showToast(message: string, type: ToastType = 'info', durationMs: number = 2500) {
     toast.value = { message, type }
     if (toastTimer) clearTimeout(toastTimer)
@@ -161,31 +180,41 @@ export const useGameStore = defineStore('game', () => {
     }, durationMs)
   }
 
+  /**
+   * Merge backend stat updates without replacing nested course progress maps.
+   */
   function updateStats(newStats: Partial<PlayerStats> | null | undefined) {
     if (!newStats) return
-    // 不合并 courses：课程进度/策略单独由 updateCourseStates 管理，避免覆盖。
+    // Course progress and strategy state are merged through dedicated methods.
     for (const [key, value] of Object.entries(newStats)) {
       if (key === 'courses') continue
       ;(currentStats as Record<string, unknown>)[key] = value
     }
   }
 
+  /**
+   * Replace static course metadata after init or semester transition.
+   */
   function setCourseMetadata(data: unknown) {
     courseMetadata.value = normalizeCourseMetadata(data)
   }
 
+  /**
+   * Clear course runtime maps and install metadata for a new semester.
+   */
   function resetForNewSemester(newCourseMetadata: CourseMetadata[]) {
     setCourseMetadata(newCourseMetadata)
-    // 清空课程进度 (currentStats.courses)
     for (const key in currentStats.courses) {
       delete currentStats.courses[key]
     }
-    // 清空课程策略 (currentCourseStates)
     for (const key in currentCourseStates) {
       delete currentCourseStates[key]
     }
   }
 
+  /**
+   * Merge course mastery progress keyed by course ID.
+   */
   function updateCourseProgress(progressMap: Record<string, unknown> | null | undefined) {
     if (!progressMap) return
     for (const courseId in progressMap) {
@@ -194,6 +223,9 @@ export const useGameStore = defineStore('game', () => {
     }
   }
 
+  /**
+   * Merge raw course strategy state keyed by course ID.
+   */
   function updateCourseStatesRaw(statesMap: Record<string, unknown> | null | undefined) {
     if (!statesMap) return
     for (const courseId in statesMap) {
@@ -204,6 +236,9 @@ export const useGameStore = defineStore('game', () => {
     }
   }
 
+  /**
+   * Optimistically set one course strategy in the local UI.
+   */
   function setCourseState(courseId: string, newState: number) {
     if (!courseId) return
     currentCourseStates[courseId] = newState
@@ -223,6 +258,9 @@ export const useGameStore = defineStore('game', () => {
     gameSpeed.value = speed
   }
 
+  /**
+   * Persist a purely visual console theme preference when storage works.
+   */
   function setConsoleTheme(theme: ConsoleTheme) {
     consoleTheme.value = theme
     try {
@@ -232,6 +270,9 @@ export const useGameStore = defineStore('game', () => {
     }
   }
 
+  /**
+   * Normalize server cooldown seconds into local integer counters.
+   */
   function setRelaxCooldowns(cooldowns: Record<string, unknown> | null | undefined) {
     if (!cooldowns) return
     for (const target of Object.keys(relaxCooldowns) as RelaxTarget[]) {
@@ -247,6 +288,9 @@ export const useGameStore = defineStore('game', () => {
   }
 
   let logSeq = 0
+  /**
+   * Append a bounded event log row to the right panel feed.
+   */
   function addLog(source: string, message: string, colorClass: string = '') {
     logSeq += 1
     eventLogs.value.push({
@@ -262,6 +306,9 @@ export const useGameStore = defineStore('game', () => {
     eventLogs.value = []
   }
 
+  /**
+   * Adapt a legacy single DingTalk message into the contact-thread model.
+   */
   function addDingMessage(msg: DingTalkMessage | Record<string, unknown>) {
     dingMessages.value.push(msg as DingTalkMessage)
     const role = typeof msg.role === 'string' ? msg.role : 'unknown'
@@ -296,6 +343,9 @@ export const useGameStore = defineStore('game', () => {
     recalcUnreadDingtalk()
   }
 
+  /**
+   * Clear all DingTalk unread counters locally.
+   */
   function clearUnreadDingtalk() {
     for (const contact of Object.values(dingtalkContacts)) {
       contact.unread_count = 0
@@ -303,6 +353,9 @@ export const useGameStore = defineStore('game', () => {
     unreadDingtalk.value = 0
   }
 
+  /**
+   * Recompute the aggregate unread DingTalk badge.
+   */
   function recalcUnreadDingtalk() {
     unreadDingtalk.value = Object.values(dingtalkContacts).reduce(
       (sum, contact) => sum + Number(contact.unread_count || 0),
@@ -310,6 +363,9 @@ export const useGameStore = defineStore('game', () => {
     )
   }
 
+  /**
+   * Replace the DingTalk inbox with server-authoritative state.
+   */
   function setDingTalkState(state: DingTalkState | Record<string, unknown> | null | undefined) {
     for (const key in dingtalkContacts) {
       delete dingtalkContacts[key]
@@ -325,6 +381,9 @@ export const useGameStore = defineStore('game', () => {
     recalcUnreadDingtalk()
   }
 
+  /**
+   * Normalize and replace item catalog, ownership, and passive bonuses.
+   */
   function setItemsState(state: ItemsState | Record<string, unknown> | null | undefined) {
     const record = state && typeof state === 'object' ? state as Record<string, unknown> : {}
     const itemsRaw = Array.isArray(record.items) ? record.items : []
@@ -368,6 +427,9 @@ export const useGameStore = defineStore('game', () => {
     itemsUpdatedAt.value = Number(record.updated_at ?? 0) || 0
   }
 
+  /**
+   * Upsert one DingTalk contact pushed by a thread-update message.
+   */
   function upsertDingTalkContact(contact: DingTalkContact | Record<string, unknown> | null | undefined) {
     if (!contact || typeof contact !== 'object') return
     const contactId = (contact as DingTalkContact).contact_id
@@ -376,6 +438,9 @@ export const useGameStore = defineStore('game', () => {
     recalcUnreadDingtalk()
   }
 
+  /**
+   * Mark one DingTalk contact as read without waiting for the server echo.
+   */
   function markDingContactReadLocal(contactId: string) {
     const contact = dingtalkContacts[contactId]
     if (!contact) return
@@ -383,6 +448,9 @@ export const useGameStore = defineStore('game', () => {
     recalcUnreadDingtalk()
   }
 
+  /**
+   * Normalize achievement payloads from old code-only saves and new details.
+   */
   function normalizeAchievement(raw: Record<string, unknown>): AchievementSummary {
     const code = typeof raw.code === 'string' && raw.code.trim() !== ''
       ? raw.code.trim()
@@ -404,6 +472,9 @@ export const useGameStore = defineStore('game', () => {
     }
   }
 
+  /**
+   * Add or replace one unlocked achievement in local state.
+   */
   function addUnlockedAchievement(raw: AchievementSummary | Record<string, unknown> | null | undefined) {
     if (!raw || typeof raw !== 'object') return null
     const achievement = normalizeAchievement(raw as Record<string, unknown>)
@@ -416,6 +487,9 @@ export const useGameStore = defineStore('game', () => {
     return achievement
   }
 
+  /**
+   * Replace the unlocked achievement list from server or save data.
+   */
   function setUnlockedAchievements(rawItems: unknown) {
     unlockedAchievements.value = []
     if (!Array.isArray(rawItems)) return
@@ -428,16 +502,25 @@ export const useGameStore = defineStore('game', () => {
     }
   }
 
+  /**
+   * Open a global modal with its payload.
+   */
   function showModal(modalName: Exclude<ActiveModalName, null>, data: ModalData | Record<string, unknown> = {}) {
     activeModal.value = modalName
     modalData.value = data
   }
 
+  /**
+   * Close the active global modal.
+   */
   function closeModal() {
     activeModal.value = null
     modalData.value = {}
   }
 
+  /**
+   * Show a feedback modal with optional auto-close behavior.
+   */
   function showFeedback(data: FeedbackModalData) {
     feedbackModal.value = data
     if (feedbackTimer) clearTimeout(feedbackTimer)
@@ -450,12 +533,18 @@ export const useGameStore = defineStore('game', () => {
     }
   }
 
+  /**
+   * Close feedback and cancel its auto-close timer.
+   */
   function closeFeedback() {
     if (feedbackTimer) clearTimeout(feedbackTimer)
     feedbackTimer = null
     feedbackModal.value = null
   }
 
+  /**
+   * Move the app into an end-state screen.
+   */
   function triggerEndGame(type: EndType, data: EndData | Record<string, unknown> = {}) {
     endType.value = type
     endData.value = data as EndData
@@ -463,6 +552,9 @@ export const useGameStore = defineStore('game', () => {
     setPhase('ended')
   }
 
+  /**
+   * Clear per-session runtime state before applying a fresh `init` payload.
+   */
   function resetRuntimeStateForInit() {
     endType.value = null
     endData.value = {}

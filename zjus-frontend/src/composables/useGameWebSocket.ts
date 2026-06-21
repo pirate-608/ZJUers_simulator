@@ -1,3 +1,9 @@
+/**
+ * Game WebSocket composable.
+ *
+ * This module owns the auth handshake, heartbeat, reconnect policy, and mapping
+ * of server messages into the global Pinia store.
+ */
 import { ref, onUnmounted } from 'vue'
 import { useGameStore } from '../stores/gameStore.ts'
 import type { CourseMetadata } from '../types/course'
@@ -7,10 +13,16 @@ import { extractGraduationFinalStats, extractNewSemesterName } from '../types/we
 import { ALLOCATABLE_STATS } from '@/data/statDefinitions.generated'
 import { safeNumber, statDefault } from '@/utils/statDisplay'
 
+/**
+ * Narrow an unknown value to an object record.
+ */
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null
 }
 
+/**
+ * Parse a WebSocket text frame without throwing into the event handler.
+ */
 function parseWsJson(data: unknown): unknown {
   if (typeof data !== 'string') return null
   try {
@@ -20,6 +32,9 @@ function parseWsJson(data: unknown): unknown {
   }
 }
 
+/**
+ * Parse course metadata JSON from stats payloads.
+ */
 function parseCourseMetadataArray(data: unknown): CourseMetadata[] {
   if (typeof data !== 'string' || data.trim() === '') return []
   try {
@@ -30,10 +45,16 @@ function parseCourseMetadataArray(data: unknown): CourseMetadata[] {
   }
 }
 
+/**
+ * Preserve cooldown maps only when the payload is object-like.
+ */
 function readCooldowns(data: unknown): Record<string, unknown> | null {
   return isRecord(data) ? data : null
 }
 
+/**
+ * Normalize backend feedback change entries for the feedback modal.
+ */
 function readFeedbackChanges(data: unknown): FeedbackChange[] | undefined {
   if (!Array.isArray(data)) return undefined
   const changes = data.flatMap((item): FeedbackChange[] => {
@@ -54,11 +75,17 @@ function readFeedbackChanges(data: unknown): FeedbackChange[] | undefined {
   return changes.length ? changes : undefined
 }
 
+/**
+ * Create and manage one game WebSocket session.
+ */
 export function useGameWebSocket() {
   const ws = ref<WebSocket | null>(null)
   const isConnected = ref(false)
   const gameStore = useGameStore()
 
+  /**
+   * Keep course metadata in sync when the backend embeds it in stats.
+   */
   const syncCourseMetadataFromStats = (stats: Record<string, unknown>) => {
     const courseInfoJson = stats.course_info_json
     if (typeof courseInfoJson !== 'string') return
@@ -73,6 +100,9 @@ export function useGameWebSocket() {
   let reconnectTimer: ReturnType<typeof setTimeout> | null = null
   let shouldReconnect = true
 
+  /**
+   * Send a client action only when the socket is open.
+   */
   const send = (data: WsClientAction) => {
     if (ws.value && ws.value.readyState === WebSocket.OPEN) {
       ws.value.send(JSON.stringify(data))
@@ -100,6 +130,9 @@ export function useGameWebSocket() {
     }
   }
 
+  /**
+   * Open the game socket and send the first-message auth handshake.
+   */
   const connect = (token: string = 'test_token', baseUrl: string = 'ws://localhost:8000') => {
     clearReconnectTimer()
     shouldReconnect = true
@@ -196,13 +229,11 @@ export function useGameWebSocket() {
           gameStore.setPhase('playing')
           gameStore.userInfo = data
 
-          // 静态元数据
           syncCourseMetadataFromStats(data)
 
-          // 基础属性
           gameStore.updateStats(data)
 
-          // 课程掌握度 & 策略状态：优先从 wsMsg 顶层读（新版 init），兼容旧版 data 内嵌
+          // Newer init messages put course maps at the top level; old ones nest them in data.
           const courses = wsMsg.courses ?? (data as Record<string, unknown>).courses
           if (isRecord(courses)) {
             gameStore.updateCourseProgress(courses as Record<string, unknown>)
@@ -523,7 +554,7 @@ export function useGameWebSocket() {
           break
         }
         default:
-          // 未知消息类型：当前实现不强处理，避免前端因为后端新增字段而崩溃
+          // Future server message types should not break current clients.
           break
       }
     }
@@ -560,6 +591,9 @@ export function useGameWebSocket() {
     stopHeartbeat()
   })
 
+  /**
+   * Close the socket intentionally and disable reconnect.
+   */
   const disconnect = () => {
     shouldReconnect = false
     clearReconnectTimer()

@@ -1,17 +1,11 @@
-"""
-离线批量生成事件库和 CC98 帖子库
+"""Generate offline event-library and CC98-library content.
 
-使用 OpenAI 兼容的云端 API 批量生成内容，
-输出到 world/event_library.json 和 world/cc98_library.json。
+Copyright (c) 2026 pirate-608. Licensed under the MIT License.
 
-可以通过环境变量或命令行参数配置 API：
-export OPENAI_API_BASE="https://dashscope.aliyuncs.com/compatible-mode/v1"
-export OPENAI_API_KEY="your_api_key_here"
-export OPENAI_API_MODEL="qwen3.5-flash"
-# 或使用本地 Ollama：
-# export OPENAI_API_BASE="http://localhost:11434/v1"
-# export OPENAI_API_KEY="ollama"
-# export OPENAI_API_MODEL="qwen3.5:4b"
+Notes:
+    The script uses an OpenAI-compatible chat/completions endpoint and writes
+    generated data to `world/event_library.json` and `world/cc98_library.json`.
+    It can target cloud APIs or a local Ollama `/v1` endpoint.
 
 Usage:
     python scripts/generate_content_library.py --events 300 --cc98 500
@@ -40,7 +34,7 @@ if str(BACKEND_ROOT) not in sys.path:
 from app.game.stat_definitions import stat_definitions  # noqa: E402
 
 # ============================================================
-# 配置
+# Configuration.
 # ============================================================
 
 _config = {
@@ -61,7 +55,7 @@ _config = {
 }
 WORLD_DIR = Path(__file__).resolve().parent.parent / "zjus-backend" / "world"
 
-# 如果从 zjus-backend 目录运行
+# Support both repository-root and `zjus-backend/` working directories.
 if not WORLD_DIR.exists():
     WORLD_DIR = Path(__file__).resolve().parent.parent / "world"
 
@@ -78,7 +72,7 @@ def allowed_event_effect_prompt() -> str:
     return "、".join(parts)
 
 # ============================================================
-# 加载 CC98 版面完整数据
+# Load CC98 topic metadata.
 # ============================================================
 
 CC98_TOPIC_DATA = {}
@@ -93,12 +87,11 @@ if TOPIC_EXAMPLES_PATH.exists():
             "description": item.get("description", ""),
             "examples": item.get("examples", [])
         }
-    # 动态生成 CC98_TOPICS 列表，用于随机选择版面
     CC98_TOPICS = list(CC98_TOPIC_DATA.keys())
     print(f"✅ 已加载 {len(CC98_TOPICS)} 个 CC98 版面示例数据")
 else:
     print("⚠️ 未找到 topic_examples.json，将使用默认 CC98_TOPICS 列表")
-    # 回退到硬编码列表（如果您之前有定义，可以保留）
+    # Fall back to a compact topic list when examples are unavailable.
     CC98_TOPICS = [
         "似水流年", "心灵之约", "开怀一笑", "郁闷小屋",
         "感性空间", "日用交易", "学习天地", "一路走来",
@@ -107,7 +100,7 @@ else:
     ]
 
 # ============================================================
-# 加载校园关键词库
+# Load campus keyword data.
 # ============================================================
 
 KEYWORDS_DATA = []
@@ -121,7 +114,7 @@ else:
     print("⚠️ 未找到 keywords.json，将不使用关键词提示")
 
 # ============================================================
-# OpenAI 兼容 API 调用
+# OpenAI-compatible API calls.
 # ============================================================
 
 def _api_base() -> str:
@@ -129,12 +122,13 @@ def _api_base() -> str:
 
 
 def _api_key() -> str:
-    # Ollama 的 OpenAI 兼容接口不需要真实 key，但 SDK 要求传入非空字符串。
+    # Ollama's OpenAI-compatible endpoint ignores the key, but the SDK
+    # requires a non-empty value.
     return str(_config.get("api_key") or "ollama")
 
 
 def build_openai_client() -> OpenAI:
-    """构建 OpenAI SDK 客户端，兼容 Ollama 与云端 OpenAI-like API。"""
+    """Build an OpenAI SDK client for Ollama or cloud OpenAI-like endpoints."""
     return OpenAI(
         api_key=_api_key(),
         base_url=_api_base(),
@@ -180,7 +174,7 @@ def _chat_once(
 
 
 def call_llm(messages: List[Dict[str, str]], max_retries: int = 3) -> Optional[str]:
-    """调用 OpenAI 兼容 chat/completions，返回纯文本响应。"""
+    """Call an OpenAI-compatible chat/completions endpoint and return text."""
     if not _api_base().startswith(("http://", "https://")):
         print("  ⚠️ 无效的 API_BASE，必须以 http/https 开头")
         return None
@@ -220,28 +214,27 @@ def call_llm(messages: List[Dict[str, str]], max_retries: int = 3) -> Optional[s
 
 
 def extract_json(raw: str) -> Optional[Any]:
-    """从 LLM 输出中提取 JSON（增强版，处理更多格式问题）"""
+    """Extract JSON from model output that may include markdown or prose."""
     if not raw:
         return None
 
     text = raw.strip()
 
-    # 1. 移除 Markdown 代码块标记
+    # Strip markdown code fences before parsing.
     text = re.sub(r'^```json\s*', '', text, flags=re.MULTILINE)
     text = re.sub(r'^```\s*', '', text, flags=re.MULTILINE)
     text = re.sub(r'\s*```$', '', text, flags=re.MULTILINE)
 
-    # 2. 移除注释（单行 // 和 多行 /* */）
+    # Remove JS-style comments that models sometimes include in JSON.
     text = re.sub(r'//.*?$', '', text, flags=re.MULTILINE)
     text = re.sub(r'/\*.*?\*/', '', text, flags=re.DOTALL)
 
-    # 3. 修复未转义的控制字符（如换行符在字符串中未转义）
-    # 这一步比较复杂，简单处理：将字符串中的真实换行替换为 \\n
-    # 注意：可能破坏 JSON 结构，但多数模型输出中换行本应转义
+    # Escape raw control characters inside quoted strings. This heuristic is
+    # intentionally conservative and targets common model formatting mistakes.
     def escape_control_chars(match):
         s = match.group(0)
         return s.replace('\n', '\\n').replace('\r', '\\r').replace('\t', '\\t')
-    # 仅处理双引号字符串内的内容（粗略匹配，不够精确，但常用）
+    # Only touch double-quoted strings to avoid disturbing JSON structure.
     text = re.sub(
         r'"[^"\\]*(?:\\.[^"\\]*)*"',
         escape_control_chars,
@@ -249,33 +242,28 @@ def extract_json(raw: str) -> Optional[Any]:
         flags=re.DOTALL,
     )
 
-    # 4. 清理尾随逗号（对象和数组）
-    # 在 } 或 ] 之前的逗号
+    # Remove trailing commas before object or array terminators.
     text = re.sub(r',\s*}', '}', text)
     text = re.sub(r',\s*]', ']', text)
 
-    # 5. 处理单引号 -> 双引号（谨慎：可能破坏字符串内的单引号）
-    # 只在明显是键名或值未被双引号包裹时替换，简单策略：将最外层的单引号替换
-    # 但为避免误伤，先尝试直接解析，若失败再替换
+    # Try strict JSON first, then tolerate single-quoted model output.
     try:
         return json.loads(text)
     except json.JSONDecodeError:
-        # 尝试将单引号替换为双引号（注意字符串内可能也有单引号，但多数情况下可用）
         text2 = text.replace("'", '"')
         try:
             return json.loads(text2)
         except json.JSONDecodeError:
             pass
 
-    # 6. 使用 ast.literal_eval 尝试（适用于 Python 字面量，但 JSON 大多兼容）
+    # Python literals are a useful final fallback for near-JSON output.
     try:
         return ast.literal_eval(text)
     except (ValueError, SyntaxError):
         pass
 
-    # 7. 提取 JSON 对象或数组片段（当模型输出包含额外文本时）
+    # Extract a balanced JSON object or array from surrounding prose.
     try:
-        # 找到第一个 { 或 [ 和最后一个 } 或 ]
         start = None
         end = None
         for i, ch in enumerate(text):
@@ -283,7 +271,7 @@ def extract_json(raw: str) -> Optional[Any]:
                 start = i
                 break
         if start is not None:
-            # 从 start 开始找匹配的结束括号
+            # Find the matching closing bracket for the first JSON-like token.
             stack = []
             for i in range(start, len(text)):
                 ch = text[i]
@@ -301,7 +289,7 @@ def extract_json(raw: str) -> Optional[Any]:
                         break
             if end:
                 json_text = text[start:end]
-                # 再次清理尾随逗号
+                # Clean trailing commas in the extracted fragment.
                 json_text = re.sub(r',\s*}', '}', json_text)
                 json_text = re.sub(r',\s*]', ']', json_text)
                 try:
@@ -309,11 +297,11 @@ def extract_json(raw: str) -> Optional[Any]:
                 except json.JSONDecodeError:
                     pass
 
-        # 如果没有找到匹配的括号，尝试找第一个 { 或 [ 到末尾
+        # If balanced matching fails, try from the first JSON-looking token.
         start = text.find('{') if text.find('{') != -1 else text.find('[')
         if start != -1:
             json_text = text[start:]
-            # 清理尾随逗号
+            # Clean up trailing commas before the final parse attempt.
             json_text = re.sub(r',\s*}', '}', json_text)
             json_text = re.sub(r',\s*]', ']', json_text)
             try:
@@ -326,7 +314,7 @@ def extract_json(raw: str) -> Optional[Any]:
     return None
 
 def get_random_keywords(count: int = 3) -> str:
-    """随机选取 count 个关键词，返回适合嵌入提示词的字符串（包含示例）"""
+    """Return a prompt-ready sample of campus keywords and optional examples."""
     if not KEYWORDS_DATA:
         return ""
     selected = random.sample(KEYWORDS_DATA, min(count, len(KEYWORDS_DATA)))
@@ -335,7 +323,7 @@ def get_random_keywords(count: int = 3) -> str:
         keyword = kw.get("keyword", "")
         desc = kw.get("desc", "")
         examples = kw.get("examples", [])
-        # 随机选一条示例（如果有）
+        # Include one random example when the keyword provides examples.
         example_text = ""
         if examples:
             example = random.choice(examples)
@@ -344,7 +332,7 @@ def get_random_keywords(count: int = 3) -> str:
     return "浙大校园关键词（仅供参考）：\n" + "\n".join(lines)
 
 # ============================================================
-# 事件库生成
+# Event library generation.
 # ============================================================
 
 EVENT_CATEGORIES = [
@@ -372,7 +360,7 @@ STRESS_RANGES = [
 
 
 def generate_events(target_count: int) -> List[Dict[str, Any]]:
-    """批量生成随机事件"""
+    """Generate random-event library rows in small batches."""
     events = []
     batch_size = 3
     consecutive_failures = 0
@@ -381,7 +369,7 @@ def generate_events(target_count: int) -> List[Dict[str, Any]]:
 
     try:
         while len(events) < target_count:
-            # 如果连续失败太多，降低 batch_size
+            # Lower batch size after repeated failures to improve recovery odds.
             if consecutive_failures > 3:
                 current_batch = 1
             else:
@@ -462,7 +450,7 @@ def generate_events(target_count: int) -> List[Dict[str, Any]]:
 
             consecutive_failures = 0
 
-            # 处理不同的返回格式
+            # Accept either a bare list or an object with an `events` list.
             if isinstance(data, list):
                 events_data = data
             elif isinstance(data, dict) and "events" in data:
@@ -519,14 +507,13 @@ def generate_events(target_count: int) -> List[Dict[str, Any]]:
 
     except KeyboardInterrupt:
         print("\n⚠️ 用户中断，正在保存已生成的事件...")
-        # 返回已生成的事件（未达到目标数量）
         return events
 
     return events[:target_count]
 
 
 # ============================================================
-# CC98 帖子库生成
+# CC98 post library generation.
 # ============================================================
 
 CC98_EFFECTS = ["positive", "neutral", "negative"]
@@ -541,7 +528,7 @@ def _choose_balanced_cc98_effect(effect_counts: Dict[str, int]) -> str:
     return random.choice(candidates)
 
 def generate_cc98_posts(target_count: int) -> List[Dict[str, Any]]:
-    """批量生成 CC98 帖子"""
+    """Generate CC98 post-library rows in balanced effect buckets."""
     posts = []
     batch_size = 5
     consecutive_failures = 0
@@ -558,14 +545,14 @@ def generate_cc98_posts(target_count: int) -> List[Dict[str, Any]]:
 
             current_batch = min(current_batch, target_count - len(posts))
             effect = _choose_balanced_cc98_effect(effect_counts)
-            topic = random.choice(CC98_TOPICS)  # 使用动态生成的 CC98_TOPICS
+            topic = random.choice(CC98_TOPICS)
 
-            # 获取该版面的完整数据
+            # Use full topic metadata to ground the prompt.
             topic_info = CC98_TOPIC_DATA.get(topic, {})
             description = topic_info.get("description", "")
             examples = topic_info.get("examples", [])
 
-            # 随机选一条示例作为参考（可选多条，但建议单条避免 prompt 过长）
+            # One example is enough grounding without making the prompt too long.
             example_text = ""
             if examples:
                 selected_example = random.choice(examples)
@@ -577,7 +564,7 @@ def generate_cc98_posts(target_count: int) -> List[Dict[str, Any]]:
                 "negative": "emo/焦虑/吐槽/烂坑，让人心态崩",
             }[effect]
 
-            # 随机选取 2 个关键词
+            # Add a small keyword sample to diversify CC98 topics.
             keywords_text = get_random_keywords(2)
 
             prompt = f"""你正在模拟浙江大学 CC98 论坛的「{topic}」版面。
@@ -670,10 +657,11 @@ def generate_cc98_posts(target_count: int) -> List[Dict[str, Any]]:
 
 
 # ============================================================
-# 主入口
+# CLI entry point.
 # ============================================================
 
 def main():
+    """CLI entry point for offline event and CC98 library generation."""
     parser = argparse.ArgumentParser(description="离线批量生成事件库和 CC98 帖子库")
     parser.add_argument("--events", type=int, default=0, help="生成随机事件数量")
     parser.add_argument("--cc98", type=int, default=0, help="生成 CC98 帖子数量")
@@ -721,7 +709,7 @@ def main():
         print("  python scripts/generate_content_library.py --events-only 50")
         sys.exit(1)
 
-    # 检查 API 可用性
+    # Probe the configured endpoint before starting expensive generation.
     if not _api_base().startswith(("http://", "https://")):
         print("⚠️ 无效的 API_BASE，必须以 http/https 开头")
         sys.exit(1)
@@ -742,7 +730,7 @@ def main():
     posts: List[Dict[str, Any]] = []
 
     try:
-        # 生成事件
+        # Generate and save random events.
         if event_count > 0:
             events = generate_events(event_count)
             out_path = WORLD_DIR / "event_library.json"
@@ -760,7 +748,7 @@ def main():
                 json.dump(events, f, ensure_ascii=False, indent=2)
             print(f"\n📦 事件库已保存: {out_path} ({len(events)} 条)")
 
-        # 生成 CC98 帖子
+        # Generate and save CC98 posts.
         if cc98_count > 0:
             posts = generate_cc98_posts(cc98_count)
             out_path = WORLD_DIR / "cc98_library.json"
@@ -780,7 +768,7 @@ def main():
 
     except KeyboardInterrupt:
         print("\n⚠️ 程序被用户中断。")
-        # 如果已经生成了部分数据，仍然保存
+        # Preserve partial output if the operator interrupts the run.
         if events:
             out_path = WORLD_DIR / "event_library.json"
             if args.append and out_path.exists():

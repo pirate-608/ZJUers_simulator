@@ -1,4 +1,10 @@
 <script setup lang="ts">
+/**
+ * Root app shell and player-entry phase router.
+ *
+ * The prologue gate must finish or be skipped before login/save/character pages
+ * or the game WebSocket are allowed to start.
+ */
 import { onMounted, ref, watch } from 'vue'
 import { useGameStore } from '@/stores/gameStore.ts'
 import { useGameWebSocket } from '@/composables/useGameWebSocket.ts'
@@ -21,7 +27,6 @@ import ExitConfirmModal from './components/modals/ExitConfirmModal.vue'
 import EndScreen from './components/EndScreen.vue'
 
 const store = useGameStore()
-// 将 connect 暴露出来
 const { connect, disconnect, isConnected, send } = useGameWebSocket()
 const { startGuide } = useGameGuide()
 
@@ -44,7 +49,7 @@ const markPrologueSeen = () => {
 const isPrologueActive = ref(!hasSeenPrologue())
 let hasBootstrappedEntry = false
 
-// 首次进入 playing 阶段后触发引导
+/** Start the first-play guide after the game is connected and playing. */
 watch(
   () => [store.currentPhase, isConnected.value] as const,
   ([phase, connected]) => {
@@ -95,7 +100,7 @@ onMounted(() => {
   }
 })
 
-// 当 phase 变为 loading 时，连接 WebSocket
+/** Connect the WebSocket when the app enters the loading phase. */
 watch(
   () => store.currentPhase,
   (phase) => {
@@ -231,7 +236,7 @@ const handleReturnHome = () => {
 </template>
 
 <style>
-/* 增加 Toast 进场动画 */
+/* Adds a small entrance animation for transient toast feedback. */
 .toast-container .fade-in {
   animation: slideInRight 0.3s ease-out forwards;
 }

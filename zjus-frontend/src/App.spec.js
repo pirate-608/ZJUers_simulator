@@ -23,7 +23,8 @@ describe('App.vue', () => {
   const mountApp = () => mount(App, {
     global: {
       plugins: [createTestingPinia({
-        stubActions: false, // 让 pinia 正常工作而不全是 stub
+        // Keep Pinia actions active so App startup exercises real store transitions.
+        stubActions: false,
       })],
       stubs: {
         LoginView: { template: '<main data-testid="login-view">login</main>' },

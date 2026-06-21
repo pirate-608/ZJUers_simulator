@@ -81,6 +81,9 @@
 </template>
 
 <script setup lang="ts">
+/**
+ * Character creation screen driven by generated stat-registry metadata.
+ */
 import { ref, reactive, computed, onMounted } from 'vue'
 import { useGameStore } from '../stores/gameStore.ts'
 import { fetchMajors, initCharacter } from '@/api/client'

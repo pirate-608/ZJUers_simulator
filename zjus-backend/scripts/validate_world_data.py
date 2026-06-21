@@ -1,4 +1,9 @@
-"""Validate gameplay world data and generated stat metadata."""
+"""Validate gameplay world data and generated stat metadata.
+
+Copyright (c) 2026 pirate-608. Licensed under the MIT License.
+The checks catch unsupported item/event effect fields and stale generated
+frontend stat metadata before those mistakes reach runtime.
+"""
 
 # ruff: noqa: E402, I001
 
@@ -86,6 +91,7 @@ def _validate_generated_frontend(errors: list[str]) -> None:
 
 
 def main() -> int:
+    """CLI entry point for validating registry, item, and event world data."""
     errors: list[str] = []
     try:
         registry = StatDefinitions(WORLD_DIR / "stat_definitions.json")

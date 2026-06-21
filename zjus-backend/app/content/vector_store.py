@@ -1,10 +1,11 @@
-"""
-pgvector 向量存储抽象层
+"""pgvector-backed character retrieval helpers.
 
-架构设计要点：
-  - Embedding 生成仅在本地开发机上离线执行（scripts/embed_world_data.py）
-  - 运行时（2C2G 云服务器）不调用任何模型，仅使用预计算的查询向量做 pgvector 检索
-  - 查询向量预存于 world/query_embeddings.json，启动时加载到内存
+Copyright (c) 2026 pirate-608. Licensed under the MIT License.
+
+Notes:
+    Embeddings are generated offline by `scripts/embed_world_data.py`; the
+    production runtime only loads precomputed query vectors and performs
+    pgvector similarity search.
 """
 
 import json
@@ -21,7 +22,7 @@ logger = logging.getLogger(__name__)
 
 
 # ============================================================
-# 预计算查询向量（运行时零推理）
+# Precomputed query vectors.
 # ============================================================
 
 _query_embeddings: Dict[str, List[float]] = {}
@@ -36,9 +37,9 @@ def _world_dir() -> Path:
 
 def _load_query_embeddings() -> Dict[str, List[float]]:
     """
-    加载预计算的查询向量。
+    Load precomputed query vectors.
 
-    文件格式 (world/query_embeddings.json):
+    The `world/query_embeddings.json` shape is:
     {
         "random": [0.123, -0.456, ...],
         "low_sanity": [...],
@@ -70,7 +71,7 @@ def _load_query_embeddings() -> Dict[str, List[float]]:
 
 
 # ============================================================
-# 检索（运行时，纯 SQL，不调用任何模型）
+# Runtime retrieval.
 # ============================================================
 
 async def search_similar_characters(
@@ -79,16 +80,16 @@ async def search_similar_characters(
     db: Optional[AsyncSession] = None,
 ) -> List[Dict[str, Any]]:
     """
-    根据预计算的 context 查询向量检索最相似角色。
+    Search similar characters using a precomputed context vector.
 
-    运行时零模型推理，仅 pgvector 余弦距离排序。
+    The runtime path performs only pgvector cosine-distance sorting.
 
     Args:
-        context: 场景标识 ("random" / "low_sanity" / "high_stress" / "low_gpa")
-        top_k: 返回数量
+        context: Scene identifier such as "random" or "low_sanity".
+        top_k: Maximum number of matches to return.
 
     Returns:
-        [{"char": <角色 dict>, "similarity": float}, ...]
+        Character dictionaries with similarity scores.
     """
     query_vecs = _load_query_embeddings()
     query_vec = query_vecs.get(context)
@@ -106,10 +107,10 @@ async def search_by_vector(
     db: Optional[AsyncSession] = None,
 ) -> List[Dict[str, Any]]:
     """
-    根据向量搜索最相似的角色（余弦距离）。
+    Search the most similar characters by cosine distance.
 
     Returns:
-        [{"char": <原始 character dict>, "similarity": float}, ...]
+        Raw character dictionaries with similarity scores.
     """
     own_session = db is None
     session = db or AsyncSessionLocal()

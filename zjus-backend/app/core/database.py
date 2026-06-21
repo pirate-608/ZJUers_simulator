@@ -1,3 +1,10 @@
+"""Async SQLAlchemy engine and session factory.
+
+Copyright (c) 2026 pirate-608. Licensed under the MIT License.
+The production path expects Alembic migrations; optional metadata creation is
+kept for explicitly configured local/bootstrap scenarios only.
+"""
+
 from collections.abc import AsyncGenerator
 
 from sqlalchemy.ext.asyncio import (
@@ -34,10 +41,12 @@ AsyncSessionLocal: async_sessionmaker[AsyncSession] = async_sessionmaker(
 
 
 class Base(DeclarativeBase):
+    """Declarative base for SQLAlchemy ORM models."""
+
     pass
 
 
-# 依赖注入函数
 async def get_db() -> AsyncGenerator[AsyncSession, None]:
+    """Yield an async database session for FastAPI dependencies."""
     async with AsyncSessionLocal() as session:
         yield session

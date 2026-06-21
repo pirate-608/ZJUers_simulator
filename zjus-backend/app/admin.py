@@ -1,3 +1,10 @@
+"""SQLAdmin integration and operational admin pages.
+
+Copyright (c) 2026 pirate-608. Licensed under the MIT License.
+This module wires database models into the `/admin` UI and hosts the
+game-balance editor that publishes `world/game_balance.json`.
+"""
+
 import copy
 import json
 import secrets
@@ -30,7 +37,10 @@ from app.services.balance_admin import (
 
 
 class AdminAuth(AuthenticationBackend):
+    """Session-cookie authentication backend for SQLAdmin."""
+
     async def login(self, request: Request) -> bool:
+        """Validate admin credentials from the login form."""
         form = await request.form()
         username_value = form.get("username")
         password_value = form.get("password")
@@ -49,14 +59,18 @@ class AdminAuth(AuthenticationBackend):
         return True
 
     async def logout(self, request: Request) -> bool:
+        """Clear the admin session."""
         request.session.clear()
         return True
 
     async def authenticate(self, request: Request) -> bool:
+        """Return whether the current request has an admin session."""
         return request.session.get("admin") == "1"
 
 
 class UserAdmin(ModelView, model=User):
+    """Read-oriented admin view for player accounts."""
+
     column_list = [
         User.id,
         User.username,
@@ -69,6 +83,8 @@ class UserAdmin(ModelView, model=User):
 
 
 class GameSaveAdmin(ModelView, model=GameSave):
+    """Admin view for inspecting persisted save slots."""
+
     column_list = [
         GameSave.id,
         GameSave.user_id,
@@ -80,6 +96,8 @@ class GameSaveAdmin(ModelView, model=GameSave):
 
 
 class UserRestrictionAdmin(ModelView, model=UserRestriction):
+    """Admin view for user restrictions with audit logging."""
+
     column_list = [
         UserRestriction.id,
         UserRestriction.user_id,
@@ -92,6 +110,7 @@ class UserRestrictionAdmin(ModelView, model=UserRestriction):
     column_sortable_list = [UserRestriction.id, UserRestriction.created_at]
 
     async def on_model_change(self, data, model, is_created, request: Request):
+        """Record restriction creates and updates in the admin audit log."""
         _log_admin_action(
             request,
             "restriction_upsert",
@@ -105,6 +124,7 @@ class UserRestrictionAdmin(ModelView, model=UserRestriction):
         )
 
     async def on_model_delete(self, model, request: Request):
+        """Record restriction deletion in the admin audit log."""
         _log_admin_action(
             request,
             "restriction_delete",
@@ -115,6 +135,8 @@ class UserRestrictionAdmin(ModelView, model=UserRestriction):
 
 
 class UserBlacklistAdmin(ModelView, model=UserBlacklist):
+    """Admin view for blacklist entries with audit logging."""
+
     column_list = [
         UserBlacklist.id,
         UserBlacklist.identifier,
@@ -126,6 +148,7 @@ class UserBlacklistAdmin(ModelView, model=UserBlacklist):
     column_sortable_list = [UserBlacklist.id, UserBlacklist.created_at]
 
     async def on_model_change(self, data, model, is_created, request: Request):
+        """Record blacklist creates and updates in the admin audit log."""
         _log_admin_action(
             request,
             "blacklist_upsert",
@@ -139,6 +162,7 @@ class UserBlacklistAdmin(ModelView, model=UserBlacklist):
         )
 
     async def on_model_delete(self, model, request: Request):
+        """Record blacklist deletion in the admin audit log."""
         _log_admin_action(
             request,
             "blacklist_delete",
@@ -149,6 +173,8 @@ class UserBlacklistAdmin(ModelView, model=UserBlacklist):
 
 
 class AdminAuditLogAdmin(ModelView, model=AdminAuditLog):
+    """Read-only audit-log view for operational changes."""
+
     column_list = [
         AdminAuditLog.id,
         AdminAuditLog.admin_username,
@@ -161,6 +187,8 @@ class AdminAuditLogAdmin(ModelView, model=AdminAuditLog):
 
 
 class BalanceConfigAdmin(BaseView):
+    """SQLAdmin page for editing `world/game_balance.json`."""
+
     name = "数值平衡"
     icon = "fa-solid fa-sliders"
     category = "运营"
@@ -173,6 +201,7 @@ class BalanceConfigAdmin(BaseView):
         include_in_schema=False,
     )
     async def restore_latest(self, request: Request):
+        """Restore the previous balance config captured in audit logs."""
         if request.method == "GET":
             return _balance_redirect(request)
 
@@ -213,6 +242,7 @@ class BalanceConfigAdmin(BaseView):
         include_in_schema=False,
     )
     async def balance_page(self, request: Request):
+        """Render and process the balance editor form."""
         current_config = copy.deepcopy(balance.raw)
         form_values = config_to_form_data(current_config)
         error = request.query_params.get("error")
@@ -302,6 +332,7 @@ def _log_admin_action(
     target_id: str | None,
     details: dict[str, Any],
 ):
+    """Persist one synchronous admin audit record."""
     engine = _build_sync_engine()
     SessionLocal = sessionmaker(bind=engine)
     with SessionLocal() as session:
@@ -353,6 +384,7 @@ def _get_recent_balance_logs(limit: int = 5) -> list[dict[str, Any]]:
 
 
 def setup_admin(app):
+    """Register SQLAdmin views and authentication on the FastAPI app."""
     auth_backend = AdminAuth(secret_key=settings.ADMIN_SESSION_SECRET)
     admin = Admin(app, _build_sync_engine(), authentication_backend=auth_backend)
 

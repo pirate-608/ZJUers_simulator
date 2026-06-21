@@ -1,7 +1,10 @@
-"""
-游戏数值平衡配置管理
-负责加载和管理 world/game_balance.json 中的游戏参数
-与 app/core/config.py (系统配置) 职责分离
+"""Game-balance configuration loader.
+
+Copyright (c) 2026 pirate-608. Licensed under the MIT License.
+
+Notes:
+    This singleton reads `world/game_balance.json` and stays separate from
+    system/environment settings in `app.core.config`.
 """
 import json
 import logging
@@ -12,7 +15,7 @@ logger = logging.getLogger(__name__)
 
 
 class GameBalance:
-    """游戏数值配置管理器（单例）"""
+    """Singleton loader for gameplay balance values."""
     _instance: Optional['GameBalance'] = None
     _config: Dict[str, Any] = {}
     _config_path: Path | None = None
@@ -47,7 +50,7 @@ class GameBalance:
         return candidates[0]
 
     def load(self, config_path: str | Path | None = None):
-        """加载配置文件"""
+        """Load and validate the balance file path enough for runtime use."""
         try:
             path = self.resolve_config_path(config_path)
             if not path.exists():
@@ -58,143 +61,122 @@ class GameBalance:
                 self._config = json.load(f)
             self._config_path = path
 
-            logger.info(f"游戏配置已加载: version={self._config.get('version', 'unknown')}")  # noqa: E501
+            logger.info(
+                "Game balance loaded: version=%s",
+                self._config.get("version", "unknown"),
+            )
         except Exception as e:
-            logger.error(f"加载游戏配置失败: {e}")
+            logger.error("Failed to load game balance: %s", e)
             raise
 
     def reload(self, config_path: str | Path | None = None):
-        """热重载配置（用于调试/运维）"""
+        """Hot-reload balance values after admin or world-data edits."""
         self._config = {}
         self.load(config_path or self._config_path)
-        logger.info("游戏配置已重载")
+        logger.info("Game balance reloaded")
 
     @property
     def raw(self) -> Dict[str, Any]:
-        """获取原始配置字典"""
+        """Raw loaded balance dictionary."""
         return self._config
 
     @property
     def config_path(self) -> Path:
-        """当前已加载配置文件路径"""
+        """Path of the currently loaded balance file."""
         return self._config_path or self.resolve_config_path()
 
     @property
     def version(self) -> str:
-        """配置版本"""
+        """Balance configuration version."""
         return self._config.get("version", "unknown")
-
-    # ==========================================
-    # Tick 相关配置
-    # ==========================================
 
     @property
     def tick_interval(self) -> int:
-        """Tick 间隔（秒）"""
+        """Tick interval in seconds."""
         return self._config.get("tick", {}).get("interval_seconds", 3)
 
     @property
     def base_energy_drain(self) -> float:
-        """基础精力消耗"""
+        """Base energy drain per tick before course-state weighting."""
         return self._config.get("tick", {}).get("base_energy_drain", 0.8)
 
     @property
     def base_mastery_growth(self) -> float:
-        """基础擅长度增长"""
+        """Base course mastery growth before stat modifiers."""
         return self._config.get("tick", {}).get("base_mastery_growth", 0.5)
-
-    # ==========================================
-    # 学期配置
-    # ==========================================
 
     @property
     def semester_config(self) -> Dict:
-        """学期配置"""
+        """Semester duration and speed-mode configuration."""
         return self._config.get("semester", {})
 
     def get_semester_duration(self, semester_index: int) -> int:
-        """获取指定学期的时长（秒）"""
+        """Return configured duration for a semester index."""
         duration_map = self.semester_config.get("duration_by_index", {})
         default_duration = self.semester_config.get("default_duration_seconds", 360)
         return duration_map.get(str(semester_index), default_duration)
 
     @property
     def speed_modes(self) -> Dict:
-        """获取可用的速度模式"""
+        """Available speed-mode definitions."""
         return self.semester_config.get("speed_modes", {
             "1.0": {"label": "正常速度", "multiplier": 1.0}
         })
 
-    # ==========================================
-    # 课程状态配置
-    # ==========================================
-
     @property
     def course_states(self) -> Dict[str, Dict]:
-        """课程状态配置（摆/摸/卷）"""
+        """Course strategy configuration."""
         return self._config.get("course_states", {})
 
     def get_course_state_coeffs(self) -> Dict[int, Dict]:
-        """获取课程状态系数（转换为int key）"""
+        """Return course strategy coefficients keyed by integer state."""
         return {
             int(k): v
             for k, v in self.course_states.items()
         }
 
-    # ==========================================
-    # 心态/压力修正配置
-    # ==========================================
-
     @property
     def sanity_stress_modifiers(self) -> Dict:
-        """心态/压力修正配置"""
+        """Sanity and stress modifier configuration."""
         return self._config.get("sanity_stress_modifiers", {})
 
     def get_growth_modifiers(self) -> Dict:
-        """获取学习效率修正参数"""
+        """Learning-growth modifier parameters."""
         return self.sanity_stress_modifiers.get("growth", {})
 
     def get_exam_modifiers(self) -> Dict:
-        """获取考试修正参数"""
+        """Final-exam score modifier parameters."""
         return self.sanity_stress_modifiers.get("exam", {})
-
-    # ==========================================
-    # 摸鱼动作配置
-    # ==========================================
 
     @property
     def relax_actions(self) -> Dict[str, Dict]:
-        """摸鱼动作配置"""
+        """Relax-action configuration."""
         return self._config.get("relax_actions", {})
 
     def get_relax_action(self, action: str) -> Dict:
-        """获取指定摸鱼动作配置"""
+        """Return one relax-action configuration."""
         return self.relax_actions.get(action, {})
 
     def get_cooldown(self, action: str) -> int:
-        """获取动作冷却时间（秒）"""
+        """Return relax-action cooldown in seconds."""
         return self.relax_actions.get(action, {}).get("cooldown_seconds", 0)
-
-    # ==========================================
-    # 事件配置
-    # ==========================================
 
     @property
     def events(self) -> Dict:
-        """事件配置"""
+        """Random-event and DingTalk trigger configuration."""
         return self._config.get("events", {})
 
     def get_random_event_config(self) -> Dict:
-        """随机事件配置"""
+        """Random-event trigger configuration."""
         return self.events.get("random_event", {})
 
     def get_dingtalk_config(self) -> Dict:
-        """钉钉消息配置"""
+        """DingTalk trigger and contact-limit configuration."""
         return self.events.get("dingtalk", {})
 
     @property
     def dingtalk_max_contacts(self) -> int:
-        """钉钉联系人列表上限"""
+        """Maximum DingTalk contacts kept in the inbox."""
         try:
             value = int(self.get_dingtalk_config().get("max_contacts", 12))
         except (TypeError, ValueError):
@@ -203,7 +185,7 @@ class GameBalance:
 
     @property
     def dingtalk_reuse_closed_contact_probability(self) -> float:
-        """已关闭联系人被复用开新一轮对话的概率"""
+        """Probability of reusing a closed DingTalk contact."""
         try:
             value = float(
                 self.get_dingtalk_config().get(
@@ -214,39 +196,30 @@ class GameBalance:
             value = 0.7
         return max(0.0, min(1.0, value))
 
-    # ==========================================
-    # 考试配置
-    # ==========================================
-
     @property
     def exam_config(self) -> Dict:
-        """考试相关配置"""
+        """Final-exam settlement configuration."""
         return self._config.get("exam", {})
 
     @property
     def fail_threshold(self) -> int:
-        """挂科阈值"""
+        """Score below which a course is considered failed."""
         return self.exam_config.get("fail_threshold", 60)
 
     @property
     def fail_sanity_penalty(self) -> int:
-        """挂科心态惩罚（每门）"""
+        """Sanity penalty applied per failed course."""
         return self.exam_config.get("fail_sanity_penalty_per_course", -10)
 
     @property
     def pass_all_bonus(self) -> int:
-        """全部通过心态奖励"""
+        """Sanity bonus when all courses pass."""
         return self.exam_config.get("pass_all_sanity_bonus", 10)
-
-    # ==========================================
-    # 游戏结束配置
-    # ==========================================
 
     @property
     def game_over_config(self) -> Dict:
-        """游戏结束配置"""
+        """Game Over threshold configuration."""
         return self._config.get("game_over", {})
 
 
-# 全局单例
 balance = GameBalance()

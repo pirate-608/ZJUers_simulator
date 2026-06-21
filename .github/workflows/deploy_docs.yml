@@ -1,5 +1,8 @@
 name: Deploy Documentation
 
+# VitePress imports selected Vue components from zjus-frontend for the homepage
+# demo, so the workflow installs both frontend and docs dependencies.
+
 on:
   push:
     branches:

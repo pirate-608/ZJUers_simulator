@@ -1,4 +1,9 @@
-"""Generate frontend stat metadata from world/stat_definitions.json."""
+"""Generate frontend stat metadata from `world/stat_definitions.json`.
+
+Copyright (c) 2026 pirate-608. Licensed under the MIT License.
+The generated TypeScript file is committed so frontend components can render
+stat labels, defaults, ranges, and effect flags without runtime HTTP calls.
+"""
 
 from __future__ import annotations
 
@@ -24,6 +29,7 @@ OUTPUT_PATH = (
 
 
 def build_typescript() -> str:
+    """Render the generated TypeScript stat metadata module."""
     registry = StatDefinitions()
     metadata_json = json.dumps(
         registry.public_metadata()["stats"],
@@ -61,6 +67,7 @@ def build_typescript() -> str:
 
 
 def main() -> int:
+    """CLI entry point for writing or checking generated stat metadata."""
     parser = argparse.ArgumentParser()
     mode = parser.add_mutually_exclusive_group(required=True)
     mode.add_argument("--write", action="store_true", help="write generated file")

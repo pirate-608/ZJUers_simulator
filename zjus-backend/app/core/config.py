@@ -1,3 +1,10 @@
+"""Environment-driven backend configuration.
+
+Copyright (c) 2026 pirate-608. Licensed under the MIT License.
+Settings are loaded through Pydantic so Docker, local development, and tests can
+share one typed configuration surface.
+"""
+
 import logging
 import os
 
@@ -6,7 +13,7 @@ from pydantic_settings import BaseSettings
 
 _config_logger = logging.getLogger("app.core.config")
 
-# 危险的默认值列表，启动时必须检测
+# Startup rejects these defaults in production-facing secret fields.
 _INSECURE_DEFAULTS = {
     "YOUR_SECRET_KEY_CHANGE_ME",
     "CHANGE_ME_ADMIN_SESSION_SECRET",
@@ -17,52 +24,51 @@ _INSECURE_DEFAULTS = {
 
 
 class Settings(BaseSettings):
+    """Typed settings loaded from environment variables and `.env`."""
+
     PROJECT_NAME: str = "ZJUers Simulator"
     API_V1_STR: str = "/api"
     SECRET_KEY: str = os.environ.get(
         "SECRET_KEY", "YOUR_SECRET_KEY_CHANGE_ME"
-    )  # 用于JWT加密，生产环境请修改
+    )
     ALGORITHM: str = "HS256"
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 7  # Token有效期7天
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 7
 
-    # 数据库配置 (默认为 Docker 中的服务名，本地调试可改为 localhost)
+    # Defaults use Compose service names; local overrides may point to localhost.
     DATABASE_URL: str = os.environ.get(
         "DATABASE_URL", "postgresql+asyncpg://zju:password@db/zjuers"
     )
 
-    # Redis配置
     REDIS_URL: str = os.environ.get("REDIS_URL", "redis://redis:6379/0")
     REDIS_PLAYER_TTL_SECONDS: int = int(
         os.environ.get("REDIS_PLAYER_TTL_SECONDS", 60 * 60 * 24)
     )
 
-    # Admin配置
     ADMIN_USERNAME: str = os.environ.get("ADMIN_USERNAME", "admin")
     ADMIN_PASSWORD: str = os.environ.get("ADMIN_PASSWORD", "admin123")
     ADMIN_SESSION_SECRET: str = os.environ.get(
         "ADMIN_SESSION_SECRET", "CHANGE_ME_ADMIN_SESSION_SECRET"
     )
 
-    # 环境标识：production / development
     ENVIRONMENT: str = os.environ.get("ENVIRONMENT", "development")
     DATABASE_ECHO: bool | None = None
     CREATE_ALL_ON_STARTUP: bool | None = None
 
-    # MiniMax M2-her 配置（钉钉消息 RP 生成）
+    # MiniMax M2-her powers DingTalk roleplay unless players supply overrides.
     MINIMAX_API_KEY: str = os.environ.get("MINIMAX_API_KEY", "")
     MINIMAX_MODEL: str = os.environ.get("MINIMAX_MODEL", "M2-her")
     MINIMAX_BASE_URL: str = os.environ.get(
         "MINIMAX_BASE_URL",
         "https://api.minimaxi.com/v1",
     )
-    INVITE_CODES: str = ""  # 逗号分隔的邀请码列表，如 "CODE1,CODE2,CODE3"
+    INVITE_CODES: str = ""
 
     class Config:
         env_file = ".env"
 
     @model_validator(mode="after")
     def _check_insecure_defaults(self) -> "Settings":
-        """启动时校验是否存在不安全的默认密钥"""
+        """Warn or fail when production still uses known insecure defaults."""
         is_prod = self.ENVIRONMENT.lower() in ("production", "prod")
 
         warnings = []

@@ -1,13 +1,11 @@
-"""
-导入预构建角色向量到 PostgreSQL(pgvector)。
+"""Import prebuilt character embeddings into PostgreSQL pgvector.
 
-用途：
-  - 运行时不再调用 embedding 模型推理。
-  - 部署阶段将 world/character_embeddings.csv 导入 character_embeddings 表。
+Copyright (c) 2026 pirate-608. Licensed under the MIT License.
 
-特性：
-  - 幂等：每次导入前清空旧数据。
-  - 兼容 Docker 与本地路径探测。
+Notes:
+    Runtime role retrieval should not call embedding models. Deployment imports
+    `world/character_embeddings.csv` into the `character_embeddings` table and
+    replaces previous rows idempotently.
 """
 
 import asyncio
@@ -29,6 +27,7 @@ def _world_dir() -> Path:
 
 
 async def import_character_embeddings() -> int:
+    """Import generated character embeddings into PostgreSQL."""
     csv_path = _world_dir() / "character_embeddings.csv"
     if not csv_path.exists():
         print(f"[seed_embeddings] CSV not found: {csv_path}")
@@ -124,6 +123,7 @@ async def import_character_embeddings() -> int:
 
 
 def main() -> None:
+    """CLI entry point for embedding import."""
     code = asyncio.run(import_character_embeddings())
     raise SystemExit(code)
 

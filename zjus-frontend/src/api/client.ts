@@ -1,5 +1,8 @@
 /**
- * 类型安全的 HTTP API 客户端
+ * Thin, type-safe HTTP API client over generated OpenAPI schemas.
+ *
+ * Keep this file hand-written. Schema changes should be made in FastAPI models
+ * and reflected here through regenerated `api.generated.ts` imports.
  */
 import type { components } from '@/types/api.generated'
 
@@ -10,8 +13,9 @@ export type InitCharacterRequest = components['schemas']['InitCharacterRequest']
 export type InitCharacterResponse = components['schemas']['InitCharacterResponse']
 export type SaveSummary = components['schemas']['SaveSummary']
 
-// ─── 认证 ───
-
+/**
+ * Authenticate a player with invite code and optional persistent credential.
+ */
 export async function auth(payload: AuthRequest): Promise<AuthResponse> {
   const res = await fetch('/api/auth', {
     method: 'POST',
@@ -22,16 +26,18 @@ export async function auth(payload: AuthRequest): Promise<AuthResponse> {
   return (await res.json()) as AuthResponse
 }
 
-// ─── 专业列表 ───
-
+/**
+ * Fetch all majors available during character creation.
+ */
 export async function fetchMajors(): Promise<MajorOption[]> {
   const res = await fetch('/api/majors')
   if (!res.ok) throw new Error(`HTTP ${res.status}`)
   return (await res.json()) as MajorOption[]
 }
 
-// ─── 初始化角色 ───
-
+/**
+ * Initialize a character's major and stat allocation.
+ */
 export async function initCharacter(payload: InitCharacterRequest): Promise<InitCharacterResponse> {
   const res = await fetch('/api/init_character', {
     method: 'POST',
@@ -45,10 +51,11 @@ export async function initCharacter(payload: InitCharacterRequest): Promise<Init
   return (await res.json()) as InitCharacterResponse
 }
 
-// ─── 入学信息 ───
-
 export type AdmissionInfoResponse = components['schemas']['AdmissionInfoResponse']
 
+/**
+ * Fetch legacy admission information for compatibility screens.
+ */
 export async function getAdmissionInfo(token: string): Promise<AdmissionInfoResponse> {
   const res = await fetch('/api/admission_info', {
     headers: { Authorization: `Bearer ${token}` },

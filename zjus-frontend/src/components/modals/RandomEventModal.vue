@@ -39,6 +39,9 @@
 </template>
 
 <script setup lang="ts">
+/**
+ * Random-event choice modal driven by server-provided options.
+ */
 import { computed } from 'vue'
 import { useGameStore } from '../../stores/gameStore.ts'
 import type { WsClientAction } from '@/types/websocket'

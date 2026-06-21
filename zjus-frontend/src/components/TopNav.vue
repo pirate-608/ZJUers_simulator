@@ -66,6 +66,9 @@
 </template>
 
 <script setup lang="ts">
+/**
+ * Top navigation bar for pause/save/exit and console theme controls.
+ */
 import { useGameStore, type ConsoleTheme } from '../stores/gameStore.ts'
 import type { WsClientAction } from '@/types/websocket'
 
@@ -79,7 +82,6 @@ const saveGame = () => {
 }
 
 const requestExit = () => {
-  // 触发弹窗，而不是直接发送指令
   store.showModal('exit_confirm')
 }
 

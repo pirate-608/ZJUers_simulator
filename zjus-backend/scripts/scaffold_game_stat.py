@@ -1,4 +1,9 @@
-"""Create a stat definition template and maintenance checklist."""
+"""Create a stat definition template and maintenance checklist.
+
+Copyright (c) 2026 pirate-608. Licensed under the MIT License.
+The script is intentionally conservative: it drafts registry data and review
+steps rather than rewriting gameplay code automatically.
+"""
 
 from __future__ import annotations
 
@@ -60,6 +65,7 @@ def _print_checklist(stat_id: str) -> None:
 
 
 def add_stat(args: argparse.Namespace) -> int:
+    """Draft or append one stat definition and print the follow-up checklist."""
     config = _load_config()
     stats = config.get("stats")
     if not isinstance(stats, list):
@@ -85,6 +91,7 @@ def add_stat(args: argparse.Namespace) -> int:
 
 
 def main() -> int:
+    """CLI entry point for stat-definition scaffolding."""
     parser = argparse.ArgumentParser()
     subparsers = parser.add_subparsers(dest="command", required=True)
     add = subparsers.add_parser("add", help="prepare a new stat definition")

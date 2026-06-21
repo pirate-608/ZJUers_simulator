@@ -167,6 +167,9 @@
 </template>
 
 <script setup lang="ts">
+/**
+ * Invite-code login screen with optional general LLM and RP API settings.
+ */
 import { ref, reactive, onMounted, onUnmounted } from 'vue'
 import { useGameStore } from '../stores/gameStore.ts'
 import { auth } from '@/api/client'
@@ -188,7 +191,7 @@ const form = reactive({
   rpKey: '',
 })
 
-// LLM 安全弹窗
+/** Security-warning modal state for custom LLM credentials. */
 const showLlmWarning = ref(false)
 const pendingAction = ref<(() => void) | null>(null)
 
@@ -234,7 +237,7 @@ const doLogin = async () => {
     if (result.user_token) localStorage.setItem('zju_user_token', result.user_token)
     localStorage.setItem('zju_username', result.username || form.username.trim())
 
-    // 保存会话级模型配置；每次登录先清理旧值，避免关闭开关后沿用上次密钥。
+    // Clear session-scoped model settings before applying this login's choices.
     sessionStorage.removeItem('custom_llm_provider')
     sessionStorage.removeItem('custom_llm_model')
     sessionStorage.removeItem('custom_llm_key')
@@ -266,7 +269,7 @@ const doLogin = async () => {
   }
 }
 
-// 背景轮播
+/** Login background carousel images. */
 const baseUrl = import.meta.env.BASE_URL || '/'
 const bgImages = [
   `${baseUrl}images/qiushimen.webp`,

@@ -40,6 +40,9 @@
 </template>
 
 <script setup lang="ts">
+/**
+ * Confirmation modal for manually triggering final exams.
+ */
 import { useGameStore } from '../../stores/gameStore.ts'
 import type { WsClientAction } from '@/types/websocket'
 

@@ -1,3 +1,10 @@
+"""FastAPI dependency providers.
+
+Copyright (c) 2026 pirate-608. Licensed under the MIT License.
+This module exposes shared async database/session dependencies used by the
+HTTP routers and admin views.
+"""
+
 from typing import AsyncGenerator
 
 from fastapi import Depends, HTTPException, status
@@ -15,7 +22,7 @@ from app.services.world_service import WorldService
 
 
 async def get_db() -> AsyncGenerator[AsyncSession, None]:
-    """获取数据库会话"""
+    """Yield an async SQLAlchemy session for one request scope."""
     async with AsyncSessionLocal() as session:
         try:
             yield session
@@ -24,17 +31,17 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
 
 
 async def get_redis() -> Redis:
-    """获取 Redis 客户端"""
+    """Return the shared async Redis client."""
     return RedisCache.get_client()
 
 
 def get_settings():
-    """获取全局配置"""
+    """Return process-wide application settings."""
     return settings
 
 
 async def get_current_user_info(token: str) -> dict:
-    """从 Token 解析用户信息 (适用于 HTTP 和 WS)"""
+    """Decode user identity from a JWT for HTTP and WebSocket entry points."""
     try:
         payload = jwt.decode(
             token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM]
@@ -55,7 +62,7 @@ async def get_current_user_info(token: str) -> dict:
 
 
 def get_world_service() -> WorldService:
-    """WorldService 通常是全局单例或带缓存的实例"""
+    """Create a world-data service instance."""
     return WorldService()
 
 
@@ -63,7 +70,7 @@ def get_redis_repo(
     user_info: dict = Depends(get_current_user_info),
     redis: Redis = Depends(get_redis),
 ) -> RedisRepository:
-    """根据当前用户注入 Redis 仓库"""
+    """Build a Redis repository scoped to the authenticated user."""
     return RedisRepository(user_info["user_id"], redis)
 
 
@@ -72,10 +79,10 @@ def get_game_service(
     repo: RedisRepository = Depends(get_redis_repo),
     world: WorldService = Depends(get_world_service),
 ) -> GameService:
-    """注入游戏业务服务"""
+    """Build the game service for the authenticated user."""
     return GameService(user_info["user_id"], repo, world)
 
 
 def get_save_service() -> SaveService:
-    """注入存档服务"""
+    """Build the save service dependency."""
     return SaveService()

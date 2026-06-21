@@ -1,4 +1,9 @@
-"""Item catalog and passive bonus helpers."""
+"""Item catalog and passive bonus helpers.
+
+Copyright (c) 2026 pirate-608. Licensed under the MIT License.
+Items are loaded from `world/items.json`, validated against the stat registry,
+and applied as temporary effective-stat bonuses.
+"""
 
 import json
 import logging
@@ -20,6 +25,7 @@ class ItemCatalog:
 
     @staticmethod
     def resolve_config_path(config_path: str | Path | None = None) -> Path:
+        """Resolve the item catalog path for local, Docker, or explicit runs."""
         if config_path is not None:
             return Path(config_path)
 
@@ -38,6 +44,7 @@ class ItemCatalog:
             self.load()
 
     def load(self, config_path: str | Path | None = None):
+        """Load and validate the item catalog from disk."""
         path = self.resolve_config_path(config_path)
         self._config_path = path
         try:
@@ -59,31 +66,38 @@ class ItemCatalog:
             self._items_by_id = {}
 
     def reload(self, config_path: str | Path | None = None):
+        """Reload the item catalog, usually after world-data edits."""
         self._config = {}
         self._items_by_id = {}
         self.load(config_path or self._config_path)
 
     @property
     def version(self) -> str:
+        """Catalog version string exposed in item-state payloads."""
         return str(self._config.get("version") or "unknown")
 
     @property
     def economy(self) -> dict[str, Any]:
+        """Economy configuration such as initial gold and exam income."""
         value = self._config.get("economy")
         return value if isinstance(value, dict) else {}
 
     @property
     def initial_gold(self) -> int:
+        """Gold granted to a newly created character."""
         return self._to_int(self.economy.get("initial_gold"), 0, minimum=0)
 
     @property
     def public_items(self) -> list[dict[str, Any]]:
+        """Frontend-safe item definitions without internal validation details."""
         return [self._public_item(item) for item in self._items_by_id.values()]
 
     def get_item(self, item_id: str) -> dict[str, Any] | None:
+        """Return a normalized item definition by ID."""
         return self._items_by_id.get(item_id)
 
     def public_catalog(self) -> dict[str, Any]:
+        """Return the public catalog payload embedded in item-state messages."""
         return {
             "version": self.version,
             "economy": {
@@ -94,6 +108,7 @@ class ItemCatalog:
         }
 
     def normalize_state(self, state: dict[str, Any] | None = None) -> dict[str, Any]:
+        """Normalize owned item IDs and discard stale catalog references."""
         raw_owned = (state or {}).get("owned")
         owned: list[str] = []
         if isinstance(raw_owned, list):
@@ -110,6 +125,7 @@ class ItemCatalog:
         }
 
     def calculate_bonuses(self, state: dict[str, Any] | None) -> dict[str, int]:
+        """Sum passive bonuses from currently owned items."""
         normalized = self.normalize_state(state)
         bonuses: dict[str, int] = {}
         for item_id in normalized["owned"]:
@@ -128,6 +144,7 @@ class ItemCatalog:
         return bonuses
 
     def state_payload(self, state: dict[str, Any] | None) -> dict[str, Any]:
+        """Build the complete WebSocket item-state payload."""
         normalized = self.normalize_state(state)
         return {
             **self.public_catalog(),
@@ -139,6 +156,7 @@ class ItemCatalog:
     def apply_bonuses_to_stats(
         self, stats: dict[str, Any], state: dict[str, Any] | None
     ) -> dict[str, Any]:
+        """Apply passive bonuses to a copy of stats for read-time use only."""
         effective = dict(stats)
         bonuses = self.calculate_bonuses(state)
         for field, delta in bonuses.items():
@@ -148,6 +166,7 @@ class ItemCatalog:
         return effective
 
     def calculate_exam_gold(self, term_gpa: float, failed_count: int) -> int:
+        """Calculate end-of-term gold income from GPA and failed courses."""
         cfg = self.economy.get("exam_income")
         cfg = cfg if isinstance(cfg, dict) else {}
         base = self._to_int(cfg.get("base"), 0)
@@ -170,6 +189,7 @@ class ItemCatalog:
     def build_buy_state(
         self, current_state: dict[str, Any] | None, item_id: str
     ) -> tuple[dict[str, Any] | None, dict[str, Any] | None, str | None]:
+        """Return the next inventory state for a buy attempt."""
         item = self.get_item(item_id)
         if item is None:
             return None, None, "未知道具"
@@ -183,6 +203,7 @@ class ItemCatalog:
     def build_sell_state(
         self, current_state: dict[str, Any] | None, item_id: str
     ) -> tuple[dict[str, Any] | None, dict[str, Any] | None, str | None]:
+        """Return the next inventory state for a sell attempt."""
         item = self.get_item(item_id)
         if item is None:
             return None, None, "未知道具"

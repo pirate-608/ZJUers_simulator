@@ -1,3 +1,9 @@
+/**
+ * First-play guide orchestration.
+ *
+ * The guide pauses both frontend countdowns and backend ticking while driver.js
+ * walks the player through the main console.
+ */
 import { driver } from 'driver.js'
 import 'driver.js/dist/driver.css'
 import { useGameStore } from '@/stores/gameStore'
@@ -7,6 +13,7 @@ import { statLabel } from '@/utils/statDisplay'
 const GUIDE_FLAG = 'zjus_guide_shown'
 
 interface GuideStep {
+  /** CSS selector for the highlighted UI element. */
   element: string
   title: string
   description: string
@@ -78,15 +85,19 @@ const STEPS: GuideStep[] = [
   },
 ]
 
+/**
+ * Create guide controls for the playing phase.
+ */
 export function useGameGuide() {
   const store = useGameStore()
 
+  /**
+   * Start the guide once and resume the previous pause state afterward.
+   */
   function startGuide(sendAction?: (payload: WsClientAction) => void) {
-    // 仅首次进入 playing 时展示
     if (localStorage.getItem(GUIDE_FLAG)) return
     localStorage.setItem(GUIDE_FLAG, '1')
 
-    // 引导期间显式锁住前端倒计时，并通知后端暂停 tick。
     const wasPaused = store.isPaused
     store.setGuideActive(true)
     if (!wasPaused) {

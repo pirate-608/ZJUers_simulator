@@ -1,3 +1,10 @@
+"""FastAPI application factory and process-level startup hooks.
+
+Copyright (c) 2026 pirate-608. Licensed under the MIT License.
+This module mounts HTTP routers, admin UI, static world data, and optional
+startup tasks for migrations-free local development.
+"""
+
 import logging
 
 from fastapi import FastAPI
@@ -17,7 +24,7 @@ from app.websockets.manager import manager
 
 _MODEL_MODULES = (admin_models, game_save_model, user_model)
 
-# 初始化结构化日志（必须在使用 logger 前调用）
+# Logging must be configured before modules start emitting startup records.
 setup_logging(environment=settings.ENVIRONMENT)
 
 logger = logging.getLogger(__name__)
@@ -26,25 +33,25 @@ app = FastAPI(title=settings.PROJECT_NAME)
 
 app.add_middleware(SessionMiddleware, secret_key=settings.ADMIN_SESSION_SECRET)
 
-# 挂载 API 路由
 app.include_router(auth.router, prefix="/api")
 app.include_router(game.router)
 
 setup_admin(app)
 
-# 新增：公开 world 目录为静态资源
+# Public world data is intentionally exposed for developer reference.
 app.mount("/world", StaticFiles(directory="world"), name="world")
 
 
 def _create_all_on_startup() -> bool:
+    """Return whether startup should create tables without Alembic."""
     if settings.CREATE_ALL_ON_STARTUP is not None:
         return settings.CREATE_ALL_ON_STARTUP
     return settings.ENVIRONMENT.lower() not in {"production", "prod"}
 
 
-# 启动事件：快速初始化数据库表 (开发用，生产建议用 Alembic)
 @app.on_event("startup")
 async def startup():
+    """Run process-level startup hooks."""
     if _create_all_on_startup():
         async with engine.begin() as conn:
             await conn.run_sync(Base.metadata.create_all)
@@ -56,13 +63,13 @@ async def startup():
     except Exception as e:
         logger.warning("Redis startup cleanup skipped: %s", e)
 
-    # 启动全局心跳检测（单例任务）
     manager.start_heartbeat_checker()
     logger.info("Global heartbeat checker registered at startup")
 
 
 @app.on_event("shutdown")
 async def shutdown():
+    """Close shared outbound clients during application shutdown."""
     try:
         from app.core.dingtalk_llm import close_m2her_client
 

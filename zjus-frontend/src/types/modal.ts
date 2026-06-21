@@ -1,3 +1,6 @@
+/**
+ * One course row in an end-of-semester transcript modal.
+ */
 export interface TranscriptModalCourseRow {
   name: string
   credit?: number
@@ -7,6 +10,9 @@ export interface TranscriptModalCourseRow {
   gpa?: number
 }
 
+/**
+ * User-facing achievement details.
+ */
 export interface AchievementSummary {
   code: string
   name: string
@@ -14,6 +20,9 @@ export interface AchievementSummary {
   icon?: string
 }
 
+/**
+ * Transcript payload emitted after final-exam settlement.
+ */
 export interface TranscriptModalData {
   semester_name?: string
   term_gpa?: number
@@ -24,12 +33,18 @@ export interface TranscriptModalData {
   [k: string]: unknown
 }
 
+/**
+ * One selectable option in a random-event modal.
+ */
 export interface RandomEventOption {
   id?: string
   text: string
   effects: unknown
 }
 
+/**
+ * Random-event modal payload emitted by the backend.
+ */
 export interface RandomEventModalData {
   title: string
   desc: string
@@ -37,6 +52,9 @@ export interface RandomEventModalData {
   [k: string]: unknown
 }
 
+/**
+ * Backward-compatible DingTalk message shape from the old single-message UI.
+ */
 export interface DingTalkLegacyMessage {
   sender?: string
   role: string
@@ -45,11 +63,17 @@ export interface DingTalkLegacyMessage {
   [k: string]: unknown
 }
 
+/**
+ * Player reply option for an open DingTalk conversation round.
+ */
 export interface DingTalkReplyOption {
   option_id: string
   text: string
 }
 
+/**
+ * Persisted private-message entry in a DingTalk thread.
+ */
 export interface DingTalkThreadMessage {
   message_id: string
   speaker: 'npc' | 'player' | 'system'
@@ -58,12 +82,18 @@ export interface DingTalkThreadMessage {
   round_id?: string | null
 }
 
+/**
+ * Conversation-round state used for three-reply settlement.
+ */
 export interface DingTalkRoundState {
   round_id: string
   status: 'open' | 'closed'
   player_reply_count: number
 }
 
+/**
+ * DingTalk contact thread shown in the private-message list.
+ */
 export interface DingTalkContact {
   contact_id: string
   sender: string
@@ -77,6 +107,9 @@ export interface DingTalkContact {
   round: DingTalkRoundState
 }
 
+/**
+ * Full DingTalk inbox state synchronized from the backend.
+ */
 export interface DingTalkState {
   version: number
   contacts: Record<string, DingTalkContact>
@@ -85,6 +118,9 @@ export interface DingTalkState {
 
 export type DingTalkMessage = DingTalkLegacyMessage
 
+/**
+ * One numeric change displayed in feedback modals.
+ */
 export interface FeedbackChange {
   field: string
   label: string
@@ -93,6 +129,9 @@ export interface FeedbackChange {
   unit?: string
 }
 
+/**
+ * Generic feedback modal payload for events, relax actions, and DingTalk effects.
+ */
 export interface FeedbackModalData {
   title: string
   message: string
@@ -102,5 +141,8 @@ export interface FeedbackModalData {
   [k: string]: unknown
 }
 
+/**
+ * Union of modal payloads stored by the global game store.
+ */
 export type ModalData = TranscriptModalData | RandomEventModalData | DingTalkMessage | DingTalkContact | FeedbackModalData | Record<string, unknown>
 

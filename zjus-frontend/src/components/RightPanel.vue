@@ -184,6 +184,9 @@
 </template>
 
 <script setup lang="ts">
+/**
+ * Right-side controls for relax actions, speed, content mode, and timers.
+ */
 import { ref, watch, computed, onMounted, onUnmounted } from 'vue'
 import { useGameStore } from '../stores/gameStore.ts'
 import type { WsClientAction, RelaxTarget } from '@/types/websocket'
@@ -205,28 +208,26 @@ function setMode(mode: 'library' | 'ai' | 'hybrid') {
   emit('send-action', { action: 'set_mode', mode })
 }
 
-// ✨ 本地虚拟时间，用于丝滑渲染
+/** Local virtual time smooths countdown rendering between server ticks. */
 const internalTime = ref(0)
 let animationFrameId: number | null = null
 let cooldownIntervalId: ReturnType<typeof setInterval> | null = null
 let lastTick = performance.now()
 
-// 监听后端推送过来的绝对准确时间，消除任何前端误差
+/** Recalibrate local countdown time whenever the server sends an authoritative value. */
 watch(() => store.semesterTimeLeft, (newVal: number) => {
   if (newVal !== undefined) {
-    internalTime.value = newVal // 每当后端 Tick 到达，强制校准
+    internalTime.value = newVal
   }
 }, { immediate: true })
 
-// ✨ 60帧/秒的平滑倒计时器
+/** Smooth countdown loop between backend ticks. */
 const updateFrame = () => {
   const now = performance.now()
   const deltaMs = now - lastTick
   lastTick = now
 
   if (!store.isPaused && !store.isGuideActive && store.currentPhase === 'playing') {
-    // 根据当前的倍速，扣减对应流逝的秒数
-    // 如果是 2.0x，真实世界过去 16ms，游戏里就流逝 32ms
     internalTime.value -= (deltaMs / 1000) * store.gameSpeed
     if (internalTime.value < 0) internalTime.value = 0
   }
@@ -250,18 +251,16 @@ onUnmounted(() => {
   }
 })
 
-// 将内部的浮点数秒数格式化为 MM:SS
+/** Format local countdown seconds as MM:SS. */
 const formattedTime = computed(() => {
-  const totalSeconds = Math.ceil(internalTime.value) // 向上取整，显得紧凑
+  const totalSeconds = Math.ceil(internalTime.value)
   if (totalSeconds <= 0) return '00:00'
   const m = Math.floor(totalSeconds / 60).toString().padStart(2, '0')
   const s = (totalSeconds % 60).toString().padStart(2, '0')
   return `${m}:${s}`
 })
 
-// --- 数据计算逻辑 ---
-
-// 计算效率的文案提示
+/** Explain the current learning efficiency relative to its baseline. */
 const efficiencyHint = computed(() => {
   const baseline = statDefault('efficiency')
   const eff = statValue(store.currentStats, 'efficiency')
@@ -292,7 +291,7 @@ const miniStats = computed(() => [
   },
 ])
 
-// 计算课程平均掌握度 (动态从 store 的课程数据中读取)
+/** Average current course mastery across the active semester. */
 const averageProgress = computed(() => {
   const courses = store.currentStats.courses
   if (!courses || Object.keys(courses).length === 0) return 0
@@ -304,12 +303,10 @@ const averageProgress = computed(() => {
   return count > 0 ? Math.min(100, totalProgress / count) : 0
 })
 
-// 玩家可以主动提前考试，但本学期结算后不可重复触发。
+/** Manual exam is available until this semester has already been settled. */
 const canTakeExam = computed(() => {
   return Number(store.currentStats.exam_completed || 0) <= 0
 })
-
-// --- 发送指令逻辑 ---
 
 const relaxLabels: Record<RelaxTarget, string> = {
   gym: '健身',

@@ -13,12 +13,12 @@
 
 | File | Change |
 |---|---|
-| [websocket.ts](file:///d:/projects/ZJUers_simulator/zjus-frontend/src/types/websocket.ts) | Added `WsClientAction` (15 action variants) + `RelaxTarget` + `isWsMessage` guard |
-| [api.ts](file:///d:/projects/ZJUers_simulator/zjus-frontend/src/types/api.ts) | **[NEW]** 6 interfaces aligned with backend Pydantic models |
-| [client.ts](file:///d:/projects/ZJUers_simulator/zjus-frontend/src/api/client.ts) | **[NEW]** Type-safe HTTP client (5 functions) |
-| [useGameWebSocket.ts](file:///d:/projects/ZJUers_simulator/zjus-frontend/src/composables/useGameWebSocket.ts) | `send()` upgraded from `unknown` → `WsClientAction` |
-| [modal.ts](file:///d:/projects/ZJUers_simulator/zjus-frontend/src/types/modal.ts) | `DingTalkMessage.role/content` → required fields |
-| [package.json](file:///d:/projects/ZJUers_simulator/zjus-frontend/package.json) | Added `gen:api`, `openapi-typescript`, `@typescript-eslint/*` |
+| `zjus-frontend/src/types/websocket.ts` | Added `WsClientAction` action variants, `RelaxTarget`, and `isWsMessage` guard |
+| `zjus-frontend/src/types/api.generated.ts` | Generated OpenAPI schema types; do not hand-edit |
+| `zjus-frontend/src/api/client.ts` | Hand-written thin HTTP client wrapper around generated schema types |
+| `zjus-frontend/src/composables/useGameWebSocket.ts` | `send()` upgraded from `unknown` to typed WebSocket actions |
+| `zjus-frontend/src/types/modal.ts` | Modal payloads and DingTalk message fields are typed |
+| `zjus-frontend/package.json` | Type-check, API generation, test, and Vite build scripts |
 
 ## Phases 1–3: Component Migration (12 / 12)
 
@@ -44,5 +44,5 @@ All components migrated to `<script setup lang="ts">`:
 
 | File | Fix |
 |---|---|
-| [eslint.config.js](file:///d:/projects/ZJUers_simulator/zjus-frontend/eslint.config.js) | Added `@typescript-eslint/parser` for `.ts` and `.vue` files |
-| [vitest.config.js](file:///d:/projects/ZJUers_simulator/zjus-frontend/vitest.config.js) | Added `@` resolve alias matching vite.config |
+| `zjus-frontend/eslint.config.js` | TypeScript-aware lint config for `.ts` and `.vue` files |
+| `zjus-frontend/vitest.config.js` | `@` resolve alias matching `vite.config.js` |

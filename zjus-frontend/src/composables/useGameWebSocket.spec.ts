@@ -248,7 +248,7 @@ describe('useGameWebSocket', () => {
               {
                 code: 'social_butterfly',
                 name: '紫金港交际花',
-                desc: '情商或魅力达到 95 以上',
+                desc: '情商和魅力均达到 90 以上，并完成 3 轮钉钉对话',
                 icon: '🌸',
               },
             ],
@@ -265,7 +265,7 @@ describe('useGameWebSocket', () => {
       {
         code: 'social_butterfly',
         name: '紫金港交际花',
-        desc: '情商或魅力达到 95 以上',
+        desc: '情商和魅力均达到 90 以上，并完成 3 轮钉钉对话',
         icon: '🌸',
       },
     ])

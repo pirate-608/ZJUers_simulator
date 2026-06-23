@@ -90,6 +90,14 @@ class GameEngine:
     _RELAX_OVERFLOW_TARGETS = ("energy", "sanity", "charm")
     _RELAX_OVERFLOW_TRANSFER_CAP = 20
     _RELAX_CHARM_TRANSFER_CAP = 1
+
+    # Social achievements should reflect both character build and actual
+    # interaction history. These thresholds prevent high starting EQ alone from
+    # unlocking "紫金港交际花" before the player has completed any conversations.
+    _SOCIAL_BUTTERFLY_MIN_EQ = 90
+    _SOCIAL_BUTTERFLY_MIN_CHARM = 90
+    _SOCIAL_BUTTERFLY_MIN_DINGTALK_ROUNDS = 3
+
     _FEEDBACK_FIELD_LABELS = {
         **stat_definitions.feedback_labels,
         "gpa": "GPA",
@@ -1346,7 +1354,9 @@ class GameEngine:
 
         await self._emit_dingtalk_contact_update(contact)
         if reply_count >= 3:
+            await self.repo.increment_action_count("dingtalk_round")
             await self._apply_dingtalk_settlement(contact, result.get("settlement"))
+            await self._check_achievements()
 
     def _item_effect_changes(
         self, item: dict[str, Any], sign: int = 1
@@ -2153,6 +2163,7 @@ class GameEngine:
             charm = int(stats.get("charm") or 50)
             study_count = int(action_counts.get("study") or 0)
             cc98_count = int(action_counts.get("cc98") or 0)
+            dingtalk_round_count = int(action_counts.get("dingtalk_round") or 0)
             failed_count = int(context.get("failed_count") or 0)
 
             ach_config = self._load_achievement_config()
@@ -2160,12 +2171,17 @@ class GameEngine:
                 return []
 
             unlocked = await self.repo.get_unlocked_achievements()
+            normalized_unlocked = {str(item).strip().lower() for item in unlocked}
             newly_unlocked: list[dict[str, Any]] = []
 
             for code, item in ach_config.items():
                 clean_code = str(code).strip()
                 normalized_code = clean_code.lower()
-                if code in unlocked or clean_code in unlocked:
+                if (
+                    code in unlocked
+                    or clean_code in unlocked
+                    or normalized_code in normalized_unlocked
+                ):
                     continue
 
                 passed = False
@@ -2173,8 +2189,12 @@ class GameEngine:
                     passed = True
                 elif normalized_code == "broken_heart" and sanity < 10:
                     passed = True
-                elif normalized_code == "social_butterfly" and (
-                    eq >= 95 or charm >= 95
+                elif (
+                    normalized_code == "social_butterfly"
+                    and eq >= self._SOCIAL_BUTTERFLY_MIN_EQ
+                    and charm >= self._SOCIAL_BUTTERFLY_MIN_CHARM
+                    and dingtalk_round_count
+                    >= self._SOCIAL_BUTTERFLY_MIN_DINGTALK_ROUNDS
                 ):
                     passed = True
                 elif normalized_code == "library_ghost" and study_count > 50:

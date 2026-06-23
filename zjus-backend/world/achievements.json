@@ -13,8 +13,8 @@
   },
   "social_butterfly": {
     "name": "紫金港交际花",
-    "desc": "情商或魅力达到 95 以上",
-    "condition": "eq >= 95 or charm >= 95",
+    "desc": "情商和魅力均达到 90 以上，并完成 3 轮钉钉对话",
+    "condition": "eq >= 90 and charm >= 90 and action_counts.get('dingtalk_round', 0) >= 3",
     "icon": "🌸"
   },
   "broken_heart": {
@@ -29,7 +29,7 @@
     "condition": "failed_count >= 3",
     "icon": "🚑"
   },
-   "Water_Monster ": {
+  "water_monster": {
     "name": "98大水怪",
     "desc": "累计水了100次cc98",
     "condition": "action_counts.get('cc98', 0) >= 100",

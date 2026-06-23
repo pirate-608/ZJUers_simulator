@@ -208,6 +208,7 @@ Random events:
 Achievements:
 
 - `_check_achievements()` returns newly unlocked achievement details, emits `achievement_unlocked`, and final-exam summaries include the achievements unlocked during that semester.
+- Social achievements should require both stat thresholds and behavior evidence; `social_butterfly` uses EQ/Charm thresholds plus completed DingTalk round counts from `action_counts.dingtalk_round`, not initial stats alone.
 - Graduation payloads should include `achievement_details` derived from `world/achievements.json`; frontend fallbacks may display legacy code-only achievements.
 - End screens expose both restart and return-home actions. Returning home disconnects the game WebSocket, disables reconnect, clears per-session game JWT/slot markers, and keeps the long-lived student credential.
 

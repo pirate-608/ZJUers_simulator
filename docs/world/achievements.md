@@ -4,9 +4,9 @@
 | ---------------- | ------------ | --------------------------------- | ------------------------------------- | ---- |
 | gpa_king         | 卷王之王     | 单学期 GPA 达到 4.5               | `gpa >= 4.5`                          | 👑    |
 | library_ghost    | 图书馆地缚灵 | 单学期累计【卷】超过 50 次        | `action_counts.get('study', 0) > 50`  | 📚    |
-| social_butterfly | 紫金港交际花 | 情商或魅力达到 95 以上            | `eq >= 95 or charm >= 95`             | 🌸    |
+| social_butterfly | 紫金港交际花 | 情商和魅力均达到 90 以上，并完成 3 轮钉钉对话 | `eq >= 90 and charm >= 90 and action_counts.get('dingtalk_round', 0) >= 3` | 🌸    |
 | broken_heart     | 破防人       | 心态曾经低于 10 点                | `sanity < 10`                         | 💔    |
 | survivor         | 绝地求生     | 挂科 3 门以上但在退学边缘活下来了 | `failed_count >= 3`                   | 🚑    |
-| Water_Monster    | 98大水怪     | 累计水了100次cc98                 | `action_counts.get('cc98', 0) >= 100` | 🚑    |
+| water_monster    | 98大水怪     | 累计水了100次cc98                 | `action_counts.get('cc98', 0) >= 100` | 🐙    |
 
 成就解锁后会即时推送提示，并记录到存档。期末成绩单会显示本学期新解锁成就；毕业典礼会展示已解锁成就的名称、图标和描述。

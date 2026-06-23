@@ -121,6 +121,7 @@ class _Repo:
     def __init__(self, state: DingTalkState):
         self.state = state
         self.effects: list[tuple[str, int]] = []
+        self.action_counts: list[str] = []
 
     async def get_dingtalk_state(self):
         return self.state
@@ -137,6 +138,10 @@ class _Repo:
     async def update_stat_safe(self, field, delta, min_val=0, max_val=200):
         self.effects.append((field, delta))
         return 100 + delta
+
+    async def increment_action_count(self, action_type):
+        self.action_counts.append(action_type)
+        return len(self.action_counts)
 
 
 class _RelaxRepo:
@@ -204,6 +209,7 @@ async def test_engine_dingtalk_reply_closes_round_and_applies_effects():
     engine = GameEngine("1", repo=repo, save_service=Mock(), game_service=Mock()) # type: ignore
     engine.emit = AsyncMock()
     engine._push_update = AsyncMock()
+    engine._check_achievements = AsyncMock()
     engine._generate_dingtalk_reply_result = AsyncMock(
         return_value={
             "content": "那太好了。",
@@ -223,7 +229,9 @@ async def test_engine_dingtalk_reply_closes_round_and_applies_effects():
     assert saved_contact.pending_options == []
     assert [m.speaker for m in saved_contact.messages[-2:]] == ["player", "npc"]
     assert repo.effects == [("sanity", 2)]
+    assert repo.action_counts == ["dingtalk_round"]
     engine._push_update.assert_awaited()
+    engine._check_achievements.assert_awaited_once()
 
 
 @pytest.mark.asyncio
@@ -584,3 +592,73 @@ async def test_check_achievements_returns_user_visible_payload():
         }
     ]
     engine.emit.assert_awaited_with("achievement_unlocked", {"data": unlocked[0]})
+
+
+@pytest.mark.asyncio
+async def test_social_butterfly_requires_stats_and_completed_dingtalk_rounds():
+    repo = Mock()
+    repo.get_snapshot = AsyncMock(
+        return_value=SimpleNamespace(
+            stats=SimpleNamespace(
+                model_dump=lambda: {
+                    "highest_gpa": "0",
+                    "sanity": 80,
+                    "eq": 100,
+                    "charm": 95,
+                }
+            )
+        )
+    )
+    repo.get_items_state = AsyncMock(
+        return_value={"version": 1, "owned": [], "updated_at": 0}
+    )
+    repo.get_action_counts = AsyncMock(return_value={"dingtalk_round": "2"})
+    repo.get_unlocked_achievements = AsyncMock(return_value=set())
+    repo.unlock_achievement = AsyncMock()
+    engine = GameEngine("1", repo=repo, save_service=Mock(), game_service=Mock())
+    engine.emit = AsyncMock()
+
+    assert await engine._check_achievements() == []
+    repo.unlock_achievement.assert_not_awaited()
+
+    repo.get_action_counts = AsyncMock(return_value={"dingtalk_round": "3"})
+
+    unlocked = await engine._check_achievements()
+
+    assert unlocked == [
+        {
+            "code": "social_butterfly",
+            "name": "紫金港交际花",
+            "desc": "情商和魅力均达到 90 以上，并完成 3 轮钉钉对话",
+            "icon": "🌸",
+        }
+    ]
+    repo.unlock_achievement.assert_awaited_with("social_butterfly")
+
+
+@pytest.mark.asyncio
+async def test_achievement_check_normalizes_legacy_unlocked_codes():
+    repo = Mock()
+    repo.get_snapshot = AsyncMock(
+        return_value=SimpleNamespace(
+            stats=SimpleNamespace(
+                model_dump=lambda: {
+                    "highest_gpa": "0",
+                    "sanity": 80,
+                    "eq": 80,
+                    "charm": 80,
+                }
+            )
+        )
+    )
+    repo.get_items_state = AsyncMock(
+        return_value={"version": 1, "owned": [], "updated_at": 0}
+    )
+    repo.get_action_counts = AsyncMock(return_value={"cc98": "120"})
+    repo.get_unlocked_achievements = AsyncMock(return_value={"Water_Monster "})
+    repo.unlock_achievement = AsyncMock()
+    engine = GameEngine("1", repo=repo, save_service=Mock(), game_service=Mock())
+    engine.emit = AsyncMock()
+
+    assert await engine._check_achievements() == []
+    repo.unlock_achievement.assert_not_awaited()

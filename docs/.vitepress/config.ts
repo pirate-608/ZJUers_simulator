@@ -157,6 +157,8 @@ export default defineConfig({
             { text: '总览', link: '/dev/plans/' },
             { text: 'TypeScript 迁移', link: '/dev/plans/migrate_js_to_ts' },
             { text: 'Vue 组件迁移至 TS', link: '/dev/plans/completely_ts' },
+            { text: '登录前序章', link: '/dev/plans/prologue-design' },
+            { text: 'LLM 向量化与内容库', link: '/dev/plans/vector_plan' },
             { text: 'UI 设计优化', link: '/dev/plans/ui_design' },
             { text: '2C2G 生产资源优化', link: '/dev/plans/production-resource-optimization' },
           ],

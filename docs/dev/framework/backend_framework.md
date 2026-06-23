@@ -207,6 +207,12 @@ graph TD
 - 随机事件结果：`auto_close_ms=5000`
 - 休闲动作结果：`auto_close_ms=3000`
 
+WebSocket 出站消息必须通过 `ConnectionManager.send_personal_message()`，同一用户的发送会被锁串行化，避免 `event_forwarder`、ping、保存结果等并发 `send_text`。`save_and_exit` 成功路径为 `save_result -> exit_confirmed -> 清 Redis -> close(1000)`。
+
+暂停态只使用 `GameEngine.is_running`。当它为 `false` 时，后端会拒绝休闲、考试、事件选择、钉钉回复、道具买卖和课程策略变更；`next_semester` 仅在 Redis 中 `exam_completed=1` 后允许。
+
+`game_balance.json` 的 `tick.interval_seconds` 是真实 tick 间隔，主循环 sleep 和 `elapsed_game_time` 增量都读取该值。
+
 休闲动作的正向收益溢出只在 `_handle_relax()` 中处理：当精力/心态/魅力等正向收益或压力下降已经触及属性定义中的好端点时，最多把 20 点收益转移到精力、心态、魅力，且单次转移到魅力最多 +1。健身的魅力概率和数值由 `relax_actions.gym.charm_gain_probability` / `charm_gain` 控制。
 
 常用动作：
@@ -315,6 +321,8 @@ cd zjus-backend
 ```
 
 `sync_stat_definitions.py` 会生成前端属性元数据；`validate_world_data.py` 会检查属性定义、道具 effects、事件库 effects 和生成文件同步状态。需要新增属性模板时可先运行 `scripts\scaffold_game_stat.py add <stat_id>` 查看模板和复核清单。
+
+更完整的数值、属性、道具和内容库维护流程见[游戏设定维护](/dev/world-data)。
 
 ---
 

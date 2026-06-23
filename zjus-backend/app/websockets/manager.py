@@ -23,6 +23,7 @@ class ConnectionManager:
         """Create an empty connection registry."""
         self.active_connections: Dict[str, WebSocket] = {}
         self.heartbeat_timestamps: Dict[str, float] = {}
+        self._send_locks: Dict[str, asyncio.Lock] = {}
         self.heartbeat_timeout = 60
         self._heartbeat_task: Optional[asyncio.Task] = None
 
@@ -45,6 +46,17 @@ class ConnectionManager:
 
     async def connect(self, websocket: WebSocket, user_id: str):
         """Accept a WebSocket and replace any older session for that user."""
+        await websocket.accept()
+        await self.register_accepted(user_id, websocket)
+
+    async def register_accepted(self, user_id: str, websocket: WebSocket):
+        """Register an already-accepted WebSocket for a user.
+
+        The game route authenticates through a first-message handshake, so it
+        must accept the socket before the manager knows the user id. This helper
+        keeps that path aligned with `connect()` by centralizing duplicate
+        session handling, heartbeat registration, and send-lock setup.
+        """
         if user_id in self.active_connections:
             old_ws = self.active_connections[user_id]
             logger.warning(
@@ -54,11 +66,11 @@ class ConnectionManager:
                 await old_ws.close(code=4001, reason="duplicate_session")
             except Exception:
                 pass
-            self._remove(user_id)
+            self._remove(user_id, old_ws)
 
-        await websocket.accept()
         self.active_connections[user_id] = websocket
         self.heartbeat_timestamps[user_id] = time.time()
+        self._send_locks.setdefault(user_id, asyncio.Lock())
         logger.info(
             "User %s connected. Total: %d", user_id, len(self.active_connections)
         )
@@ -80,6 +92,7 @@ class ConnectionManager:
             del self.active_connections[user_id]
             removed = True
             self.heartbeat_timestamps.pop(user_id, None)
+            self._send_locks.pop(user_id, None)
         if removed:
             logger.info(
                 "User %s removed. Remaining: %d", user_id, len(self.active_connections)
@@ -112,17 +125,24 @@ class ConnectionManager:
             self._remove(user_id)
 
     async def send_personal_message(self, message: dict, user_id: str):
-        """Send one JSON message to a user if the socket is still active."""
-        ws = self.active_connections.get(user_id)
-        if ws is None:
-            logger.debug("Skip send to disconnected user %s", user_id)
-            return
-        try:
-            await ws.send_text(json.dumps(message, ensure_ascii=False))
-            self.update_heartbeat(user_id)
-        except Exception as e:
-            logger.error("Failed to send message to %s: %s", user_id, e)
-            self._remove(user_id)
+        """Send one JSON message to a user if the socket is still active.
+
+        Starlette WebSockets do not guarantee safety for concurrent `send_text`
+        calls. Event forwarding, pings, and save acknowledgements can all fire
+        close together, so each user's outbound stream is serialized here.
+        """
+        lock = self._send_locks.setdefault(user_id, asyncio.Lock())
+        async with lock:
+            ws = self.active_connections.get(user_id)
+            if ws is None:
+                logger.debug("Skip send to disconnected user %s", user_id)
+                return
+            try:
+                await ws.send_text(json.dumps(message, ensure_ascii=False))
+                self.update_heartbeat(user_id)
+            except Exception as e:
+                logger.error("Failed to send message to %s: %s", user_id, e)
+                self._remove(user_id, ws)
 
     async def broadcast(self, message: dict):
         """Broadcast one JSON message, isolating per-socket send failures."""

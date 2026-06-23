@@ -292,6 +292,7 @@ async def test_engine_schedules_dingtalk_reply_without_blocking_actions():
         started.set()
         await release.wait()
 
+    engine.is_running = True
     engine._handle_dingtalk_reply = slow_reply  # type: ignore[method-assign]
 
     await asyncio.wait_for(
@@ -320,6 +321,7 @@ async def test_engine_schedules_relax_action_and_deduplicates_inflight_target():
         started.set()
         await release.wait()
 
+    engine.is_running = True
     engine._handle_relax = slow_relax  # type: ignore[method-assign]
 
     await asyncio.wait_for(

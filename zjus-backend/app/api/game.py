@@ -227,20 +227,7 @@ async def websocket_endpoint(websocket: WebSocket):
         return
 
     # Register the accepted socket and replace any older session for this user.
-    if user_id in manager.active_connections:
-        old_ws = manager.active_connections[user_id]
-        logger.warning("Kicking old connection for user %s", user_id)
-        try:
-            await old_ws.close(code=4001, reason="duplicate_session")
-        except Exception:
-            pass
-        manager._remove(user_id, old_ws)
-
-    manager.active_connections[user_id] = websocket
-    manager.heartbeat_timestamps[user_id] = time.time()
-    logger.info(
-        "User %s connected. Total: %d", user_id, len(manager.active_connections)
-    )
+    await manager.register_accepted(user_id, websocket)
 
     await manager.send_personal_message({"type": "auth_ok"}, user_id)
 
@@ -429,7 +416,15 @@ async def websocket_endpoint(websocket: WebSocket):
                         user_id,
                     )
                     if success:
+                        await manager.send_personal_message(
+                            {"type": "exit_confirmed"},
+                            user_id,
+                        )
                         await cleanup_redis_data(repo)
+                        try:
+                            await websocket.close(code=1000, reason="save_and_exit")
+                        except Exception as e:
+                            logger.debug("save_and_exit close skipped: %s", e)
                         break
 
                 elif action == "save_game":
@@ -456,6 +451,10 @@ async def websocket_endpoint(websocket: WebSocket):
                     await manager.send_personal_message(
                         {"type": "exit_confirmed"}, user_id
                     )
+                    try:
+                        await websocket.close(code=1000, reason="exit_without_save")
+                    except Exception as e:
+                        logger.debug("exit_without_save close skipped: %s", e)
                     break
 
                 else:

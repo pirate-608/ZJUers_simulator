@@ -4,7 +4,7 @@
 
 ## 后端
 
-后端测试位于 `zjus-backend/tests/unit/`，覆盖游戏状态、属性定义注册表、数值配置、Admin 数值平衡表单发布、道具配置/买卖/存档、钉钉私聊状态、DingTalk LLM 降级、认证校验和玩家入口/存档流程。
+后端测试位于 `zjus-backend/tests/unit/`，覆盖游戏状态、属性定义注册表、数值配置、Admin 数值平衡表单发布、道具配置/买卖/存档、WebSocket manager、引擎暂停门禁、tick interval、钉钉私聊状态、DingTalk LLM 降级、认证校验和玩家入口/存档流程。
 
 常用命令：
 
@@ -12,6 +12,9 @@
 cd zjus-backend
 ..\.venv\Scripts\python.exe -m pytest tests\unit
 ..\.venv\Scripts\python.exe -m pytest tests\unit\test_admin_balance_config.py tests\unit\test_balance.py
+..\.venv\Scripts\python.exe -m pytest tests\unit\test_engine_runtime_hardening.py tests\unit\test_websocket_manager.py
+..\.venv\Scripts\python.exe scripts\validate_world_data.py
+..\.venv\Scripts\python.exe scripts\sync_stat_definitions.py --check
 ..\.venv\Scripts\python.exe -m py_compile app\game\engine.py
 ..\.venv\Scripts\python.exe -m py_compile app\game\balance.py app\services\balance_admin.py app\admin.py
 ..\.venv\Scripts\python.exe -m ruff check .
@@ -90,7 +93,8 @@ cd zjus-frontend
 | 前端 UI/状态 | `vue-tsc --noEmit`、`vitest run` 或 focused spec |
 | 后端引擎/状态 | `pytest tests\unit`、`py_compile`、`ruff check` |
 | API/模型 | Docker Compose 后端、OpenAPI 生成、前端类型检查 |
-| 属性/道具/world 数据 | `scripts/validate_world_data.py`、`scripts/sync_stat_definitions.py --check`、相关单测 |
+| 属性/道具/world 数据 | `scripts/validate_world_data.py`、`scripts/sync_stat_definitions.py --check`、`test_stat_definitions.py`、`test_items.py` |
+| WebSocket/保存退出/暂停门禁 | `test_engine_runtime_hardening.py`、`test_websocket_manager.py`、前端 `useGameWebSocket.spec.ts` |
 | Docker/部署 | `docker compose config`、服务启动日志、生产 smoke |
 
 pytest 可能出现依赖库弃用警告；只要测试结果通过且警告与本次改动无关，可以在交付说明中记录为残余风险。

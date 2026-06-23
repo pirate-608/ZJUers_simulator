@@ -221,21 +221,26 @@ class GameService:
         """Advance to the next semester, auto-save, or return graduation state."""
         current_semester_idx = await self.repo.increment_semester()
 
-        autosave_ok = False
-        try:
-            autosave_ok = await SaveService.persist_to_db(
-                self.repo, db, save_slot=save_slot
-            )
-            if autosave_ok:
-                logger.info("Auto-save at end of semester for user %s", self.user_id)
-        except Exception as e:
-            logger.error("Auto-save failed for user %s: %s", self.user_id, e)
+        async def _autosave_current_state() -> bool:
+            try:
+                autosave_ok = await SaveService.persist_to_db(
+                    self.repo, db, save_slot=save_slot
+                )
+                if autosave_ok:
+                    logger.info(
+                        "Auto-save at end of semester for user %s", self.user_id
+                    )
+                return autosave_ok
+            except Exception as e:
+                logger.error("Auto-save failed for user %s: %s", self.user_id, e)
+                return False
 
         if current_semester_idx > 8:
             snapshot = await self.repo.get_snapshot()
             stats = snapshot.stats.model_dump()
             achievements = list(await self.repo.get_unlocked_achievements())
             stats["achievements"] = achievements
+            autosave_ok = await _autosave_current_state()
             return {
                 "status": "graduated",
                 "semester_idx": current_semester_idx,
@@ -250,6 +255,7 @@ class GameService:
                 {"context": "假期", "semester": current_semester_idx}
             )
 
+        autosave_ok = await _autosave_current_state()
         return {
             "status": "continued",
             "semester_idx": current_semester_idx,

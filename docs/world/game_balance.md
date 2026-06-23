@@ -30,6 +30,8 @@
 - 基础精力消耗：0.8
 - 基础 mastery 增长：0.5
 
+`tick.interval_seconds` 会被 `GameEngine.run_loop()` 直接使用。默认 3 秒不改变当前手感；如果在后台调低，会提高 Redis 读写、WebSocket 推送和事件检查频率；如果调高，则会让游戏节奏整体变慢。
+
 ## 课程状态
 | 状态 | 名称 | Emoji | 成长 | 消耗 |
 | ---- | ---- | ----- | ---- | ---- |
@@ -69,3 +71,18 @@
 ## 结局判定
 - 心态阈值：0
 - 精力阈值：0
+
+## 后台管理
+
+管理员可在 `/admin/balance` 图形化编辑本文件中的既有数值字段。保存时后端会：
+
+1. 校验完整配置。
+2. 用临时文件 + `os.replace` 原子替换 `world/game_balance.json`。
+3. 调用 `balance.reload()` 热重载。
+4. 在 `admin_audit_logs` 中记录 `balance_update`。
+
+“恢复上一版”读取最近一次 `balance_update` 保存前的旧配置并写回，随后记录 `balance_restore`。该功能只面向 `game_balance.json`，不编辑属性定义、道具、课程或事件库。
+
+生产环境默认挂载 `./zjus-backend/world:/app/world`，因此后台保存会写入服务器上的挂载目录，而不是只改容器镜像内部文件。
+
+更多维护流程见[游戏设定维护](/dev/world-data)。

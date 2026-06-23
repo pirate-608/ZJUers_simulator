@@ -354,4 +354,27 @@ describe('useGameWebSocket', () => {
 
     expect(MockWebSocket.instances).toHaveLength(2)
   })
+
+  it('does not warn or reconnect when save-and-exit closes after success confirmation', () => {
+    const store = useGameStore()
+    const { connect } = useGameWebSocket()
+
+    connect('token', 'ws://game.test')
+    store.isPendingExit = true
+    MockWebSocket.instances[0].emitMessage({
+      type: 'save_result',
+      success: true,
+      message: '存档保存成功',
+    })
+    const timersAfterSaveResult = vi.getTimerCount()
+    MockWebSocket.instances[0].emitClose(1000)
+
+    expect(store.isPendingExit).toBe(false)
+    expect(store.toast).toMatchObject({
+      type: 'success',
+      message: '存档保存成功',
+    })
+    expect(vi.getTimerCount()).toBe(timersAfterSaveResult + 1)
+    expect(MockWebSocket.instances).toHaveLength(1)
+  })
 })

@@ -8,7 +8,7 @@ updates for stats, courses, cooldowns, achievements, DingTalk, and items.
 import inspect
 import json
 import logging
-from typing import Any, Awaitable, Dict, List, Optional, Set, TypeVar
+from typing import Any, Awaitable, Dict, Iterable, List, Optional, Set, TypeVar
 
 from redis import asyncio as aioredis
 
@@ -210,6 +210,26 @@ class RedisRepository:
             return float(value)
         except (TypeError, ValueError):
             return None
+
+    async def get_cooldown_timestamps(
+        self, action_types: Iterable[str]
+    ) -> dict[str, float]:
+        """Return cooldown timestamps for multiple relax actions in one read."""
+        actions = [str(action) for action in action_types]
+        if not actions:
+            return {}
+        values = await _await_if_needed(
+            self.redis.hmget(self.keys["cooldowns"], actions)
+        )
+        result: dict[str, float] = {}
+        for action, value in zip(actions, values or [], strict=False):
+            if value is None:
+                continue
+            try:
+                result[action] = float(value)
+            except (TypeError, ValueError):
+                continue
+        return result
 
     async def set_game_data(
         self,

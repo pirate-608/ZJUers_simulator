@@ -31,6 +31,8 @@ login -> save_select -> character_create -> loading -> playing -> ended
 - `GameEngine` 负责 tick、暂停/恢复、期末考试、学期推进、随机事件、休闲冷却、反馈弹窗、毕业和 Game Over。
 - Redis 是单局实时状态源，PostgreSQL 是持久化存档源；保存/学期推进通过 `SaveService.persist_to_db()` upsert。
 - `init` 与 `tick` 都应携带 `relax_cooldowns`，前端据此禁用休闲按钮并显示剩余秒数；`init` 还会携带 `items_state`，购买/出售后通过独立 `items_state` 消息同步。
+- WebSocket 出站消息由 `ConnectionManager.send_personal_message()` 按用户串行发送；保存并退出成功路径应先发 `save_result(success=true)`，再发 `exit_confirmed`，随后清理 Redis 并关闭连接。
+- 暂停只使用 `GameEngine.is_running`：为 `false` 时后端也会拒绝休闲、考试、事件选择、钉钉回复、道具买卖和课程策略变更；`next_semester` 仅在期末结算完成后允许。
 - 属性定义来自 `world/stat_definitions.json`，前端属性元数据由 `scripts/sync_stat_definitions.py` 生成。HUD、右侧状态卡、角色创建、道具页和结局页应通过 `src/utils/statDisplay.ts` / `statDefinitions.generated.ts` 获取标签、默认值和范围，不再手写属性上限。道具配置来自 `world/items.json`，其 effect 字段必须通过属性定义允许；背包在 Redis `items_state` 与 `game_saves.items_data` 间同步。道具持有即生效，但加成作为 effective stats 计算，不直接写入基础属性。
 - 随机事件和休闲结果同时保留 `event` 日志，并通过 `feedback` 展示短时弹窗；休闲结果应附带本次实际数值变化。
 - 新学期切换重置课程和学期计时，并将精力向属性定义中的默认精力回调一半，保留经营压力但避免低精力锁死。
@@ -42,7 +44,7 @@ login -> save_select -> character_create -> loading -> playing -> ended
 - 事件和 CC98 优先使用本地预构建 JSON 库；离线生成脚本 `zjus-backend/scripts/generate_content_library.py` 使用 OpenAI-compatible `chat/completions`，可指向云端模型或 Ollama `/v1`，而角色/query 向量仍由本地 Ollama `bge-m3` 生成。
 - 钉钉消息默认优先走 pgvector 角色检索 + MiniMax M2-her；若玩家提供 `custom_rp_api_key`，使用玩家 MiniMax key 调用 M2-her；若玩家只配置通用自定义 LLM，则不再使用平台默认 M2-her，而是回退到通用自定义 LLM。联系人私聊状态随存档保存，三次玩家回复后结算一轮数值影响，允许对魅力等社交属性产生轻量变化；联系人列表默认最多 12 位，并优先复用已结束轮次的旧联系人。
 - AI/LLM 不可用时，AI 模式要向 hybrid/library 降级，并通过 `mode_changed` 或 `toast` 告知前端。
-- 用户自定义 LLM 配置只在浏览器 `sessionStorage` 和当前 WebSocket 会话中使用，不落库。
+- 用户自定义 LLM 配置只在浏览器 `sessionStorage` 和当前 WebSocket 会话中使用，不落库；自定义 LLM 生成内容不进入全局 Redis 内容池，自定义 client 调用后即关闭。
 
 ## 运行与验证基线
 
@@ -50,10 +52,10 @@ login -> save_select -> character_create -> loading -> playing -> ended
 
 | 检查 | 命令 | 当前结果 |
 |---|---|---|
-| 后端单元测试 | `..\.venv\Scripts\python.exe -m pytest tests\unit` | `76 passed` |
+| 后端单元测试 | `..\.venv\Scripts\python.exe -m pytest tests\unit` | `144 passed` |
 | 后端引擎语法 | `..\.venv\Scripts\python.exe -m py_compile app\game\engine.py` | 通过 |
 | 前端类型检查 | `.\node_modules\.bin\vue-tsc.cmd --noEmit` | 通过 |
-| 前端单测 | `.\node_modules\.bin\vitest.cmd run` | `3 passed` |
+| 前端单测 | `.\node_modules\.bin\vitest.cmd run` | `34 passed` |
 | 文档构建 | `cd docs; npm run build` | 通过 |
 
 当前本地 `.venv` 如果缺少 `ruff`，先安装后端 `requirements.txt`，再运行 `python -m ruff check .`。pytest 可能出现 Pydantic v2 `Config` 弃用警告或本地 `.pytest_cache` 写入警告，这些不是当前功能失败。

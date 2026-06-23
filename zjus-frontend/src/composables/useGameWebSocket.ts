@@ -98,7 +98,34 @@ export function useGameWebSocket() {
   const reconnectDelay = 3000
   let heartbeatInterval: ReturnType<typeof setInterval> | null = null
   let reconnectTimer: ReturnType<typeof setTimeout> | null = null
+  let exitReloadTimer: ReturnType<typeof setTimeout> | null = null
   let shouldReconnect = true
+  let receivedExitConfirmation = false
+
+  /**
+   * Remove per-game markers while keeping the long-lived student credential.
+   */
+  const clearGameSessionMarkers = () => {
+    localStorage.removeItem('zju_token')
+    localStorage.removeItem('zju_jwt')
+    localStorage.removeItem('game_started')
+    localStorage.removeItem('selected_save_slot')
+  }
+
+  /**
+   * Finish a confirmed save-and-exit flow without scheduling reconnects.
+   */
+  const completeConfirmedExit = () => {
+    shouldReconnect = false
+    receivedExitConfirmation = true
+    gameStore.isPendingExit = false
+    clearGameSessionMarkers()
+    if (exitReloadTimer) clearTimeout(exitReloadTimer)
+    exitReloadTimer = setTimeout(() => {
+      exitReloadTimer = null
+      window.location.reload()
+    }, 0)
+  }
 
   /**
    * Send a client action only when the socket is open.
@@ -135,7 +162,12 @@ export function useGameWebSocket() {
    */
   const connect = (token: string = 'test_token', baseUrl: string = 'ws://localhost:8000') => {
     clearReconnectTimer()
+    if (exitReloadTimer) {
+      clearTimeout(exitReloadTimer)
+      exitReloadTimer = null
+    }
     shouldReconnect = true
+    receivedExitConfirmation = false
     ws.value = new WebSocket(`${baseUrl}/ws/game`)
 
     ws.value.onopen = () => {
@@ -531,13 +563,11 @@ export function useGameWebSocket() {
           gameStore.showToast(message, success ? 'success' : 'danger')
 
           if (gameStore.isPendingExit && success) {
+            receivedExitConfirmation = true
             shouldReconnect = false
-            localStorage.removeItem('zju_token')
-            localStorage.removeItem('zju_jwt')
-            localStorage.removeItem('game_started')
-            localStorage.removeItem('selected_save_slot')
-            window.location.reload()
+            clearGameSessionMarkers()
           } else if (gameStore.isPendingExit && !success) {
+            receivedExitConfirmation = false
             gameStore.isPendingExit = false
             gameStore.addLog('系统', '保存失败，无法安全退出！', 'text-danger')
           }
@@ -545,12 +575,7 @@ export function useGameWebSocket() {
         }
 
         case 'exit_confirmed': {
-          shouldReconnect = false
-          localStorage.removeItem('zju_token')
-          localStorage.removeItem('zju_jwt')
-          localStorage.removeItem('game_started')
-          localStorage.removeItem('selected_save_slot')
-          window.location.reload()
+          completeConfirmedExit()
           break
         }
         default:
@@ -566,6 +591,10 @@ export function useGameWebSocket() {
       const closedDuringPendingExit = gameStore.isPendingExit
       if (closedDuringPendingExit) {
         gameStore.isPendingExit = false
+        if (receivedExitConfirmation) {
+          completeConfirmedExit()
+          return
+        }
         gameStore.showToast('连接在保存确认前断开，请重试保存并退出。', 'warning', 5000)
         gameStore.addLog('系统', '保存退出未收到服务器确认，已解除等待状态。', 'text-warning')
       }

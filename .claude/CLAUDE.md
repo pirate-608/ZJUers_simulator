@@ -138,6 +138,7 @@ Docs:
 
 - User docs: `docs/user/*`
 - Developer docs: `docs/dev/*`
+- World-data maintenance guide: `docs/dev/world-data.md`
 - Homepage interactive demo: `docs/.vitepress/theme/components/InteractiveGameDemo.vue`
 - World/balance docs: `docs/world/*`
 - VitePress theme and interactive docs components: `docs/.vitepress/*`
@@ -172,11 +173,13 @@ WebSocket:
 - `auth_ok` means the connection is usable. The frontend must not automatically send `resume`; backend owns startup through `engine.start()`.
 - `init` and `tick` include `relax_cooldowns`; `init` also includes `items_state`, and item buy/sell changes emit `items_state`.
 - `feedback` messages show user-facing result popups while `event` logs remain in "求是园动态".
+- Backend outbound sends are serialized per user in `ConnectionManager`; do not bypass `send_personal_message()` for normal game messages. `save_and_exit` sends `save_result(success=true)`, then `exit_confirmed`, then clears Redis and closes the socket with code `1000`.
 
 Guide/pause:
 
 - The first-play guide pauses backend ticking and freezes frontend local countdown through `isGuideActive`.
 - Resume only after the guide finishes or the user explicitly resumes.
+- Backend pause enforcement uses the existing `GameEngine.is_running` flag as the single source of truth. When it is false, gameplay mutation actions such as `relax`, `exam`, `event_choice`, `dingtalk_reply`, `item_buy`, `item_sell`, and `change_course_state` are rejected server-side; navigation/state actions and `next_semester` after `exam_completed=1` remain allowed.
 
 Semester transitions:
 
@@ -216,11 +219,13 @@ World data:
 - `world/stat_definitions.json` is the stat single source of truth. After changing it, run `python scripts/sync_stat_definitions.py --write` from `zjus-backend/`, then `python scripts/validate_world_data.py`.
 - Use `scripts/scaffold_game_stat.py add <stat_id>` to draft a new stat definition and review checklist; it does not modify gameplay code unless called with `--write`.
 - `validate_world_data.py` checks stat definitions, item effects, event-library effects, and generated frontend stat metadata freshness.
+- `game_balance.json.tick.interval_seconds` is the actual engine tick interval used by `GameEngine.run_loop`; keep balance docs/admin validation aligned with this runtime behavior.
 
 Content generation:
 
 - Modes are `library`, `hybrid`, and `ai`.
 - DingTalk model selection order is: player custom RP MiniMax key, platform M2-her when no general custom LLM is configured, then the active general LLM fallback.
+- General OpenAI-compatible LLM clients use an explicit timeout. Platform-default clients may be cached and are closed on FastAPI shutdown; player custom LLM clients are closed after each call and their generated CC98/event/DingTalk fallback content must not enter the shared Redis content pools.
 - DingTalk contact lists are capped by `events.dingtalk.max_contacts` (default 12). New message generation applies `reuse_closed_contact_probability` exactly once before generation; reusable closed contacts are selected with a bias toward contacts that have been quiet longer, and compact must not remove open-round contacts.
 - When AI/LLM becomes unavailable, AI mode falls back toward hybrid mode(if still have issues, then fall back to library mode) behavior and emits mode/toast updates.
 

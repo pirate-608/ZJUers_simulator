@@ -202,7 +202,7 @@
 | `new_semester` | 新学期课程载入，包含课程、计时器和精力恢复信息 |
 | `graduation` | 毕业结算，`final_stats` 可包含 `achievement_details` |
 | `save_result` | 保存结果 |
-| `exit_confirmed` | 不保存退出确认 |
+| `exit_confirmed` | 退出确认；保存退出成功和不保存退出都会发送 |
 | `mode_changed` / `toast` | 内容生成模式和提示 |
 
 `relax_cooldowns` 为动作到剩余秒数的映射，例如：
@@ -254,6 +254,10 @@
 | `item_buy` | 购买指定道具：`{"action":"item_buy","item_id":"qiushi_planner"}` |
 | `item_sell` | 出售指定道具：`{"action":"item_sell","item_id":"qiushi_planner"}` |
 
+暂停状态下，后端会继续允许 `get_state`、`resume`、`restart`、`set_speed`、`set_mode`、`dingtalk_mark_read`；会拒绝 `relax`、`exam`、`event_choice`、`dingtalk_reply`、`item_buy`、`item_sell`、`change_course_state`。`next_semester` 只有在 Redis 中 `exam_completed=1` 时允许。
+
+`save_and_exit` 成功路径固定为：`save_result(success=true)` -> `exit_confirmed` -> 清理 Redis -> WebSocket `close(1000)`。前端收到成功保存确认后，不应把随后关闭误判为保存失败。
+
 ## OpenAPI 类型生成
 
 后端必须通过根目录 Docker Compose 启动并确认 `/openapi.json` 可访问后，再生成前端 API 类型：
@@ -284,3 +288,4 @@ cd zjus-frontend
 - 前端登录时也可填写 `custom_rp_api_key`，用于钉钉 M2-her RP；该字段同样只随 WebSocket 首包发送。
 - 配置保存在浏览器 `sessionStorage`，并在 WebSocket 首条鉴权消息中传给后端。
 - 后端只在当前 `GameEngine` 会话中使用 `llm_override` / `rp_llm_override`，不落库。
+- 玩家自定义通用 LLM 生成的事件、CC98 或通用钉钉兜底内容不会写入全局 Redis 内容池；自定义 client 调用后即关闭。

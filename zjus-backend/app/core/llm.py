@@ -5,6 +5,7 @@ The functions here generate random events, CC98 posts, and non-RP DingTalk
 fallbacks while preserving deterministic library-mode fallbacks.
 """
 
+import inspect
 import json
 import logging
 import os
@@ -35,6 +36,8 @@ PROVIDER_BASE_URLS = {
 }
 
 DEFAULT_LLM_MODEL = "gpt-4o-mini"
+DEFAULT_LLM_TIMEOUT_SECONDS = 20.0
+_DEFAULT_LLM_CLIENTS: dict[tuple[str | None, str | None], AsyncOpenAI] = {}
 
 
 def _allowed_effect_fields_prompt() -> str:
@@ -64,8 +67,59 @@ def _resolve_llm_config(
     return api_key, base_url, model
 
 
-def _get_client(api_key: Optional[str], base_url: Optional[str]) -> AsyncOpenAI:
-    return AsyncOpenAI(api_key=api_key, base_url=base_url)
+def _get_client(
+    api_key: Optional[str], base_url: Optional[str], *, cache: bool = False
+) -> AsyncOpenAI:
+    """Return an OpenAI-compatible async client with explicit timeout.
+
+    Platform-default clients are safe to reuse across requests. Player-provided
+    overrides are session-sensitive and should be closed after the single call
+    that needed them, so callers pass `cache=False` for overrides.
+    """
+    if cache:
+        key = (api_key, base_url)
+        if key not in _DEFAULT_LLM_CLIENTS:
+            _DEFAULT_LLM_CLIENTS[key] = AsyncOpenAI(
+                api_key=api_key,
+                base_url=base_url,
+                timeout=DEFAULT_LLM_TIMEOUT_SECONDS,
+            )
+        return _DEFAULT_LLM_CLIENTS[key]
+    return AsyncOpenAI(
+        api_key=api_key,
+        base_url=base_url,
+        timeout=DEFAULT_LLM_TIMEOUT_SECONDS,
+    )
+
+
+async def _close_client_if_uncached(client: Any, *, cache: bool) -> None:
+    """Close session-scoped clients without assuming concrete SDK types."""
+    if cache:
+        return
+    close = getattr(client, "close", None)
+    if close is None:
+        return
+    result = close()
+    if inspect.isawaitable(result):
+        await result
+
+
+async def close_llm_clients() -> None:
+    """Close cached platform-default LLM clients during process shutdown."""
+    clients = list(_DEFAULT_LLM_CLIENTS.values())
+    _DEFAULT_LLM_CLIENTS.clear()
+    for client in clients:
+        close = getattr(client, "close", None)
+        if close is None:
+            continue
+        result = close()
+        if inspect.isawaitable(result):
+            await result
+
+
+def _use_global_content_cache(llm_override: Optional[Dict[str, Any]]) -> bool:
+    """Return whether generated content may use the shared Redis content pool."""
+    return llm_override is None
 
 
 def _json_from_text(content: object) -> dict[str, Any]:
@@ -103,16 +157,21 @@ def _dict_list(value: object) -> list[dict[str, Any]]:
 
 async def check_llm_availability(llm_override: Optional[Dict[str, Any]] = None) -> bool:
     """Probe whether the configured OpenAI-compatible endpoint is reachable."""
+    client = None
+    cache_client = _use_global_content_cache(llm_override)
     try:
         api_key, base_url, _model = _resolve_llm_config(llm_override)
         if not api_key:
             return False
-        client = _get_client(api_key, base_url)
+        client = _get_client(api_key, base_url, cache=cache_client)
         await client.models.list()
         return True
     except Exception as e:
         logger.warning(f"LLM availability check failed: {e}")
         return False
+    finally:
+        if client is not None:
+            await _close_client_if_uncached(client, cache=cache_client)
 
 
 CC98_CACHE_MAX_LEN = 200
@@ -176,10 +235,12 @@ async def generate_cc98_post(
     feedback = _random.choice(feedback_map[effect]).format(trigger=trigger)
 
     # Consume from the Redis pool first so cached content is not duplicated.
+    use_cache = _use_global_content_cache(llm_override)
     cc98_key = "cc98:posts"
-    post_content = await RedisCache.lpop(cc98_key)
-    if post_content:
-        return post_content, feedback
+    if use_cache:
+        post_content = await RedisCache.lpop(cc98_key)
+        if post_content:
+            return post_content, feedback
 
     # Refill the pool with compact state context to keep token usage bounded.
     state = PlayerStateVector.from_stats(player_stats)
@@ -195,7 +256,7 @@ async def generate_cc98_post(
 
     try:
         api_key, base_url, model = _resolve_llm_config(llm_override)
-        llm_client = _get_client(api_key, base_url)
+        llm_client = _get_client(api_key, base_url, cache=use_cache)
 
         response = await llm_client.chat.completions.create(
             model=model,
@@ -212,18 +273,22 @@ async def generate_cc98_post(
         current_post = posts[0]
         remaining_posts = posts[1:]
 
-        await RedisCache.rpush_many_with_limit(
-            cc98_key,
-            remaining_posts,
-            max_len=CC98_CACHE_MAX_LEN,
-            ttl_seconds=CC98_CACHE_TTL_SECONDS,
-        )
+        if use_cache:
+            await RedisCache.rpush_many_with_limit(
+                cc98_key,
+                remaining_posts,
+                max_len=CC98_CACHE_MAX_LEN,
+                ttl_seconds=CC98_CACHE_TTL_SECONDS,
+            )
 
         return current_post, feedback
 
     except Exception as e:
         print(f"[LLM Error] {e}")
         return "CC98 服务器维护中...", feedback
+    finally:
+        if "llm_client" in locals():
+            await _close_client_if_uncached(llm_client, cache=use_cache)
 
 
 async def generate_random_event(
@@ -232,12 +297,14 @@ async def generate_random_event(
     llm_override: Optional[Dict[str, Any]] = None,
 ) -> dict[str, Any] | None:
     """Generate a random event with Redis-backed batch caching."""
+    use_cache = _use_global_content_cache(llm_override)
     event_key = "game:events_pool"
 
     # Use the cached pool before paying for another LLM batch.
-    cached_event = await RedisCache.lpop(event_key)
-    if cached_event:
-        return _coerce_cached_json(cached_event)
+    if use_cache:
+        cached_event = await RedisCache.lpop(event_key)
+        if cached_event:
+            return _coerce_cached_json(cached_event)
 
     # Compact player state and recent history keep the generation prompt small.
     state = PlayerStateVector.from_stats(player_stats)
@@ -259,7 +326,7 @@ async def generate_random_event(
     messages.append({"role": "user", "content": prompt})
     try:
         api_key, base_url, model = _resolve_llm_config(llm_override)
-        llm_client = _get_client(api_key, base_url)
+        llm_client = _get_client(api_key, base_url, cache=use_cache)
 
         response = await llm_client.chat.completions.create(
             model=model,
@@ -274,17 +341,21 @@ async def generate_random_event(
 
         current_event = events[0]
         remaining_events = [json.dumps(e, ensure_ascii=False) for e in events[1:]]
-        await RedisCache.rpush_many_with_limit(
-            event_key,
-            remaining_events,
-            max_len=EVENTS_CACHE_MAX_LEN,
-            ttl_seconds=EVENTS_CACHE_TTL_SECONDS,
-        )
+        if use_cache:
+            await RedisCache.rpush_many_with_limit(
+                event_key,
+                remaining_events,
+                max_len=EVENTS_CACHE_MAX_LEN,
+                ttl_seconds=EVENTS_CACHE_TTL_SECONDS,
+            )
 
         return current_event
     except Exception as e:
         print(f"[LLM Event Error] {e}")
         return None
+    finally:
+        if "llm_client" in locals():
+            await _close_client_if_uncached(llm_client, cache=use_cache)
 
 
 async def generate_dingtalk_message(
@@ -293,12 +364,14 @@ async def generate_dingtalk_message(
     llm_override: Optional[Dict[str, Any]] = None,
 ):
     """Generate a DingTalk message with context-scoped Redis batch caching."""
+    use_cache = _use_global_content_cache(llm_override)
     msg_key = f"game:dingtalk_pool:{context}"
 
     # Use a context-scoped cached pool before generating a new batch.
-    cached_msg = await RedisCache.lpop(msg_key)
-    if cached_msg:
-        return _coerce_cached_json(cached_msg)
+    if use_cache:
+        cached_msg = await RedisCache.lpop(msg_key)
+        if cached_msg:
+            return _coerce_cached_json(cached_msg)
 
     # Compact state context avoids shipping the full game snapshot to the model.
     state = PlayerStateVector.from_stats(player_stats)
@@ -314,7 +387,7 @@ async def generate_dingtalk_message(
     request_messages.append({"role": "user", "content": prompt})
     try:
         api_key, base_url, model = _resolve_llm_config(llm_override)
-        llm_client = _get_client(api_key, base_url)
+        llm_client = _get_client(api_key, base_url, cache=use_cache)
 
         response = await llm_client.chat.completions.create(
             model=model,
@@ -331,17 +404,21 @@ async def generate_dingtalk_message(
         remaining_msgs = [
             json.dumps(m, ensure_ascii=False) for m in generated_messages[1:]
         ]
-        await RedisCache.rpush_many_with_limit(
-            msg_key,
-            remaining_msgs,
-            max_len=DINGTALK_CACHE_MAX_LEN,
-            ttl_seconds=DINGTALK_CACHE_TTL_SECONDS,
-        )
+        if use_cache:
+            await RedisCache.rpush_many_with_limit(
+                msg_key,
+                remaining_msgs,
+                max_len=DINGTALK_CACHE_MAX_LEN,
+                ttl_seconds=DINGTALK_CACHE_TTL_SECONDS,
+            )
 
         return current_msg
     except Exception as e:
         print(f"[LLM DingTalk Error] {e}")
         return None
+    finally:
+        if "llm_client" in locals():
+            await _close_client_if_uncached(llm_client, cache=use_cache)
 
 
 async def generate_dingtalk_message_for_character(
@@ -351,6 +428,8 @@ async def generate_dingtalk_message_for_character(
     llm_override: Optional[Dict[str, Any]] = None,
 ) -> dict[str, Any] | None:
     """Generate one opening DingTalk message for a specific character."""
+    use_cache = _use_global_content_cache(llm_override)
+    llm_client = None
     try:
         api_key, base_url, model = _resolve_llm_config(llm_override)
         if not api_key:
@@ -378,7 +457,7 @@ async def generate_dingtalk_message_for_character(
             "只有可回复角色需要 reply_options；不可回复角色可返回空数组。"
         )
 
-        llm_client = _get_client(api_key, base_url)
+        llm_client = _get_client(api_key, base_url, cache=use_cache)
         response = await llm_client.chat.completions.create(
             model=model,
             messages=[{"role": "user", "content": prompt}],
@@ -419,6 +498,9 @@ async def generate_dingtalk_message_for_character(
     except Exception as e:
         logger.warning("Generic DingTalk opening generation failed: %s", e)
         return None
+    finally:
+        if llm_client is not None:
+            await _close_client_if_uncached(llm_client, cache=use_cache)
 
 
 async def generate_dingtalk_reply_message(
@@ -430,6 +512,8 @@ async def generate_dingtalk_reply_message(
     llm_override: Optional[Dict[str, Any]] = None,
 ) -> dict[str, Any] | None:
     """Generate a DingTalk private-chat reply with the generic LLM."""
+    use_cache = _use_global_content_cache(llm_override)
+    llm_client = None
     try:
         api_key, base_url, model = _resolve_llm_config(llm_override)
         if not api_key:
@@ -489,7 +573,7 @@ async def generate_dingtalk_reply_message(
             f"{output_contract}"
         )
 
-        llm_client = _get_client(api_key, base_url)
+        llm_client = _get_client(api_key, base_url, cache=use_cache)
         response = await llm_client.chat.completions.create(
             model=model,
             messages=[{"role": "user", "content": prompt}],
@@ -516,12 +600,17 @@ async def generate_dingtalk_reply_message(
     except Exception as e:
         logger.warning("Generic DingTalk reply generation failed: %s", e)
         return None
+    finally:
+        if llm_client is not None:
+            await _close_client_if_uncached(llm_client, cache=use_cache)
 
 
 async def generate_wenyan_report(
     final_stats: dict, llm_override: Optional[Dict[str, Any]] = None
 ) -> str:
     """Generate a classical-Chinese-style graduation summary from final stats."""
+    use_cache = _use_global_content_cache(llm_override)
+    llm_client = None
     keywords = _load_keywords()
     messages: List[Any] = []
     if keywords:
@@ -552,7 +641,7 @@ async def generate_wenyan_report(
     messages.append({"role": "user", "content": prompt})
     try:
         api_key, base_url, model = _resolve_llm_config(llm_override)
-        llm_client = _get_client(api_key, base_url)
+        llm_client = _get_client(api_key, base_url, cache=use_cache)
 
         response = await llm_client.chat.completions.create(
             model=model,
@@ -566,3 +655,6 @@ async def generate_wenyan_report(
     except Exception as e:
         print(f"[LLM Wenyan Error] {e}")
         return "学业既成，前程似锦。"
+    finally:
+        if llm_client is not None:
+            await _close_client_if_uncached(llm_client, cache=use_cache)

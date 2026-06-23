@@ -72,10 +72,12 @@ async def shutdown():
     """Close shared outbound clients during application shutdown."""
     try:
         from app.core.dingtalk_llm import close_m2her_client
+        from app.core.llm import close_llm_clients
 
         await close_m2her_client()
+        await close_llm_clients()
     except Exception as e:
-        logger.warning("M2-her client shutdown skipped: %s", e)
+        logger.warning("LLM client shutdown skipped: %s", e)
 
 
 if __name__ == "__main__":

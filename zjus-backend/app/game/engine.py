@@ -927,14 +927,17 @@ class GameEngine:
             while self.is_running:
                 # Real-time sleep shortens under speed-up, while game time
                 # remains discrete.
-                await asyncio.sleep(3.0 / self.speed_multiplier)
+                tick_interval = max(1, int(balance.tick_interval))
+                await asyncio.sleep(tick_interval / self.speed_multiplier)
                 if not self.is_running:
                     break
                 tick_count += 1
 
                 # Do not clamp elapsed time through update_stat_safe; timer values
                 # intentionally exceed ordinary stat max bounds.
-                elapsed = await self.repo.update_stat("elapsed_game_time", 3)
+                elapsed = await self.repo.update_stat(
+                    "elapsed_game_time", tick_interval
+                )
 
                 snapshot = await self.repo.get_snapshot()
                 stats = await self._effective_stats(snapshot.stats.model_dump())
@@ -976,7 +979,9 @@ class GameEngine:
                         self.user_id,
                     )
                     await self.repo.update_stat_safe("energy", 1)
-                    await self._push_update()
+                    snapshot = await self.repo.get_snapshot()
+                    stats = await self._effective_stats(snapshot.stats.model_dump())
+                    await self._push_update(snapshot=snapshot, effective_stats=stats)
                     continue
 
                 # Course mastery and drain are credit-weighted each tick.
@@ -1065,11 +1070,70 @@ class GameEngine:
                         if not self._dingtalk_inflight:
                             self._track_task(self._trigger_dingtalk_message())
 
-                await self._push_update()
+                snapshot = await self.repo.get_snapshot()
+                stats = await self._effective_stats(snapshot.stats.model_dump())
+                await self._push_update(snapshot=snapshot, effective_stats=stats)
 
         except Exception as e:
             logger.error(f"Engine Loop Error: {e}", exc_info=True)
             self.stop()
+
+    async def _action_allowed_by_runtime_state(self, action: object) -> bool:
+        """Return whether an action may run while the engine is stopped.
+
+        `is_running` is the single pause/stop flag. When it is false, gameplay
+        mutations are blocked server-side even if a client bypasses disabled UI
+        controls. The exceptions are navigation/state actions and
+        `next_semester` after an exam summary has been produced.
+        """
+        if self.is_running:
+            return True
+
+        action_name = str(action or "")
+        always_allowed = {
+            "start",
+            "get_state",
+            "pause",
+            "resume",
+            "restart",
+            "set_speed",
+            "set_mode",
+            "dingtalk_mark_read",
+        }
+        if action_name in always_allowed:
+            return True
+
+        if action_name == "next_semester":
+            try:
+                snapshot = await self.repo.get_snapshot()
+                exam_completed = getattr(snapshot.stats, "exam_completed", None)
+                if exam_completed is None and hasattr(snapshot.stats, "model_dump"):
+                    exam_completed = snapshot.stats.model_dump().get("exam_completed")
+                if int(exam_completed or 0) == 1:
+                    return True
+            except Exception as e:
+                logger.warning("Failed to verify exam state for next_semester: %s", e)
+            await self.emit(
+                "toast",
+                {"message": "期末结算完成后才能进入下学期", "level": "warning"},
+            )
+            return False
+
+        blocked_gameplay_actions = {
+            "relax",
+            "exam",
+            "event_choice",
+            "dingtalk_reply",
+            "item_buy",
+            "item_sell",
+            "change_course_state",
+        }
+        if action_name in blocked_gameplay_actions:
+            await self.emit(
+                "toast",
+                {"message": "游戏已暂停，请先恢复后再操作", "level": "warning"},
+            )
+        return False
 
     async def process_action(self, action_data: dict):
         """Dispatch one client action from the WebSocket receive loop.
@@ -1096,6 +1160,9 @@ class GameEngine:
         action = action_data.get("action")
         target = action_data.get("target")
         value = action_data.get("value")
+        if not await self._action_allowed_by_runtime_state(action):
+            return
+
         if action in {"start", "get_state"}:
             await self._push_update()
             return
@@ -2236,14 +2303,27 @@ class GameEngine:
         except Exception as e:
             logger.warning(f"LLM probe failed: {e}")
 
-    async def _push_update(self, msg: str | None = None):
+    async def _push_update(
+        self,
+        msg: str | None = None,
+        *,
+        snapshot: Any | None = None,
+        effective_stats: dict[str, Any] | None = None,
+        relax_cooldowns: dict[str, int] | None = None,
+    ):
         """Push the canonical frontend state payload."""
         try:
-            snapshot = await self.repo.get_snapshot()
-            new_stats = await self._effective_stats(snapshot.stats.model_dump())
+            if snapshot is None:
+                snapshot = await self.repo.get_snapshot()
+            new_stats = (
+                dict(effective_stats)
+                if effective_stats is not None
+                else await self._effective_stats(snapshot.stats.model_dump())
+            )
             course_mastery = snapshot.courses
             course_states = snapshot.course_states
-            relax_cooldowns = await self._get_relax_cooldowns()
+            if relax_cooldowns is None:
+                relax_cooldowns = await self._get_relax_cooldowns()
 
             # Compute remaining time from the persisted virtual elapsed clock.
             semester_idx = int(new_stats.get("semester_idx", 1))
@@ -2443,7 +2523,23 @@ class GameEngine:
         return math.ceil(remaining)
 
     async def _get_relax_cooldowns(self) -> dict[str, int]:
+        actions = list(balance.relax_actions.keys())
+        try:
+            timestamps = await self.repo.get_cooldown_timestamps(actions)
+        except (AttributeError, TypeError):
+            # Older unit-test doubles may only implement the single-action API.
+            cooldowns: dict[str, int] = {}
+            for action in actions:
+                cooldowns[action] = await self._check_cooldown(action)
+            return cooldowns
         cooldowns: dict[str, int] = {}
-        for action in balance.relax_actions.keys():
-            cooldowns[action] = await self._check_cooldown(action)
+        now = time.time()
+        for action in actions:
+            last_use = timestamps.get(action)
+            if not last_use:
+                cooldowns[action] = 0
+                continue
+            elapsed = now - float(last_use)
+            cd_time = balance.get_cooldown(action)
+            cooldowns[action] = math.ceil(max(0, cd_time - elapsed))
         return cooldowns

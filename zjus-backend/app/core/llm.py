@@ -9,6 +9,7 @@ import inspect
 import json
 import logging
 import os
+from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
 from openai import AsyncOpenAI
@@ -38,6 +39,8 @@ PROVIDER_BASE_URLS = {
 DEFAULT_LLM_MODEL = "gpt-4o-mini"
 DEFAULT_LLM_TIMEOUT_SECONDS = 20.0
 _DEFAULT_LLM_CLIENTS: dict[tuple[str | None, str | None], AsyncOpenAI] = {}
+_GRADUATION_COMMENTS_CACHE: dict[str, Any] | None = None
+_DEFAULT_GRADUATION_COMMENT = "学业既成，前程似锦。"
 
 
 def _allowed_effect_fields_prompt() -> str:
@@ -47,6 +50,88 @@ def _allowed_effect_fields_prompt() -> str:
 def _stat_label(stat_id: str) -> str:
     definition = stat_definitions.by_id.get(stat_id)
     return definition.label if definition else stat_id
+
+
+def _resolve_graduation_comments_path() -> Path:
+    """Resolve the world-data path for deterministic graduation comments."""
+    candidates = [
+        Path("world/graduation_comments.json"),
+        Path("/app/world/graduation_comments.json"),
+        (
+            Path(__file__).resolve().parent.parent.parent
+            / "world"
+            / "graduation_comments.json"
+        ),
+    ]
+    for candidate in candidates:
+        if candidate.exists():
+            return candidate
+    return candidates[0]
+
+
+def _load_graduation_comments() -> dict[str, Any]:
+    """Load GPA-branched graduation fallback comments from world data."""
+    global _GRADUATION_COMMENTS_CACHE
+    if _GRADUATION_COMMENTS_CACHE is not None:
+        return _GRADUATION_COMMENTS_CACHE
+
+    path = _resolve_graduation_comments_path()
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        _GRADUATION_COMMENTS_CACHE = data if isinstance(data, dict) else {}
+    except Exception as exc:
+        logger.warning("Failed to load graduation comments: %s", exc)
+        _GRADUATION_COMMENTS_CACHE = {}
+    return _GRADUATION_COMMENTS_CACHE
+
+
+def _to_float(value: Any, default: float = 0.0) -> float:
+    """Coerce numeric world/save values into floats for branch checks."""
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return default
+
+
+def _graduation_comment_text(item: dict[str, Any]) -> str:
+    paragraphs = item.get("paragraphs")
+    if isinstance(paragraphs, list):
+        cleaned_parts = [str(part).strip() for part in paragraphs]
+        text = "\n\n".join(part for part in cleaned_parts if part)
+        if text:
+            return text
+    return str(item.get("text") or "").strip()
+
+
+def fallback_wenyan_report(final_stats: dict | None = None) -> str:
+    """Return a deterministic GPA-branched graduation comment.
+
+    This is used when the player is in library/algorithm mode or when the LLM
+    endpoint is unavailable, so graduation still has a substantial ceremony text.
+    """
+    stats = final_stats or {}
+    gpa = _to_float(
+        stats.get("gpa", stats.get("cgpa", stats.get("highest_gpa", 0.0)))
+    )
+    config = _load_graduation_comments()
+    comments = config.get("comments")
+    if not isinstance(comments, list):
+        return str(config.get("default") or _DEFAULT_GRADUATION_COMMENT)
+
+    for raw_item in comments:
+        if not isinstance(raw_item, dict):
+            continue
+        min_gpa = raw_item.get("min_gpa")
+        max_gpa = raw_item.get("max_gpa")
+        if min_gpa is not None and gpa < _to_float(min_gpa):
+            continue
+        if max_gpa is not None and gpa >= _to_float(max_gpa):
+            continue
+        text = _graduation_comment_text(raw_item)
+        if text:
+            return text
+    return str(config.get("default") or _DEFAULT_GRADUATION_COMMENT)
 
 
 def _resolve_llm_config(
@@ -650,11 +735,11 @@ async def generate_wenyan_report(
         )
         content = response.choices[0].message.content
         if not isinstance(content, str) or not content.strip():
-            return "学业既成，前程似锦。"
+            return fallback_wenyan_report(final_stats)
         return content.strip()
     except Exception as e:
         print(f"[LLM Wenyan Error] {e}")
-        return "学业既成，前程似锦。"
+        return fallback_wenyan_report(final_stats)
     finally:
         if llm_client is not None:
             await _close_client_if_uncached(llm_client, cache=use_cache)

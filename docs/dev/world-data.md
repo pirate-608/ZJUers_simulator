@@ -12,6 +12,7 @@
 | 专业/课程 | `world/majors.json`、`world/courses/**` | `WorldService`、角色初始化、学期切换 | 视 HTTP 响应是否变化 |
 | 角色/向量 | `world/characters.json`、`character_embeddings.csv` | 钉钉角色检索、M2-her/generic LLM 上下文 | 否 |
 | 事件/CC98 库 | `world/event_library*.json`、`world/cc98_library*.json` | `library` / `hybrid` 内容生成 | 否 |
+| 毕业评价 | `world/graduation_comments.json` | 算法模式或 LLM 不可用时的毕业典礼兜底文案 | 否 |
 
 生产 Compose 会挂载 `./zjus-backend/world:/app/world`。因此服务器上的 Admin 数值发布和手工编辑都会落到挂载目录；不要把生产数值只改在镜像内部。
 
@@ -118,6 +119,19 @@ cd zjus-backend
 5. 如果新增了道具影响的新属性，先走属性定义流程，再编辑道具。
 
 道具效果不会直接写入基础 `PlayerStats`。后端通过 `items.apply_bonuses_to_stats()` 生成 effective stats；出售后加成消失，保存/加载不会重复叠加。
+
+## 毕业评价维护
+
+`world/graduation_comments.json` 提供毕业典礼的非 AI 兜底文案。算法模式会直接使用它；AI/混合模式在文言文总结调用失败或返回空内容时，也会按最终累计 GPA 分支选择一段评价。
+
+当前分支使用 `min_gpa` / `max_gpa` 判断区间，文本放在 `paragraphs` 数组中。普通文案调整不需要数据库迁移、OpenAPI 生成或前端类型生成。
+
+建议修改后运行：
+
+```powershell
+cd zjus-backend
+..\.venv\Scripts\python.exe -m pytest tests\unit\test_graduation_comments.py
+```
 
 ## 内容库与效果字段
 

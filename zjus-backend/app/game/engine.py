@@ -2251,10 +2251,10 @@ class GameEngine:
             if isinstance(achievements, list):
                 stats["achievement_details"] = self._achievement_details(achievements)
             # Generate the graduation summary after final stats are known.
-            from app.core.llm import generate_wenyan_report
+            from app.core.llm import fallback_wenyan_report, generate_wenyan_report
 
-            if self.mode == GameMode.LIBRARY:
-                wenyan_report = "学业既成，前程似锦。"
+            if self.mode == GameMode.LIBRARY or not self.llm_available:
+                wenyan_report = fallback_wenyan_report(stats)
             else:
                 wenyan_report = await generate_wenyan_report(
                     stats, llm_override=self.llm_override

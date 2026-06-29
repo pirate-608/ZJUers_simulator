@@ -124,6 +124,7 @@ export default defineConfig({
             { text: '数值', link: '/world/game_balance' },
             { text: '属性定义', link: '/world/stat_definitions' },
             { text: '道具', link: '/world/items' },
+            { text: '毕业评价', link: '/world/graduation_comments' },
             { text: '关键词', link: '/world/keywords' },
             { text: '专业', link: '/world/majors' },
           ],

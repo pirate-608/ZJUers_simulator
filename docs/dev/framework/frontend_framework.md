@@ -51,6 +51,8 @@ login | save_select | character_create | loading | playing | ended
 
 登录前序章不是 `GamePhase`，而是 `App.vue` 启动时的前置 gate。首次访问会先渲染 `PrologueScene.vue`，播放或跳过后写入 `localStorage.zjus_prologue_seen_v1`，随后才执行下面的入口分流。
 
+`PrologueScene.vue` 的节奏由 `src/data/prologue.ts` 驱动：先播放两句全屏献词，再展示日记本第一页逐行书写，翻页后写入重生入校的三句收束文本。这个组件只负责视觉节奏；登录、存档和 WebSocket 启动仍由 `App.vue` 在序章完成后统一处理。
+
 ```mermaid
 graph TD
     Login["login<br>邀请码登录"] -->|"new_user"| Create["character_create<br>选择专业/分配属性"]

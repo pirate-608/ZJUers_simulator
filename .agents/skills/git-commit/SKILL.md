@@ -1,6 +1,7 @@
 ---
 name: git-commit
 description: Analyze code changes and generate professional Git Commit Messages adhering to the industry-standard Conventional Commits specification.
+argument-hint: "[--tag <tagname>] [--push]"
 ---
 
 # Git Commit Skill

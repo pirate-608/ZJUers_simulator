@@ -1,6 +1,7 @@
 ---
 name: code-review
 description: Path-aware full-stack review workflow for ZJUers Simulator. Use when reviewing changes, running checks, triaging regressions, validating frontend/backend edits, or deciding which focused tests/type checks to run.
+argument-hint: "[--push true|false] [--tag <tagname>]"
 ---
 
 # ZJUS Code Review Skill
@@ -96,7 +97,7 @@ Run from `docs/` when docs or handoff files changed:
 npm run build
 ```
 
-If VitePress reports broken links or build-time Vue errors, fix them before handing off.
+If VitePress reports broken links or Markdown/Vue compilation errors, fix the source page, route, or component before reporting success.
 
 ## Review Focus
 

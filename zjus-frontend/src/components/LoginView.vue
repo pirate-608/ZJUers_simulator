@@ -9,7 +9,7 @@
       <div class="mx-auto login-card-wrap">
         <div class="card login-card border-0 overflow-hidden">
           <div class="card-header login-header text-white text-center py-4">
-            <h2 class="mb-1 fw-bold">🎓 ZJUers Simulator</h2>
+            <h2 class="mb-1 fw-bold">🎓 折姜大学</h2>
             <p class="mb-0 opacity-75">新生报到</p>
           </div>
 

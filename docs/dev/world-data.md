@@ -1,6 +1,6 @@
 # 游戏设定维护
 
-本页记录 `zjus-backend/world/`、Admin 数值平衡页、属性注册表和道具目录的维护流程。目标是让“新增一个属性 / 新增一个道具 / 调整一组数值”尽量只改世界数据和少量明确入口，而不是在前后端重复追字段。
+本页记录 `zjus-backend/world/`、Admin 世界数据发布页、属性注册表和道具目录的维护流程。目标是让“新增一个属性 / 新增一个道具 / 调整一组数值”尽量只改世界数据和少量明确入口，而不是在前后端重复追字段。
 
 ## 数据边界
 
@@ -8,13 +8,14 @@
 | ---- | ------ | ---------- | ---------------- |
 | 平衡参数 | `world/game_balance.json` | `app/game/balance.py`、`GameEngine`、Admin `/admin/balance` | 否 |
 | 属性定义 | `world/stat_definitions.json` | `PlayerStats`、Redis、道具/事件白名单、前端生成元数据 | 可分配属性变化时通常需要 |
-| 道具目录 | `world/items.json` | `app/game/items.py`、Redis `items_state`、前端道具页 | 否 |
+| 道具目录 | `world/items.json` | `app/game/items.py`、Redis `items_state`、前端道具页、Admin `/admin/items` | 否 |
 | 专业/课程 | `world/majors.json`、`world/courses/**` | `WorldService`、角色初始化、学期切换 | 视 HTTP 响应是否变化 |
 | 角色/向量 | `world/characters.json`、`character_embeddings.csv` | 钉钉角色检索、M2-her/generic LLM 上下文 | 否 |
+| 校园关键词 | `world/keywords.json` | 随机事件、钉钉、毕业总结和内容库生成语境 | 否 |
 | 事件/CC98 库 | `world/event_library*.json`、`world/cc98_library*.json` | `library` / `hybrid` 内容生成 | 否 |
 | 毕业评价 | `world/graduation_comments.json` | 算法模式或 LLM 不可用时的毕业典礼兜底文案 | 否 |
 
-生产 Compose 会挂载 `./zjus-backend/world:/app/world`。因此服务器上的 Admin 数值发布和手工编辑都会落到挂载目录；不要把生产数值只改在镜像内部。
+生产 Compose 会挂载 `./zjus-backend/world:/app/world`。因此服务器上的 Admin 数值/道具发布和手工编辑都会落到挂载目录；不要把生产配置只改在镜像内部。
 
 ## 数值平衡管理
 
@@ -90,6 +91,15 @@ cd zjus-backend
 
 `world/items.json` 包含 `economy` 和 `items` 两部分。
 
+`/admin/items` 可图形化编辑同一个文件，并在保存后立即调用 `items.reload()` 热重载。页面支持：
+
+- 调整初始金币和期末金币公式。
+- 修改已有道具的名称、分类、说明、价格、出售价、标签和被动效果。
+- 新增道具，或勾选删除已有道具。
+- 从最近一次 `items_update` 审计记录恢复上一版完整配置，恢复后记录 `items_restore`。
+
+已有道具的 `id` 在后台页面中只读，因为存档背包只保存 `item_id`；若要替换 ID，推荐新增新道具，再视情况逐步下架旧道具。
+
 单个道具字段：
 
 | 字段 | 说明 |
@@ -106,7 +116,7 @@ cd zjus-backend
 新增普通道具流程：
 
 1. 确认 `effects` 只使用 `allow_item_effect=true` 的属性。
-2. 编辑 `world/items.json`，保持 `id` 稳定且唯一。
+2. 通过 `/admin/items` 新增道具，或直接编辑 `world/items.json`，保持 `id` 稳定且唯一。
 3. 运行：
 
 ```powershell
@@ -115,10 +125,30 @@ cd zjus-backend
 ..\.venv\Scripts\python.exe -m pytest tests\unit\test_items.py
 ```
 
-4. 若只是新增普通道具，不需要数据库迁移、OpenAPI 生成或前端类型生成。
+4. 若只是新增普通道具或通过 `/admin/items` 调价，不需要数据库迁移、OpenAPI 生成或前端类型生成。
 5. 如果新增了道具影响的新属性，先走属性定义流程，再编辑道具。
 
 道具效果不会直接写入基础 `PlayerStats`。后端通过 `items.apply_bonuses_to_stats()` 生成 effective stats；出售后加成消失，保存/加载不会重复叠加。
+
+## 校园关键词维护
+
+`world/keywords.json` 用于给随机事件、钉钉消息、毕业总结和离线内容库提供校园语境。关键词不直接改变数值结算，但会影响文本生成是否像“浙大校园生活”。
+
+单个关键词字段：
+
+| 字段 | 说明 |
+| ---- | ---- |
+| `keyword` | 关键词或梗名 |
+| `category` | 校园文化、学业、建筑、校园生活等分类 |
+| `desc` | 给模型使用的解释 |
+| `examples` | 典型用法或短语 |
+
+维护建议：
+
+1. 先编辑 `world/keywords.json`。
+2. 运行 `validate_world_data.py`。
+3. 如关键词用于大规模离线内容生产，重新生成事件库/CC98 库前先抽样检查关键词语气。
+4. 同步更新[校园关键词](/world/keywords)文档表。
 
 ## 毕业评价维护
 
@@ -149,7 +179,7 @@ cd zjus-backend
 | ---- | -------- |
 | 只调 `game_balance.json` | `pytest tests\unit\test_balance.py`，后台保存 smoke |
 | 改属性定义 | `sync_stat_definitions.py --write`，`validate_world_data.py`，前端 `vue-tsc --noEmit` |
-| 新增普通道具 | `validate_world_data.py`，`pytest tests\unit\test_items.py` |
+| 新增普通道具 | `validate_world_data.py`，`pytest tests\unit\test_items.py tests\unit\test_admin_items_config.py` |
 | 改可分配属性 | Docker Compose 后端，OpenAPI 生成，角色创建 focused tests |
 | 改事件库/CC98 库 | `validate_world_data.py`，抽样 smoke 内容模式 |
 

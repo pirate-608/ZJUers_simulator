@@ -31,9 +31,9 @@
     },
     {
       "id": "blue_lake_thermos",
-      "name": "启真湖保温杯",
+      "name": "瑞幸咖啡券",
       "category": "生活",
-      "description": "热水与咖啡因在夜自习之间达成了微妙平衡。",
+      "description": "一杯拿铁可以让你可以继续熬夜，不会困倒。",
       "price": 70,
       "sell_price": 35,
       "tags": [
@@ -63,9 +63,9 @@
     },
     {
       "id": "silent_library_pass",
-      "name": "图书馆静音席位卡",
+      "name": "图书馆预约脚本",
       "category": "学习",
-      "description": "总能找到一个不被打扰的角落，适合把难课一点点啃下来。",
+      "description": "虽然不太道德...但总能在考试周抢先预约到理想座位！",
       "price": 130,
       "sell_price": 65,
       "tags": [
@@ -84,6 +84,7 @@
       "category": "生活",
       "description": "紫金港再大，也挡不住踩点赶课的人。",
       "price": 85,
+      "sell_price": 42,
       "tags": [
         "生活",
         "通勤"
@@ -95,9 +96,9 @@
     },
     {
       "id": "club_badge",
-      "name": "社团联名徽章",
+      "name": "cc98 联名雨伞",
       "category": "社交",
-      "description": "挂在包上的小徽章，似乎让你更容易被记住。",
+      "description": "印着98雪球军的雨伞，让你在雨天求是潮里格外显眼。",
       "price": 100,
       "sell_price": 50,
       "tags": [
@@ -116,6 +117,7 @@
       "category": "玄学",
       "description": "贴上之后，抢到最后一份烤鸭卷的概率好像真的变高了。",
       "price": 75,
+      "sell_price": 37,
       "tags": [
         "玄学",
         "运气"
@@ -139,6 +141,86 @@
         "iq": 5,
         "reputation": 5,
         "sanity": 2
+      }
+    },
+    {
+      "id": "past_exam_paper",
+      "name": "历年卷网盘",
+      "category": "学习",
+      "description": "包含历年期末考试试卷的电子版，助你轻松应对各种挑战。",
+      "price": 60,
+      "sell_price": 30,
+      "tags": [
+        "学习",
+        "考试"
+      ],
+      "effects": {
+        "iq": 3,
+        "efficiency": 5
+      }
+    },
+    {
+      "id": "savia_external_brain",
+      "name": "Savia 的外装代脑",
+      "category": "学习",
+      "description": "Savia 大佬的学习笔记网站，无数补天者的救星。",
+      "price": 100,
+      "sell_price": 50,
+      "tags": [
+        "学习",
+        "考试"
+      ],
+      "effects": {
+        "iq": 8,
+        "stress": -2,
+        "efficiency": 4
+      }
+    },
+    {
+      "id": "laptop_stand",
+      "name": "电脑支架",
+      "category": "生活",
+      "description": "一个实用的电脑支架，让你在学习时更加舒适。",
+      "price": 40,
+      "sell_price": 20,
+      "tags": [
+        "生活",
+        "学习"
+      ],
+      "effects": {
+        "efficiency": 3
+      }
+    },
+    {
+      "id": "gpt_plus_subscription",
+      "name": "GPT Plus 永久订阅",
+      "category": "生活",
+      "description": "强大的AI助手，助你轻松应对各种学习挑战。",
+      "price": 250,
+      "sell_price": 125,
+      "tags": [
+        "生活",
+        "学习"
+      ],
+      "effects": {
+        "iq": 10,
+        "efficiency": 10,
+        "stress": -8
+      }
+    },
+    {
+      "id": "magic_turtle",
+      "name": "神奇小龟",
+      "category": "生活",
+      "description": "骑着他赶早八，你再也不怕迟到了...也许后座还可以有个人？",
+      "price": 100,
+      "sell_price": 50,
+      "tags": [
+        "生活"
+      ],
+      "effects": {
+        "efficiency": 5,
+        "charm": 2
       }
     }
   ]

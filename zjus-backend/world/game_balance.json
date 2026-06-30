@@ -51,7 +51,7 @@
       "name": "卷",
       "emoji": "🔥",
       "growth": 4.0,
-      "drain": 3.0
+      "drain": 3.6
     }
   },
   "sanity_stress_modifiers": {
@@ -93,8 +93,8 @@
   },
   "relax_actions": {
     "gym": {
-      "energy_cost": -30,
-      "energy_gain": 40,
+      "energy_cost": -20,
+      "energy_gain": 30,
       "sanity_gain": 5,
       "stress_change": -5,
       "charm_gain_probability": 0.2,

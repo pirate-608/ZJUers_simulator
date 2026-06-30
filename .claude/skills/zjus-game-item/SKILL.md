@@ -14,7 +14,7 @@ Normalize new item ids to lowercase snake_case. Keep item names in Chinese unles
 
 ## Item Shape
 
-Edit `zjus-backend/world/items.json` for ordinary item additions:
+Edit `zjus-backend/world/items.json` for ordinary item additions, or use `/admin/items` for operational edits that should be validated, atomically written, hot reloaded, and audit logged:
 
 ```json
 {
@@ -55,7 +55,8 @@ Run from `zjus-backend/`:
 ```powershell
 ..\.venv\Scripts\python.exe scripts\validate_world_data.py
 ..\.venv\Scripts\python.exe -m py_compile app\game\items.py
-..\.venv\Scripts\python.exe -m pytest tests\unit\test_items.py tests\unit\test_game_state.py
+..\.venv\Scripts\python.exe -m py_compile app\services\item_admin.py app\admin.py
+..\.venv\Scripts\python.exe -m pytest tests\unit\test_items.py tests\unit\test_admin_items_config.py tests\unit\test_game_state.py
 ..\.venv\Scripts\python.exe -m ruff check app tests\unit scripts
 ```
 

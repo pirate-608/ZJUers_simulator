@@ -108,7 +108,7 @@ Backend:
 
 - `zjus-backend/app/api/auth.py`: invite-code auth, returning-user save list, majors, character initialization.
 - `zjus-backend/app/api/game.py`: WebSocket entry, config API, engine lifecycle.
-- `zjus-backend/app/admin.py`: SQLAdmin models plus `/admin/balance` operational balance editor.
+- `zjus-backend/app/admin.py`: SQLAdmin models plus `/admin/balance` and `/admin/items` operational world-data editors.
 - `zjus-backend/app/core/input_safety.py`: player username normalization, prompt-injection keyword checks, and prompt-safe fallback.
 - `zjus-backend/app/game/engine.py`: tick loop, actions, final exams, random events, relax cooldowns, feedback messages, content mode switching.
 - `zjus-backend/app/game/balance.py`: `world/game_balance.json` path resolution, runtime reads, and hot reload.
@@ -117,6 +117,7 @@ Backend:
 - `zjus-backend/app/services/game_service.py`: character/major initialization, semester transitions.
 - `zjus-backend/app/services/save_service.py`: Redis/Postgres save load and persistence, including DingTalk and item state.
 - `zjus-backend/app/services/balance_admin.py`: admin form schema, validation, atomic file publish, audit snapshot restore.
+- `zjus-backend/app/services/item_admin.py`: admin item economy/catalog form schema, validation, atomic file publish, audit snapshot restore.
 - `zjus-backend/app/repositories/redis_repo.py`: active game state, TTL, cooldowns, event history, DingTalk state, item state.
 - `zjus-backend/scripts/generate_content_library.py`: offline event/CC98 library generation through OpenAI-compatible `chat/completions`; can point at a cloud endpoint or local Ollama `/v1`, while embedding/query vectors stay on local Ollama `bge-m3`.
 - `zjus-backend/scripts/sync_stat_definitions.py` and `validate_world_data.py`: keep frontend stat metadata and world effect fields in sync with `world/stat_definitions.json`.
@@ -217,6 +218,7 @@ Items:
 
 - Item definitions live in `zjus-backend/world/items.json`; `app/game/items.py` validates the catalog and falls back to an empty catalog on config errors.
 - Item `effects` are limited by `allow_item_effect` in `world/stat_definitions.json`; adding an ordinary item should only require editing `items.json` and running world-data validation.
+- `/admin/items` can publish the same `items.json` file with validation, atomic replacement, `items.reload()`, and `items_update` audit logging; use it for operational price/effect/catalog edits when a UI is preferable to hand-editing JSON.
 - `PlayerStats.gold` is real persisted currency. New games use `economy.initial_gold`; final exams use `economy.exam_income`; random events and DingTalk settlements may also change gold.
 - Items are v1 limited to one owned copy per `item_id`. They are hold-to-activate passive bonuses; selling removes the bonus and refunds `sell_price`.
 - Backpacks persist through Redis `player:{id}:items_state` and PostgreSQL `game_saves.items_data`.
@@ -237,12 +239,13 @@ Content generation:
 - DingTalk contact lists are capped by `events.dingtalk.max_contacts` (default 12). New message generation applies `reuse_closed_contact_probability` exactly once before generation; reusable closed contacts are selected with a bias toward contacts that have been quiet longer, and compact must not remove open-round contacts.
 - When AI/LLM requests fail (e.g., network timeout or HTTP 5XX), AI mode falls back to hybrid mode. If hybrid mode dependencies also timeout or fail validation, fall back to library mode. Emits mode/toast updates.
 
-Admin balance:
+Admin world-data editors:
 
 - `/admin/balance` edits only the existing numeric/short-text fields in `zjus-backend/world/game_balance.json`; v1 does not add/delete speed modes, course strategies, relax actions, or arbitrary JSON nodes.
 - Saving validates the full config, atomically replaces the JSON file, calls `balance.reload()`, and records `balance_update` in `admin_audit_logs`.
-- "Restore latest" reads the previous config from the latest `balance_update` audit row, writes it back, hot reloads, and records `balance_restore`.
-- This admin page does not change player HTTP APIs, WebSocket contracts, OpenAPI, or database schema.
+- `/admin/items` edits `zjus-backend/world/items.json` economy fields and item catalog entries. Existing item IDs are read-only in the UI; create/delete/price/tag/effect edits validate `allow_item_effect`, atomically replace the file, call `items.reload()`, and record `items_update`.
+- "Restore latest" reads the previous config from the latest matching update audit row, writes it back, hot reloads, and records `balance_restore` or `items_restore`.
+- These admin pages do not change player HTTP APIs, WebSocket contracts, OpenAPI, or database schema.
 
 ## Pylance Notes
 

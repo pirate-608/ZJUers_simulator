@@ -115,7 +115,8 @@ docker compose up -d --build
 本地 Docker Compose 会挂载 `zjus-backend/world/`，因此你可以用两种方式调整游戏设定：
 
 - 进入 `http://localhost:8000/admin`，使用 `.env` 中的管理员账号登录，在“数值平衡”页面调整 `game_balance.json` 中的学期时长、概率、冷却、休闲和考试参数。保存后后端会热重载，并写入审计记录。
-- 直接编辑 `zjus-backend/world/` 下的 JSON 文件，例如 `items.json` 或 `stat_definitions.json`。编辑属性或道具后建议运行世界数据校验，避免 JSON 格式或 effect 字段写错。
+- 在同一个后台的“道具配置”页面调整 `items.json` 中的初始金币、期末金币公式、道具价格、标签和被动加成，也可以新增或删除道具。保存后会热重载，并写入审计记录。
+- 直接编辑 `zjus-backend/world/` 下的 JSON 文件，例如 `items.json` 或 `stat_definitions.json`。编辑属性或手工改道具后建议运行世界数据校验，避免 JSON 格式或 effect 字段写错。
 
 常用校验：
 
@@ -124,7 +125,7 @@ cd zjus-backend
 python scripts/validate_world_data.py
 ```
 
-新增道具通常只需要编辑 `world/items.json`；新增属性还要同步生成前端属性元数据。完整流程见[游戏设定维护](/dev/world-data)。
+新增道具通常只需要使用后台“道具配置”页面或编辑 `world/items.json`；新增属性还要同步生成前端属性元数据。完整流程见[游戏设定维护](/dev/world-data)。
 
 如果要停止服务，执行：
 

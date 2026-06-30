@@ -1,7 +1,7 @@
 """SQLAlchemy models for admin authentication and audit trails.
 
 Copyright (c) 2026 pirate-608. Licensed under the MIT License.
-The admin audit log records operational balance changes and restore actions.
+The admin audit log records operational world-data changes and restore actions.
 """
 
 from datetime import datetime

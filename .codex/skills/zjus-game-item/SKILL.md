@@ -14,6 +14,7 @@ Maintain items through the world-data pipeline while respecting stat effect allo
 - Item config: `zjus-backend/world/items.json`
 - Stat effect allowlist: `zjus-backend/world/stat_definitions.json`
 - Item loader and validator: `zjus-backend/app/game/items.py`
+- Admin editor: `/admin/items`, backed by `zjus-backend/app/services/item_admin.py`
 - World validator: `zjus-backend/scripts/validate_world_data.py`
 
 ## Item Shape
@@ -52,7 +53,7 @@ Rules:
 Get-Content zjus-backend\world\items.json
 ```
 
-2. Edit only `zjus-backend/world/items.json` for ordinary item additions. Keep descriptions concise and in the project’s campus tone.
+2. Edit `zjus-backend/world/items.json` for ordinary item additions, or use `/admin/items` for operational edits that should be validated, atomically written, hot reloaded, and audit logged. Keep descriptions concise and in the project’s campus tone.
 
 3. Validate from `zjus-backend/`:
 
@@ -64,7 +65,8 @@ Get-Content zjus-backend\world\items.json
 
 ```powershell
 ..\.venv\Scripts\python.exe -m py_compile app\game\items.py
-..\.venv\Scripts\python.exe -m pytest tests\unit\test_items.py tests\unit\test_game_state.py
+..\.venv\Scripts\python.exe -m py_compile app\services\item_admin.py app\admin.py
+..\.venv\Scripts\python.exe -m pytest tests\unit\test_items.py tests\unit\test_admin_items_config.py tests\unit\test_game_state.py
 ..\.venv\Scripts\python.exe -m ruff check app tests\unit scripts
 ```
 

@@ -34,7 +34,8 @@ zjus-backend/app/
 │   ├── save_service.py      # Redis ↔ PostgreSQL 存档同步
 │   ├── world_service.py     # 专业/课程/成就 JSON 加载
 │   ├── restriction_service.py
-│   └── balance_admin.py     # 后台数值配置表单、校验、发布
+│   ├── balance_admin.py     # 后台数值配置表单、校验、发布
+│   └── item_admin.py        # 后台道具配置表单、校验、发布
 ├── game/
 │   ├── engine.py            # Tick 循环 + 动作处理
 │   ├── balance.py           # 数值配置
@@ -264,13 +265,15 @@ db -> migrate -> seed_embeddings -> backend
 
 ---
 
-## 运维后台与数值平衡
+## 运维后台与世界数据发布
 
 SQLAdmin 挂载在 `/admin`，登录态与账号密码来自 `ADMIN_USERNAME`、`ADMIN_PASSWORD` 和 `ADMIN_SESSION_SECRET`。
 
 `/admin/balance` 是专用数值平衡页面，只编辑运行中的 `world/game_balance.json` 既有结构，不进入 OpenAPI，也不需要数据库迁移。提交时由 `app/services/balance_admin.py` 将表单转换为完整配置、校验范围和固定节点，再用临时文件 + `os.replace` 原子写回；写回成功后调用 `GameBalance.reload()` 热重载。
 
-生产 Compose 保留 `./zjus-backend/world:/app/world` 挂载，因此后台保存会写到服务器挂载目录中的实际 `game_balance.json`。每次保存写入 `admin_audit_logs` 的 `balance_update` 记录，最近一次保存可通过页面恢复为 `balance_restore`。
+`/admin/items` 是专用道具配置页面，编辑同一份 `world/items.json`。提交时由 `app/services/item_admin.py` 校验经济参数、道具 ID、价格、标签和 `allow_item_effect=true` 的被动效果字段，原子写回后调用 `items.reload()` 热重载。页面支持新增、修改和删除道具；已有道具 ID 保持只读，避免破坏旧存档背包中的 `item_id` 引用。
+
+生产 Compose 保留 `./zjus-backend/world:/app/world` 挂载，因此后台保存会写到服务器挂载目录中的实际 `game_balance.json` / `items.json`。每次保存写入 `admin_audit_logs`：数值平衡为 `balance_update` / `balance_restore`，道具配置为 `items_update` / `items_restore`。后台页面的“恢复上一版”读取最近一次对应 update 审计记录中的完整旧配置，不是 Git 回滚。
 
 ---
 

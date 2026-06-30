@@ -4,7 +4,7 @@
 
 ## 后端
 
-后端测试位于 `zjus-backend/tests/unit/`，覆盖游戏状态、属性定义注册表、数值配置、Admin 数值平衡表单发布、道具配置/买卖/存档、WebSocket manager、引擎暂停门禁、tick interval、钉钉私聊状态、DingTalk LLM 降级、认证校验和玩家入口/存档流程。
+后端测试位于 `zjus-backend/tests/unit/`，覆盖游戏状态、属性定义注册表、数值配置、Admin 数值平衡/道具配置表单发布、道具买卖/存档、WebSocket manager、引擎暂停门禁、tick interval、钉钉私聊状态、DingTalk LLM 降级、认证校验和玩家入口/存档流程。
 
 常用命令：
 
@@ -12,11 +12,12 @@
 cd zjus-backend
 ..\.venv\Scripts\python.exe -m pytest tests\unit
 ..\.venv\Scripts\python.exe -m pytest tests\unit\test_admin_balance_config.py tests\unit\test_balance.py
+..\.venv\Scripts\python.exe -m pytest tests\unit\test_admin_items_config.py tests\unit\test_items.py
 ..\.venv\Scripts\python.exe -m pytest tests\unit\test_engine_runtime_hardening.py tests\unit\test_websocket_manager.py
 ..\.venv\Scripts\python.exe scripts\validate_world_data.py
 ..\.venv\Scripts\python.exe scripts\sync_stat_definitions.py --check
 ..\.venv\Scripts\python.exe -m py_compile app\game\engine.py
-..\.venv\Scripts\python.exe -m py_compile app\game\balance.py app\services\balance_admin.py app\admin.py
+..\.venv\Scripts\python.exe -m py_compile app\game\balance.py app\game\items.py app\services\balance_admin.py app\services\item_admin.py app\admin.py
 ..\.venv\Scripts\python.exe -m ruff check .
 ```
 

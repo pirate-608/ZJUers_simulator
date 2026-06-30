@@ -2,7 +2,7 @@
 
 Copyright (c) 2026 pirate-608. Licensed under the MIT License.
 This module wires database models into the `/admin` UI and hosts the
-game-balance editor that publishes `world/game_balance.json`.
+world-data editors that publish `game_balance.json` and `items.json`.
 """
 
 import copy
@@ -21,6 +21,7 @@ from starlette.responses import RedirectResponse
 
 from app.core.config import settings
 from app.game.balance import balance
+from app.game.items import items
 from app.models.admin import AdminAuditLog, UserBlacklist, UserRestriction
 from app.models.game_save import GameSave
 from app.models.user import User
@@ -33,6 +34,22 @@ from app.services.balance_admin import (
     latest_balance_update_snapshot,
     publish_balance_config,
     summarize_balance_config,
+)
+from app.services.item_admin import (
+    ItemConfigError,
+    build_item_effect_fields,
+    build_item_rows,
+    diff_item_configs,
+    latest_items_update_snapshot,
+    load_items_config,
+    publish_items_config,
+    summarize_items_config,
+)
+from app.services.item_admin import (
+    build_config_from_form as build_items_config_from_form,
+)
+from app.services.item_admin import (
+    config_to_form_data as items_config_to_form_data,
 )
 
 
@@ -302,6 +319,123 @@ class BalanceConfigAdmin(BaseView):
         )
 
 
+class ItemsConfigAdmin(BaseView):
+    """SQLAdmin page for editing `world/items.json`."""
+
+    name = "道具配置"
+    icon = "fa-solid fa-bag-shopping"
+    category = "运营"
+    category_icon = "fa-solid fa-toolbox"
+
+    @expose(
+        "/items/restore-latest",
+        methods=["GET", "POST"],
+        identity="items_restore_latest",
+        include_in_schema=False,
+    )
+    async def restore_latest(self, request: Request):
+        """Restore the previous item config captured in audit logs."""
+        if request.method == "GET":
+            return _items_redirect(request)
+
+        try:
+            snapshot = _get_latest_items_snapshot()
+            if snapshot is None:
+                return _items_redirect(request, status="no_restore")
+
+            old_config = load_items_config(items.config_path)
+            restored_config = snapshot.old_config
+            publish_items_config(items.config_path, restored_config, items.reload)
+            _log_admin_action(
+                request,
+                "items_restore",
+                "items",
+                str(snapshot.log_id),
+                {
+                    "old_version": old_config.get("version"),
+                    "new_version": restored_config.get("version"),
+                    "old_summary": summarize_items_config(old_config),
+                    "new_summary": summarize_items_config(restored_config),
+                    "old_config": old_config,
+                    "new_config": restored_config,
+                    "restored_from_log_id": snapshot.log_id,
+                    "changed_fields": diff_item_configs(old_config, restored_config),
+                },
+            )
+            return _items_redirect(request, status="restored")
+        except Exception as exc:
+            return _items_redirect(request, status="restore_error", error=str(exc))
+
+    @expose(
+        "/items",
+        methods=["GET", "POST"],
+        identity="items",
+        include_in_schema=False,
+    )
+    async def items_page(self, request: Request):
+        """Render and process the item-catalog editor form."""
+        current_config = load_items_config(items.config_path)
+        form_values = items_config_to_form_data(current_config)
+        error = request.query_params.get("error")
+        status = request.query_params.get("status")
+
+        if request.method == "POST":
+            submitted_form = await request.form()
+            form_values.update(
+                {key: str(value) for key, value in submitted_form.items()}
+            )
+            try:
+                new_config = build_items_config_from_form(
+                    current_config,
+                    submitted_form,
+                )
+                changed_fields = diff_item_configs(current_config, new_config)
+                if not changed_fields:
+                    return _items_redirect(request, status="unchanged")
+
+                publish_items_config(items.config_path, new_config, items.reload)
+                _log_admin_action(
+                    request,
+                    "items_update",
+                    "items",
+                    str(items.config_path),
+                    {
+                        "old_version": current_config.get("version"),
+                        "new_version": new_config.get("version"),
+                        "old_summary": summarize_items_config(current_config),
+                        "new_summary": summarize_items_config(new_config),
+                        "old_config": current_config,
+                        "new_config": new_config,
+                        "changed_fields": changed_fields,
+                    },
+                )
+                return _items_redirect(request, status="saved")
+            except ItemConfigError as exc:
+                error = str(exc)
+            except Exception as exc:
+                error = f"保存失败：{exc}"
+
+        context = {
+            "title": "道具配置",
+            "subtitle": "编辑 world/items.json 并热重载",
+            "items_path": str(items.config_path),
+            "items_form_action": _admin_path(request, "/items"),
+            "items_restore_action": _admin_path(request, "/items/restore-latest"),
+            "values": form_values,
+            "item_rows": build_item_rows(current_config),
+            "effect_fields": build_item_effect_fields(),
+            "error": error,
+            "status": status,
+            "raw_json": json.dumps(current_config, ensure_ascii=False, indent=2),
+            "recent_logs": _get_recent_items_logs(),
+        }
+        return await self.templates.TemplateResponse(
+            request,
+            "admin/items.html",
+            context,
+        )
+
+
 def _build_sync_engine():
     url = make_url(settings.DATABASE_URL)
     if "+asyncpg" in url.drivername:
@@ -311,6 +445,13 @@ def _build_sync_engine():
 
 def _balance_redirect(request: Request, **params: str):
     url = _admin_path(request, "/balance")
+    if params:
+        url = f"{url}?{urlencode(params)}"
+    return RedirectResponse(url, status_code=303)
+
+
+def _items_redirect(request: Request, **params: str):
+    url = _admin_path(request, "/items")
     if params:
         url = f"{url}?{urlencode(params)}"
     return RedirectResponse(url, status_code=303)
@@ -355,6 +496,13 @@ def _get_latest_balance_snapshot():
         return latest_balance_update_snapshot(session)
 
 
+def _get_latest_items_snapshot():
+    engine = _build_sync_engine()
+    SessionLocal = sessionmaker(bind=engine)
+    with SessionLocal() as session:
+        return latest_items_update_snapshot(session)
+
+
 def _get_recent_balance_logs(limit: int = 5) -> list[dict[str, Any]]:
     engine = _build_sync_engine()
     SessionLocal = sessionmaker(bind=engine)
@@ -364,6 +512,34 @@ def _get_recent_balance_logs(limit: int = 5) -> list[dict[str, Any]]:
             .filter(
                 AdminAuditLog.target_type == "game_balance",
                 AdminAuditLog.action.in_(["balance_update", "balance_restore"]),
+            )
+            .order_by(AdminAuditLog.id.desc())
+            .limit(limit)
+            .all()
+        )
+        return [
+            {
+                "id": row.id,
+                "admin_username": row.admin_username,
+                "action": row.action,
+                "created_at": row.created_at,
+                "old_version": (row.details or {}).get("old_version"),
+                "new_version": (row.details or {}).get("new_version"),
+                "changed_fields": (row.details or {}).get("changed_fields", []),
+            }
+            for row in rows
+        ]
+
+
+def _get_recent_items_logs(limit: int = 5) -> list[dict[str, Any]]:
+    engine = _build_sync_engine()
+    SessionLocal = sessionmaker(bind=engine)
+    with SessionLocal() as session:
+        rows = (
+            session.query(AdminAuditLog)
+            .filter(
+                AdminAuditLog.target_type == "items",
+                AdminAuditLog.action.in_(["items_update", "items_restore"]),
             )
             .order_by(AdminAuditLog.id.desc())
             .limit(limit)
@@ -394,4 +570,6 @@ def setup_admin(app):
     admin.add_view(UserBlacklistAdmin)
     admin.add_view(BalanceConfigAdmin)
     BalanceConfigAdmin.identity = "balance"
+    admin.add_view(ItemsConfigAdmin)
+    ItemsConfigAdmin.identity = "items"
     admin.add_view(AdminAuditLogAdmin)

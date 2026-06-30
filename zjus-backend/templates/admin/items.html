@@ -1,0 +1,270 @@
+{% extends "sqladmin/layout.html" %}
+
+{% block content %}
+<div class="col-12">
+  {% if error %}
+  <div class="alert alert-danger" role="alert">
+    <strong>保存失败：</strong>{{ error }}
+  </div>
+  {% endif %}
+
+  {% if status == "saved" %}
+  <div class="alert alert-success" role="alert">道具配置已保存并热重载。</div>
+  {% elif status == "unchanged" %}
+  <div class="alert alert-info" role="alert">没有检测到配置变化，未写入文件。</div>
+  {% elif status == "restored" %}
+  <div class="alert alert-success" role="alert">已恢复上一版道具配置并热重载。</div>
+  {% elif status == "no_restore" %}
+  <div class="alert alert-warning" role="alert">没有找到可恢复的上一版配置。</div>
+  {% elif status == "restore_error" %}
+  <div class="alert alert-danger" role="alert">恢复失败：{{ request.query_params.get("error", "") }}</div>
+  {% endif %}
+</div>
+
+<div class="col-12">
+  <div class="card">
+    <div class="card-body">
+      <div class="row align-items-center">
+        <div class="col">
+          <div class="text-muted">当前写入路径</div>
+          <code>{{ items_path }}</code>
+        </div>
+        <div class="col-auto">
+          <form
+            method="post"
+            action="{{ items_restore_action }}"
+            onsubmit="return confirm('确定恢复最近一次道具修改前的配置吗？当前配置会被覆盖并立即热重载。')"
+          >
+            <button type="submit" class="btn btn-outline-warning">
+              恢复上一版
+            </button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<form method="post" action="{{ items_form_action }}" class="col-12">
+  <div class="row row-cards">
+    <div class="col-12">
+      <div class="card">
+        <div class="card-header">
+          <div>
+            <h3 class="card-title">基础与经济参数</h3>
+            <p class="card-subtitle">配置版本、初始金币和期末金币发放公式。</p>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="row">
+            <div class="col-sm-6 col-lg-3 mb-3">
+              <label class="form-label" for="version">版本号</label>
+              <input id="version" name="version" class="form-control" type="text" maxlength="40" value="{{ values.get('version', '') }}" required>
+            </div>
+            <div class="col-sm-6 col-lg-9 mb-3">
+              <label class="form-label" for="description">说明</label>
+              <input id="description" name="description" class="form-control" type="text" maxlength="240" value="{{ values.get('description', '') }}">
+            </div>
+            <div class="col-sm-6 col-lg-3 mb-3">
+              <label class="form-label" for="economy__initial_gold">初始金币</label>
+              <input id="economy__initial_gold" name="economy__initial_gold" class="form-control" type="number" min="0" max="100000" step="1" value="{{ values.get('economy__initial_gold', '') }}" required>
+            </div>
+            {% for field, label in [
+              ("base", "期末基础金币"),
+              ("gpa_multiplier", "GPA 倍率"),
+              ("pass_all_bonus", "全通过奖励"),
+              ("failed_penalty_per_course", "每门挂科惩罚"),
+              ("min", "最低金币"),
+              ("max", "最高金币")
+            ] %}
+            {% set input_name = "economy__exam_income__" ~ field %}
+            <div class="col-sm-6 col-lg-3 mb-3">
+              <label class="form-label" for="{{ input_name }}">{{ label }}</label>
+              <input id="{{ input_name }}" name="{{ input_name }}" class="form-control" type="number" min="0" max="100000" step="1" value="{{ values.get(input_name, '') }}" required>
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-12">
+      <div class="card">
+        <div class="card-header">
+          <div>
+            <h3 class="card-title">已有道具</h3>
+            <p class="card-subtitle">已有道具 ID 保持只读；如果需要改 ID，建议新增新道具并逐步废弃旧道具。</p>
+          </div>
+        </div>
+        <div class="card-body">
+          <input type="hidden" name="item_count" value="{{ item_rows|length }}">
+          {% for row in item_rows %}
+          {% set prefix = "item__" ~ row.index %}
+          <div class="border rounded p-3 mb-3">
+            <div class="row">
+              <div class="col-md-3 mb-3">
+                <label class="form-label" for="{{ prefix }}__id">道具 ID</label>
+                <input id="{{ prefix }}__id" name="{{ prefix }}__id" class="form-control" type="text" value="{{ values.get(prefix ~ '__id', '') }}" readonly>
+              </div>
+              <div class="col-md-3 mb-3">
+                <label class="form-label" for="{{ prefix }}__name">名称</label>
+                <input id="{{ prefix }}__name" name="{{ prefix }}__name" class="form-control" type="text" maxlength="80" value="{{ values.get(prefix ~ '__name', '') }}" required>
+              </div>
+              <div class="col-md-2 mb-3">
+                <label class="form-label" for="{{ prefix }}__category">分类</label>
+                <input id="{{ prefix }}__category" name="{{ prefix }}__category" class="form-control" type="text" maxlength="40" value="{{ values.get(prefix ~ '__category', '') }}" required>
+              </div>
+              <div class="col-md-2 mb-3">
+                <label class="form-label" for="{{ prefix }}__price">价格</label>
+                <input id="{{ prefix }}__price" name="{{ prefix }}__price" class="form-control" type="number" min="1" max="999999" step="1" value="{{ values.get(prefix ~ '__price', '') }}" required>
+              </div>
+              <div class="col-md-2 mb-3">
+                <label class="form-label" for="{{ prefix }}__sell_price">出售价格</label>
+                <input id="{{ prefix }}__sell_price" name="{{ prefix }}__sell_price" class="form-control" type="number" min="0" max="999999" step="1" value="{{ values.get(prefix ~ '__sell_price', '') }}" required>
+              </div>
+              <div class="col-md-8 mb-3">
+                <label class="form-label" for="{{ prefix }}__description">说明</label>
+                <input id="{{ prefix }}__description" name="{{ prefix }}__description" class="form-control" type="text" maxlength="280" value="{{ values.get(prefix ~ '__description', '') }}" required>
+              </div>
+              <div class="col-md-4 mb-3">
+                <label class="form-label" for="{{ prefix }}__tags">标签</label>
+                <input id="{{ prefix }}__tags" name="{{ prefix }}__tags" class="form-control" type="text" value="{{ values.get(prefix ~ '__tags', '') }}">
+                <div class="form-hint">用逗号或换行分隔，最多 8 个。</div>
+              </div>
+              <div class="col-12 mb-2">
+                <div class="text-muted">被动加成</div>
+              </div>
+              {% for field in effect_fields %}
+              {% set effect_name = prefix ~ "__effect__" ~ field.id %}
+              <div class="col-6 col-sm-4 col-lg-2 mb-3">
+                <label class="form-label" for="{{ effect_name }}">{{ field.icon }} {{ field.label }}</label>
+                <input id="{{ effect_name }}" name="{{ effect_name }}" class="form-control" type="number" min="{{ field.minimum }}" max="{{ field.maximum }}" step="1" value="{{ values.get(effect_name, '0') }}">
+              </div>
+              {% endfor %}
+              <div class="col-12">
+                <label class="form-check form-switch">
+                  <input class="form-check-input" type="checkbox" name="{{ prefix }}__delete">
+                  <span class="form-check-label text-danger">删除该道具</span>
+                </label>
+              </div>
+            </div>
+          </div>
+          {% else %}
+          <p class="text-muted">当前没有道具。</p>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+
+    <div class="col-12">
+      <div class="card">
+        <div class="card-header">
+          <div>
+            <h3 class="card-title">新增道具</h3>
+            <p class="card-subtitle">填写道具 ID 后会在保存时新增；留空则忽略。</p>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="row">
+            <div class="col-md-3 mb-3">
+              <label class="form-label" for="new__id">道具 ID</label>
+              <input id="new__id" name="new__id" class="form-control" type="text" maxlength="64" value="{{ values.get('new__id', '') }}" placeholder="snake_case_id">
+            </div>
+            <div class="col-md-3 mb-3">
+              <label class="form-label" for="new__name">名称</label>
+              <input id="new__name" name="new__name" class="form-control" type="text" maxlength="80" value="{{ values.get('new__name', '') }}">
+            </div>
+            <div class="col-md-2 mb-3">
+              <label class="form-label" for="new__category">分类</label>
+              <input id="new__category" name="new__category" class="form-control" type="text" maxlength="40" value="{{ values.get('new__category', '') }}">
+            </div>
+            <div class="col-md-2 mb-3">
+              <label class="form-label" for="new__price">价格</label>
+              <input id="new__price" name="new__price" class="form-control" type="number" min="1" max="999999" step="1" value="{{ values.get('new__price', '') }}">
+            </div>
+            <div class="col-md-2 mb-3">
+              <label class="form-label" for="new__sell_price">出售价格</label>
+              <input id="new__sell_price" name="new__sell_price" class="form-control" type="number" min="0" max="999999" step="1" value="{{ values.get('new__sell_price', '') }}">
+            </div>
+            <div class="col-md-8 mb-3">
+              <label class="form-label" for="new__description">说明</label>
+              <input id="new__description" name="new__description" class="form-control" type="text" maxlength="280" value="{{ values.get('new__description', '') }}">
+            </div>
+            <div class="col-md-4 mb-3">
+              <label class="form-label" for="new__tags">标签</label>
+              <input id="new__tags" name="new__tags" class="form-control" type="text" value="{{ values.get('new__tags', '') }}">
+            </div>
+            {% for field in effect_fields %}
+            {% set effect_name = "new__effect__" ~ field.id %}
+            <div class="col-6 col-sm-4 col-lg-2 mb-3">
+              <label class="form-label" for="{{ effect_name }}">{{ field.icon }} {{ field.label }}</label>
+              <input id="{{ effect_name }}" name="{{ effect_name }}" class="form-control" type="number" min="{{ field.minimum }}" max="{{ field.maximum }}" step="1" value="{{ values.get(effect_name, '0') }}">
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-12">
+      <div class="card">
+        <div class="card-body d-flex justify-content-between align-items-center">
+          <div class="text-muted">
+            保存会先校验完整配置，再原子写入 items.json，并立即热重载后端道具目录。
+          </div>
+          <button type="submit" class="btn btn-primary">保存并热重载</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</form>
+
+<div class="col-lg-6 col-12">
+  <div class="card">
+    <div class="card-header">
+      <h3 class="card-title">最近道具变更</h3>
+    </div>
+    <div class="table-responsive">
+      <table class="table card-table table-vcenter">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>管理员</th>
+            <th>动作</th>
+            <th>版本</th>
+            <th>字段数</th>
+            <th>时间</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for log in recent_logs %}
+          <tr>
+            <td>{{ log.id }}</td>
+            <td>{{ log.admin_username }}</td>
+            <td>{{ log.action }}</td>
+            <td>{{ log.old_version }} → {{ log.new_version }}</td>
+            <td>{{ log.changed_fields|length }}</td>
+            <td>{{ log.created_at }}</td>
+          </tr>
+          {% else %}
+          <tr>
+            <td colspan="6" class="text-muted">暂无道具变更记录。</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<div class="col-lg-6 col-12">
+  <div class="card">
+    <div class="card-header">
+      <h3 class="card-title">当前 JSON 预览</h3>
+    </div>
+    <div class="card-body">
+      <pre class="bg-light p-3 rounded" style="max-height: 480px; overflow: auto;"><code>{{ raw_json }}</code></pre>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -72,6 +72,11 @@ class ItemCatalog:
         self.load(config_path or self._config_path)
 
     @property
+    def config_path(self) -> Path:
+        """Current source path used by the loaded item catalog."""
+        return self._config_path or self.resolve_config_path()
+
+    @property
     def version(self) -> str:
         """Catalog version string exposed in item-state payloads."""
         return str(self._config.get("version") or "unknown")

@@ -9,7 +9,7 @@ import logging
 import os
 
 from pydantic import model_validator
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 _config_logger = logging.getLogger("app.core.config")
 
@@ -25,6 +25,8 @@ _INSECURE_DEFAULTS = {
 
 class Settings(BaseSettings):
     """Typed settings loaded from environment variables and `.env`."""
+
+    model_config = SettingsConfigDict(env_file=".env")
 
     PROJECT_NAME: str = "ZJUers Simulator"
     API_V1_STR: str = "/api"
@@ -62,9 +64,6 @@ class Settings(BaseSettings):
         "https://api.minimaxi.com/v1",
     )
     INVITE_CODES: str = ""
-
-    class Config:
-        env_file = ".env"
 
     @model_validator(mode="after")
     def _check_insecure_defaults(self) -> "Settings":

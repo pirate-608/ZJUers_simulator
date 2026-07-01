@@ -1,0 +1,4 @@
+interface:
+  display_name: "ZJUS Player Onboarding"
+  short_description: "Work safely on auth, character init, and saves"
+  default_prompt: "Use $zjus-player-onboarding to change the login, character creation, or save-loading flow."

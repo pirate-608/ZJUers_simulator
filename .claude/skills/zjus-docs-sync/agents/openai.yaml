@@ -1,0 +1,4 @@
+interface:
+  display_name: "ZJUS Docs Sync"
+  short_description: "Update VitePress docs after product or API changes"
+  default_prompt: "Use $zjus-docs-sync to update user and developer docs after a feature change."

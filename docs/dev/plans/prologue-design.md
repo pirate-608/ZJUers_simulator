@@ -1,16 +1,13 @@
-# 设计一个游戏登录页前的楔子场景
+# 登录前序章实现说明
 
-- 核心故事脚本：`zjus-backend/world/prologue.md`
+- 实现位置：`zjus-frontend/src/components/PrologueScene.vue` 与 `zjus-frontend/src/data/prologue.ts`
 
-- 时机：在用户访问站点时，加载登录页之前，播放该楔子
+- 文本来源：序章文本已内置在前端 `prologue.ts` 中，不依赖后端静态 world 路径
 
-- 效果：通过文字+画面的形式，文字通过淡出和浮现来过渡，背景画面根据文字氛围动态切换
+- 时机：在用户首次访问站点时，加载登录页之前播放；播放完成或跳过后写入 `localStorage.zjus_prologue_seen_v1`
 
-- 元素：可跳过，用户首次访问站点才加载
+- 效果：前两句献词依次全屏闪现；主体故事以三页日记本逐字书写呈现，翻页切换白天、夜晚启真湖和重生返校三段；背景画面根据文字氛围动态切换
 
-- 已知可能的实现方案：
-    - 方案一：在index.html中插入拦截层（最简单，零侵入Vue）
-    - 方案二：修改 main.ts，延迟挂载（只改一个文件，其他不动）
-    - 其他方案，若有
+- 元素：可跳过，用户首次访问站点才加载；序章期间不进入登录/存档分流，也不建立游戏 WebSocket
 
-- 注意要点：尽可能最小化对现有业务逻辑的侵入，确保可回退
+- 注意要点：`PrologueScene.vue` 只负责视觉节奏；入口 gate、localStorage 记录和后续 `GamePhase` 分流由 `App.vue` 负责

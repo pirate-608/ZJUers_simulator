@@ -2,7 +2,6 @@ import { mount } from '@vue/test-utils'
 import { createTestingPinia } from '@pinia/testing'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import App from './App.vue'
-import { PROLOGUE_LINES, PROLOGUE_SEEN_STORAGE_KEY } from './data/prologue'
 
 const webSocketMock = vi.hoisted(() => ({
   connect: vi.fn(),
@@ -19,109 +18,109 @@ vi.mock('@/composables/useGameWebSocket.ts', () => ({
   }),
 }))
 
-describe('App.vue', () => {
-  const mountApp = () => mount(App, {
-    global: {
-      plugins: [createTestingPinia({
-        // Keep Pinia actions active so App startup exercises real store transitions.
-        stubActions: false,
-      })],
-      stubs: {
-        LoginView: { template: '<main data-testid="login-view">login</main>' },
-        SaveSelect: { template: '<main data-testid="save-select">saves</main>' },
-        CharacterCreate: { template: '<main data-testid="character-create">create</main>' },
-        TopNav: true,
-        HudBar: true,
-        CourseList: true,
-        MidPanel: true,
-        RightPanel: true,
-        TranscriptModal: true,
-        RandomEventModal: true,
-        FeedbackModal: true,
-        ExamConfirmModal: true,
-        ExitConfirmModal: true,
-        EndScreen: true,
+describe('App.vue entry flow', () => {
+  let wrapper
+
+  const mountApp = () => {
+    wrapper = mount(App, {
+      global: {
+        plugins: [createTestingPinia({ stubActions: false })],
+        stubs: {
+          LoginView: { template: '<main data-testid="login-view">login</main>' },
+          SaveSelect: { template: '<main data-testid="save-select">saves</main>' },
+          CharacterCreate: { template: '<main data-testid="character-create">create</main>' },
+          TopNav: true,
+          HudBar: true,
+          CourseList: true,
+          MidPanel: true,
+          RightPanel: true,
+          TranscriptModal: true,
+          RandomEventModal: true,
+          FeedbackModal: true,
+          ExamConfirmModal: true,
+          ExitConfirmModal: true,
+          EndScreen: true,
+        },
       },
-    },
-  })
+    })
+    return wrapper
+  }
 
   beforeEach(() => {
     localStorage.clear()
     sessionStorage.clear()
-    webSocketMock.connect.mockClear()
-    webSocketMock.disconnect.mockClear()
-    webSocketMock.send.mockClear()
+    vi.clearAllMocks()
   })
 
   afterEach(() => {
+    wrapper?.unmount()
     localStorage.clear()
     sessionStorage.clear()
   })
 
-  it('renders the prologue before the login flow on first visit', () => {
-    const wrapper = mountApp()
+  it.each([null, '1'])('opens login directly with legacy seen flag %s', async (seenFlag) => {
+    if (seenFlag !== null) localStorage.setItem('zjus_prologue_seen_v1', seenFlag)
 
-    expect(wrapper.find('.prologue-root').exists()).toBe(true)
-    expect(wrapper.find('[data-testid="prologue-line"]').text()).toBe(PROLOGUE_LINES[0])
-    expect(wrapper.find('[data-testid="login-view"]').exists()).toBe(false)
+    const app = mountApp()
+    await app.vm.$nextTick()
+
+    expect(app.find('[data-testid="login-view"]').exists()).toBe(true)
+    expect(app.find('.prologue-root').exists()).toBe(false)
+    expect(localStorage.getItem('zjus_prologue_seen_v1')).toBe(seenFlag)
     expect(webSocketMock.connect).not.toHaveBeenCalled()
-
-    wrapper.unmount()
   })
 
-  it('holds returning-game startup behind the first-visit prologue until skipped', async () => {
+  it('opens save selection directly for an authenticated returning player', async () => {
     localStorage.setItem('zju_jwt', 'header.payload.signature')
-    localStorage.setItem('zju_token', 'header.payload.signature')
+    localStorage.setItem('zju_saves', JSON.stringify([{ slot: 1 }]))
+
+    const app = mountApp()
+    await app.vm.$nextTick()
+
+    expect(app.find('[data-testid="save-select"]').exists()).toBe(true)
+    expect(app.find('[data-testid="login-view"]').exists()).toBe(false)
+    expect(localStorage.getItem('zju_token')).toBe('header.payload.signature')
+    expect(webSocketMock.connect).not.toHaveBeenCalled()
+  })
+
+  it('opens character creation directly when a JWT has no started game or saves', async () => {
+    localStorage.setItem('zju_jwt', 'header.payload.signature')
+
+    const app = mountApp()
+    await app.vm.$nextTick()
+
+    expect(app.find('[data-testid="character-create"]').exists()).toBe(true)
+    expect(app.find('[data-testid="login-view"]').exists()).toBe(false)
+    expect(webSocketMock.connect).not.toHaveBeenCalled()
+  })
+
+  it('connects a started game once without waiting for a prologue callback', async () => {
+    localStorage.setItem('zju_jwt', 'header.payload.signature')
+    localStorage.setItem('game_started', '1')
+    localStorage.setItem('selected_save_slot', '1')
+
+    const app = mountApp()
+    await app.vm.$nextTick()
+
+    expect(app.find('.app-loading').exists()).toBe(true)
+    expect(app.find('.prologue-root').exists()).toBe(false)
+    expect(webSocketMock.connect).toHaveBeenCalledExactlyOnceWith(
+      'header.payload.signature',
+      expect.stringMatching(/^wss?:\/\//),
+    )
+    expect(localStorage.getItem('selected_save_slot')).toBe('1')
+  })
+
+  it('keeps legacy student credentials out of the game WebSocket handshake', async () => {
+    localStorage.setItem('zju_token', 'legacy-student-credential')
     localStorage.setItem('game_started', '1')
 
-    const wrapper = mountApp()
-    await wrapper.vm.$nextTick()
+    const app = mountApp()
+    await app.vm.$nextTick()
 
-    expect(wrapper.find('.prologue-root').exists()).toBe(true)
-    expect(wrapper.find('.app-loading').exists()).toBe(false)
-    expect(wrapper.find('[data-testid="login-view"]').exists()).toBe(false)
-    expect(wrapper.find('[data-testid="save-select"]').exists()).toBe(false)
-    expect(wrapper.find('[data-testid="character-create"]').exists()).toBe(false)
+    expect(app.find('[data-testid="login-view"]').exists()).toBe(true)
+    expect(localStorage.getItem('zju_token')).toBeNull()
+    expect(localStorage.getItem('zju_user_token')).toBe('legacy-student-credential')
     expect(webSocketMock.connect).not.toHaveBeenCalled()
-
-    await wrapper.find('[data-testid="prologue-skip"]').trigger('click')
-    await wrapper.vm.$nextTick()
-
-    expect(localStorage.getItem(PROLOGUE_SEEN_STORAGE_KEY)).toBe('1')
-    expect(wrapper.find('.prologue-root').exists()).toBe(false)
-    expect(wrapper.find('.app-loading').exists()).toBe(true)
-    expect(wrapper.find('[data-testid="login-view"]').exists()).toBe(false)
-    expect(webSocketMock.connect).toHaveBeenCalledTimes(1)
-    expect(webSocketMock.connect).toHaveBeenCalledWith(
-      'header.payload.signature',
-      expect.stringMatching(/^ws:\/\/|^wss:\/\//),
-    )
-
-    wrapper.unmount()
-  })
-
-  it('marks the prologue seen and starts the login flow when skipped', async () => {
-    const wrapper = mountApp()
-
-    await wrapper.find('[data-testid="prologue-skip"]').trigger('click')
-    await wrapper.vm.$nextTick()
-
-    expect(localStorage.getItem(PROLOGUE_SEEN_STORAGE_KEY)).toBe('1')
-    expect(wrapper.find('.prologue-root').exists()).toBe(false)
-    expect(wrapper.find('[data-testid="login-view"]').exists()).toBe(true)
-
-    wrapper.unmount()
-  })
-
-  it('bypasses the prologue after it has been seen', async () => {
-    localStorage.setItem(PROLOGUE_SEEN_STORAGE_KEY, '1')
-
-    const wrapper = mountApp()
-    await wrapper.vm.$nextTick()
-
-    expect(wrapper.find('.prologue-root').exists()).toBe(false)
-    expect(wrapper.find('[data-testid="login-view"]').exists()).toBe(true)
-
-    wrapper.unmount()
   })
 })

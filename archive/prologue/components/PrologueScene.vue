@@ -95,7 +95,7 @@ import {
   PROLOGUE_FIRST_DIARY_INDEX,
   PROLOGUE_IMAGES,
   PROLOGUE_LINES,
-} from '@/data/prologue'
+} from '../data/prologue'
 
 const emit = defineEmits<{
   complete: []

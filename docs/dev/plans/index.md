@@ -20,13 +20,6 @@
         </li>
         <li class="todo-item">
           <input type="checkbox" checked disabled>
-          <strong>登录前序章</strong>
-          <ul class="todo-sub-list">
-            <li>📄 <a href="prologue-design/">查看文档</a></li>
-          </ul>
-        </li>
-        <li class="todo-item">
-          <input type="checkbox" checked disabled>
           <strong>LLM 向量化与内容库</strong>
           <ul class="todo-sub-list">
             <li>📄 <a href="vector_plan/">查看文档</a></li>

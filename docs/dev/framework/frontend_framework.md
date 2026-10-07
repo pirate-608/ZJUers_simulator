@@ -11,8 +11,6 @@ zjus-frontend/src/
 ├── App.vue                  # Phase 路由中枢 + 全局 Toast/反馈弹窗挂载
 ├── api/
 │   └── client.ts            # HTTP API 薄封装，类型来自 OpenAPI
-├── data/
-│   └── prologue.ts          # 登录前序章文本、图片映射和 localStorage key
 ├── types/
 │   ├── api.generated.ts     # 从后端 /openapi.json 生成
 │   ├── game.ts              # GamePhase, PlayerStats
@@ -26,7 +24,6 @@ zjus-frontend/src/
 ├── data/
 │   └── statDefinitions.generated.ts # 从后端属性定义生成的前端元数据
 └── components/
-    ├── PrologueScene.vue    # 首次访问登录前序章
     ├── LoginView.vue        # 邀请码登录 + 自定义通用/RP 模型配置
     ├── SaveSelect.vue       # 老玩家存档选择 / 新游戏入口
     ├── CharacterCreate.vue  # 专业选择 + 初始属性分配
@@ -49,9 +46,7 @@ zjus-frontend/src/
 login | save_select | character_create | loading | playing | ended
 ```
 
-登录前序章不是 `GamePhase`，而是 `App.vue` 启动时的前置 gate。首次访问会先渲染 `PrologueScene.vue`，播放或跳过后写入 `localStorage.zjus_prologue_seen_v1`，随后才执行下面的入口分流。
-
-`PrologueScene.vue` 的节奏由 `src/data/prologue.ts` 驱动：先播放两句全屏献词，再展示三页日记本逐字书写。第一页讲述延毕清晨到“看不到明天”，第二页进入夜晚启真湖，第三页写入重生入校的三句收束文本。这个组件只负责视觉节奏；登录、存档和 WebSocket 启动仍由 `App.vue` 在序章完成后统一处理。
+`App.vue` 挂载后立即执行入口分流，不再等待序章完成。历史序章组件、文案、旧测试和设计说明已归档至仓库根目录 `archive/prologue/`，不参与前端构建；旧的 `zjus_prologue_seen_v1` 标记被忽略。
 
 ```mermaid
 graph TD
@@ -66,8 +61,7 @@ graph TD
 
 ### `App.vue`
 
-- 启动时先检查 `zjus_prologue_seen_v1`；未看过序章时暂不执行鉴权分流，也不建立 WebSocket。
-- 序章完成后读取 `localStorage`：
+- 启动时读取 `localStorage` 并立即决定入口阶段：
   - `zju_jwt` / `zju_token`：JWT，用于 HTTP/WS 鉴权。
   - `zju_user_token`：长期学生凭证，用于老玩家登录。
   - `zju_saves`：老玩家登录返回的存档摘要。

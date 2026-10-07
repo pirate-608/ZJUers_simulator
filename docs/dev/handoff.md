@@ -12,7 +12,7 @@ ZJUers Simulator 是一个 Vue 3 + FastAPI 的校园模拟文字游戏。前端�
 login -> save_select -> character_create -> loading -> playing -> ended
 ```
 
-首次访问站点时，前端会在上述 `GamePhase` 流程前播放一次可跳过的登录前序章，并用 `localStorage.zjus_prologue_seen_v1` 记录已看过；序章期间不执行登录分流，也不建立 WebSocket。
+前端挂载后立即根据现有凭证、存档摘要和 `game_started` 执行入口分流。登录前序章已移至仓库根目录 `archive/prologue/`，不参与运行或构建；旧的 `localStorage.zjus_prologue_seen_v1` 标记不再读写。
 
 没有入学考试或招生考试流程。新玩家通过邀请码登录后选择专业并分配 `world/stat_definitions.json` 中 `allocatable=true` 的初始属性；老玩家通过昵称、邀请码和长期学生凭证登录后选择已有存档或新开一局。
 

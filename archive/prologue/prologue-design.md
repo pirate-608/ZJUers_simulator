@@ -1,5 +1,7 @@
 # 登录前序章实现说明
 
+> 已于 2026-10-07 从游戏入口移除。本页保留原实现说明，代码位于 `archive/prologue/`，不参与游戏构建。
+
 - 实现位置：`zjus-frontend/src/components/PrologueScene.vue` 与 `zjus-frontend/src/data/prologue.ts`
 
 - 文本来源：序章文本已内置在前端 `prologue.ts` 中，不依赖后端静态 world 路径

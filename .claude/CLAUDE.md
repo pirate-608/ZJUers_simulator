@@ -17,7 +17,7 @@ Current player entry flow:
 login -> save_select -> character_create -> loading -> playing -> ended
 ```
 
-On a browser's first visit, the frontend may show a skippable pre-login prologue before this `GamePhase` flow. It is stored with `localStorage.zjus_prologue_seen_v1`; while it is active, App startup must not route to login/save/character pages or open the WebSocket.
+App startup immediately selects login, save selection, character creation, or game loading from stored credentials. The pre-login prologue is archived in `archive/prologue/` and is not imported or built; the legacy `localStorage.zjus_prologue_seen_v1` key is ignored.
 
 There is no entrance-exam/admission-test flow anymore. New players authenticate with invite code, save their long-lived student credential, choose a major, allocate stats, then enter the game. Returning players authenticate with nickname + invite code + student credential, then choose a save slot or start a new game.
 
@@ -124,8 +124,8 @@ Backend:
 
 Frontend:
 
-- `zjus-frontend/src/App.vue`: pre-login prologue gate, phase routing, global modals, guide startup.
-- `zjus-frontend/src/components/PrologueScene.vue` and `src/data/prologue.ts`: first-visit prologue text, image mapping, and seen-state key.
+- `zjus-frontend/src/App.vue`: immediate player-entry routing, global modals, guide startup.
+- `archive/prologue/`: historical prologue component, copy, entry-gate tests, and design notes; excluded from active app builds and tests.
 - `zjus-frontend/src/components/LoginView.vue`: Invite-code login, plus session-scoped custom general LLM config and an optional custom RP MiniMax API key for DingTalk M2-her.
 - `zjus-frontend/src/components/SaveSelect.vue`: returning-user save selection or new game.
 - `zjus-frontend/src/data/statDefinitions.generated.ts`: generated stat metadata from backend world data; regenerate via `scripts/sync_stat_definitions.py --write`.

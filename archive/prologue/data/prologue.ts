@@ -1,5 +1,5 @@
 /**
- * Static first-visit prologue copy and image mapping.
+ * Archived first-visit prologue copy and image mapping.
  *
  * The text is intentionally bundled in the frontend so the pre-login scene can
  * play before any backend/API/WebSocket dependency is touched.

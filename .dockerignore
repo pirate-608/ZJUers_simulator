@@ -5,6 +5,7 @@ __recycle_bin/
 .vscode/
 .idea/
 temp/
+archive/
 venv/
 .env
 .env.key

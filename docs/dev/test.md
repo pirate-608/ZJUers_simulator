@@ -29,7 +29,7 @@ cd zjus-backend
 
 当前重点：
 
-- `src/App.spec.js`：登录前序章闸门、登录/存档启动分流、WebSocket 不应在序章期间提前连接。
+- `src/App.spec.js`：首次访问直接登录、存档/角色创建分流、已开始游戏立即连接一次 WebSocket，以及旧学生凭证和序章标记的兼容行为。
 - `src/stores/gameStore.spec.ts`：钉钉联系人状态恢复、未读数、本地已读更新和成就详情归一化。
 - `src/stores/gameStore.spec.ts`：道具目录、已拥有道具和持有加成的状态恢复。
 - `src/components/CharacterCreate.spec.js`：属性定义元数据驱动的角色创建表单和 `stats` map 提交。

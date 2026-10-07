@@ -32,7 +32,7 @@
         <button type="button">进入求是园</button>
       </div>
       <div class="demo-entry-copy">
-        <h4>序章之后，才会进入登录/存档/角色创建流程。</h4>
+        <h4>登录后选择存档，或创建新的角色。</h4>
         <p>文档 demo 使用静态 mock 状态，不会发送登录请求，也不会建立 WebSocket。</p>
       </div>
     </div>

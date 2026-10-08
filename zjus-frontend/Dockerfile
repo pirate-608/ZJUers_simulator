@@ -1,15 +1,15 @@
 #
 # ZJUers Simulator frontend image.
 #
-# Stage 1 builds the Vue application; Stage 2 serves static files with Nginx.
+# Build static assets natively; only the Nginx runtime varies by target platform.
 #
-FROM node:22-alpine AS builder
+FROM --platform=$BUILDPLATFORM node:22-alpine AS builder
 
 WORKDIR /app
 
 # Copy dependency manifests first so Docker can reuse install layers.
-COPY package.json package-lock.json* ./
-RUN npm install
+COPY package.json package-lock.json ./
+RUN npm ci --no-audit --no-fund
 
 COPY . .
 RUN npm run build

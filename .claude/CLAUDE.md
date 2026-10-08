@@ -44,6 +44,8 @@ In production, backend startup defaults to SQL echo off and skips `Base.metadata
 
 Keep `sqlalchemy[asyncio]` in backend requirements so clean images install `greenlet`; the Dockerfile checks dependency consistency and async imports during the build. Compose service commands use `migrate`, not its container name `zjus_migrate`. This one-shot service exiting with code `0` means the migration succeeded; nonzero exits require checking the migration logs.
 
+Frontend images build static assets with `FROM --platform=$BUILDPLATFORM` and `npm ci`; do not run Node dependency installs under target-platform QEMU. Keep `zjus-frontend/.dockerignore` excluding host dependencies and build output. Release tag pushes publish both images; manual `docker-release.yml` runs accept `target=all|backend|frontend` to retry only the needed image, publishing `latest`, the selected ref name, and the commit SHA tag without moving existing Git version tags.
+
 OpenAPI regeneration path:
 
 ```powershell

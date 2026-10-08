@@ -1,0 +1,8 @@
+# Keep host dependencies and generated output out of the Linux build context.
+node_modules/
+dist/
+.vite/
+.git/
+*.log
+core
+core.*

@@ -228,6 +228,25 @@ Compose 会等待数据库就绪、迁移成功和向量导入成功后再启动
 - 后端 Dockerfile 在安装依赖后运行 `pip check` 和异步 SQLAlchemy 导入检查，缺少依赖应在镜像构建阶段失败。
 - 不执行 `docker compose down -v` 来修复依赖问题；它会删除持久化数据库卷。
 
+### 前端多架构镜像与单独重发
+
+前端 Dockerfile 的 Node 构建阶段使用 `--platform=$BUILDPLATFORM`，通过 `npm ci` 安装锁文件中的依赖并生成架构无关的静态页面；最后的 Nginx 镜像仍分别支持 `linux/amd64` 和 `linux/arm64`。不要让 Node 安装和编译步骤通过 QEMU 模拟目标架构；这会增加耗时，也可能出现 `Illegal instruction`。
+
+`zjus-frontend/.dockerignore` 排除本机 `node_modules`、`dist` 和 core dump，避免把 Windows 或另一架构的依赖覆盖到容器中。
+
+推送版本 tag 默认发布前后端。若仅重发前端，可在 GitHub Actions 的镜像发布工作流中选择 `target=frontend`，或执行：
+
+```bash
+gh workflow run docker-release.yml --ref main -f target=frontend
+```
+
+手动运行发布 `latest`、运行 ref 名称（此例为 `main`）和 `sha-<commit>`，不会移动已有 Git 版本 tag，也不会重发后端。镜像发布成功且当前后端已正常运行时，生产服务器只需更新 Nginx 服务：
+
+```bash
+docker compose -f docker-compose.yml pull nginx
+docker compose -f docker-compose.yml up -d --no-deps nginx
+```
+
 ## 测试与检查
 
 后端：

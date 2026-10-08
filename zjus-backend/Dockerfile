@@ -12,7 +12,10 @@ RUN apt-get update && apt-get install -y \
 
 COPY requirements.txt .
 
-RUN pip install --no-cache-dir -r requirements.txt
+# Fail the build if async database dependencies are missing or incompatible.
+RUN pip install --no-cache-dir -r requirements.txt \
+    && pip check \
+    && python -c "import greenlet; from sqlalchemy.ext.asyncio import async_engine_from_config"
 
 COPY . .
 

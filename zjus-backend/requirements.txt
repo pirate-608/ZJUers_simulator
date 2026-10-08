@@ -7,8 +7,8 @@ uvicorn[standard]>=0.27.0
 python-multipart>=0.0.7
 
 # --- 数据库 (PostgreSQL + Async) ---
-# 此时业界标准的 ORM 框架，支持异步操作
-sqlalchemy>=2.0.25
+# asyncio extra 显式安装 greenlet，供异步 ORM 和 Alembic 迁移使用。
+sqlalchemy[asyncio]>=2.0.25
 # 最快的 Python 异步 PostgreSQL 驱动
 asyncpg>=0.29.0
 # 数据库版本迁移工具 (管理表结构变更，如增加新的成就字段)

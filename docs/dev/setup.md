@@ -210,6 +210,24 @@ docker compose run --rm migrate alembic revision --autogenerate -m "message"
 docker compose up -d migrate
 ```
 
+### 生产镜像更新与迁移排错
+
+生产服务器显式使用基础 Compose 文件，避免自动合并本地开发 override。在修复后的镜像已经发布后，重新拉取并重建应用服务：
+
+```bash
+docker compose -f docker-compose.yml pull backend migrate seed_embeddings nginx
+docker compose -f docker-compose.yml up -d --force-recreate migrate seed_embeddings backend nginx
+docker compose -f docker-compose.yml logs --tail=100 migrate backend
+```
+
+Compose 会等待数据库就绪、迁移成功和向量导入成功后再启动后端。若迁移仍失败，先排查日志，不要反复重启后端。
+
+- Compose 的服务名是 `migrate`；`zjus_migrate` 是容器名，仅适用于 `docker logs zjus_migrate` 等容器命令。
+- `migrate` 是一次性任务，`Exited (0)` 代表成功；`Exited (1)` 等非零退出代表失败。
+- 若日志提示缺少 `greenlet`，检查镜像是否包含修复后的 `sqlalchemy[asyncio]` 依赖。SQLAlchemy 2.1 不再默认安装它；不要只在临时容器内补装，也不要因此回滚数据库。
+- 后端 Dockerfile 在安装依赖后运行 `pip check` 和异步 SQLAlchemy 导入检查，缺少依赖应在镜像构建阶段失败。
+- 不执行 `docker compose down -v` 来修复依赖问题；它会删除持久化数据库卷。
+
 ## 测试与检查
 
 后端：

@@ -2,8 +2,6 @@
 #
 # Copy to docker-compose.override.yml when you need host access to the backend
 # and source-built images instead of published Docker Hub images.
-version: '3.8'
-
 services:
   backend:
     build:

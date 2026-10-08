@@ -42,6 +42,8 @@ docker compose logs --tail=200 backend
 Production `docker-compose.yml` does not publish the backend port to the host; Nginx reaches `backend:8000` over the Docker network. Local development and OpenAPI generation rely on `docker-compose.override.yml` to publish `127.0.0.1:8000:8000`.
 In production, backend startup defaults to SQL echo off and skips `Base.metadata.create_all`; database structure should come from the `migrate` Alembic service.
 
+Keep `sqlalchemy[asyncio]` in backend requirements so clean images install `greenlet`; the Dockerfile checks dependency consistency and async imports during the build. Compose service commands use `migrate`, not its container name `zjus_migrate`. This one-shot service exiting with code `0` means the migration succeeded; nonzero exits require checking the migration logs.
+
 OpenAPI regeneration path:
 
 ```powershell

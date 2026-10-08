@@ -82,3 +82,9 @@
 - 后端：先看日志，再看 Redis 快照内容是否合理。
 - 前端：检查 WebSocket 数据流和渲染异常。
 - 数据：验证 world JSON 的结构与字段完整性。
+
+### 16. 迁移报缺少 greenlet，或者 no such service: zjus_migrate？
+- 后端依赖必须使用 `sqlalchemy[asyncio]`，显式安装异步 SQLAlchemy 所需的 `greenlet`；只声明 `sqlalchemy` 会在部分新版本的干净镜像中漏装。
+- Compose 命令使用服务名 `migrate`，例如 `docker compose logs migrate`；`zjus_migrate` 是容器名，不是服务名。
+- 迁移容器正常完成后显示 `Exited (0)`；它不需要像后端一样持续运行。非零退出才需要排查。
+- 生产应拉取修复后的镜像并重建迁移容器，而不是在旧容器中临时 `pip install`。完整更新步骤见[生产镜像更新与迁移排错](./setup.md#生产镜像更新与迁移排错)。

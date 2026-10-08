@@ -2,8 +2,6 @@
 #
 # The backend is reachable by Nginx over the Docker network; local host-port
 # publishing lives in docker-compose.override.yml.
-version: '3.8'
-
 services:
   backend:
     image: ${DOCKER_USERNAME:-pirate608}/zjus-backend:latest

@@ -44,7 +44,7 @@ In production, backend startup defaults to SQL echo off and skips `Base.metadata
 
 Keep `sqlalchemy[asyncio]` in backend requirements so clean images install `greenlet`; the Dockerfile checks dependency consistency and async imports during the build. Compose service commands use `migrate`, not its container name `zjus_migrate`. This one-shot service exiting with code `0` means the migration succeeded; nonzero exits require checking the migration logs.
 
-Frontend images build static assets with `FROM --platform=$BUILDPLATFORM` and `npm ci`; do not run Node dependency installs under target-platform QEMU. Keep `zjus-frontend/.dockerignore` excluding host dependencies and build output. Release tag pushes publish both images; manual `docker-release.yml` runs accept `target=all|backend|frontend` to retry only the needed image, publishing `latest`, the selected ref name, and the commit SHA tag without moving existing Git version tags.
+Frontend images build static assets with `FROM --platform=$BUILDPLATFORM` and `npm ci`; do not run Node dependency installs under target-platform QEMU. Keep `zjus-frontend/.dockerignore` excluding host dependencies and build output. Release tag pushes publish both images; manual `docker-release.yml` runs accept `target=all|backend|frontend` to retry only the needed image, publishing `latest`, the selected ref name, and the commit SHA tag without moving existing Git version tags. Prebuilt asset checks must include `world/holiday_events.json`; production still needs the corresponding host-mounted world file updated.
 
 OpenAPI regeneration path:
 
@@ -123,7 +123,7 @@ Backend:
 - `zjus-backend/app/services/balance_admin.py`: admin form schema, validation, atomic file publish, audit snapshot restore.
 - `zjus-backend/app/services/item_admin.py`: admin item economy/catalog form schema, validation, atomic file publish, audit snapshot restore.
 - `zjus-backend/app/repositories/redis_repo.py`: active game state, TTL, cooldowns, event history, DingTalk state, item state.
-- `zjus-backend/scripts/generate_content_library.py`: offline event/CC98 library generation through OpenAI-compatible `chat/completions`; can point at a cloud endpoint or local Ollama `/v1`, while embedding/query vectors stay on local Ollama `bge-m3`.
+- `zjus-backend/scripts/generate_content_library.py`: offline event/CC98/holiday generation through OpenAI-compatible `chat/completions`; can point at a cloud endpoint or local Ollama `/v1`, while embedding/query vectors stay on local Ollama `bge-m3`.
 - `zjus-backend/scripts/sync_stat_definitions.py` and `validate_world_data.py`: keep frontend stat metadata and world effect fields in sync with `world/stat_definitions.json`.
 - `zjus-backend/app/core/llm.py` and `dingtalk_llm.py`: LLM-backed content generation and fallbacks.
   Graduation summaries use LLM first, but library mode or LLM failures must fall back to GPA-branched text from `world/graduation_comments.json`.
@@ -197,6 +197,12 @@ Semester transitions:
 
 - New semesters reset courses and course states, reset elapsed time, and recover energy halfway toward 100 with `ceil((100 + current_energy) / 2)` without reducing energy already above 100.
 - Final exams compute both a term GPA and a cumulative GPA by credit-weighted grade points. `PlayerStats.gpa` stores cumulative GPA; `highest_gpa` stores the best single-term GPA for achievements/user summary; `gpa_points_total` and `gpa_credits_total` persist the cumulative weighted totals.
+- Prepare courses before `RedisRepository.commit_semester_transition()` CAS commits the term index, course maps, timer, exam flag and holiday state together. A tracked transition task acknowledges with `new_semester`/`tick` and restarts ticking without waiting for SQL or an LLM. Optional `expected_semester_idx` prevents stale requests from advancing again.
+- The transcript stays open until a new-term snapshot confirms the transition. All frontend snapshot handlers share semester-boundary resets and reject older terms; pending UI probes `get_state` after 5 seconds and offers retry after 15 seconds. This pending flag is not another backend pause state.
+- `world/holiday_events.json` supplies winter/summer choices for library/hybrid modes and AI fallback (20-second overall generation deadline). Persist `pending/ready/resolved` with a unique term token in Redis `holiday_state` and save stats JSON `_holiday_state`; apply holiday effects and resolved status atomically. Defer delivery while paused, restore unanswered choices on reconnect, and never supplement historical holidays for legacy saves. Pending holidays block ordinary random-event replacement.
+- Keep completed transcripts in Redis `semester_summary` and private save metadata `_semester_summary` so reconnects restore results without rerunning exams. Strip private metadata before building player-facing stats.
+- Runtime saves use `SaveService.schedule_save()` to capture immutable values and serialize writes per user/slot using independent SQL sessions and 12-second deadlines. Socket cleanup cancels observers, not accepted writes; shutdown drains the queue. Autosave warnings use `toast.action=semester_autosave`, never `save_result`, which is reserved for manual saves/exits.
+- Reconnecting with `load_save_slot` reuses Redis only when its active slot matches; otherwise wait for that slot's queued saves before loading PostgreSQL. Deployments must update the mounted world directory as well as images, including `holiday_events.json`. Opt-in local Compose coverage lives in `tests/integration/test_semester_recovery.py` (`RUN_GAME_INTEGRATION=1`).
 
 Relax actions:
 
@@ -233,6 +239,7 @@ World data:
 - `world/stat_definitions.json` is the stat single source of truth. After changing it, run `python scripts/sync_stat_definitions.py --write` from `zjus-backend/`, then `python scripts/validate_world_data.py`.
 - Use `scripts/scaffold_game_stat.py add <stat_id>` to draft a new stat definition and review checklist; it does not modify gameplay code unless called with `--write`.
 - `validate_world_data.py` checks stat definitions, item effects, event-library effects, and generated frontend stat metadata freshness.
+- Generate holidays with `scripts/generate_content_library.py --holidays N --append`, specifying the local `/v1` endpoint/model when using Ollama. New rows use a runtime-derived output schema, seasonal quotas, strict validation, title deduplication and atomic checkpoints; single-season runs require an existing complete library and `--append`. For supported local Qwen models use `--reasoning-effort none --max-tokens 3072` to avoid thinking-only output. Failed/partial runs return nonzero and must never publish an empty or one-season replacement. Generator tests mock the model API in `tests/unit/test_content_library_generation.py`; review generated copy/effects before deployment.
 - `game_balance.json.tick.interval_seconds` is the actual engine tick interval used by `GameEngine.run_loop`; keep balance docs/admin validation aligned with this runtime behavior.
 
 Content generation:

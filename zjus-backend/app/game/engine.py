@@ -18,10 +18,12 @@ from typing import Any, Callable, Coroutine, Literal, Optional
 from sqlalchemy import update
 
 from app.content.event_library import pick_cc98_post, pick_random_event
+from app.content.holiday_library import pick_holiday_event
 from app.core.database import AsyncSessionLocal
 from app.core.events import GameEvent
 from app.core.input_safety import safe_username_for_prompt
 from app.core.llm import (
+    DEFAULT_LLM_TIMEOUT_SECONDS,
     generate_cc98_post,
     generate_dingtalk_message,
     generate_dingtalk_message_for_character,
@@ -44,6 +46,7 @@ from app.schemas.dingtalk import (
     normalize_dingtalk_role,
     now_ts,
 )
+from app.schemas.holiday import HolidayEvent, HolidayState
 from app.services.game_service import GameService
 from app.services.save_service import SaveService
 
@@ -367,6 +370,12 @@ class GameEngine:
         self._relax_inflight: set[str] = set()
         self._dingtalk_state_lock = asyncio.Lock()
         self._items_lock = asyncio.Lock()
+        self._event_state_lock = asyncio.Lock()
+        self._transition_task: asyncio.Task[Any] | None = None
+        self._holiday_task: asyncio.Task[Any] | None = None
+        self._holiday_delivered_id: str | None = None
+        self._runtime_revision = 0
+        self._closed = False
         self._ttl_refresh_interval_seconds = 600
         self._last_ttl_refresh = 0.0
         # Speed is session-local; the persisted world balance keeps available modes.
@@ -459,9 +468,7 @@ class GameEngine:
         role = normalize_dingtalk_role(
             str(contact.get("role") or msg_data.get("role") or "unknown")
         )
-        contact_id = str(
-            contact.get("contact_id") or build_contact_id(sender, role)
-        )
+        contact_id = str(contact.get("contact_id") or build_contact_id(sender, role))
         is_urgent = bool(contact.get("is_urgent", msg_data.get("is_urgent", False)))
         content = ""
         message_raw = msg_data.get("message")
@@ -490,9 +497,7 @@ class GameEngine:
     ) -> list[DingTalkContact]:
         """Return reusable closed contacts ordered from quietest to newest."""
         closed = [
-            contact
-            for contact in contacts.values()
-            if contact.round.status != "open"
+            contact for contact in contacts.values() if contact.round.status != "open"
         ]
         closed.sort(key=lambda c: (c.last_message_at, c.contact_id))
         return closed
@@ -728,9 +733,7 @@ class GameEngine:
             logger.warning("Generic dingtalk reply fallback failed: %s", e)
         return self._fallback_dingtalk_reply_result(contact, reply_count)
 
-    def _sanitize_dingtalk_effects(
-        self, settlement: Any
-    ) -> tuple[str, dict[str, int]]:
+    def _sanitize_dingtalk_effects(self, settlement: Any) -> tuple[str, dict[str, int]]:
         if not isinstance(settlement, dict):
             return "这轮对话没有产生明显影响。", {}
         desc = str(settlement.get("desc") or "这轮对话产生了一些影响。").strip()
@@ -817,6 +820,7 @@ class GameEngine:
             self._run_task.cancel()
         self.is_running = True
         self._run_task = asyncio.create_task(self.run_loop())
+        self._track_task(self._restore_holiday_event())
 
     async def check_and_trigger_gameover(
         self, stats: dict[str, Any] | None = None
@@ -931,13 +935,14 @@ class GameEngine:
         logger.info(f"State-based Game loop started for {self.user_id}")
 
         tick_count = 0
+        revision = self._runtime_revision
         try:
-            while self.is_running:
+            while self.is_running and revision == self._runtime_revision:
                 # Real-time sleep shortens under speed-up, while game time
                 # remains discrete.
                 tick_interval = max(1, int(balance.tick_interval))
                 await asyncio.sleep(tick_interval / self.speed_multiplier)
-                if not self.is_running:
+                if not self.is_running or revision != self._runtime_revision:
                     break
                 tick_count += 1
 
@@ -1084,7 +1089,8 @@ class GameEngine:
 
         except Exception as e:
             logger.error(f"Engine Loop Error: {e}", exc_info=True)
-            self.stop()
+            if self._run_task in (None, asyncio.current_task()):
+                self.stop()
 
     async def _action_allowed_by_runtime_state(self, action: object) -> bool:
         """Return whether an action may run while the engine is stopped.
@@ -1123,7 +1129,11 @@ class GameEngine:
                 logger.warning("Failed to verify exam state for next_semester: %s", e)
             await self.emit(
                 "toast",
-                {"message": "期末结算完成后才能进入下学期", "level": "warning"},
+                {
+                    "message": "期末结算完成后才能进入下学期",
+                    "level": "warning",
+                    "action": "next_semester",
+                },
             )
             return False
 
@@ -1168,16 +1178,58 @@ class GameEngine:
         action = action_data.get("action")
         target = action_data.get("target")
         value = action_data.get("value")
+        if self._transition_task and not self._transition_task.done():
+            if action not in {
+                "start",
+                "get_state",
+                "set_speed",
+                "set_mode",
+                "dingtalk_mark_read",
+            }:
+                await self.emit(
+                    "toast",
+                    {
+                        "message": "学期正在切换，请稍候",
+                        "level": "info",
+                        "action": str(action),
+                    },
+                )
+                return
         if not await self._action_allowed_by_runtime_state(action):
             return
 
         if action in {"start", "get_state"}:
             await self._push_update()
+            await self._restore_semester_summary()
+            await self._restore_holiday_event(force_delivery=True)
+            return
+        if action == "next_semester":
+            expected = action_data.get("expected_semester_idx")
+            if expected is not None and (
+                isinstance(expected, bool) or not isinstance(expected, int)
+            ):
+                await self.emit(
+                    "toast",
+                    {
+                        "message": "无效的学期编号",
+                        "level": "warning",
+                        "action": "next_semester",
+                    },
+                )
+                return
+            self._transition_task = self._track_task(self._next_semester(expected))
             return
         if action == "pause":
             self.pause()
             return
         if action == "resume":
+            stats = (await self.repo.get_snapshot()).stats.model_dump()
+            if (
+                int(stats.get("exam_completed") or 0)
+                or int(stats.get("semester_idx") or 1) >= 9
+            ):
+                await self._restore_semester_summary()
+                return
             self.resume()
             return
         if action == "restart":
@@ -1209,7 +1261,7 @@ class GameEngine:
                     {"mode": self.mode, "llm_available": self.llm_available},
                 )
             # Probe custom/general LLM availability on the first mode request.
-            if not self._llm_probed:
+            if not self._llm_probed and new_mode != GameMode.LIBRARY:
                 self._llm_probed = True
                 self._track_task(self._probe_llm())
             return
@@ -1261,9 +1313,6 @@ class GameEngine:
                 await self._handle_final_exam()
             elif action == "event_choice":
                 await self._handle_event_choice(action_data)
-            elif action == "next_semester":
-                await self._next_semester()
-
             await self.check_and_trigger_gameover()
         except Exception as e:
             logger.error(f"Action Error {action}: {e}")
@@ -1566,19 +1615,18 @@ class GameEngine:
             {"failed_count": failed_count}
         )
 
-        await self.emit(
-            "semester_summary",
-            {
-                "data": {
-                    "term_gpa": term_gpa,
-                    "cgpa": cgpa,
-                    "gold_earned": gold_earned,
-                    "failed_count": failed_count,
-                    "courses": courses_result,
-                    "achievements": new_achievements,
-                }
-            },
-        )
+        summary = {
+            "semester_idx": int(stats.get("semester_idx") or 1),
+            "semester_name": stats.get("semester", "本学期"),
+            "term_gpa": term_gpa,
+            "cgpa": cgpa,
+            "gold_earned": gold_earned,
+            "failed_count": failed_count,
+            "courses": courses_result,
+            "achievements": new_achievements,
+        }
+        await self.repo.set_semester_summary(summary)
+        await self.emit("semester_summary", {"data": summary})
 
         await self._push_update(msg)
 
@@ -1867,7 +1915,14 @@ class GameEngine:
             return
 
         self._random_event_inflight = True
+        revision = self._runtime_revision
         try:
+            holiday = await self.repo.get_holiday_state()
+            if (
+                holiday.status in {"pending", "ready"}
+                or await self.repo.get_current_event()
+            ):
+                return
             history = await self.repo.get_event_history()
             snapshot = await self.repo.get_snapshot()
             stats = await self._effective_stats(snapshot.stats.model_dump())
@@ -1924,7 +1979,7 @@ class GameEngine:
                         return
 
             if event_data:
-                if not self.is_running:
+                if not self.is_running or revision != self._runtime_revision:
                     return
                 # Deduplicate both library and LLM events through a stable event ID.
                 event_id = event_data.get("id")
@@ -1935,13 +1990,19 @@ class GameEngine:
                     )
                     event_data["id"] = event_id
 
-                await self.repo.add_event_to_history(event_id)
-                if not self.is_running:
-                    return
-                await self.repo.set_current_event(event_data)
-                if not self.is_running:
-                    return
-                await self.emit("random_event", {"data": event_data})
+                async with self._event_state_lock:
+                    if not self.is_running or revision != self._runtime_revision:
+                        return
+                    if await self.repo.get_current_event():
+                        return
+                    holiday = await self.repo.get_holiday_state()
+                    if holiday.status in {"pending", "ready"}:
+                        return
+                    event_data["semester_idx"] = int(stats.get("semester_idx") or 1)
+                    await self.repo.add_event_to_history(event_id)
+                    await self.repo.set_current_event(event_data)
+                    if self.is_running:
+                        await self.emit("random_event", {"data": event_data})
         except Exception as e:
             logger.error(f"Random event error: {e}", exc_info=True)
         finally:
@@ -1967,8 +2028,13 @@ class GameEngine:
 
     async def _handle_event_choice(self, data):
         """Apply one validated option from the current server-side random event."""
+        async with self._event_state_lock:
+            await self._apply_event_choice(data)
+        await self._restore_holiday_event()
+
+    async def _apply_event_choice(self, data):
         option_id = str(data.get("option_id", "")).strip()
-        current_event = await self.repo.pop_current_event()
+        current_event = await self.repo.get_current_event()
         if not current_event:
             msg = "事件已经过期。"
             await self._push_update(msg)
@@ -1988,12 +2054,35 @@ class GameEngine:
             await self._emit_feedback("事件结果", msg, kind="event", auto_close_ms=5000)
             return
 
+        event_id = str(current_event.get("id") or "")
+        if data.get("event_id") is not None and data["event_id"] != event_id:
+            await self.emit(
+                "toast", {"message": "事件已变化，请重新同步", "level": "warning"}
+            )
+            return
+        consumed = await self.repo.consume_event_choice(event_id, option_id)
+        if not consumed:
+            await self.emit(
+                "toast", {"message": "事件已结算或过期", "level": "warning"}
+            )
+            return
+
         effects = selected_option.get("effects", {})
         if not isinstance(effects, dict):
             effects = {}
         desc = effects.get("desc", "")
         changes: list[dict[str, Any]] = []
+        # Holiday effects and delivery status commit together in Redis. A cancelled
+        # socket cannot save a resolved holiday with only half its rewards applied.
+        if current_event.get("kind") == "holiday":
+            changes = [
+                self._feedback_change(field, change["delta"], change["value"])
+                for field, change in consumed.get("_applied_effects", {}).items()
+                if change["delta"]
+            ]
         for key, val in effects.items():
+            if current_event.get("kind") == "holiday":
+                break
             if key == "desc":
                 continue
             # Only stat-registry-approved fields may be changed by events.
@@ -2021,6 +2110,23 @@ class GameEngine:
             auto_close_ms=5000,
             changes=changes,
         )
+        if current_event.get("kind") == "holiday":
+            # Capture the complete settlement, excluding ready-state autosaves.
+            try:
+                task = await SaveService.schedule_save(
+                    self.repo, self.db_factory, self.save_slot
+                )
+                self._track_task(self._observe_autosave(task))
+            except Exception:
+                logger.exception("Could not save settled holiday for %s", self.user_id)
+                await self.emit(
+                    "toast",
+                    {
+                        "message": "假期选择已生效，但自动保存失败，请手动保存。",
+                        "level": "warning",
+                        "action": "semester_autosave",
+                    },
+                )
 
     async def _trigger_dingtalk_message(self):
         """Trigger a DingTalk message, preferring the M2-her RP pipeline."""
@@ -2232,73 +2338,244 @@ class GameEngine:
             self._achievement_config = {}
         return self._achievement_config
 
-    async def _next_semester(self):
-        """Advance to the next semester or emit graduation payloads."""
-        self.stop()
-
-        async with self.db_factory() as db:
-            transition = await self.game_service.process_semester_transition(
-                db,
-                holiday_event_factory=generate_random_event,
-                save_slot=self.save_slot,
-            )
-
-        current_semester_idx = transition.get("semester_idx")
-
-        if transition.get("status") == "graduated":
-            stats = await self._effective_stats(transition.get("stats") or {})
-            achievements = stats.get("achievements")
-            if isinstance(achievements, list):
-                stats["achievement_details"] = self._achievement_details(achievements)
-            # Generate the graduation summary after final stats are known.
-            from app.core.llm import fallback_wenyan_report, generate_wenyan_report
-
-            if self.mode == GameMode.LIBRARY or not self.llm_available:
-                wenyan_report = fallback_wenyan_report(stats)
-            else:
-                wenyan_report = await generate_wenyan_report(
-                    stats, llm_override=self.llm_override
-                )
+    async def _observe_autosave(self, task: asyncio.Task[bool]) -> None:
+        """Report failures without using the manual save/exit acknowledgement."""
+        success = await asyncio.shield(task)
+        if not success and not self._closed:
             await self.emit(
-                "graduation",
+                "toast",
                 {
-                    "data": {
-                        "msg": "恭喜你从折姜大学毕业！",
-                        "final_stats": stats,
-                        "wenyan_report": wenyan_report,
-                    }
+                    "message": "自动保存失败或超时，当前游戏仍可继续，请手动保存。",
+                    "level": "warning",
+                    "action": "semester_autosave",
                 },
             )
-            # Graduation is terminal, so the loop remains stopped.
+
+    async def _schedule_autosave(self, snapshot: Any = None) -> None:
+        """Capture quickly, then let the shared save queue own the database work."""
+        try:
+            async with self._event_state_lock:
+                task = await SaveService.schedule_save(
+                    self.repo, self.db_factory, self.save_slot, snapshot
+                )
+            self._track_task(self._observe_autosave(task))
+        except Exception:
+            logger.exception("Could not schedule autosave for %s", self.user_id)
+            await self.emit(
+                "toast",
+                {
+                    "message": "自动保存暂不可用，请稍后手动保存。",
+                    "level": "warning",
+                    "action": "semester_autosave",
+                },
+            )
+
+    async def _restore_holiday_event(self, *, force_delivery: bool = False) -> None:
+        """Resume saved generation or redeliver an unanswered holiday choice."""
+        if not self.is_running or self._closed:
             return
+        state = await self.repo.get_holiday_state()
+        snapshot = await self.repo.get_snapshot()
+        stats = snapshot.stats.model_dump()
+        if state.semester_idx != int(stats.get("semester_idx") or 1) or int(
+            stats.get("exam_completed") or 0
+        ):
+            return
+        if state.status == "ready":
+            await self._publish_holiday_event(state, force_delivery=force_delivery)
+        elif state.status == "pending" and (
+            self._holiday_task is None or self._holiday_task.done()
+        ):
+            self._holiday_task = self._track_task(self._prepare_holiday_event(state))
 
-        # Re-read Redis after the service writes the new semester state.
-        new_snapshot = await self.repo.get_snapshot()
-        new_stats = await self._effective_stats(new_snapshot.stats.model_dump())
-        semester_idx = int(new_stats.get("semester_idx") or current_semester_idx or 1)
-        base_duration = balance.get_semester_duration(semester_idx)
-        elapsed = int(new_stats.get("elapsed_game_time", 0) or 0)
-        semester_time_left = self._get_semester_time_left(elapsed, base_duration)
+    async def _prepare_holiday_event(self, state: HolidayState) -> None:
+        """Generate off the receive loop, with a whole-request deadline and fallback."""
+        event = None
+        if self.mode != GameMode.AI:
+            event = pick_holiday_event(state.season)
+        if event is None and self.llm_available:
+            try:
+                snapshot = await self.repo.get_snapshot()
+                stats = await self._effective_stats(snapshot.stats.model_dump())
+                raw = await asyncio.wait_for(
+                    generate_random_event(
+                        stats,
+                        await self.repo.get_event_history(),
+                        llm_override=self.llm_override,
+                        context=f"holiday_{state.season}",
+                    ),
+                    timeout=DEFAULT_LLM_TIMEOUT_SECONDS,
+                )
+                event = HolidayEvent.model_validate(raw)
+            except Exception:
+                logger.warning("Holiday AI failed; using local content", exc_info=True)
+                if self.mode == GameMode.AI:
+                    self.mode = GameMode.HYBRID
+                    self.llm_available = False
+                    if self.is_running:
+                        await self.emit(
+                            "mode_changed", {"mode": self.mode, "llm_available": False}
+                        )
+        event = event or pick_holiday_event(state.season)
+        event.id = state.token
+        event.semester_idx = state.semester_idx
+        state.status, state.event = "ready", event
+        if not await self.repo.update_holiday_if_current(state):
+            return
+        await self._publish_holiday_event(state)
+        await self._schedule_autosave()
 
+    async def _publish_holiday_event(
+        self, state: HolidayState, *, force_delivery: bool = False
+    ) -> None:
+        async with self._event_state_lock:
+            if not self.is_running or self._closed or state.event is None:
+                return
+            current_state = await self.repo.get_holiday_state()
+            snapshot = await self.repo.get_snapshot()
+            stats = snapshot.stats.model_dump()
+            if current_state.token != state.token or current_state.status != "ready":
+                return
+            if int(stats.get("semester_idx") or 1) != state.semester_idx or int(
+                stats.get("exam_completed") or 0
+            ):
+                return
+            if self._holiday_delivered_id == state.token and not force_delivery:
+                return
+            current_event = await self.repo.get_current_event()
+            if current_event and current_event.get("id") != state.token:
+                return
+            payload = state.event.model_dump()
+            await self.repo.set_current_event(payload)
+            if not self.is_running:
+                return
+            await self.emit("random_event", {"data": payload})
+            self._holiday_delivered_id = state.token
+
+    async def _emit_new_semester(
+        self, snapshot: Any, recovery: dict | None = None
+    ) -> None:
+        stats = await self._effective_stats(snapshot.stats.model_dump())
+        idx = int(stats.get("semester_idx") or 1)
         await self.emit(
             "new_semester",
             {
                 "data": {
-                    "semester_name": new_stats.get(
-                        "semester", f"第 {current_semester_idx} 学期"
+                    "semester_name": stats.get("semester", f"第 {idx} 学期"),
+                    "stats": stats,
+                    "courses": snapshot.courses,
+                    "course_states": snapshot.course_states,
+                    "course_info_json": stats.get("course_info_json", "[]"),
+                    "semester_time_left": self._get_semester_time_left(
+                        int(stats.get("elapsed_game_time") or 0),
+                        balance.get_semester_duration(idx),
                     ),
-                    "holiday_event": transition.get("holiday_event"),
-                    "stats": new_stats,
-                    "courses": new_snapshot.courses,
-                    "course_states": new_snapshot.course_states,
-                    "course_info_json": new_stats.get("course_info_json", "[]"),
-                    "semester_time_left": semester_time_left,
-                    "energy_recovery": transition.get("energy_recovery"),
+                    "energy_recovery": recovery,
                 }
             },
         )
-        await self._push_update("新学期开始了，加油！")
-        self.start()
+        await self._push_update(
+            "新学期开始了，加油！", snapshot=snapshot, effective_stats=stats
+        )
+
+    async def _next_semester(self, expected_semester_idx: int | None = None):
+        """Commit, acknowledge and start a term without waiting on SQL or an LLM."""
+        was_running = self.is_running
+        previous_idx = expected_semester_idx or 1
+        try:
+            previous = await self.repo.get_snapshot()
+            previous_idx = int(previous.stats.model_dump().get("semester_idx") or 1)
+            old_task = self._run_task
+            self.stop()
+            if (
+                old_task
+                and old_task is not asyncio.current_task()
+                and not old_task.done()
+            ):
+                try:
+                    await old_task
+                except asyncio.CancelledError:
+                    pass
+            self._runtime_revision += 1
+            self._holiday_delivered_id = None
+            if self._holiday_task and not self._holiday_task.done():
+                self._holiday_task.cancel()
+            transition = await self.game_service.process_semester_transition(
+                expected_semester_idx
+            )
+            snapshot = transition["snapshot"]
+            if transition["status"] == "graduated":
+                await self._schedule_autosave(snapshot)
+                await self._emit_graduation(transition["stats"])
+                return
+            await self._emit_new_semester(snapshot, transition.get("energy_recovery"))
+            await self._schedule_autosave(snapshot)
+            self.start()
+        except Exception:
+            logger.exception("Semester transition failed for %s", self.user_id)
+            await self.emit(
+                "toast",
+                {
+                    "message": "学期切换暂未完成，正在同步当前状态，请稍后重试。",
+                    "level": "warning",
+                    "action": "next_semester",
+                },
+            )
+            current = await self.repo.get_snapshot()
+            idx = int(current.stats.model_dump().get("semester_idx") or 1)
+            if previous_idx < idx <= 8:
+                await self._emit_new_semester(current)
+                self.start()
+            else:
+                await self._push_update(snapshot=current)
+                if was_running:
+                    self.start()
+
+    async def _restore_semester_summary(self) -> None:
+        """Recover the exam modal after reconnect, never reapply exam effects."""
+        if self._transition_task and not self._transition_task.done():
+            return
+        snapshot = await self.repo.get_snapshot()
+        stats = snapshot.stats.model_dump()
+        idx = int(stats.get("semester_idx") or 1)
+        if not int(stats.get("exam_completed") or 0) or idx > 8:
+            return
+        summary = await self.repo.get_semester_summary()
+        if not summary or int(summary.get("semester_idx") or idx) != idx:
+            summary = {
+                "semester_idx": idx,
+                "semester_name": stats.get("semester"),
+                "cgpa": float(stats.get("gpa") or 0),
+                "courses": [],
+            }
+        await self.emit("semester_summary", {"data": summary})
+
+    async def _emit_graduation(self, final_stats: dict[str, Any]) -> None:
+        from app.core.llm import fallback_wenyan_report, generate_wenyan_report
+
+        stats = await self._effective_stats(final_stats)
+        stats["achievement_details"] = self._achievement_details(
+            stats.get("achievements") or []
+        )
+        report = fallback_wenyan_report(stats)
+        if self.mode != GameMode.LIBRARY and self.llm_available:
+            try:
+                report = await asyncio.wait_for(
+                    generate_wenyan_report(stats, llm_override=self.llm_override),
+                    timeout=DEFAULT_LLM_TIMEOUT_SECONDS,
+                )
+            except Exception:
+                logger.warning("Graduation report timed out or failed; using fallback")
+        await self.emit(
+            "graduation",
+            {
+                "data": {
+                    "msg": "恭喜你从折姜大学毕业！",
+                    "final_stats": stats,
+                    "wenyan_report": report,
+                }
+            },
+        )
 
     async def _probe_llm(self):
         """Probe LLM availability in the background and downgrade if needed."""
@@ -2397,10 +2674,13 @@ class GameEngine:
             and self._run_task is not current_task
         ):
             self._run_task.cancel()
-        self._run_task = None
+        if self._run_task is not current_task:
+            self._run_task = None
 
     def shutdown(self):
         """Stop the tick loop and cancel pending background generation tasks."""
+        self._closed = True
+        self._runtime_revision += 1
         self.stop()
         for task in list(self._background_tasks):
             task.cancel()
@@ -2451,9 +2731,7 @@ class GameEngine:
                     major_info = (assignment or {}).get("major_info", {})
                     iq_buff = int(major_info.get("iq_buff", 0) or 0)
                 except Exception as exc:
-                    logger.warning(
-                        "Could not infer major IQ buff for restart: %s", exc
-                    )
+                    logger.warning("Could not infer major IQ buff for restart: %s", exc)
             iq_default = stat_definitions.by_id["iq"].default
             initial_iq = int(stats.get("iq", iq_default) or iq_default) - iq_buff
 
@@ -2502,6 +2780,10 @@ class GameEngine:
 
     async def _handle_restart(self):
         self.stop()
+        self._runtime_revision += 1
+        self._holiday_delivered_id = None
+        if self._holiday_task and not self._holiday_task.done():
+            self._holiday_task.cancel()
         snapshot = await self.repo.get_snapshot()
         stats = snapshot.stats.model_dump()
         username = safe_username_for_prompt(stats.get("username") or "ZJUer")
@@ -2529,6 +2811,7 @@ class GameEngine:
             await self.repo.set_game_data(self._build_initial_stats(username))
 
         self.speed_multiplier = 1.0
+        await self.repo.set_active_save_slot(self.save_slot)
         await self._emit_current_init()
         self.start()
 

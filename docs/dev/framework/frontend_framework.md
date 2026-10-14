@@ -170,6 +170,9 @@ WebSocket 首条消息包含：
 - `auth_error` 会清理当前游戏标记；若是存档错误则回到 `save_select`，否则回到 `login`。
 - `init` 将阶段切到 `playing` 并初始化课程、属性、剩余时间、`relax_cooldowns`、钉钉状态和道具状态。
 - `tick` 持续同步课程、属性、剩余时间和 `relax_cooldowns`。
+- `init` / `tick` / `state` / `new_semester` 共用快照同步逻辑。新学期重置旧课程映射、弹窗和暂停状态，保留钉钉联系人、背包、主题与倍速；迟到的旧学期快照不覆盖当前状态。
+- 成绩单的 `next_semester` 按钮等待服务器确认后才关闭，等待中禁用重复点击；5 秒后发送 `get_state`，15 秒后显示重新同步/重试入口。`isPendingSemesterTransition` 只是 UI 确认状态，不是后端的新暂停标记。
+- 假期回顾沿用 `RandomEventModal`，通过 `kind="holiday"` 标题区分并提交 `event_id`。暂停时不能选择，也不能隐式发送 `resume`。
 - `feedback` 调用 `gameStore.showFeedback()` 展示结果弹窗。
 - `dingtalk_state` 恢复钉钉联系人、私聊历史、未读数和回复选项。
 - `dingtalk_thread_update` 更新单个联系人线程；旧 `dingtalk_message` 会兼容映射到联系人线程。

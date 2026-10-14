@@ -23,6 +23,7 @@ if str(Path(__file__).resolve().parent) not in sys.path:
 
 from app.game.items import ItemCatalog  # noqa: E402
 from app.game.stat_definitions import StatDefinitions  # noqa: E402
+from app.content.holiday_library import load_holiday_library  # noqa: E402
 from sync_stat_definitions import OUTPUT_PATH, build_typescript  # noqa: E402
 
 WORLD_DIR = BACKEND_ROOT / "world"
@@ -107,6 +108,10 @@ def main() -> int:
 
     _validate_items(registry, errors)
     _validate_event_library(registry, errors)
+    try:
+        load_holiday_library(WORLD_DIR / "holiday_events.json")
+    except Exception as exc:
+        errors.append(f"world/holiday_events.json: {exc}")
     _validate_generated_frontend(errors)
 
     if errors:

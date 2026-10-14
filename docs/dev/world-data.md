@@ -13,9 +13,39 @@
 | 角色/向量 | `world/characters.json`、`character_embeddings.csv` | 钉钉角色检索、M2-her/generic LLM 上下文 | 否 |
 | 校园关键词 | `world/keywords.json` | 随机事件、钉钉、毕业总结和内容库生成语境 | 否 |
 | 事件/CC98 库 | `world/event_library*.json`、`world/cc98_library*.json` | `library` / `hybrid` 内容生成 | 否 |
+| 假期事件库 | `world/holiday_events.json` | 季节回顾与 AI 失败兜底；`validate_world_data.py` 校验 | 否 |
 | 毕业评价 | `world/graduation_comments.json` | 算法模式或 LLM 不可用时的毕业典礼兜底文案 | 否 |
 
 生产 Compose 会挂载 `./zjus-backend/world:/app/world`。因此服务器上的 Admin 数值/道具发布和手工编辑都会落到挂载目录；不要把生产配置只改在镜像内部。
+
+## 假期事件维护
+
+`holiday_events.json` 是事件数组，每项有唯一 `id`、`season`（`winter` / `summer`）、`title`、`desc` 和 2-4 个选项。两种季节都至少需要一项；选项 `id` 唯一，`effects` 使用属性注册表允许的事件字段，整数范围 -10 到 +10，`desc` 可提供结果文案。运行时 ID 会替换成该次返校的唯一 token。
+
+改动后运行 `python scripts/validate_world_data.py`。该文件与镜像一起更新时，服务器也必须同步挂载的 `world/`；宿主机缺文件会使用无数值变化的紧急兜底，不会卡住学期切换。v1 未将假期库加入 Admin 编辑页面。
+
+### 用本地 AI 批量补充
+
+沿用事件/CC98 的 `scripts/generate_content_library.py`，不需要新脚本或向量生成。启动 Ollama 并确认 `ollama list` 中有文本模型后，在 `zjus-backend/` 执行：
+
+```powershell
+..\.venv\Scripts\python.exe -u -X utf8 scripts/generate_content_library.py `
+  --holidays 40 --append --api-base http://127.0.0.1:11434/v1 `
+  --api-key ollama --model qwen3.5:4b --reasoning-effort none --max-tokens 3072
+..\.venv\Scripts\python.exe scripts/validate_world_data.py
+```
+
+- `--holidays`（别名 `--holidays-only`）指新增总数；默认寒暑假均分，奇数时多出的一条优先补较少的季节。
+- `--append` 保留已有条目，并按季节与规范化标题去重。继续运行同一命令会生成更多新内容，不是恢复同一任务的固定总目标。
+- 单独补寒假可加 `--holiday-season winter`，暑假为 `summer`；单季必须使用 `--append`，且原库应已包含两季。
+- `--holiday-batch-size 3` 控制每批数量；连续无有效批次达到 `--max-failed-batches 8` 时停止并以非零状态退出，避免无限生成。
+- 本地 Qwen 的思考输出可能耗尽预算而没有 JSON 正文；`--reasoning-effort none` 可在支持关闭思考的端点禁用该阶段，`--max-tokens` 显式限定输出。参数默认不发送，云端/其他模型只在兼容时指定。详见 [Ollama 兼容接口](https://docs.ollama.com/api/openai-compatibility)。脚本不会把思考字段当成事件正文。
+- 每条使用运行时 Pydantic schema 验证；非法字段、非整数、超过 ±10、空文案、重复选项会被拒绝。生成额外要求至少一个选项提供正向收益且正向总量不小于负向总量；压力减少计为正向。
+- 假期请求优先使用基于运行时模型与属性注册表构建的 JSON Schema，限定数组、季节、A/B 两个选项和允许的效果字段；端点不支持时回退到普通文本 JSON，再严格校验。`--no-json-mode` 可跳过结构化格式参数。运行时仍兼容手工维护的 2-4 个选项，详见 [Ollama 结构化输出](https://docs.ollama.com/capabilities/structured-outputs)。
+- 每个有效批次会验证完整库，并通过临时文件原子替换保存检查点。中断或失败时保留已写入的有效批次；覆盖模式在两季齐全前不会替换现有库，完成数量不足会返回失败。
+- 不加 `--append` 会覆盖整库，需生成至少 2 条并包含两季。批量发布前仍需抽样检查剧情多样性与数值强度；自动校验不等于完整的玩法平衡评审。
+
+文本生成仍使用 OpenAI 兼容接口，云端可替换 `--api-base` / `--model`，但 API Key 建议通过 `OPENAI_API_KEY` 环境变量提供；embedding 的本地 `bge-m3` 配置不变。
 
 ## 数值平衡管理
 

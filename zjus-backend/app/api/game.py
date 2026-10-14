@@ -54,11 +54,9 @@ async def persist_save_with_timeout(
 ) -> tuple[bool, str | None]:
     """Persist a save and return a user-facing timeout reason when needed."""
     try:
-        async with AsyncSessionLocal() as db:
-            success = await asyncio.wait_for(
-                save_service.persist_to_db(repo, db, save_slot=save_slot),
-                timeout=_SAVE_TIMEOUT_SECONDS,
-            )
+        async with asyncio.timeout(_SAVE_TIMEOUT_SECONDS):
+            task = await save_service.schedule_save(repo, AsyncSessionLocal, save_slot)
+            success = await asyncio.shield(task)
         return success, None
     except TimeoutError:
         logger.error(
@@ -67,6 +65,9 @@ async def persist_save_with_timeout(
             save_slot,
         )
         return False, "保存超时，请检查网络后重试"
+    except Exception:
+        logger.exception("Save request failed for user %s", repo.user_id)
+        return False, "保存失败，请稍后重试"
 
 
 async def get_current_user_id(token: str) -> tuple[str | None, str | None]:
@@ -257,7 +258,7 @@ async def websocket_endpoint(websocket: WebSocket):
                 )
                 return
 
-        active_save_slot = selected_save_slot or 1
+        active_save_slot = selected_save_slot or await repo.get_active_save_slot() or 1
 
         async with AsyncSessionLocal() as db:
             game_context = await game_service.prepare_game_context(
@@ -273,6 +274,8 @@ async def websocket_endpoint(websocket: WebSocket):
                 user_id,
             )
             return
+
+        await repo.set_active_save_slot(active_save_slot)
 
         snapshot = await repo.get_snapshot()
         final_stats = snapshot.stats.model_dump()
@@ -376,7 +379,14 @@ async def websocket_endpoint(websocket: WebSocket):
 
         forwarder_task = asyncio.create_task(event_forwarder())
         await engine._push_update()
-        engine.start()
+        if semester_idx >= 9:
+            graduation_stats = snapshot.stats.model_dump()
+            graduation_stats["achievements"] = list(snapshot.achievements)
+            engine._track_task(engine._emit_graduation(graduation_stats))
+        elif int(final_stats.get("exam_completed") or 0):
+            await engine._restore_semester_summary()
+        else:
+            engine.start()
 
         # Receive loop with lightweight rate limiting.
         last_msg_time = 0.0
@@ -384,14 +394,46 @@ async def websocket_endpoint(websocket: WebSocket):
         while True:
             data_text = await websocket.receive_text()
 
-            now = time.time()
-            if now - last_msg_time < _WS_MIN_MSG_INTERVAL:
-                continue
-            last_msg_time = now
-
             try:
                 data_json = json.loads(data_text)
+                if not isinstance(data_json, dict):
+                    continue
                 action = data_json.get("action")
+                if not isinstance(action, str):
+                    continue
+                now = time.monotonic()
+                if action != "ping":
+                    if now - last_msg_time < _WS_MIN_MSG_INTERVAL:
+                        await manager.send_personal_message(
+                            {
+                                "type": "toast",
+                                "message": "操作过快，请稍后重试",
+                                "level": "warning",
+                                "action": action,
+                            },
+                            user_id,
+                        )
+                        continue
+                    last_msg_time = now
+                if (
+                    engine._transition_task
+                    and not engine._transition_task.done()
+                    and action
+                    in {
+                        "save_game",
+                        "save_and_exit",
+                        "exit_without_save",
+                    }
+                ):
+                    await manager.send_personal_message(
+                        {
+                            "type": "save_result",
+                            "success": False,
+                            "message": "学期正在切换，请稍后再保存或退出",
+                        },
+                        user_id,
+                    )
+                    continue
 
                 if action == "ping":
                     manager.update_heartbeat(user_id)
@@ -400,6 +442,8 @@ async def websocket_endpoint(websocket: WebSocket):
 
                 elif action == "save_and_exit":
                     logger.info("User %s requested save_and_exit", username)
+                    was_running = engine.is_running
+                    engine.stop()
                     success, failure_reason = await persist_save_with_timeout(
                         save_service, repo, active_save_slot
                     )
@@ -426,6 +470,8 @@ async def websocket_endpoint(websocket: WebSocket):
                         except Exception as e:
                             logger.debug("save_and_exit close skipped: %s", e)
                         break
+                    if was_running:
+                        engine.start()
 
                 elif action == "save_game":
                     logger.info("User %s requested save_game", username)
@@ -447,6 +493,7 @@ async def websocket_endpoint(websocket: WebSocket):
 
                 elif action == "exit_without_save":
                     logger.info("User %s exiting without save", username)
+                    engine.shutdown()
                     await cleanup_redis_data(repo)
                     await manager.send_personal_message(
                         {"type": "exit_confirmed"}, user_id
@@ -488,8 +535,7 @@ async def websocket_endpoint(websocket: WebSocket):
                                 {
                                     "type": "toast",
                                     "message": (
-                                        "无效的游戏速度，请选择 0.5 到 5.0 "
-                                        "之间的倍率"
+                                        "无效的游戏速度，请选择 0.5 到 5.0 之间的倍率"
                                     ),
                                     "level": "warning",
                                 },
@@ -529,6 +575,7 @@ async def websocket_endpoint(websocket: WebSocket):
                                     "type": "toast",
                                     "message": "请先完成本学期期末考试",
                                     "level": "warning",
+                                    "action": "next_semester",
                                 },
                                 user_id,
                             )

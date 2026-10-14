@@ -111,9 +111,7 @@ def fallback_wenyan_report(final_stats: dict | None = None) -> str:
     endpoint is unavailable, so graduation still has a substantial ceremony text.
     """
     stats = final_stats or {}
-    gpa = _to_float(
-        stats.get("gpa", stats.get("cgpa", stats.get("highest_gpa", 0.0)))
-    )
+    gpa = _to_float(stats.get("gpa", stats.get("cgpa", stats.get("highest_gpa", 0.0))))
     config = _load_graduation_comments()
     comments = config.get("comments")
     if not isinstance(comments, list):
@@ -380,10 +378,14 @@ async def generate_random_event(
     player_stats: dict,
     history: list | None = None,
     llm_override: Optional[Dict[str, Any]] = None,
+    *,
+    context: str = "campus",
 ) -> dict[str, Any] | None:
     """Generate a random event with Redis-backed batch caching."""
     use_cache = _use_global_content_cache(llm_override)
-    event_key = "game:events_pool"
+    event_key = (
+        "game:events_pool" if context == "campus" else f"game:events_pool:{context}"
+    )
 
     # Use the cached pool before paying for another LLM batch.
     if use_cache:
@@ -409,6 +411,15 @@ async def generate_random_event(
         f'"effects": {{"sanity": 5, "desc": "..."}}}}] }}] }}'
     )
     messages.append({"role": "user", "content": prompt})
+    if context in {"holiday_winter", "holiday_summer"}:
+        season = "寒假" if context == "holiday_winter" else "暑假"
+        messages.append(
+            {
+                "role": "user",
+                "content": f"本次仅生成{season}回顾事件：家人、休息、旅行或社会实践。"
+                "不要生成正在上课的场景。假期已经结束，选择的影响将在新学期生效。",
+            }
+        )
     try:
         api_key, base_url, model = _resolve_llm_config(llm_override)
         llm_client = _get_client(api_key, base_url, cache=use_cache)

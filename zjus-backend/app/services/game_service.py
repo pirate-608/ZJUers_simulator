@@ -16,6 +16,7 @@ from app.game.items import items
 from app.game.stat_definitions import stat_definitions
 from app.repositories.redis_repo import RedisRepository
 from app.schemas.game_state import PlayerStats
+from app.schemas.holiday import HolidayState
 from app.services.save_service import SaveService
 from app.services.world_service import WorldService
 
@@ -47,7 +48,7 @@ class GameService:
     async def prepare_game_context(
         self,
         username: str,
-        db: AsyncSession = None, # type: ignore
+        db: AsyncSession = None,  # type: ignore
         save_slot: int = 1,
         force_load_save: bool = False,
     ) -> Dict[str, Any]:
@@ -57,12 +58,21 @@ class GameService:
             username: Current player's prompt-safe username.
             db: Optional database session used to restore persistent saves.
             save_slot: Save slot to load when PostgreSQL persistence is used.
-            force_load_save: Skip active Redis reuse and require a DB save.
+            force_load_save: Select this slot, reusing only matching active Redis.
 
         Returns:
             A status/data pair consumed by the WebSocket startup route.
         """
         if force_load_save and db:
+            if (
+                await self.repo.exists()
+                and await self.repo.get_active_save_slot() == save_slot
+            ):
+                return {
+                    "data": await self.repo.get_all_game_data(),
+                    "status": "existing",
+                }
+            await SaveService.wait_for_pending(self.user_id, save_slot)
             loaded = await SaveService.load_from_db(
                 self.user_id, self.repo, db, save_slot=save_slot
             )
@@ -80,6 +90,7 @@ class GameService:
             }
 
         if db:
+            await SaveService.wait_for_pending(self.user_id, save_slot)
             loaded = await SaveService.load_from_db(
                 self.user_id, self.repo, db, save_slot=save_slot
             )
@@ -111,14 +122,9 @@ class GameService:
         safe_username = safe_username_for_prompt(username)
         stat_defaults = stat_definitions.default_stats()
         initial_stats = PlayerStats.build_initial(username=safe_username).model_dump()
-        allocated_fields = {
-            stat_id: value for stat_id, value in overrides.items()
-        }
+        allocated_fields = {stat_id: value for stat_id, value in overrides.items()}
         allocated_fields.update(
-            {
-                f"initial_{stat_id}": value
-                for stat_id, value in overrides.items()
-            }
+            {f"initial_{stat_id}": value for stat_id, value in overrides.items()}
         )
         if "iq" in overrides:
             allocated_fields["iq"] = overrides["iq"] + major_info.get("iq_buff", 0)
@@ -169,12 +175,28 @@ class GameService:
         """Replace course state and recover energy for a newly entered semester."""
         snapshot = await self.repo.get_snapshot()
         stats = snapshot.stats.model_dump() or {}
+        fields, courses, states, recovery = await self._prepare_semester_data(
+            stats, semester_idx
+        )
+        await self.repo.update_courses_and_states(
+            stats_update=fields, courses=courses, states=states
+        )
+        return {"semester": fields["semester"], "energy_recovery": recovery}
+
+    async def _prepare_semester_data(self, stats: dict, semester_idx: int):
+        """Build a complete term before touching any active Redis state."""
         major_abbr = stats.get("major_abbr", "")
         my_courses = await self.world.get_semester_courses(major_abbr, semester_idx)
 
         sem_names = [
-            "大一秋冬", "大一春夏", "大二秋冬", "大二春夏",
-            "大三秋冬", "大三春夏", "大四秋冬", "大四春夏",
+            "大一秋冬",
+            "大一春夏",
+            "大二秋冬",
+            "大二春夏",
+            "大三秋冬",
+            "大三春夏",
+            "大四秋冬",
+            "大四春夏",
         ]
         term_name = (
             sem_names[semester_idx - 1]
@@ -189,6 +211,7 @@ class GameService:
             current_energy = energy_default
         recovered_energy = self.recover_energy_for_new_semester(current_energy)
         update_fields = {
+            "semester_idx": semester_idx,
             "semester": term_name,
             "elapsed_game_time": 0,
             "exam_completed": 0,
@@ -199,67 +222,53 @@ class GameService:
         courses_mastery = {str(c["id"]): 0 for c in my_courses}
         course_states = {str(c["id"]): 1 for c in my_courses}
 
-        await self.repo.update_courses_and_states(
-            stats_update=update_fields,
-            courses=courses_mastery,
-            states=course_states,
-        )
-        return {
-            "semester": term_name,
-            "energy_recovery": {
+        return (
+            update_fields,
+            courses_mastery,
+            course_states,
+            {
                 "before": current_energy,
                 "after": recovered_energy,
             },
-        }
+        )
 
     async def process_semester_transition(
         self,
-        db: AsyncSession,
-        holiday_event_factory=None,
-        save_slot: int = 1,
+        expected_semester_idx: int | None = None,
     ) -> Dict[str, Any]:
-        """Advance to the next semester, auto-save, or return graduation state."""
-        current_semester_idx = await self.repo.increment_semester()
+        """Commit a term atomically, without waiting for SQL or content generation."""
+        snapshot = await self.repo.get_snapshot()
+        stats = snapshot.stats.model_dump()
+        previous_idx = int(stats.get("semester_idx") or 1)
+        if previous_idx >= 9 or int(stats.get("exam_completed") or 0) != 1:
+            raise ValueError("期末结算完成后才能进入下学期")
+        if expected_semester_idx is not None and expected_semester_idx != previous_idx:
+            raise ValueError("学期状态已变化，请同步后重试")
 
-        async def _autosave_current_state() -> bool:
-            try:
-                autosave_ok = await SaveService.persist_to_db(
-                    self.repo, db, save_slot=save_slot
-                )
-                if autosave_ok:
-                    logger.info(
-                        "Auto-save at end of semester for user %s", self.user_id
-                    )
-                return autosave_ok
-            except Exception as e:
-                logger.error("Auto-save failed for user %s: %s", self.user_id, e)
-                return False
-
-        if current_semester_idx > 8:
-            snapshot = await self.repo.get_snapshot()
-            stats = snapshot.stats.model_dump()
-            achievements = list(await self.repo.get_unlocked_achievements())
-            stats["achievements"] = achievements
-            autosave_ok = await _autosave_current_state()
-            return {
-                "status": "graduated",
-                "semester_idx": current_semester_idx,
-                "stats": stats,
-                "autosave_ok": autosave_ok,
-            }
-
-        semester_reset = await self.reset_courses_for_new_semester(current_semester_idx)
-        holiday_event = None
-        if holiday_event_factory is not None:
-            holiday_event = await holiday_event_factory(
-                {"context": "假期", "semester": current_semester_idx}
+        current_semester_idx = previous_idx + 1
+        graduated = current_semester_idx > 8
+        recovery: dict[str, int] = {}
+        if graduated:
+            fields, courses, states = {"semester_idx": current_semester_idx}, None, None
+            holiday = HolidayState()
+        else:
+            fields, courses, states, recovery = await self._prepare_semester_data(
+                stats, current_semester_idx
             )
+            holiday = HolidayState.pending(current_semester_idx)
+        if not await self.repo.commit_semester_transition(
+            previous_idx, fields, courses, states, holiday
+        ):
+            raise ValueError("学期已切换或考试状态已变化，请同步后重试")
 
-        autosave_ok = await _autosave_current_state()
+        current = await self.repo.get_snapshot()
+        current_stats = current.stats.model_dump()
+        if graduated:
+            current_stats["achievements"] = list(current.achievements)
         return {
-            "status": "continued",
+            "status": "graduated" if graduated else "continued",
             "semester_idx": current_semester_idx,
-            "energy_recovery": semester_reset.get("energy_recovery", {}),
-            "holiday_event": holiday_event,
-            "autosave_ok": autosave_ok,
+            "stats": current_stats,
+            "snapshot": current,
+            "energy_recovery": recovery,
         }

@@ -13,6 +13,7 @@ class DummyRepo:
         self.exists_result = exists_result
         self.data = {"stats": {"username": "tester"}}
         self.set_game_data = AsyncMock()
+        self.get_active_save_slot = AsyncMock(return_value=None)
 
     async def exists(self):
         return self.exists_result
@@ -127,11 +128,11 @@ async def test_reset_courses_for_new_semester_recovers_energy_halfway_to_full():
 
 
 @pytest.mark.asyncio
-async def test_semester_transition_autosaves_after_course_reset():
+async def test_semester_transition_atomically_commits_complete_new_term():
     repo = Mock()
-    repo.increment_semester = AsyncMock(return_value=2)
+    repo.commit_semester_transition = AsyncMock(return_value=True)
     repo.get_snapshot = AsyncMock(
-        return_value=_Snapshot({"major_abbr": "CS", "energy": 40})
+        return_value=_Snapshot({"major_abbr": "CS", "energy": 40, "exam_completed": 1})
     )
     repo.update_courses_and_states = AsyncMock()
     world = Mock()
@@ -139,22 +140,16 @@ async def test_semester_transition_autosaves_after_course_reset():
         return_value=[{"id": "CS2001", "name": "数据结构"}]
     )
     service = GameService("1", repo, world=world)
-    save_order: list[int] = []
-
-    async def persist_after_reset(*args, **kwargs):
-        del args, kwargs
-        save_order.append(repo.update_courses_and_states.await_count)
-        return True
-
     with patch(
         "app.services.game_service.SaveService.persist_to_db",
-        new=AsyncMock(side_effect=persist_after_reset),
-    ):
-        result = await service.process_semester_transition(db=Mock(), save_slot=2)
+        new=AsyncMock(),
+    ) as persist:
+        result = await service.process_semester_transition(1)
+        persist.assert_not_awaited()
 
     assert result["status"] == "continued"
-    assert save_order == [1]
-    stats_update = repo.update_courses_and_states.await_args.kwargs["stats_update"]
+    stats_update = repo.commit_semester_transition.await_args.args[1]
+    assert stats_update["semester_idx"] == 2
     assert stats_update["semester"] == "大一春夏"
     assert stats_update["exam_completed"] == 0
     assert stats_update["elapsed_game_time"] == 0
@@ -163,6 +158,7 @@ async def test_semester_transition_autosaves_after_course_reset():
 @pytest.mark.asyncio
 async def test_engine_restart_rebuilds_initial_profile_and_emits_complete_init():
     repo = Mock()
+    repo.set_active_save_slot = AsyncMock()
     repo.get_snapshot = AsyncMock(
         side_effect=[
             _Snapshot(
@@ -242,14 +238,20 @@ async def test_engine_restart_rebuilds_initial_profile_and_emits_complete_init()
 @pytest.mark.asyncio
 async def test_engine_next_semester_autosaves_selected_slot():
     repo = Mock()
-    repo.get_snapshot = AsyncMock()
+    snapshot = _Snapshot({"semester_idx": 8, "exam_completed": 1})
+    repo.get_snapshot = AsyncMock(return_value=snapshot)
     repo.get_items_state = AsyncMock(
         return_value={"version": 1, "owned": [], "updated_at": 0}
     )
     save_service = Mock()
     game_service = Mock()
     game_service.process_semester_transition = AsyncMock(
-        return_value={"status": "graduated", "semester_idx": 9, "stats": {}}
+        return_value={
+            "status": "graduated",
+            "semester_idx": 9,
+            "stats": {},
+            "snapshot": snapshot,
+        }
     )
     engine = GameEngine(
         "1",
@@ -260,11 +262,17 @@ async def test_engine_next_semester_autosaves_selected_slot():
         save_slot=4,
     )
     engine.emit = AsyncMock()
+    engine._emit_graduation = AsyncMock()
 
-    with patch("app.core.llm.generate_wenyan_report", new=AsyncMock(return_value="ok")):
+    with patch(
+        "app.game.engine.SaveService.schedule_save", new=AsyncMock()
+    ) as schedule:
+        engine._observe_autosave = AsyncMock()
         await engine._next_semester()
+        await engine._background_tasks.pop()
+        engine.shutdown()
 
-    assert game_service.process_semester_transition.await_args.kwargs["save_slot"] == 4
+    assert schedule.await_args.args[2] == 4
 
 
 @pytest.mark.asyncio
@@ -297,6 +305,7 @@ async def test_final_exam_reports_credit_weighted_cumulative_gpa():
         return_value={"version": 1, "owned": [], "updated_at": 0}
     )
     repo.update_stats = AsyncMock()
+    repo.set_semester_summary = AsyncMock()
     repo.update_stat_safe = AsyncMock(return_value=0)
     repo.get_action_counts = AsyncMock(return_value={})
     repo.get_unlocked_achievements = AsyncMock(return_value=set())

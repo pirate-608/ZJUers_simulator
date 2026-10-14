@@ -17,6 +17,7 @@ from app.core.config import settings
 from app.game.stat_definitions import stat_definitions
 from app.schemas.dingtalk import DingTalkState
 from app.schemas.game_state import GameStateSnapshot
+from app.schemas.holiday import HolidayState
 
 logger = logging.getLogger(__name__)
 T = TypeVar("T")
@@ -45,6 +46,9 @@ class RedisRepository:
             "current_event": f"player:{user_id}:current_event",
             "dingtalk": f"player:{user_id}:dingtalk_state",
             "items": f"player:{user_id}:items_state",
+            "holiday": f"player:{user_id}:holiday_state",
+            "save_slot": f"player:{user_id}:save_slot",
+            "transcript": f"player:{user_id}:semester_summary",
         }
         self.ttl = RedisCache.normalize_ttl(
             getattr(settings, "REDIS_PLAYER_TTL_SECONDS", 86400)
@@ -176,6 +180,139 @@ class RedisRepository:
                 self.keys["items"],
                 json.dumps(state or {}, ensure_ascii=False),
                 ex=self.ttl,
+            )
+        )
+
+    async def get_active_save_slot(self) -> int | None:
+        """Identify the active slot so reconnects do not rewind a live session."""
+        raw = await _await_if_needed(self.redis.get(self.keys["save_slot"]))
+        try:
+            slot = int(raw) if raw is not None else 0
+            return slot if slot > 0 else None
+        except (TypeError, ValueError):
+            return None
+
+    async def set_active_save_slot(self, save_slot: int) -> None:
+        await _await_if_needed(
+            self.redis.set(self.keys["save_slot"], str(save_slot), ex=self.ttl)
+        )
+
+    async def get_holiday_state(self) -> HolidayState:
+        raw = await _await_if_needed(self.redis.get(self.keys["holiday"]))
+        return HolidayState.from_raw(raw)
+
+    async def get_semester_summary(self) -> dict | None:
+        """Read the completed transcript without rerunning exam settlement."""
+        raw = await _await_if_needed(self.redis.get(self.keys["transcript"]))
+        try:
+            data = json.loads(raw) if raw else None
+            return data if isinstance(data, dict) else None
+        except (TypeError, ValueError):
+            return None
+
+    async def set_semester_summary(self, data: dict | None) -> None:
+        if data is None:
+            await _await_if_needed(self.redis.delete(self.keys["transcript"]))
+        else:
+            await _await_if_needed(
+                self.redis.set(
+                    self.keys["transcript"],
+                    json.dumps(data, ensure_ascii=False),
+                    ex=self.ttl,
+                )
+            )
+
+    async def set_holiday_state(self, state: HolidayState) -> None:
+        await _await_if_needed(
+            self.redis.set(self.keys["holiday"], state.model_dump_json(), ex=self.ttl)
+        )
+
+    async def update_holiday_if_current(self, state: HolidayState) -> bool:
+        """Reject late generation from an old semester or restarted game."""
+        script = """
+        local raw = redis.call('GET', KEYS[2])
+        if not raw then return 0 end
+        local holiday = cjson.decode(raw)
+        if holiday.token ~= ARGV[1] or holiday.status ~= 'pending' then return 0 end
+        if tonumber(redis.call('HGET', KEYS[1], 'semester_idx')) ~= tonumber(ARGV[2])
+           or tonumber(redis.call('HGET', KEYS[1], 'exam_completed') or 0) ~= 0
+        then return 0 end
+        redis.call('SET', KEYS[2], ARGV[3], 'EX', ARGV[4])
+        return 1
+        """
+        return bool(
+            await _await_if_needed(
+                self.redis.eval(
+                    script,
+                    2,
+                    self.keys["stats"],
+                    self.keys["holiday"],
+                    state.token,
+                    state.semester_idx,
+                    state.model_dump_json(),
+                    self.ttl,
+                )
+            )
+        )
+
+    async def commit_semester_transition(
+        self,
+        expected_semester_idx: int,
+        stats_update: dict[str, Any],
+        courses: dict[str, Any] | None,
+        states: dict[str, Any] | None,
+        holiday: HolidayState,
+    ) -> bool:
+        """CAS the complete term state, preserving it when another request won.
+
+        Course preparation happens before this script. Readers therefore see
+        either the complete old term or the complete new term, never a mixture.
+        """
+        payload = {
+            "stats": self._normalize_stats_update(stats_update),
+            "courses": self._normalize_course_map(courses, float),
+            "states": self._normalize_course_map(states, int),
+            "replace_courses": courses is not None,
+        }
+        script = """
+        local idx = tonumber(redis.call('HGET', KEYS[1], 'semester_idx') or 1)
+        if idx ~= tonumber(ARGV[1])
+           or tonumber(redis.call('HGET', KEYS[1], 'exam_completed') or 0) ~= 1
+        then return 0 end
+        local data = cjson.decode(ARGV[2])
+        for field, value in pairs(data.stats) do
+            redis.call('HSET', KEYS[1], field, value)
+        end
+        if data.replace_courses then
+            redis.call('DEL', KEYS[2], KEYS[3])
+            for id, value in pairs(data.courses) do
+                redis.call('HSET', KEYS[2], id, value)
+            end
+            for id, value in pairs(data.states) do
+                redis.call('HSET', KEYS[3], id, value)
+            end
+        end
+        redis.call('DEL', KEYS[4], KEYS[6])
+        redis.call('SET', KEYS[5], ARGV[3], 'EX', ARGV[4])
+        for _, key in ipairs(KEYS) do redis.call('EXPIRE', key, ARGV[4]) end
+        return 1
+        """
+        return bool(
+            await _await_if_needed(
+                self.redis.eval(
+                    script,
+                    6,
+                    self.keys["stats"],
+                    self.keys["courses"],
+                    self.keys["course_states"],
+                    self.keys["current_event"],
+                    self.keys["holiday"],
+                    self.keys["transcript"],
+                    expected_semester_idx,
+                    json.dumps(payload, ensure_ascii=False),
+                    holiday.model_dump_json(),
+                    self.ttl,
+                )
             )
         )
 
@@ -412,3 +549,86 @@ class RedisRepository:
             return json.loads(raw)
         except (TypeError, ValueError, json.JSONDecodeError):
             return None
+
+    async def get_current_event(self) -> dict[str, Any] | None:
+        """Read an event without consuming a still-unvalidated choice."""
+        raw = await _await_if_needed(self.redis.get(self.keys["current_event"]))
+        try:
+            data = json.loads(raw) if raw else None
+            return data if isinstance(data, dict) else None
+        except (TypeError, ValueError):
+            return None
+
+    async def consume_event_choice(self, event_id: str, option_id: str) -> dict | None:
+        """Atomically accept one matching choice and complete holiday metadata."""
+        script = """
+        local raw = redis.call('GET', KEYS[1])
+        if not raw then return nil end
+        local event = cjson.decode(raw)
+        if (event.id or '') ~= ARGV[1] then return nil end
+        if event.semester_idx and tonumber(event.semester_idx) ~=
+           tonumber(redis.call('HGET', KEYS[2], 'semester_idx')) then return nil end
+        if tonumber(redis.call('HGET', KEYS[2], 'exam_completed') or 0) ~= 0 then
+            return nil
+        end
+        local selected = nil
+        for _, option in ipairs(event.options or {}) do
+            if option.id == ARGV[2] or option[' id'] == ARGV[2] then
+                selected = option
+            end
+        end
+        if not selected then return nil end
+        if event.kind == 'holiday' then
+            local holiday_raw = redis.call('GET', KEYS[3])
+            if not holiday_raw then return nil end
+            local holiday = cjson.decode(holiday_raw)
+            if holiday.token ~= ARGV[1] or holiday.status ~= 'ready' then return nil end
+            local bounds = cjson.decode(ARGV[4])
+            event._applied_effects = {}
+            for field, value in pairs(selected.effects or {}) do
+                local config = bounds[field]
+                local delta = tonumber(value)
+                if config and delta then
+                    delta = math.max(-10, math.min(10, math.floor(delta)))
+                    local before = tonumber(redis.call('HGET', KEYS[2], field))
+                        or config.default
+                    local after = math.max(config.min,
+                        math.min(config.max, before + delta))
+                    redis.call('HSET', KEYS[2], field, after)
+                    event._applied_effects[field] = {
+                        delta = after - before, value = after
+                    }
+                end
+            end
+            holiday.status = 'resolved'
+            holiday.event = cjson.null
+            redis.call('SET', KEYS[3], cjson.encode(holiday), 'EX', ARGV[3])
+            redis.call('EXPIRE', KEYS[2], ARGV[3])
+        end
+        redis.call('DEL', KEYS[1])
+        return cjson.encode(event)
+        """
+        raw = await _await_if_needed(
+            self.redis.eval(
+                script,
+                3,
+                self.keys["current_event"],
+                self.keys["stats"],
+                self.keys["holiday"],
+                event_id,
+                option_id,
+                self.ttl,
+                json.dumps(
+                    {
+                        stat.id: {
+                            "min": stat.min,
+                            "max": stat.max,
+                            "default": stat.default,
+                        }
+                        for stat in stat_definitions.stats
+                        if stat.allow_event_effect
+                    }
+                ),
+            )
+        )
+        return json.loads(raw) if raw else None

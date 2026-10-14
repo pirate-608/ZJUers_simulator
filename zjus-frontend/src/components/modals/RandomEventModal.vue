@@ -9,7 +9,7 @@
     >
       <div class="card-header text-white py-3 bg-primary">
         <h5 class="mb-0 fw-bold">
-          🌟 突发事件：{{ data.title }}
+          {{ data.kind === 'holiday' ? '假期回顾' : '🌟 突发事件' }}：{{ data.title }}
         </h5>
       </div>
       <div class="card-body p-4">
@@ -28,6 +28,7 @@
             v-for="(opt, idx) in data.options"
             :key="idx" 
             class="btn btn-outline-primary text-start p-3"
+            :disabled="store.isPaused || store.isPendingSemesterTransition"
             @click="makeChoice(opt.id || String.fromCharCode(65 + idx))"
           >
             <strong>选项 {{ idx + 1 }}:</strong> {{ opt.text }}
@@ -54,12 +55,10 @@ const emit = defineEmits<{
 const data = computed(() => store.modalData as RandomEventModalData)
 
 const makeChoice = (optionId: string) => {
+  if (store.isPaused || store.isPendingSemesterTransition) return
+  const eventId = data.value.id
   store.closeModal()
-  emit('send-action', { action: 'event_choice', option_id: optionId })
-  
-  if (store.isPaused) {
-    emit('send-action', { action: 'resume' })
-  }
+  emit('send-action', { action: 'event_choice', option_id: optionId, event_id: eventId })
 }
 </script>
 

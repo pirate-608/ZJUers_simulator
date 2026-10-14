@@ -1,16 +1,19 @@
-"""Generate offline event-library and CC98-library content.
+"""Generate offline event, CC98, and seasonal holiday-library content.
 
 Copyright (c) 2026 pirate-608. Licensed under the MIT License.
 
 Notes:
     The script uses an OpenAI-compatible chat/completions endpoint and writes
-    generated data to `world/event_library.json` and `world/cc98_library.json`.
+    generated data to the corresponding JSON libraries under `world/`.
     It can target cloud APIs or a local Ollama `/v1` endpoint.
 
 Usage:
     python scripts/generate_content_library.py --events 300 --cc98 500
     python scripts/generate_content_library.py --events-only 100
     python scripts/generate_content_library.py --cc98-only 200
+    python scripts/generate_content_library.py --holidays 40 --append \
+        --api-base http://127.0.0.1:11434/v1 --model qwen3.5:4b \
+        --reasoning-effort none --max-tokens 3072
 """
 
 import argparse
@@ -20,8 +23,11 @@ import os
 import random
 import re
 import sys
+import tempfile
 import time
+import unicodedata
 import uuid
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -31,7 +37,9 @@ BACKEND_ROOT = Path(__file__).resolve().parent.parent
 if str(BACKEND_ROOT) not in sys.path:
     sys.path.insert(0, str(BACKEND_ROOT))
 
+from app.content.holiday_library import load_holiday_library  # noqa: E402
 from app.game.stat_definitions import stat_definitions  # noqa: E402
+from app.schemas.holiday import HOLIDAY_EFFECT_LIMIT, HolidayEvent  # noqa: E402
 
 # ============================================================
 # Configuration.
@@ -50,6 +58,8 @@ _config = {
         or "qwen3.5-flash"
     ),
     "temperature": float(os.environ.get("OPENAI_TEMPERATURE", "0.7")),
+    "reasoning_effort": os.environ.get("OPENAI_REASONING_EFFORT") or None,
+    "max_tokens": None,
     "json_mode": os.environ.get("OPENAI_JSON_MODE", "1").lower()
     not in {"0", "false", "no"},
 }
@@ -71,6 +81,7 @@ def allowed_event_effect_prompt() -> str:
     ]
     return "、".join(parts)
 
+
 # ============================================================
 # Load CC98 topic metadata.
 # ============================================================
@@ -85,7 +96,7 @@ if TOPIC_EXAMPLES_PATH.exists():
         topic_name = item["topic"]
         CC98_TOPIC_DATA[topic_name] = {
             "description": item.get("description", ""),
-            "examples": item.get("examples", [])
+            "examples": item.get("examples", []),
         }
     CC98_TOPICS = list(CC98_TOPIC_DATA.keys())
     print(f"✅ 已加载 {len(CC98_TOPICS)} 个 CC98 版面示例数据")
@@ -93,10 +104,19 @@ else:
     print("⚠️ 未找到 topic_examples.json，将使用默认 CC98_TOPICS 列表")
     # Fall back to a compact topic list when examples are unavailable.
     CC98_TOPICS = [
-        "似水流年", "心灵之约", "开怀一笑", "郁闷小屋",
-        "感性空间", "日用交易", "学习天地", "一路走来",
-        "实习兼职", "考研一族", "校园信息", "缘分天空",
-        "真我风采"
+        "似水流年",
+        "心灵之约",
+        "开怀一笑",
+        "郁闷小屋",
+        "感性空间",
+        "日用交易",
+        "学习天地",
+        "一路走来",
+        "实习兼职",
+        "考研一族",
+        "校园信息",
+        "缘分天空",
+        "真我风采",
     ]
 
 # ============================================================
@@ -116,6 +136,7 @@ else:
 # ============================================================
 # OpenAI-compatible API calls.
 # ============================================================
+
 
 def _api_base() -> str:
     return str(_config.get("api_base") or "").rstrip("/")
@@ -158,6 +179,7 @@ def _chat_once(
     messages: list[dict[str, str]],
     *,
     use_json_mode: bool,
+    json_schema: dict[str, Any] | None = None,
 ) -> str:
     kwargs: dict[str, Any] = {
         "model": str(_config["model"]),
@@ -165,15 +187,41 @@ def _chat_once(
         "temperature": float(_config.get("temperature", 0.7)),
     }
     if use_json_mode:
-        kwargs["response_format"] = {"type": "json_object"}
+        kwargs["response_format"] = (
+            {
+                "type": "json_schema",
+                "json_schema": {
+                    "name": "holiday_events",
+                    "schema": json_schema,
+                },
+            }
+            if json_schema
+            else {"type": "json_object"}
+        )
+    if _config.get("reasoning_effort"):
+        kwargs["reasoning_effort"] = _config["reasoning_effort"]
+    if _config.get("max_tokens"):
+        kwargs["max_tokens"] = _config["max_tokens"]
 
     response = client.chat.completions.create(**kwargs)
     if not response.choices:
         return ""
-    return _completion_text(response.choices[0].message.content)
+    text = _completion_text(response.choices[0].message.content)
+    if not text:
+        print(
+            "  模型未返回正文，finish_reason="
+            f"{response.choices[0].finish_reason}。可尝试 --reasoning-effort none，"
+            "调整 --max-tokens 或减小批次。"
+        )
+    return text
 
 
-def call_llm(messages: List[Dict[str, str]], max_retries: int = 3) -> Optional[str]:
+def call_llm(
+    messages: List[Dict[str, str]],
+    max_retries: int = 3,
+    *,
+    json_schema: dict[str, Any] | None = None,
+) -> Optional[str]:
     """Call an OpenAI-compatible chat/completions endpoint and return text."""
     if not _api_base().startswith(("http://", "https://")):
         print("  ⚠️ 无效的 API_BASE，必须以 http/https 开头")
@@ -182,34 +230,42 @@ def call_llm(messages: List[Dict[str, str]], max_retries: int = 3) -> Optional[s
     client = build_openai_client()
     use_json_mode = bool(_config.get("json_mode", True))
 
-    for attempt in range(max_retries):
-        try:
-            return _chat_once(client, messages, use_json_mode=use_json_mode)
-        except APITimeoutError:
-            print(f"  ⚠️ 请求超时 (尝试 {attempt + 1}/{max_retries})")
-        except APIConnectionError:
-            print(
-                f"  ⚠️ API 连接失败 (尝试 {attempt + 1}/{max_retries})，"
-                "请确认网络和 API_BASE 设置"
-            )
-        except OpenAIError as exc:
-            if use_json_mode:
-                print("  ⚠️ 当前端点不支持 JSON mode，改用普通文本模式重试")
-                use_json_mode = False
-                try:
-                    return _chat_once(client, messages, use_json_mode=False)
-                except Exception as retry_exc:
-                    print(
-                        f"  ⚠️ 普通文本模式仍失败: {retry_exc} "
-                        f"(尝试 {attempt + 1}/{max_retries})"
-                    )
-            else:
-                print(f"  ⚠️ API 调用失败: {exc} (尝试 {attempt + 1}/{max_retries})")
-        except Exception as exc:
-            print(f"  ⚠️ 调用失败: {exc} (尝试 {attempt + 1}/{max_retries})")
+    try:
+        for attempt in range(max_retries):
+            try:
+                return _chat_once(
+                    client,
+                    messages,
+                    use_json_mode=use_json_mode,
+                    json_schema=json_schema,
+                )
+            except APITimeoutError:
+                print(f"  ⚠️ 请求超时 (尝试 {attempt + 1}/{max_retries})")
+            except APIConnectionError:
+                print(
+                    f"  ⚠️ API 连接失败 (尝试 {attempt + 1}/{max_retries})，"
+                    "请确认网络和 API_BASE 设置"
+                )
+            except OpenAIError as exc:
+                if use_json_mode:
+                    print("  ⚠️ JSON mode 请求失败，改用普通文本模式重试")
+                    use_json_mode = False
+                    try:
+                        return _chat_once(client, messages, use_json_mode=False)
+                    except OpenAIError as retry_exc:
+                        print(
+                            f"  ⚠️ 普通文本模式仍失败: {retry_exc} "
+                            f"(尝试 {attempt + 1}/{max_retries})"
+                        )
+                else:
+                    print(f"  ⚠️ API 调用失败: {exc} (尝试 {attempt + 1}/{max_retries})")
+            except Exception as exc:
+                print(f"  ⚠️ 调用失败: {exc} (尝试 {attempt + 1}/{max_retries})")
 
-        if attempt < max_retries - 1:
-            time.sleep(2)
+            if attempt < max_retries - 1:
+                time.sleep(2)
+    finally:
+        client.close()
     return None
 
 
@@ -221,19 +277,26 @@ def extract_json(raw: str) -> Optional[Any]:
     text = raw.strip()
 
     # Strip markdown code fences before parsing.
-    text = re.sub(r'^```json\s*', '', text, flags=re.MULTILINE)
-    text = re.sub(r'^```\s*', '', text, flags=re.MULTILINE)
-    text = re.sub(r'\s*```$', '', text, flags=re.MULTILINE)
+    text = re.sub(r"^```json\s*", "", text, flags=re.MULTILINE)
+    text = re.sub(r"^```\s*", "", text, flags=re.MULTILINE)
+    text = re.sub(r"\s*```$", "", text, flags=re.MULTILINE)
+
+    # Parse valid JSON before heuristic repairs can damage URLs or quoted copy.
+    try:
+        return json.loads(text)
+    except json.JSONDecodeError:
+        pass
 
     # Remove JS-style comments that models sometimes include in JSON.
-    text = re.sub(r'//.*?$', '', text, flags=re.MULTILINE)
-    text = re.sub(r'/\*.*?\*/', '', text, flags=re.DOTALL)
+    text = re.sub(r"//.*?$", "", text, flags=re.MULTILINE)
+    text = re.sub(r"/\*.*?\*/", "", text, flags=re.DOTALL)
 
     # Escape raw control characters inside quoted strings. This heuristic is
     # intentionally conservative and targets common model formatting mistakes.
     def escape_control_chars(match):
         s = match.group(0)
-        return s.replace('\n', '\\n').replace('\r', '\\r').replace('\t', '\\t')
+        return s.replace("\n", "\\n").replace("\r", "\\r").replace("\t", "\\t")
+
     # Only touch double-quoted strings to avoid disturbing JSON structure.
     text = re.sub(
         r'"[^"\\]*(?:\\.[^"\\]*)*"',
@@ -243,8 +306,8 @@ def extract_json(raw: str) -> Optional[Any]:
     )
 
     # Remove trailing commas before object or array terminators.
-    text = re.sub(r',\s*}', '}', text)
-    text = re.sub(r',\s*]', ']', text)
+    text = re.sub(r",\s*}", "}", text)
+    text = re.sub(r",\s*]", "]", text)
 
     # Try strict JSON first, then tolerate single-quoted model output.
     try:
@@ -267,7 +330,7 @@ def extract_json(raw: str) -> Optional[Any]:
         start = None
         end = None
         for i, ch in enumerate(text):
-            if ch in '{[':
+            if ch in "{[":
                 start = i
                 break
         if start is not None:
@@ -275,14 +338,14 @@ def extract_json(raw: str) -> Optional[Any]:
             stack = []
             for i in range(start, len(text)):
                 ch = text[i]
-                if ch in '{[':
+                if ch in "{[":
                     stack.append(ch)
-                elif ch == '}' and stack and stack[-1] == '{':
+                elif ch == "}" and stack and stack[-1] == "{":
                     stack.pop()
                     if not stack:
                         end = i + 1
                         break
-                elif ch == ']' and stack and stack[-1] == '[':
+                elif ch == "]" and stack and stack[-1] == "[":
                     stack.pop()
                     if not stack:
                         end = i + 1
@@ -290,20 +353,20 @@ def extract_json(raw: str) -> Optional[Any]:
             if end:
                 json_text = text[start:end]
                 # Clean trailing commas in the extracted fragment.
-                json_text = re.sub(r',\s*}', '}', json_text)
-                json_text = re.sub(r',\s*]', ']', json_text)
+                json_text = re.sub(r",\s*}", "}", json_text)
+                json_text = re.sub(r",\s*]", "]", json_text)
                 try:
                     return json.loads(json_text)
                 except json.JSONDecodeError:
                     pass
 
         # If balanced matching fails, try from the first JSON-looking token.
-        start = text.find('{') if text.find('{') != -1 else text.find('[')
+        start = text.find("{") if text.find("{") != -1 else text.find("[")
         if start != -1:
             json_text = text[start:]
             # Clean up trailing commas before the final parse attempt.
-            json_text = re.sub(r',\s*}', '}', json_text)
-            json_text = re.sub(r',\s*]', ']', json_text)
+            json_text = re.sub(r",\s*}", "}", json_text)
+            json_text = re.sub(r",\s*]", "]", json_text)
             try:
                 return json.loads(json_text)
             except json.JSONDecodeError:
@@ -312,6 +375,7 @@ def extract_json(raw: str) -> Optional[Any]:
         pass
 
     return None
+
 
 def get_random_keywords(count: int = 3) -> str:
     """Return a prompt-ready sample of campus keywords and optional examples."""
@@ -330,6 +394,7 @@ def get_random_keywords(count: int = 3) -> str:
             example_text = f" 示例：{example}"
         lines.append(f"- {keyword}：{desc}{example_text}")
     return "浙大校园关键词（仅供参考）：\n" + "\n".join(lines)
+
 
 # ============================================================
 # Event library generation.
@@ -496,8 +561,7 @@ def generate_events(target_count: int) -> List[Dict[str, Any]]:
                 valid_count += 1
 
             print(
-                f"  ✅ {len(events)}/{target_count} 事件已生成 "
-                f"(本批次 +{valid_count})"
+                f"  ✅ {len(events)}/{target_count} 事件已生成 (本批次 +{valid_count})"
             )
 
             if valid_count == 0:
@@ -518,14 +582,15 @@ def generate_events(target_count: int) -> List[Dict[str, Any]]:
 
 CC98_EFFECTS = ["positive", "neutral", "negative"]
 
+
 def _choose_balanced_cc98_effect(effect_counts: Dict[str, int]) -> str:
     """Pick the least-used effect bucket so generated libraries stay balanced."""
     min_count = min(effect_counts.get(effect, 0) for effect in CC98_EFFECTS)
     candidates = [
-        effect for effect in CC98_EFFECTS
-        if effect_counts.get(effect, 0) == min_count
+        effect for effect in CC98_EFFECTS if effect_counts.get(effect, 0) == min_count
     ]
     return random.choice(candidates)
+
 
 def generate_cc98_posts(target_count: int) -> List[Dict[str, Any]]:
     """Generate CC98 post-library rows in balanced effect buckets."""
@@ -624,18 +689,19 @@ def generate_cc98_posts(target_count: int) -> List[Dict[str, Any]]:
             valid_count = 0
             for content in posts_data:
                 if content and isinstance(content, str):
-                    posts.append({
-                        "id": f"cc98_{uuid.uuid4().hex[:8]}",
-                        "effect": effect,
-                        "topic": topic,
-                        "content": content.strip(),
-                    })
+                    posts.append(
+                        {
+                            "id": f"cc98_{uuid.uuid4().hex[:8]}",
+                            "effect": effect,
+                            "topic": topic,
+                            "content": content.strip(),
+                        }
+                    )
                     effect_counts[effect] += 1
                     valid_count += 1
 
             print(
-                f"  ✅ {len(posts)}/{target_count} 帖子已生成 "
-                f"(本批次 +{valid_count})"
+                f"  ✅ {len(posts)}/{target_count} 帖子已生成 (本批次 +{valid_count})"
             )
 
             if valid_count == 0:
@@ -657,16 +723,305 @@ def generate_cc98_posts(target_count: int) -> List[Dict[str, Any]]:
 
 
 # ============================================================
-# CLI entry point.
+# Holiday library generation.
 # ============================================================
 
+HOLIDAY_THEMES = {
+    "winter": [
+        "团圆与家人",
+        "寒假老友",
+        "冬日运动",
+        "新年计划",
+        "返校准备",
+        "家乡见闻",
+    ],
+    "summer": [
+        "短途旅行",
+        "暑期实践",
+        "暑假兼职",
+        "夏日休息",
+        "兴趣爱好",
+        "家务与家人",
+    ],
+}
+
+
+def holiday_title_key(event: dict[str, Any]) -> tuple[str, str]:
+    """Identify repeated seasonal titles despite width or whitespace changes."""
+    title = unicodedata.normalize("NFKC", str(event.get("title", "")))
+    return str(event.get("season", "")), "".join(title.split())
+
+
+def holiday_generation_schema(season: str, batch_size: int) -> dict[str, Any]:
+    """Constrain small-model output using the runtime schema and stat registry."""
+    event = HolidayEvent.model_json_schema()
+    definitions = event.pop("$defs")
+    for field in ("id", "kind", "semester_idx"):
+        event["properties"].pop(field)
+    event["properties"]["season"] = {"type": "string", "enum": [season]}
+    event["required"].append("season")
+    event["additionalProperties"] = False
+    event["properties"]["options"].update(minItems=2, maxItems=2)
+    option = definitions["HolidayOption"]
+    option["additionalProperties"] = False
+    option["properties"]["id"]["enum"] = ["A", "B"]
+    option["properties"]["effects"] = {
+        "type": "object",
+        "additionalProperties": False,
+        "required": ["desc"],
+        "properties": {
+            "desc": {"type": "string", "minLength": 1},
+            **{
+                field: {
+                    "type": "integer",
+                    "minimum": -HOLIDAY_EFFECT_LIMIT,
+                    "maximum": HOLIDAY_EFFECT_LIMIT,
+                }
+                for field in sorted(stat_definitions.event_effect_fields)
+            },
+        },
+    }
+    return {
+        "type": "object",
+        "additionalProperties": False,
+        "required": ["events"],
+        "$defs": definitions,
+        "properties": {
+            "events": {
+                "type": "array",
+                "minItems": 1,
+                "maxItems": batch_size,
+                "items": event,
+            }
+        },
+    }
+
+
+def normalize_holiday_event(raw: Any, season: str) -> dict[str, Any]:
+    """Validate model output and require at least one balanced positive choice.
+
+    The runtime Pydantic model owns field/range validation. Generation also
+    rejects blank copy and purely punitive events before they enter the library.
+    """
+    if not isinstance(raw, dict) or raw.get("season", season) != season:
+        raise ValueError("Invalid holiday row or mismatched season")
+    event = HolidayEvent.model_validate(raw)
+    event.title, event.desc = event.title.strip(), event.desc.strip()
+    directions = {
+        stat.id: 1 if stat.positive_endpoint == "max" else -1
+        for stat in stat_definitions.stats
+        if stat.positive_endpoint != "none"
+    }
+    positive_choice = False
+    for option in event.options:
+        option.id, option.text = option.id.strip(), option.text.strip()
+        result = option.effects.get("desc")
+        if (
+            not isinstance(result, str)
+            or not result.strip()
+            or not option.text
+            or not option.id
+        ):
+            raise ValueError(
+                "Holiday options need nonblank text, ID and result description"
+            )
+        option.effects["desc"] = result.strip()
+        benefits = [
+            value * directions.get(field, 0)
+            for field, value in option.effects.items()
+            if field != "desc"
+        ]
+        positive_choice |= any(value > 0 for value in benefits) and sum(benefits) >= 0
+    if not event.title or not event.desc or not positive_choice:
+        raise ValueError("Holiday needs readable copy and a balanced positive choice")
+    if len({option.id for option in event.options}) != len(event.options):
+        raise ValueError("Holiday option IDs must remain unique after trimming")
+    return {
+        "id": f"holiday_{season}_{uuid.uuid4().hex}",
+        "season": season,
+        "title": event.title,
+        "desc": event.desc,
+        "options": [option.model_dump() for option in event.options],
+    }
+
+
+def publish_holiday_library(path: Path, rows: list[dict[str, Any]]) -> None:
+    """Validate a full checkpoint before atomically replacing the live library."""
+    temp_path = None
+    try:
+        with tempfile.NamedTemporaryFile(
+            mode="w",
+            encoding="utf-8",
+            dir=path.parent,
+            prefix=f".{path.name}.",
+            suffix=".tmp",
+            delete=False,
+        ) as output:
+            temp_path = Path(output.name)
+            json.dump(rows, output, ensure_ascii=False, indent=2)
+            output.write("\n")
+            output.flush()
+            os.fsync(output.fileno())
+        load_holiday_library(temp_path)
+        os.replace(temp_path, path)
+    finally:
+        if temp_path is not None:
+            temp_path.unlink(missing_ok=True)
+
+
+def generate_holidays(
+    target_count: int,
+    *,
+    season: str = "all",
+    batch_size: int = 3,
+    max_failed_batches: int = 8,
+    existing: list[dict[str, Any]] | None = None,
+    checkpoint: Callable[[list[dict[str, Any]]], None] | None = None,
+) -> list[dict[str, Any]]:
+    """Generate seasonal rows with finite retries and optional batch checkpoints.
+
+    Args:
+        target_count: Number of new rows, excluding existing library entries.
+        season: Both seasons or a selected winter/summer bucket.
+        batch_size: Maximum rows per request, reduced after failed batches.
+        max_failed_batches: Stop after this many consecutive unusable batches.
+        existing: Preserved entries used for title deduplication and balancing.
+        checkpoint: Called after accepted batches, with all generated rows.
+
+    Returns:
+        Valid new entries, possibly partial after interruption or failures.
+    """
+    if (
+        target_count < 0
+        or batch_size < 1
+        or max_failed_batches < 1
+        or season not in {"all", "winter", "summer"}
+    ):
+        raise ValueError("Invalid holiday generation options")
+    existing = existing or []
+    seen = {holiday_title_key(row) for row in existing}
+    quotas = {key: 0 for key in HOLIDAY_THEMES}
+    if season == "all":
+        quotas = {key: target_count // 2 for key in HOLIDAY_THEMES}
+        least_used = min(
+            quotas, key=lambda key: sum(row["season"] == key for row in existing)
+        )
+        quotas[least_used] += target_count % 2
+    else:
+        quotas[season] = target_count
+    counts = {key: 0 for key in quotas}
+    events: list[dict[str, Any]] = []
+    failures = 0
+    good_effects = "、".join(
+        f"{stat.id}{'增加' if stat.positive_endpoint == 'max' else '减少'}"
+        for stat in stat_definitions.stats
+        if stat.allow_event_effect and stat.positive_endpoint != "none"
+    )
+    allocatable = "、".join(
+        stat.id for stat in stat_definitions.allocatable if stat.allow_event_effect
+    )
+    try:
+        while len(events) < target_count and failures < max_failed_batches:
+            eligible = [key for key in quotas if counts[key] < quotas[key]]
+            current_season = min(eligible, key=lambda key: counts[key])
+            current_batch = min(
+                1 if failures >= 3 else batch_size,
+                quotas[current_season] - counts[current_season],
+            )
+            label = "寒假" if current_season == "winter" else "暑假"
+            theme = random.choice(HOLIDAY_THEMES[current_season])
+            recent = [
+                row["title"]
+                for row in [*existing, *events]
+                if row["season"] == current_season
+            ][-12:]
+            prompt = f"""你是浙大校园模拟游戏的假期事件设计师。
+生成 {current_batch} 个不同的{label}回顾，主题【{theme}】。
+假期已经结束，玩家返校后做选择。
+不要写正在上课的场景，不固定年级或专业，地点不限于校园。内容温和、有生活感。
+{get_random_keywords(2)}
+避免重复这些标题：{"、".join(recent) or "无"}。
+只输出 JSON 对象：
+{{"events":[{{"season":"{current_season}","title":"标题","desc":"50-80字的假期经历",
+"options":[{{"id":"A","text":"选择","effects":{{"energy":3,"desc":"结果描述"}}}},
+{{"id":"B","text":"另一选择","effects":{{"stress":-2,"desc":"结果描述"}}}}]}}]}}
+每条必须有 title、desc、恰好两个 id 为 A/B 的选项。
+每个选项有 text、effects 和结果 desc。
+允许的数值字段：{allowed_event_effect_prompt()}。
+数值必须是整数 -{HOLIDAY_EFFECT_LIMIT} 到 +{HOLIDAY_EFFECT_LIMIT}。
+通常使用 1-5 的幅度。
+可初始分配的属性（{allocatable}）尽量单次只变化 ±1，不要每条都增加永久属性。
+正向变化：{good_effects}。每条至少一个选项有正收益，且正向总量不少于负向总量；
+两个选项应体现不同取舍，不要两个都重罚，也不要所有内容都只有收益、没有轻微代价。
+不要添加 GPA、学期、课程、背包字段，不输出 Markdown 或额外说明。
+使用第二人称“你”，不用“玩家”。结果描述必须与字段及正负号一致，
+例如 stress 减少才是压力缓解，energy 增加才是精力恢复；不要声称获得未写入效果的金币。
+"""
+            raw = call_llm(
+                [{"role": "user", "content": prompt}],
+                json_schema=holiday_generation_schema(current_season, current_batch),
+            )
+            data = extract_json(raw) if raw else None
+            candidates = data.get("events") if isinstance(data, dict) else data
+            if not isinstance(candidates, list):
+                print("  没有可解析的 events 数组，本批不入库。")
+            accepted = 0
+            for row in candidates if isinstance(candidates, list) else []:
+                if accepted >= current_batch:
+                    break
+                try:
+                    event = normalize_holiday_event(row, current_season)
+                    key = holiday_title_key(event)
+                    if key in seen:
+                        continue
+                except ValueError as error:
+                    print(f"  跳过无效假期事件：{error}")
+                    continue
+                seen.add(key)
+                events.append(event)
+                counts[current_season] += 1
+                accepted += 1
+            failures = 0 if accepted else failures + 1
+            print(
+                f"  假期 {len(events)}/{target_count}，本批 {label} +{accepted}，"
+                f"连续失败 {failures}"
+            )
+            if accepted and checkpoint:
+                checkpoint(events)
+    except KeyboardInterrupt:
+        print("生成已中断；保留已完成的假期批次。")
+    if failures >= max_failed_batches:
+        print("连续无有效内容，停止生成；不会用空库覆盖原文件。")
+    return events
+
+
 def main():
-    """CLI entry point for offline event and CC98 library generation."""
-    parser = argparse.ArgumentParser(description="离线批量生成事件库和 CC98 帖子库")
+    """CLI entry point for offline event, CC98 and holiday libraries."""
+    parser = argparse.ArgumentParser(description="离线批量生成事件、CC98 和假期库")
     parser.add_argument("--events", type=int, default=0, help="生成随机事件数量")
     parser.add_argument("--cc98", type=int, default=0, help="生成 CC98 帖子数量")
     parser.add_argument("--events-only", type=int, default=0, help="仅生成事件")
     parser.add_argument("--cc98-only", type=int, default=0, help="仅生成帖子")
+    parser.add_argument(
+        "--holidays",
+        "--holidays-only",
+        dest="holidays",
+        type=int,
+        default=0,
+        help="生成假期事件总数（默认寒暑假均分）",
+    )
+    parser.add_argument(
+        "--holiday-season",
+        choices=("all", "winter", "summer"),
+        default="all",
+        help="指定假期季节；单季须用 --append",
+    )
+    parser.add_argument(
+        "--holiday-batch-size", type=int, default=3, help="每批假期事件数"
+    )
+    parser.add_argument(
+        "--max-failed-batches", type=int, default=8, help="假期连续失败批次数上限"
+    )
     parser.add_argument(
         "--model", type=str, default=_config["model"], help="调用的模型名"
     )
@@ -690,6 +1045,17 @@ def main():
         action="store_true",
         help="禁用 response_format=json_object，用于兼容较旧端点",
     )
+    parser.add_argument(
+        "--reasoning-effort",
+        default=_config["reasoning_effort"],
+        help="端点支持时显式设置思考强度，例如本地 Qwen 使用 none",
+    )
+    parser.add_argument(
+        "--max-tokens",
+        type=int,
+        default=None,
+        help="端点的最大输出 token 数（可选）",
+    )
     parser.add_argument("--append", action="store_true", help="追加到现有库而不是覆盖")
     args = parser.parse_args()
 
@@ -697,16 +1063,42 @@ def main():
     _config["api_base"] = args.api_base
     _config["api_key"] = args.api_key
     _config["temperature"] = args.temperature
+    _config["reasoning_effort"] = args.reasoning_effort
+    _config["max_tokens"] = args.max_tokens
     if args.no_json_mode:
         _config["json_mode"] = False
 
     event_count = args.events or args.events_only
     cc98_count = args.cc98 or args.cc98_only
+    holiday_count = args.holidays
 
-    if not event_count and not cc98_count:
+    if min(args.events, args.events_only, args.cc98, args.cc98_only, holiday_count) < 0:
+        parser.error("生成数量不能为负数")
+    if args.holiday_batch_size < 1 or args.max_failed_batches < 1:
+        parser.error("批次大小和失败次数上限必须为正数")
+    if args.max_tokens is not None and args.max_tokens < 1:
+        parser.error("--max-tokens 必须为正数")
+    holiday_path = WORLD_DIR / "holiday_events.json"
+    holiday_base: list[dict[str, Any]] = []
+    if holiday_count:
+        if args.holiday_season != "all" and not args.append:
+            parser.error("单季生成须用 --append，避免丢失另一季内容")
+        if args.holiday_season == "all" and holiday_count < 2 and not args.append:
+            parser.error("覆盖假期库至少需要 2 条，以包含寒暑假")
+        if args.append and holiday_path.exists():
+            try:
+                load_holiday_library(holiday_path)
+                holiday_base = json.loads(holiday_path.read_text(encoding="utf-8"))
+            except (OSError, ValueError) as error:
+                parser.error(f"现有假期库无效，请先修复：{error}")
+        if args.holiday_season != "all" and not holiday_base:
+            parser.error("单季追加需要已有的完整寒暑假库")
+
+    if not event_count and not cc98_count and not holiday_count:
         print("请指定生成数量，例如：")
         print("  python scripts/generate_content_library.py --events 300 --cc98 500")
         print("  python scripts/generate_content_library.py --events-only 50")
+        print("  python scripts/generate_content_library.py --holidays 40 --append")
         sys.exit(1)
 
     # Probe the configured endpoint before starting expensive generation.
@@ -715,7 +1107,8 @@ def main():
         sys.exit(1)
 
     try:
-        models_page = build_openai_client().models.list()
+        with build_openai_client() as client:
+            models_page = client.models.list()
         models = [m.id for m in models_page.data if getattr(m, "id", None)]
         print(f"✅ API 已连接，获取到 {len(models)} 个可用模型")
         if models and _config["model"] not in models:
@@ -730,6 +1123,29 @@ def main():
     posts: List[Dict[str, Any]] = []
 
     try:
+        if holiday_count:
+
+            def checkpoint(rows):
+                combined = holiday_base + rows
+                if {row["season"] for row in combined} == {"winter", "summer"}:
+                    publish_holiday_library(holiday_path, combined)
+
+            holidays = generate_holidays(
+                holiday_count,
+                season=args.holiday_season,
+                batch_size=args.holiday_batch_size,
+                max_failed_batches=args.max_failed_batches,
+                existing=holiday_base,
+                checkpoint=checkpoint,
+            )
+            if len(holidays) < holiday_count:
+                print(
+                    f"假期生成未完成：新增 {len(holidays)}/{holiday_count}，"
+                    "有效检查点已保留。"
+                )
+                sys.exit(1)
+            print(f"假期库已保存：{holiday_path}，新增 {len(holidays)} 条。")
+
         # Generate and save random events.
         if event_count > 0:
             events = generate_events(event_count)
@@ -796,6 +1212,7 @@ def main():
         sys.exit(0)
 
     print("\n🎉 生成完毕！")
+
 
 if __name__ == "__main__":
     main()

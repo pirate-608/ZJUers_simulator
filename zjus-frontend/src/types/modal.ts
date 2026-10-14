@@ -24,6 +24,7 @@ export interface AchievementSummary {
  * Transcript payload emitted after final-exam settlement.
  */
 export interface TranscriptModalData {
+  semester_idx?: number
   semester_name?: string
   term_gpa?: number
   cgpa?: number
@@ -46,6 +47,9 @@ export interface RandomEventOption {
  * Random-event modal payload emitted by the backend.
  */
 export interface RandomEventModalData {
+  id?: string
+  kind?: 'holiday' | string
+  semester_idx?: number
   title: string
   desc: string
   options?: RandomEventOption[]

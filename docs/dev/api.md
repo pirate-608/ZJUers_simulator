@@ -175,7 +175,7 @@
 
 1. 检查账号限制。
 2. 踢掉同用户旧连接。
-3. 若提供 `load_save_slot`，从 `game_saves` 指定槽位恢复到 Redis。
+3. 若提供 `load_save_slot`，同槽位活跃 Redis 状态优先用于重连；否则等待后台保存队列后，从 `game_saves` 指定槽位恢复到 Redis。
 4. 启动 `GameEngine` 与事件转发协程。
 5. 推送 `auth_ok`、`init`、当前 `dingtalk_state` 和当前 `items_state`。
 
@@ -191,7 +191,7 @@
 | `tick` | 高频状态更新，包含 `relax_cooldowns` |
 | `event` | 事件日志 |
 | `feedback` | 结果反馈弹窗，包含 `title`、`message`、`kind`、`auto_close_ms`，可附带 `changes` 数值变化 |
-| `random_event` | 随机事件弹窗 |
+| `random_event` | 事件弹窗；`data.kind="holiday"` 表示假期回顾，带 `id` / `semester_idx` |
 | `semester_summary` | 期末成绩单 |
 | `dingtalk_state` | 钉钉联系人、私聊历史、未读数和待回复选项的全量状态 |
 | `dingtalk_thread_update` | 单个钉钉联系人线程更新 |
@@ -243,8 +243,8 @@
 | `change_course_state` | 切换课程策略 |
 | `relax` | 健身、打游戏、散步、CC98 |
 | `exam` | 期末考试结算 |
-| `next_semester` | 进入下一学期 |
-| `event_choice` | 随机事件选项 |
+| `next_semester` | 进入下一学期，可附带 `expected_semester_idx` 防止旧页面重复推进 |
+| `event_choice` | 事件选项：`option_id`，推荐附带 `event_id` 防止迟到选择作用于另一事件 |
 | `save_game` | 保存但不退出 |
 | `save_and_exit` | 保存并退出，持久化后清 Redis |
 | `exit_without_save` | 不保存退出，清 Redis |
@@ -257,6 +257,10 @@
 暂停状态下，后端会继续允许 `get_state`、`resume`、`restart`、`set_speed`、`set_mode`、`dingtalk_mark_read`；会拒绝 `relax`、`exam`、`event_choice`、`dingtalk_reply`、`item_buy`、`item_sell`、`change_course_state`。`next_semester` 只有在 Redis 中 `exam_completed=1` 时允许。
 
 `save_and_exit` 成功路径固定为：`save_result(success=true)` -> `exit_confirmed` -> 清理 Redis -> WebSocket `close(1000)`。前端收到成功保存确认后，不应把随后关闭误判为保存失败。
+
+学期提交成功即发送 `new_semester` 和完整 `tick`，不等待模型或 PostgreSQL 自动保存。客户端将 `init` / `tick` / `state` / `new_semester` 统一按 `semester_idx` 同步：跨学期替换课程映射、清理旧弹窗并恢复计时；旧学期快照不应覆盖新学期。确认缺失时用 `get_state` 恢复，不盲目重复推进。
+
+`toast.action="next_semester"` 的 warning/danger 表示切换失败或需重试；`toast.action="semester_autosave"` 只提示自动存档问题，不是退出确认。假期复用现有 `random_event` / `event_choice` / `feedback`，不新增 HTTP 接口、OpenAPI 字段或数据库迁移。
 
 ## OpenAPI 类型生成
 

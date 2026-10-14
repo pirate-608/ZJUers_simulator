@@ -72,7 +72,7 @@ export type WsMessage =
       semester_name?: string
     }
   | { type: 'mode_changed'; mode?: string; llm_available?: boolean; data?: { mode?: string; llm_available?: boolean } }
-  | { type: 'toast'; message?: string; level?: string; data?: { message?: string; level?: string } }
+  | { type: 'toast'; message?: string; level?: string; action?: string; data?: { message?: string; level?: string; action?: string } }
   | { type: 'save_result'; message?: string; success?: boolean }
   | { type: 'exit_confirmed' }
 
@@ -123,8 +123,8 @@ export type WsClientAction =
   | { action: 'change_course_state'; target: string; value: number }
   | { action: 'relax'; target: RelaxTarget }
   | { action: 'exam' }
-  | { action: 'next_semester' }
-  | { action: 'event_choice'; option_id: string }
+  | { action: 'next_semester'; expected_semester_idx?: number }
+  | { action: 'event_choice'; option_id: string; event_id?: string }
   | { action: 'save_game' }
   | { action: 'save_and_exit' }
   | { action: 'exit_without_save' }

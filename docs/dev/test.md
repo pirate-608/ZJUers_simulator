@@ -14,6 +14,8 @@ cd zjus-backend
 ..\.venv\Scripts\python.exe -m pytest tests\unit\test_admin_balance_config.py tests\unit\test_balance.py
 ..\.venv\Scripts\python.exe -m pytest tests\unit\test_admin_items_config.py tests\unit\test_items.py
 ..\.venv\Scripts\python.exe -m pytest tests\unit\test_engine_runtime_hardening.py tests\unit\test_websocket_manager.py
+..\.venv\Scripts\python.exe -m pytest tests\unit\test_semester_recovery.py tests\unit\test_onboarding_flow.py
+..\.venv\Scripts\python.exe -m pytest tests\unit\test_content_library_generation.py
 ..\.venv\Scripts\python.exe scripts\validate_world_data.py
 ..\.venv\Scripts\python.exe scripts\sync_stat_definitions.py --check
 ..\.venv\Scripts\python.exe -m py_compile app\game\engine.py
@@ -22,6 +24,8 @@ cd zjus-backend
 ```
 
 修改共享模型、引擎状态、Redis 快照或存档逻辑时，优先跑完整 `tests\unit`。只改窄路径时，可以先跑对应 focused test，再在交付前补完整相关套件。
+
+`test_content_library_generation.py` 使用 mock 模型覆盖假期批次/季节配额、去重、选项与数值校验、有限失败、原子发布、中断检查点、OpenAI client 关闭及既有事件/CC98 路径；单测不连接 Ollama 或收费 API。实际批量生成后还应跑世界数据校验并抽样查看剧情。
 
 ## 前端
 
@@ -36,6 +40,7 @@ cd zjus-backend
 - `src/components/HudBar.spec.js`：HUD 标签、默认值、上限和进度条宽度读取生成的属性元数据。
 - `src/components/MidPanel.spec.js`：钉钉回复锁定、道具搜索、购买/出售和暂停锁定。
 - `src/components/EndScreen.spec.js`：Game Over / 毕业页的重开与回首页入口。
+- `src/composables/useGameWebSocket.spec.ts`、`src/components/modals/SemesterRecovery.spec.ts`：成绩单等待确认、超时重同步、跨学期课程清理、拒绝旧快照和暂停下的假期选择。
 
 常用命令：
 
@@ -85,6 +90,17 @@ cd zjus-frontend
 ```
 
 不要手写 `zjus-frontend/src/types/api.generated.ts`；生成类型不匹配时先修后端 Pydantic/FastAPI 契约。`zjus-frontend/src/api/client.ts` 保持手写薄封装。生产基础 Compose 不发布后端端口，本地 OpenAPI 生成依赖 `docker-compose.override.yml` 提供的 `127.0.0.1:8000:8000` 映射。
+
+### 学期切换 Compose Smoke
+
+使用本地 Compose，不在生产容器执行。下面的 opt-in 测试创建临时测试账户/Redis 命名空间并只清理自己创建的数据，覆盖真实 Lua、主动/自动考试、新学期消息、假期结算与保存退出；不调用收费模型。
+
+```powershell
+docker compose up -d --build backend
+docker compose exec -T -e RUN_GAME_INTEGRATION=1 backend python -m pytest tests/integration/test_semester_recovery.py -q
+```
+
+运行测试前确认后端启动完成（例如 `/openapi.json` 返回 200）；构建必须包含最新测试文件。常规 pytest 默认跳过这组服务依赖测试。
 
 ## 选择测试范围
 

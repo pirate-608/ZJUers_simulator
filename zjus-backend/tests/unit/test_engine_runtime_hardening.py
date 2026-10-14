@@ -64,6 +64,8 @@ async def test_next_semester_is_allowed_when_exam_summary_is_complete():
 
     await engine.process_action({"action": "next_semester"})
 
+    await engine._transition_task
+
     engine._next_semester.assert_awaited_once()
 
 
@@ -81,7 +83,11 @@ async def test_next_semester_is_rejected_before_exam_summary():
     engine._next_semester.assert_not_awaited()
     engine.emit.assert_awaited_once_with(
         "toast",
-        {"message": "期末结算完成后才能进入下学期", "level": "warning"},
+        {
+            "message": "期末结算完成后才能进入下学期",
+            "level": "warning",
+            "action": "next_semester",
+        },
     )
 
 

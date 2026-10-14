@@ -1,0 +1,2689 @@
+[
+  {
+    "id": "holiday_winter_reunion",
+    "season": "winter",
+    "title": "寒假的一顿团圆饭",
+    "desc": "离开求是园后，家里的饭菜和熟悉的声音，让紧绷了一学期的你终于松了一口气。",
+    "options": [
+      {
+        "id": "A",
+        "text": "放下手机，好好休息几天",
+        "effects": {
+          "energy": 5,
+          "sanity": 2,
+          "desc": "充足的睡眠和家常菜，让你重新攒起了一点精力。"
+        }
+      },
+      {
+        "id": "B",
+        "text": "陪家人聊聊这一学期",
+        "effects": {
+          "eq": 1,
+          "stress": -3,
+          "desc": "把烦恼说出口后，你感觉轻松了许多。"
+        }
+      }
+    ]
+  },
+  {
+    "id": "holiday_winter_plan",
+    "season": "winter",
+    "title": "新年计划的第一页",
+    "desc": "春节过后，你翻开空白的日程本。返校前的这段时间，可以留给自己，也可以留给尚未完成的小目标。",
+    "options": [
+      {
+        "id": "A",
+        "text": "给自己留一点慢生活",
+        "effects": {
+          "sanity": 3,
+          "stress": -2,
+          "desc": "不用赶路的日子，帮你找回了自己的节奏。"
+        }
+      },
+      {
+        "id": "B",
+        "text": "和老朋友约一次见面",
+        "effects": {
+          "energy": -2,
+          "eq": 1,
+          "sanity": 2,
+          "desc": "熟悉的笑声，让你带着好心情回到了学校。"
+        }
+      }
+    ]
+  },
+  {
+    "id": "holiday_summer_walk",
+    "season": "summer",
+    "title": "暑假的傍晚",
+    "desc": "一场夏雨过后，街道安静下来。没有课表催促的傍晚，你决定为自己安排一段真正属于假期的时间。",
+    "options": [
+      {
+        "id": "A",
+        "text": "散散步，暂时不想成绩",
+        "effects": {
+          "stress": -4,
+          "sanity": 2,
+          "desc": "晚风吹散了一些焦虑，你重新看见了生活里的小事。"
+        }
+      },
+      {
+        "id": "B",
+        "text": "早一点回家休息",
+        "effects": {
+          "energy": 5,
+          "desc": "规律的作息，为下一学期留下了一点余裕。"
+        }
+      }
+    ]
+  },
+  {
+    "id": "holiday_summer_help",
+    "season": "summer",
+    "title": "一次小小的暑期实践",
+    "desc": "朋友邀请你帮忙参加一场社区活动。活动不大，却让你认识了几位校园之外的新朋友。",
+    "options": [
+      {
+        "id": "A",
+        "text": "参加活动，帮一点力所能及的忙",
+        "effects": {
+          "energy": -3,
+          "reputation": 2,
+          "eq": 1,
+          "desc": "忙碌了一下午，你也收获了一点新的经验。"
+        }
+      },
+      {
+        "id": "B",
+        "text": "帮忙准备材料，保留休息时间",
+        "effects": {
+          "energy": 2,
+          "sanity": 1,
+          "desc": "你找到了参与和休息之间的小小平衡。"
+        }
+      }
+    ]
+  },
+  {
+    "id": "holiday_winter_2224776bf3744f6bac1e35e4021a6caa",
+    "season": "winter",
+    "title": "家乡的年夜饭",
+    "desc": "在老家厨房帮忙包饺子，虽然手被冻得通红，但看到满桌热气腾腾的菜肴和亲戚们的笑声，心里暖洋洋的。",
+    "options": [
+      {
+        "id": "A",
+        "text": "分享全家福故事",
+        "effects": {
+          "energy": 2,
+          "desc": "讲述有趣经历，获得轻松感。"
+        }
+      },
+      {
+        "id": "B",
+        "text": "帮长辈洗碗整理",
+        "effects": {
+          "stress": -2,
+          "desc": "体力消耗但感到踏实。"
+        }
+      }
+    ]
+  },
+  {
+    "id": "holiday_winter_a471262c850a4e97baacdd3c73eab276",
+    "season": "winter",
+    "title": "雪地里的旧时光",
+    "desc": "回到玉泉附近的老家，发现院子里堆了厚雪，和儿时玩伴一起打雪仗，虽然衣服湿透了，却乐不思蜀。",
+    "options": [
+      {
+        "id": "A",
+        "text": "回忆童年趣事",
+        "effects": {
+          "charm": 1,
+          "desc": "触动往事，心情愉悦。"
+        }
+      },
+      {
+        "id": "B",
+        "text": "邀请同学视频连线",
+        "effects": {
+          "reputation": 2,
+          "desc": "维系社交，收获关注。"
+        }
+      }
+    ]
+  },
+  {
+    "id": "holiday_winter_5690fe7ba0b140a98d9fbc02b571d51a",
+    "season": "winter",
+    "title": "归途的车窗倒影",
+    "desc": "寒假结束返校的路上，看着窗外倒退的风景，不禁想起在家乡度过的那些悠闲午后。",
+    "options": [
+      {
+        "id": "A",
+        "text": "整理行李打包",
+        "effects": {
+          "energy": -1,
+          "desc": "忙碌中带着期待。"
+        }
+      },
+      {
+        "id": "B",
+        "text": "回忆旅途见闻",
+        "effects": {
+          "sanity": 2,
+          "desc": "内心平静，充满憧憬。"
+        }
+      }
+    ]
+  },
+  {
+    "id": "holiday_summer_a570cd7ead404680ae75c0fd5aeeb1a8",
+    "season": "summer",
+    "title": "求是大道上的旧时光",
+    "desc": "漫步新完工的求是大道，看着两侧绿树成荫的景观，仿佛回到大学初来乍到的日子。",
+    "options": [
+      {
+        "id": "A",
+        "text": "拍张照留念发朋友圈",
+        "effects": {
+          "charm": 2,
+          "stress": -1,
+          "desc": "收获了点赞与关注，心情稍显亢奋"
+        }
+      },
+      {
+        "id": "B",
+        "text": "在路边小店买一份冰镇绿豆汤",
+        "effects": {
+          "energy": 5,
+          "stress": -3,
+          "desc": "清凉解暑，疲惫感消散大半"
+        }
+      }
+    ]
+  },
+  {
+    "id": "holiday_summer_39897a1696b14f0db6dacda92310eb05",
+    "season": "summer",
+    "title": "图书馆角落的静思日",
+    "desc": "独自坐在主图书馆三楼靠窗的位置，翻阅一本借阅已久的哲学随笔，享受难得的宁静时光。",
+    "options": [
+      {
+        "id": "A",
+        "text": "合上书本，整理笔记后离开",
+        "effects": {
+          "eq": 1,
+          "energy": 2,
+          "desc": "思绪清晰，带着满满的收获结束这一天"
+        }
+      },
+      {
+        "id": "B",
+        "text": "起身去附近逛逛夜市摊位",
+        "effects": {
+          "stress": -2,
+          "luck": 1,
+          "desc": "偶然买到一份意外的小惊喜纪念品"
+        }
+      }
+    ]
+  },
+  {
+    "id": "holiday_summer_42178c558d534df1932b1dd2b97dec34",
+    "season": "summer",
+    "title": "社区改造计划",
+    "desc": "你参与老城区修缮项目，白天清理积存杂物，夜晚与邻居闲聊拉家常，既改善了环境又收获了邻里间的信任与好感。",
+    "options": [
+      {
+        "id": "A",
+        "text": "继续整理旧物",
+        "effects": {
+          "energy": 4,
+          "desc": "整理完旧物，邻居递来热茶与点心。休息过后，你的精力恢复了一些。"
+        }
+      },
+      {
+        "id": "B",
+        "text": "早点回家休息",
+        "effects": {
+          "stress": -3,
+          "desc": "心情放松，邻里关系略有遗憾"
+        }
+      }
+    ]
+  },
+  {
+    "id": "holiday_winter_dcd89f4f9efb4078b49de4b05a4d5d2a",
+    "season": "winter",
+    "title": "围炉夜话的暖意",
+    "desc": "归家后与父母在厨房忙碌，看着热汤翻滚，听长辈讲述往事，虽未参与具体干活却满是温情。",
+    "options": [
+      {
+        "id": "A",
+        "text": "帮忙洗菜备料",
+        "effects": {
+          "energy": 2,
+          "stress": -1,
+          "desc": "分担了家务，身体微酸但心里很暖"
+        }
+      },
+      {
+        "id": "B",
+        "text": "坐在旁边听故事",
+        "effects": {
+          "sanity": 3,
+          "charm": 1,
+          "desc": "沉浸在亲人的讲述中，心情格外平静愉悦"
+        }
+      },
+      {
+        "id": "C",
+        "text": "帮忙擦拭餐桌",
+        "effects": {
+          "stress": -2,
+          "reputation": 1,
+          "desc": "动作细致赢得夸奖，减轻了父母负担"
+        }
+      }
+    ]
+  },
+  {
+    "id": "holiday_winter_f0fd6478977e4bec901ed157456a30ef",
+    "season": "winter",
+    "title": "老屋墙角的暖阳",
+    "desc": "回乡探望祖辈，他们在老宅晒着暖阳，回忆年轻时的趣事，时光仿佛倒流回童年。",
+    "options": [
+      {
+        "id": "A",
+        "text": "陪他们下棋娱乐",
+        "effects": {
+          "eq": 2,
+          "charm": 1,
+          "desc": "在欢声笑语中增进了祖孙情谊"
+        }
+      },
+      {
+        "id": "B",
+        "text": "帮忙修补旧物",
+        "effects": {
+          "energy": 1,
+          "stress": -1,
+          "desc": "动手修复了老物件，感受到了传承的责任感"
+        }
+      },
+      {
+        "id": "C",
+        "text": "安静地听他们闲聊",
+        "effects": {
+          "sanity": 2,
+          "reputation": 1,
+          "desc": "聆听长辈唠叨，内心充满被爱的安全感"
+        }
+      }
+    ]
+  },
+  {
+    "id": "holiday_winter_0aec24aba8ec4ac8bdc2292b28f2e61f",
+    "season": "winter",
+    "title": "除夕夜的全家福",
+    "desc": "年夜饭桌上摆满了家乡特色菜，围坐灯下等待钟声，一家人举杯共话家常的温馨时刻。",
+    "options": [
+      {
+        "id": "A",
+        "text": "帮父母摆盘夹菜",
+        "effects": {
+          "energy": 3,
+          "stress": -2,
+          "desc": "照顾家人的饮食起居，虽然疲惫但价值感满满"
+        }
+      },
+      {
+        "id": "B",
+        "text": "记录大家的笑脸",
+        "effects": {
+          "reputation": 1,
+          "charm": 2,
+          "desc": "用镜头定格美好瞬间，收获了满屏的赞美与幸福"
+        }
+      },
+      {
+        "id": "C",
+        "text": "主动敬长辈一杯酒",
+        "effects": {
+          "eq": 3,
+          "sanity": 1,
+          "desc": "真诚的关怀让长辈倍感欣慰，家庭氛围更加和谐"
+        }
+      }
+    ]
+  },
+  {
+    "id": "holiday_summer_e9961ed960e5499e96164398aae8dfee",
+    "season": "summer",
+    "title": "海边的蓝调午后",
+    "desc": "在象山石浦渔港的海岸边发呆，看渔船归港，体验了海风带来的松弛感。",
+    "options": [
+      {
+        "id": "A",
+        "text": "整理并保存这些照片",
+        "effects": {
+          "energy": 2,
+          "desc": "心情舒畅，保留了美好记忆。"
+        }
+      },
+      {
+        "id": "B",
+        "text": "与偶遇的海岛博主畅聊许久",
+        "effects": {
+          "charm": -1,
+          "desc": "一时说得太投入，没留意对方已经想离开。你有些尴尬，提醒自己下次多听一听。"
+        }
+      },
+      {
+        "id": "C",
+        "text": "独自坐在礁石上闭目养神",
+        "effects": {
+          "stress": 3,
+          "desc": "安静下来后，未完成的事情又浮上心头。你感到压力回升，决定不再独自纠结。"
+        }
+      }
+    ]
+  },
+  {
+    "id": "holiday_summer_6c163533e5fb44d198c6aa9234bd70c5",
+    "season": "summer",
+    "title": "乡村野炊的烟火气",
+    "desc": "跟着长辈去乡下老家帮忙，体验了从清洗食材到摆盘的完整过程。",
+    "options": [
+      {
+        "id": "A",
+        "text": "主动承担最繁重的洗碗工作",
+        "effects": {
+          "energy": 1,
+          "desc": "虽然累但获得了全家人的夸奖。"
+        }
+      },
+      {
+        "id": "B",
+        "text": "在院子里帮助布置露营装饰",
+        "effects": {
+          "reputation": 2,
+          "desc": "提升了家庭形象，增加了生活情趣。"
+        }
+      },
+      {
+        "id": "C",
+        "text": "偷偷溜出去找朋友看露天电影",
+        "effects": {
+          "stress": -3,
+          "desc": "玩得很开心，但回家时有点心虚。"
+        }
+      }
+    ]
+  },
+  {
+    "id": "holiday_summer_c743fe1fff3c4b65930004c4f514a62d",
+    "season": "summer",
+    "title": "社区旧书摊的回响",
+    "desc": "在老居民区的街角整理闲置书籍，帮助老人分类时遇到了一位慈祥的长者，你们聊了许久关于阅读的故事。",
+    "options": [
+      {
+        "id": "A",
+        "text": "将一本绝版诗集送给他",
+        "effects": {
+          "energy": 2,
+          "desc": "长者十分感动，与你分享了家族藏书的故事，心情愉悦。"
+        }
+      },
+      {
+        "id": "B",
+        "text": "帮他在摊位前擦去灰尘",
+        "effects": {
+          "stress": -3,
+          "desc": "细致的服务赢得邻里称赞，轻松了不少。"
+        }
+      },
+      {
+        "id": "C",
+        "text": "记录下老人的口述历史",
+        "effects": {
+          "eq": 1,
+          "desc": "认真聆听他的回忆，内心充满了平和与温暖。"
+        }
+      }
+    ]
+  },
+  {
+    "id": "holiday_summer_a288a60c9a7c48b2a9d0901072a44cff",
+    "season": "summer",
+    "title": "山区支教的小插曲",
+    "desc": "参与乡村学校夏令营时，孩子们对一台老式投影仪的修复表现出了极大的热情，你尝试动手拆解又组装。",
+    "options": [
+      {
+        "id": "A",
+        "text": "花费半天时间彻底修好它",
+        "effects": {
+          "stress": 4,
+          "desc": "熬夜调试零件导致疲惫不堪，但设备终于能正常工作了。"
+        }
+      },
+      {
+        "id": "B",
+        "text": "指导孩子们共同完成简单演示",
+        "effects": {
+          "charm": 1,
+          "desc": "看着孩子们兴奋的眼神，感到很有成就感，心情轻松。"
+        }
+      }
+    ]
+  },
+  {
+    "id": "holiday_winter_319b3b98261c4cce9c4a186be8a2b15b",
+    "season": "winter",
+    "title": "灶台边的旧照片",
+    "desc": "在老家厨房整理旧物时，你翻出一张泛黄的全家福，父亲正笑着把刚出锅的汤圆塞进母亲手里。窗外雪花无声地覆盖着老屋，屋内却暖意融融。",
+    "options": [
+      {
+        "id": "A",
+        "text": "帮母亲包好剩下的饺子",
+        "effects": {
+          "desc": "疲惫感消散，感受到久违的家庭温暖",
+          "energy": 4,
+          "stress": -3
+        }
+      },
+      {
+        "id": "B",
+        "text": "听父亲讲述当年的求学往事",
+        "effects": {
+          "desc": "思绪飘回浙大岁月，内心充满感动与力量",
+          "eq": 2,
+          "sanity": 3
+        }
+      }
+    ]
+  },
+  {
+    "id": "holiday_winter_40340c23748c47b581e397af93183067",
+    "season": "winter",
+    "title": "归途的星光与车票",
+    "desc": "高铁窗外掠过江南的田野，你看着夹在校徽贴纸旁的车票。想起入学时“灿若星辰”的口号，如今才明白那是对每一个平凡奋斗者的期许。",
+    "options": [
+      {
+        "id": "A",
+        "text": "在站台买一份热腾腾的馄饨",
+        "effects": {
+          "desc": "驱散旅途寒意，胃里暖暖的更安心",
+          "energy": 3,
+          "luck": 1
+        }
+      },
+      {
+        "id": "B",
+        "text": "给刚返校的同学发条祝福短信",
+        "effects": {
+          "desc": "传递温暖，收获同学会心的微笑",
+          "charm": 2,
+          "reputation": 1
+        }
+      }
+    ]
+  },
+  {
+    "id": "holiday_winter_4b7334502c0643e4942cefd6df8b224c",
+    "season": "winter",
+    "title": "除夕夜的视频连线",
+    "desc": "寒假留在杭州的你，听着电视里春晚的喧闹，与远在家乡的父母视频。屏幕那头是熟悉的乡音，这头是窗外的薄雪，隔着距离也有说不完的牵挂。",
+    "options": [
+      {
+        "id": "A",
+        "text": "教父母用新买的智能音箱放歌",
+        "effects": {
+          "desc": "体验科技乐趣，拉近彼此距离",
+          "charm": 2,
+          "stress": -2
+        }
+      },
+      {
+        "id": "B",
+        "text": "分享自己假期帮家里修水管的经历",
+        "effects": {
+          "desc": "展现成长与担当，赢得全家赞许",
+          "reputation": 3,
+          "sanity": 1
+        }
+      }
+    ]
+  },
+  {
+    "id": "holiday_summer_e48ecc981ac9404295c1e010fe4f4bd7",
+    "season": "summer",
+    "title": "西湖边的清凉漫步",
+    "desc": "你独自去西湖边散步，感受夏日的微风和湖光倒影，心情变得格外宁静。",
+    "options": [
+      {
+        "id": "A",
+        "text": "继续闲逛至雷峰塔下",
+        "effects": {
+          "desc": "在古塔前驻足良久，内心获得极大的平静与满足感。",
+          "stress": -2
+        }
+      },
+      {
+        "id": "B",
+        "text": "提前返程回宿舍休息",
+        "effects": {
+          "desc": "带着满身的暑气回到寝室，瞬间感到精神焕发。",
+          "energy": 3
+        }
+      }
+    ]
+  },
+  {
+    "id": "holiday_summer_dd92c75c342646d99adf5c728ce18bb5",
+    "season": "summer",
+    "title": "滨江公园的晨练时光",
+    "desc": "清晨你来到滨江公园慢跑，呼吸着湿润的空气，看着江面波光粼粼，身体充满了活力。",
+    "options": [
+      {
+        "id": "A",
+        "text": "在江边长椅坐下休息片刻",
+        "effects": {
+          "desc": "短暂休憩让紧绷的神经彻底放松下来。",
+          "sanity": 2
+        }
+      },
+      {
+        "id": "B",
+        "text": "坚持跑完最后一圈再回家",
+        "effects": {
+          "desc": "虽然疲惫但成就感满满，感觉整个人都轻快了许多。",
+          "energy": -1
+        }
+      }
+    ]
+  },
+  {
+    "id": "holiday_summer_bc02e11fe5334d9f94f5783c2425bef2",
+    "season": "summer",
+    "title": "老街巷口的咖啡小憩",
+    "desc": "你走进一家藏在老街区的小店，点一杯热饮，看着窗外人来人往，享受片刻的悠闲。",
+    "options": [
+      {
+        "id": "A",
+        "text": "和朋友聊起最近的趣事",
+        "effects": {
+          "desc": "欢声笑语驱散了暑气的燥热，心情愉悦无比。",
+          "charm": 1
+        }
+      },
+      {
+        "id": "B",
+        "text": "独自品尝手中的咖啡",
+        "effects": {
+          "desc": "独处的时光让你内心更加平和，压力悄然消散。",
+          "stress": -3
+        }
+      }
+    ]
+  },
+  {
+    "id": "holiday_winter_df6e61112ad440fab1218f43ec0e6fa3",
+    "season": "winter",
+    "title": "村口老槐树的年味",
+    "desc": "你回到家乡，在村口老槐树下帮长辈修剪枯枝，看着邻里间互赠的腊味和热腾腾的饺子，感受到了久违的人情温暖。",
+    "options": [
+      {
+        "id": "A",
+        "text": "继续帮忙整理年货",
+        "effects": {
+          "desc": "体力消耗大但收获了满满的快乐",
+          "energy": -3,
+          "stress": -2
+        }
+      },
+      {
+        "id": "B",
+        "text": "在树下听长辈讲过去的故事",
+        "effects": {
+          "desc": "沉浸在温馨的氛围中，心情格外舒畅",
+          "eq": 1,
+          "sanity": 2
+        }
+      }
+    ]
+  },
+  {
+    "id": "holiday_winter_7e0f7fd91db74b789f534caa4d705da7",
+    "season": "winter",
+    "title": "返乡路上的乡音",
+    "desc": "高铁穿过熟悉的田野，你听到窗外传来家乡方言的广播，想起儿时和伙伴在田埂上追逐打闹的场景，心中涌起一股暖流。",
+    "options": [
+      {
+        "id": "A",
+        "text": "拿出手机记录沿途风景",
+        "effects": {
+          "desc": "捕捉到了最美的瞬间，但错过了路边的热茶",
+          "charm": 1,
+          "energy": -2
+        }
+      },
+      {
+        "id": "B",
+        "text": "静静聆听广播里的乡音",
+        "effects": {
+          "desc": "思绪飘回童年，内心变得平静而满足",
+          "stress": -3
+        }
+      }
+    ]
+  },
+  {
+    "id": "holiday_winter_aa3fff5c244442f880c23c1939a9abae",
+    "season": "winter",
+    "title": "老街巷的旧时光",
+    "desc": "你漫步在家乡的老街上，看着斑驳的墙壁和熟悉的店铺，想起小时候在这里玩耍的日子，心中充满了怀旧之情。",
+    "options": [
+      {
+        "id": "A",
+        "text": "走进一家老店买些特产",
+        "effects": {
+          "desc": "带回了珍贵的回忆，但花费了一些零花钱",
+          "gold": -5,
+          "reputation": 1
+        }
+      },
+      {
+        "id": "B",
+        "text": "在街角长椅上发呆片刻",
+        "effects": {
+          "desc": "让紧绷的神经放松下来，找回内心的宁静",
+          "stress": -2
+        }
+      }
+    ]
+  },
+  {
+    "id": "holiday_summer_d4cdb726079f4e8eb4804438a643da98",
+    "season": "summer",
+    "title": "胶片里的慢时光",
+    "desc": "你在紫金港附近的老街区用旧相机记录暑假，捕捉到光影交错的生活切片，快门声里藏着岁月的温柔。",
+    "options": [
+      {
+        "id": "A",
+        "text": "冲洗照片并整理相册",
+        "effects": {
+          "desc": "获得了满满的成就感与回忆的珍藏",
+          "charm": 1,
+          "energy": 2
+        }
+      },
+      {
+        "id": "B",
+        "text": "将底片带往海边冲印",
+        "effects": {
+          "desc": "期待海风带来新的灵感，但旅途略显疲惫",
+          "eq": 1,
+          "stress": -1
+        }
+      }
+    ]
+  },
+  {
+    "id": "holiday_summer_785f9b2d33264d0aa380284d3e2b9722",
+    "season": "summer",
+    "title": "深夜食堂的暖光",
+    "desc": "在基图闭馆后的空荡走廊，你发现了一家亮着灯的社区小店，与店主聊起了家常和未完成的梦想。",
+    "options": [
+      {
+        "id": "A",
+        "text": "留下来帮忙收拾餐桌",
+        "effects": {
+          "desc": "用双手换来了一顿热腾腾的面条和真诚的笑容",
+          "energy": 3,
+          "reputation": 1
+        }
+      },
+      {
+        "id": "B",
+        "text": "付钱离开继续探索校园",
+        "effects": {
+          "desc": "带着满腹心事回到宿舍，内心却更加平静",
+          "stress": -2
+        }
+      }
+    ]
+  },
+  {
+    "id": "holiday_summer_fe471240152d4d738590345ef50e4609",
+    "season": "summer",
+    "title": "旧书摊的奇遇记",
+    "desc": "周末你去社区旧书摊淘换书籍，指尖划过泛黄的纸页，仿佛触碰到了一段段被遗忘的故事。",
+    "options": [
+      {
+        "id": "A",
+        "text": "买下那本绝版诗集",
+        "effects": {
+          "desc": "书页间的墨香让你感到前所未有的宁静与治愈",
+          "eq": 1,
+          "sanity": 2
+        }
+      },
+      {
+        "id": "B",
+        "text": "只买一本笔记带走",
+        "effects": {
+          "desc": "虽然收获不多，但轻松的心情让你觉得十分自在",
+          "charm": 1
+        }
+      }
+    ]
+  },
+  {
+    "id": "holiday_winter_bcaec18140e64480b7e901723eff2c20",
+    "season": "winter",
+    "title": "行李箱里的家乡味",
+    "desc": "寒假结束，你拖着装满特产的箱子回到紫金港。蓝田的外卖柜前，你犹豫是先去图书馆整理均绩资料，还是先回宿舍给室友带点热乎的家乡菜。",
+    "options": [
+      {
+        "id": "A",
+        "text": "直奔图书馆整理资料",
+        "effects": {
+          "desc": "高效完成学业规划，但回家晚了错过了晚餐",
+          "energy": 5,
+          "stress": -2
+        }
+      },
+      {
+        "id": "B",
+        "text": "先去宿舍分享特产",
+        "effects": {
+          "desc": "与老友欢聚一堂，心情愉悦却耽误了复习时间",
+          "reputation": 1,
+          "sanity": 3
+        }
+      }
+    ]
+  },
+  {
+    "id": "holiday_winter_7b83cac668f741deb4b8f289194150d7",
+    "season": "winter",
+    "title": "归途的行李与期待",
+    "desc": "从家乡高铁站出站，你手中提着两袋刚买的桂花糕。是立刻投入紧张的返校适应中，还是先找个安静的角落消化这份甜蜜的假期余温？",
+    "options": [
+      {
+        "id": "A",
+        "text": "直接回宿舍整理内务",
+        "effects": {
+          "desc": "快速恢复校园节奏，但内心略显疲惫",
+          "energy": 4,
+          "stress": -1
+        }
+      },
+      {
+        "id": "B",
+        "text": "在校外咖啡馆小憩片刻",
+        "effects": {
+          "desc": "享受片刻宁静，心情放松却增加了外出开销",
+          "charm": 2,
+          "gold": -3
+        }
+      }
+    ]
+  },
+  {
+    "id": "holiday_winter_a7fe2abecc914d03a83420d94a20eaeb",
+    "season": "winter",
+    "title": "宿舍门口的抉择",
+    "desc": "推开蓝田宿舍楼的大门，室友正等着接你。是立刻开启“战斗模式”准备新学期任务，还是先坐下来聊聊假期发生的趣事？",
+    "options": [
+      {
+        "id": "A",
+        "text": "直接开始新学期规划",
+        "effects": {
+          "desc": "条理清晰，但忽略了朋友的陪伴",
+          "eq": 1,
+          "stress": -3
+        }
+      },
+      {
+        "id": "B",
+        "text": "与室友畅聊假期见闻",
+        "effects": {
+          "desc": "笑声不断，关系更亲密却打乱了计划表",
+          "luck": 1,
+          "reputation": 1
+        }
+      }
+    ]
+  },
+  {
+    "id": "holiday_summer_d8819ee5f2d34072b103d4d99ce25eb1",
+    "season": "summer",
+    "title": "厨房里的烟火气",
+    "desc": "假期在家的你，陪父母做了顿家常饭。虽然手忙脚乱弄洒了酱油，但全家人的笑容让你觉得值了。",
+    "options": [
+      {
+        "id": "A",
+        "text": "分享这份温暖",
+        "effects": {
+          "desc": "心情愉悦，家庭氛围更融洽",
+          "energy": 3,
+          "sanity": 2
+        }
+      },
+      {
+        "id": "B",
+        "text": "反思烹饪技巧",
+        "effects": {
+          "desc": "和家人聊起烹饪的小诀窍，失误不再让你紧张，压力也减轻了一些。",
+          "stress": -1
+        }
+      }
+    ]
+  },
+  {
+    "id": "holiday_summer_4f2b9dc85be948e59c158f7013e273b5",
+    "season": "summer",
+    "title": "阳台上的植物角",
+    "desc": "你利用假期在老阳台打理了一排绿植，看着它们从枯黄变得生机勃勃，内心充满了成就感。",
+    "options": [
+      {
+        "id": "A",
+        "text": "邀请室友参观",
+        "effects": {
+          "desc": "朋友来帮忙浇水，大家聊得很开心",
+          "charm": 1,
+          "energy": 2
+        }
+      },
+      {
+        "id": "B",
+        "text": "独自享受宁静",
+        "effects": {
+          "desc": "沉浸在绿色世界中，压力消散",
+          "stress": -3
+        }
+      }
+    ]
+  },
+  {
+    "id": "holiday_summer_ef47150a563446f8b16f4a5259ccead5",
+    "season": "summer",
+    "title": "社区旧物整理日",
+    "desc": "你协助社区清理了闲置物品区，虽然搬动重物很累，但看到整洁的环境感到很有意义。",
+    "options": [
+      {
+        "id": "A",
+        "text": "继续搬运大件",
+        "effects": {
+          "desc": "体力消耗大，但收获满满",
+          "energy": -2,
+          "reputation": 1
+        }
+      },
+      {
+        "id": "B",
+        "text": "休息片刻喝水",
+        "effects": {
+          "desc": "缓解疲劳，保持好心态",
+          "stress": -1
+        }
+      }
+    ]
+  },
+  {
+    "id": "holiday_winter_e92c0742a4db4e53a21f51aab548d37c",
+    "season": "winter",
+    "title": "开学前的最后一晚",
+    "desc": "寒假尾声，你想起给自己列下的预习计划，还有一半笔记未整理。返校前这一晚，是继续赶进度，还是早点睡迎接新学期？",
+    "options": [
+      {
+        "id": "A",
+        "text": "继续整理笔记",
+        "effects": {
+          "desc": "清单短了一些，赶进度也让你添了些压力。",
+          "stress": 2
+        }
+      },
+      {
+        "id": "B",
+        "text": "先休息一小时再出发",
+        "effects": {
+          "desc": "短暂休息补回一点精力，未完成的笔记就留到明天。",
+          "energy": 3
+        }
+      }
+    ]
+  },
+  {
+    "id": "holiday_winter_419b82b32bb74398baca1b9aaab4c333",
+    "season": "winter",
+    "title": "67656 分母下的思考",
+    "desc": "看到网上关于奖学金评选比例的讨论，你感到一种复杂的共鸣。是选择沉浸于热闹的节日氛围，还是独自静下来反思当下的评价体系？",
+    "options": [
+      {
+        "id": "A",
+        "text": "加入热闹的聚会狂欢",
+        "effects": {
+          "desc": "快乐加倍但陷入短暂迷茫",
+          "charm": 2
+        }
+      },
+      {
+        "id": "B",
+        "text": "独自静坐沉思片刻",
+        "effects": {
+          "desc": "内心平静但感到些许孤独",
+          "eq": 1
+        }
+      }
+    ]
+  },
+  {
+    "id": "holiday_winter_7c11fbc7c2664eac888cff4b6d338f28",
+    "season": "winter",
+    "title": "归途行李与期待",
+    "desc": "收拾好行囊，里面装满了家乡特产和未完成的愿望清单。是选择满载出发去探索新的校园角落，还是轻装上阵保持清醒？",
+    "options": [
+      {
+        "id": "A",
+        "text": "带上亲人准备的干粮",
+        "effects": {
+          "desc": "亲人又塞来少量零用钱，行李沉了一点，道别却没那么沉重。",
+          "gold": 2
+        }
+      },
+      {
+        "id": "B",
+        "text": "精简行李只带必需品",
+        "effects": {
+          "desc": "行动轻盈但少了些温暖",
+          "stress": -1
+        }
+      }
+    ]
+  },
+  {
+    "id": "holiday_summer_1f995228a2f64b0485d83473cebfefad",
+    "season": "summer",
+    "title": "图书馆的静默午后",
+    "desc": "你在紫金港的自习室里泡了两天咖啡，看着窗外蝉鸣，终于把堆积如山的补天任务赶完，身心都放松下来。",
+    "options": [
+      {
+        "id": "A",
+        "text": "带着满血复活回宿舍睡个懒觉",
+        "effects": {
+          "desc": "精神饱满地迎接新学期的挑战",
+          "energy": 5,
+          "sanity": 3
+        }
+      },
+      {
+        "id": "B",
+        "text": "去食堂吃顿热乎的再出发",
+        "effects": {
+          "desc": "简单的餐食让你心情更愉悦",
+          "stress": -2
+        }
+      }
+    ]
+  },
+  {
+    "id": "holiday_summer_6cb0056f25bb483e8164b1d49480547f",
+    "season": "summer",
+    "title": "湖畔的微风与书卷",
+    "desc": "你背着相机在西湖边转了一圈，拍下了许多夏日光影，虽然没带伞但风很温柔，感觉时间都慢了下来。",
+    "options": [
+      {
+        "id": "A",
+        "text": "把照片存在手机里回家慢慢看",
+        "effects": {
+          "desc": "带着美好的回忆回到校园",
+          "charm": 2,
+          "eq": 1
+        }
+      },
+      {
+        "id": "B",
+        "text": "在湖边长椅上多坐一会儿发呆",
+        "effects": {
+          "desc": "彻底释放积压的紧张感",
+          "stress": -3
+        }
+      }
+    ]
+  },
+  {
+    "id": "holiday_summer_66ae1b7b10f044c2b43ab7a07315a998",
+    "season": "summer",
+    "title": "旧物整理与夏日回忆",
+    "desc": "你翻箱倒柜清理了半年的杂物，发现了一些被遗忘的小礼物，看着它们突然觉得生活很充实。",
+    "options": [
+      {
+        "id": "A",
+        "text": "把这些小物件打包带走",
+        "effects": {
+          "desc": "让房间焕然一新，心情格外舒畅",
+          "reputation": 1,
+          "sanity": 2
+        }
+      },
+      {
+        "id": "B",
+        "text": "把它们捐给需要的人",
+        "effects": {
+          "desc": "帮助他人让你感到内心温暖",
+          "eq": 1,
+          "luck": 1
+        }
+      }
+    ]
+  },
+  {
+    "id": "holiday_winter_e240469d45104115a6b683b219b97907",
+    "season": "winter",
+    "title": "雪夜的冰场",
+    "desc": "寒假尾声，你和老朋友来到家附近的露天冰场。看着脚下的冰面和远处灿若星辰的路灯，你又想起冬日运动带来的坚持与快乐。",
+    "options": [
+      {
+        "id": "A",
+        "text": "继续滑行一段路",
+        "effects": {
+          "desc": "冰滑带来的快感让你心情舒畅，压力减轻。",
+          "energy": 3,
+          "stress": -2
+        }
+      },
+      {
+        "id": "B",
+        "text": "提前离开去食堂吃热汤面",
+        "effects": {
+          "desc": "温暖的食物驱散了寒意，但运动后的疲惫感稍存。",
+          "stress": -1
+        }
+      }
+    ]
+  },
+  {
+    "id": "holiday_winter_c085855a755a4d87a61c12daa2f067df",
+    "season": "winter",
+    "title": "晨跑与赖床的博弈",
+    "desc": "假期里，你给自己设了一个晨跑闹钟。清晨的空气和温暖的被窝都很诱人，你想保持状态，也不愿把难得的休息变成另一场赶时间。",
+    "options": [
+      {
+        "id": "A",
+        "text": "坚持完成五公里",
+        "effects": {
+          "desc": "大汗淋漓却充满成就感，精力得到充分恢复。",
+          "energy": 4,
+          "stress": -3
+        }
+      },
+      {
+        "id": "B",
+        "text": "只跑两圈便回家休息",
+        "effects": {
+          "desc": "虽然没达到预期距离，但避免了过度消耗体力。",
+          "energy": 1,
+          "stress": -1
+        }
+      }
+    ]
+  },
+  {
+    "id": "holiday_summer_0369d76a6c854a0886a76519f1f418c4",
+    "season": "summer",
+    "title": "暑期实践：社区旧物整理日",
+    "desc": "你跟随社团志愿者深入老旧小区，协助居民清理堆积的杂物并捐赠给公益机构。虽然搬运重物让你有些疲惫，但看到邻里互助的笑容，内心充满了温暖与成就感。",
+    "options": [
+      {
+        "id": "A",
+        "text": "继续帮助更多邻居",
+        "effects": {
+          "desc": "你又整理了几个纸箱，精力少了一点，但这次没有把自己忙得更紧张。",
+          "energy": -1,
+          "stress": 0
+        }
+      },
+      {
+        "id": "B",
+        "text": "提前休息，避免过度劳累",
+        "effects": {
+          "desc": "你选择稍作休整，虽然少帮了几位老人，但身体得到了很好的放松。",
+          "energy": 3,
+          "stress": -2
+        }
+      }
+    ]
+  },
+  {
+    "id": "holiday_winter_13ebaf0b2faf45699a12cc7aea9a6933",
+    "season": "winter",
+    "title": "蟹老板前的假期合照",
+    "desc": "在紫金港校区校史馆（蟹老板）前，你整理好衣冠准备拍一张充满仪式感的寒假大合照。",
+    "options": [
+      {
+        "id": "A",
+        "text": "主动邀请室友加入镜头",
+        "effects": {
+          "desc": "大家的笑声瞬间驱散了寒意，你的魅力值提升。",
+          "charm": 1,
+          "energy": 0
+        }
+      },
+      {
+        "id": "B",
+        "text": "独自站在角落沉思",
+        "effects": {
+          "desc": "你享受了片刻的宁静，但略显孤单，心态稍有波动。",
+          "stress": 1
+        }
+      }
+    ]
+  },
+  {
+    "id": "holiday_summer_4beebfc332e6458ab6f85034093eab95",
+    "season": "summer",
+    "title": "暑期实践：滨江公园的晨练时光",
+    "desc": "清晨的滨江公园人声鼎沸，你跟随志愿者团队清理河道垃圾并参与环保宣传，在忙碌中见证了城市的一抹绿色回归。",
+    "options": [
+      {
+        "id": "A",
+        "text": "坚持完成最后一公里的垃圾清运",
+        "effects": {
+          "desc": "虽然手臂酸痛，但看到河道变清让你感到成就感满满。",
+          "energy": -1,
+          "reputation": 2
+        }
+      },
+      {
+        "id": "B",
+        "text": "中途休息并聆听路人讲述家乡故事",
+        "effects": {
+          "desc": "温暖的对话抚平了疲惫，让紧绷的神经得以舒缓。",
+          "stress": -2
+        }
+      }
+    ]
+  },
+  {
+    "id": "holiday_summer_f681bdad92034bf9850d4bfc007c4f0e",
+    "season": "summer",
+    "title": "暑期实践：老街巷口的咖啡小憩",
+    "desc": "傍晚时分，你在老街巷口经营的小型义卖摊位前忙碌，协助摊主将旧书和手工艺品卖给路过的行人，赚取了第一桶金。",
+    "options": [
+      {
+        "id": "A",
+        "text": "主动推销一套绝版诗集",
+        "effects": {
+          "desc": "成功售出诗集，不仅获得了额外收入，还结识了一位老书迷。",
+          "gold": 3,
+          "reputation": 1
+        }
+      },
+      {
+        "id": "B",
+        "text": "整理剩余商品并检查账目",
+        "effects": {
+          "desc": "细致的核对让内心格外踏实，消除了对财务的担忧。",
+          "stress": -2
+        }
+      }
+    ]
+  },
+  {
+    "id": "holiday_winter_d93c0dd8185f4746b5d439bc73ee3b18",
+    "season": "winter",
+    "title": "老屋灶台的热汤",
+    "desc": "除夕夜你帮母亲在老家厨房熬制年糕汤，热气模糊了窗玻璃，听着窗外鞭炮声感受最朴实的团圆。",
+    "options": [
+      {
+        "id": "A",
+        "text": "亲手包好最后一盘饺子",
+        "effects": {
+          "desc": "香气弥漫全屋，心情格外舒畅",
+          "energy": 4,
+          "stress": -2
+        }
+      },
+      {
+        "id": "B",
+        "text": "帮忙整理旧照片墙",
+        "effects": {
+          "desc": "回忆涌上心头，内心充满温暖与感动",
+          "charm": 1,
+          "eq": 1
+        }
+      }
+    ]
+  },
+  {
+    "id": "holiday_winter_466fd9c9a9464e1aac9d6e92a429330b",
+    "season": "winter",
+    "title": "星尘下的微光",
+    "desc": "寒假尾声，你整理着笔记，想起‘每个浙大人都灿若星辰’的标语。其实那些光芒背后，是无数个平凡日夜的坚持与汗水交织而成。",
+    "options": [
+      {
+        "id": "A",
+        "text": "重拾旧梦，继续规划新目标",
+        "effects": {
+          "desc": "灵感重新浮现，目标渐渐清晰，你也找回了行动的精力。",
+          "energy": 2,
+          "stress": -1
+        }
+      },
+      {
+        "id": "B",
+        "text": "暂且放下，享受片刻宁静",
+        "effects": {
+          "desc": "内心平和，压力稍减",
+          "sanity": 2,
+          "stress": -3
+        }
+      }
+    ]
+  },
+  {
+    "id": "holiday_winter_b9b006c550ef432c9a72c3a18843bbab",
+    "season": "winter",
+    "title": "绩点之外的风景",
+    "desc": "假期里你尝试了从未接触过的运动，汗水挥洒间，发现学业均绩并非衡量人生的唯一标尺。",
+    "options": [
+      {
+        "id": "A",
+        "text": "坚持训练，挑战自我极限",
+        "effects": {
+          "desc": "身体疲惫却收获成就感",
+          "energy": -3,
+          "eq": 2
+        }
+      },
+      {
+        "id": "B",
+        "text": "适度休息，品味当下快乐",
+        "effects": {
+          "desc": "身心放松，心情愉悦",
+          "energy": 1,
+          "sanity": 3
+        }
+      }
+    ]
+  },
+  {
+    "id": "holiday_winter_5d234e99dece4c31b9d043f5efa945d7",
+    "season": "winter",
+    "title": "归途中的小确幸",
+    "desc": "踏上返校之路，窗外风景流转。你意识到生活的美好往往藏在这些不经意的瞬间里，而非宏大的叙事中。",
+    "options": [
+      {
+        "id": "A",
+        "text": "记录此刻，分享温暖故事",
+        "effects": {
+          "desc": "传递善意，内心充实",
+          "charm": 1,
+          "stress": -2
+        }
+      },
+      {
+        "id": "B",
+        "text": "独自前行，沉浸个人思绪",
+        "effects": {
+          "desc": "自我沉淀，情绪稳定",
+          "sanity": 2,
+          "stress": -1
+        }
+      }
+    ]
+  },
+  {
+    "id": "holiday_summer_9fa13384bf70440eb70af9557f06492c",
+    "season": "summer",
+    "title": "厨房里的夏日交响曲",
+    "desc": "你帮妈妈整理冰箱并尝试复刻一道家乡菜，虽然火候没掌握好，但全家人的笑声填补了所有空白。",
+    "options": [
+      {
+        "id": "A",
+        "text": "主动承担更多家务",
+        "effects": {
+          "desc": "家务赶在一起让你紧张又疲惫，你意识到下次需要留出休息时间。",
+          "energy": -3,
+          "stress": 10
+        }
+      },
+      {
+        "id": "B",
+        "text": "请求家人分担部分工作",
+        "effects": {
+          "desc": "家人接过一部分工作，你终于能歇一歇，疲惫和紧张都缓和下来。",
+          "energy": 5,
+          "stress": -2
+        }
+      }
+    ]
+  },
+  {
+    "id": "holiday_summer_d38590e604d74abcbf3cf490ab1fc5bf",
+    "season": "summer",
+    "title": "阳台上的旧物修复日",
+    "desc": "你利用假期清理了堆积已久的杂物，在修补破损花盆时找回了童年的快乐。",
+    "options": [
+      {
+        "id": "A",
+        "text": "继续深入整理并捐赠闲置品",
+        "effects": {
+          "desc": "内心充实但身体疲惫",
+          "energy": -2,
+          "eq": 1
+        }
+      },
+      {
+        "id": "B",
+        "text": "只处理最紧急的物品",
+        "effects": {
+          "desc": "保留更多精力，但留下些许遗憾",
+          "energy": 4,
+          "stress": 0
+        }
+      }
+    ]
+  },
+  {
+    "id": "holiday_summer_5587b81101724c5199fbae54212d3c9c",
+    "season": "summer",
+    "title": "蟹老板的夏日奇遇",
+    "desc": "在紫金港校区被称为蟹老板的建筑前，你偶遇一位正在整理校史的老者，他邀请你帮忙扫描一批泛黄的旧照片，过程中你听说了许多不为人知的校园往事。",
+    "options": [
+      {
+        "id": "A",
+        "text": "耐心协助扫描并记录细节",
+        "effects": {
+          "desc": "获得了珍贵的口述历史资料，心情愉悦",
+          "energy": 2,
+          "sanity": 1
+        }
+      },
+      {
+        "id": "B",
+        "text": "只完成基础任务便匆匆离开",
+        "effects": {
+          "desc": "虽节省了时间但少了交流的乐趣，略显遗憾",
+          "stress": 0
+        }
+      }
+    ]
+  },
+  {
+    "id": "holiday_summer_38189b562ae049589c4214f13e570ae0",
+    "season": "summer",
+    "title": "返校前的食堂建议",
+    "desc": "假期里，你在 CC98 看到同学征集食堂菜单建议的帖子。一张手绘草图让你想起熟悉的窗口，你犹豫要不要参与讨论。",
+    "options": [
+      {
+        "id": "A",
+        "text": "认真回复并补充自己的建议",
+        "effects": {
+          "desc": "建议得到同学的点赞，友善的交流让你少了些返校前的紧张。",
+          "reputation": 1,
+          "stress": -1
+        }
+      },
+      {
+        "id": "B",
+        "text": "匆匆否定这个想法",
+        "effects": {
+          "desc": "话说得太急，没能表达清楚顾虑，留下了略显生硬的印象。",
+          "charm": -1
+        }
+      }
+    ]
+  },
+  {
+    "id": "holiday_winter_7e03a8b9235747e3be04b964b4313083",
+    "season": "winter",
+    "title": "雪夜的车窗倒影",
+    "desc": "除夕夜大雪纷飞，你在归家的长途车上看着窗外模糊的雪景和车内家人的笑脸。",
+    "options": [
+      {
+        "id": "A",
+        "text": "给家人拍张合影",
+        "effects": {
+          "desc": "记录美好瞬间，增进情感交流",
+          "reputation": 1,
+          "sanity": 2
+        }
+      },
+      {
+        "id": "B",
+        "text": "静静聆听父母聊天",
+        "effects": {
+          "desc": "感受家庭氛围，内心更加平静",
+          "eq": 1,
+          "stress": -1
+        }
+      }
+    ]
+  },
+  {
+    "id": "holiday_winter_be20e93df8e74d0c9600125302ad1fb5",
+    "season": "winter",
+    "title": "亲友聚会的欢笑与泪水",
+    "desc": "回到亲戚家参加年夜饭，大家推杯换盏间既有热闹的玩笑也有对未来的感慨。",
+    "options": [
+      {
+        "id": "A",
+        "text": "主动敬酒祝福长辈",
+        "effects": {
+          "desc": "赢得满堂喝彩，提升家族声望",
+          "reputation": 2,
+          "sanity": -1
+        }
+      },
+      {
+        "id": "B",
+        "text": "悄悄给父母倒茶",
+        "effects": {
+          "desc": "体贴入微让父母感动，缓解自身紧张",
+          "charm": 1,
+          "stress": -2
+        }
+      }
+    ]
+  },
+  {
+    "id": "holiday_summer_277e7652f90b48adb9c5864ddef077ff",
+    "season": "summer",
+    "title": "兼职咖啡馆的午后时光",
+    "desc": "你在滨江一家小咖啡馆帮忙端茶送水，看着阳光洒在桌面上，虽然忙碌却感到一种难得的踏实感。",
+    "options": [
+      {
+        "id": "A",
+        "text": "继续服务到打烊",
+        "effects": {
+          "desc": "收获了顾客的好评与额外小费，但身体略显疲惫。",
+          "energy": -2,
+          "gold": 5,
+          "reputation": 1
+        }
+      },
+      {
+        "id": "B",
+        "text": "提前下班回家休息",
+        "effects": {
+          "desc": "及时补充了睡眠，心情变得格外轻松愉悦。",
+          "stress": -3
+        }
+      }
+    ]
+  },
+  {
+    "id": "holiday_summer_044b559e03e5478fa8ac9189a18f5700",
+    "season": "summer",
+    "title": "社区旧物交换市集",
+    "desc": "你参加了滨江社区的二手交换活动，淘到了心仪的复古相机，也帮邻居整理出了闲置的图书。",
+    "options": [
+      {
+        "id": "A",
+        "text": "花重金买下稀有藏品",
+        "effects": {
+          "desc": "用积蓄换回了珍贵的物件，但钱包变得空了一些。",
+          "gold": -8,
+          "reputation": 1
+        }
+      },
+      {
+        "id": "B",
+        "text": "坚持物尽其用，交换书籍",
+        "effects": {
+          "desc": "虽然没买大件，却收获了丰富的知识储备与邻里情谊。",
+          "eq": 1,
+          "luck": 1
+        }
+      }
+    ]
+  },
+  {
+    "id": "holiday_summer_f511329e792348aa8dad45e8fccf5430",
+    "season": "summer",
+    "title": "暑期家教的清晨挑战",
+    "desc": "你前往郊区进行暑期家教，面对调皮的学生需要极大的耐心去引导他们完成作业。",
+    "options": [
+      {
+        "id": "A",
+        "text": "严厉督促完成所有练习",
+        "effects": {
+          "desc": "学生最终掌握了知识点，但课堂气氛略显紧张。",
+          "stress": 1
+        }
+      },
+      {
+        "id": "B",
+        "text": "采用轻松互动的方式教学",
+        "effects": {
+          "desc": "孩子被你的讲解逗笑了，但一个不合时宜的玩笑也提醒你更仔细地体会对方的感受。",
+          "charm": 1,
+          "eq": -1
+        }
+      }
+    ]
+  },
+  {
+    "id": "holiday_winter_47b4b7f315124485994aebd628f3e41f",
+    "season": "winter",
+    "title": "冬日冰场的沉默对话",
+    "desc": "寒假里，你在家乡的正规溜冰场练习滑行。扶着围栏慢慢站稳，看着身旁熟练的身影，内心从焦躁逐渐变得宁静。",
+    "options": [
+      {
+        "id": "A",
+        "text": "坚持完成今天的练习计划",
+        "effects": {
+          "desc": "身体极度疲惫但精神彻底放松",
+          "energy": -5,
+          "stress": -4
+        }
+      },
+      {
+        "id": "B",
+        "text": "提前回家休息",
+        "effects": {
+          "desc": "换下冰鞋回家喝杯热水，歇过片刻，体力渐渐恢复。",
+          "energy": 3,
+          "stress": 0
+        }
+      }
+    ]
+  },
+  {
+    "id": "holiday_winter_148d63b435c84b6c8574b8f4d0626d66",
+    "season": "winter",
+    "title": "老巷口的那碗热汤",
+    "desc": "寒假期间常去的老屋灶台旁，一碗热气腾腾的羊肉汤驱散了所有寒意，让原本紧绷的神经慢慢松弛下来。",
+    "options": [
+      {
+        "id": "A",
+        "text": "喝完汤后在街头闲逛",
+        "effects": {
+          "desc": "胃里暖暖的，心情也轻松了许多",
+          "energy": 2,
+          "eq": 1
+        }
+      },
+      {
+        "id": "B",
+        "text": "吃完后立刻回家休息",
+        "effects": {
+          "desc": "虽然错过了风景，但能安心补觉",
+          "energy": 5,
+          "stress": -3
+        }
+      }
+    ]
+  },
+  {
+    "id": "holiday_winter_5cd94f80d49f4cf4af0c881eaee64ac2",
+    "season": "winter",
+    "title": "操场上的奔跑与停歇",
+    "desc": "在空旷的操场上独自晨跑了几公里，汗水混着冷风，原本计划冲刺却中途停下，享受这份难得的自由。",
+    "options": [
+      {
+        "id": "A",
+        "text": "坚持跑完最后两圈",
+        "effects": {
+          "desc": "虽然很累但成就感满满，感觉整个人都活过来了",
+          "energy": -4,
+          "sanity": 2
+        }
+      },
+      {
+        "id": "B",
+        "text": "走到跑道外休息喝水",
+        "effects": {
+          "desc": "避免了过度透支，保持了充沛的体力状态",
+          "energy": 3,
+          "stress": -1
+        }
+      }
+    ]
+  },
+  {
+    "id": "holiday_summer_c01c228155df4d558b2e3733c32074fa",
+    "season": "summer",
+    "title": "云端咖啡的清晨订单",
+    "desc": "你在家乡的一家咖啡小店做暑期兼职，为清晨路过的客人制作饮品。窗边的阳光让你想起云峰宿舍楼下熟悉的小路。",
+    "options": [
+      {
+        "id": "A",
+        "text": "继续制作最后一杯",
+        "effects": {
+          "desc": "香气弥漫整个街区，收获好评与额外收入。",
+          "energy": 2,
+          "gold": 5,
+          "reputation": 1
+        }
+      },
+      {
+        "id": "B",
+        "text": "提前收摊休息",
+        "effects": {
+          "desc": "虽然少赚了些钱，但身体得到充分放松。",
+          "stress": -3
+        }
+      }
+    ]
+  },
+  {
+    "id": "holiday_summer_9aab966e91f749579b07a5cd4c253bae",
+    "season": "summer",
+    "title": "社区晚风里的旧书修复",
+    "desc": "在玉泉附近的社区中心整理暑期书籍义卖，你修补破损的教材，指尖触碰着过往的知识。",
+    "options": [
+      {
+        "id": "A",
+        "text": "义卖一套完整丛书",
+        "effects": {
+          "desc": "修补好的丛书卖出了不错的价钱，认真整理的态度也得到街坊认可。",
+          "gold": 10,
+          "reputation": 2
+        }
+      },
+      {
+        "id": "B",
+        "text": "保留珍贵藏书自用",
+        "effects": {
+          "desc": "心情愉悦但错失义卖收益，感到一丝遗憾。",
+          "eq": 1,
+          "stress": -1
+        }
+      }
+    ]
+  },
+  {
+    "id": "holiday_summer_409f91a0f8df47eb9b4e84ec44ac34c7",
+    "season": "summer",
+    "title": "老街巷口的夏日小食摊",
+    "desc": "在老城区的小巷售卖自制绿豆汤和凉糕，听着蝉鸣，感受着邻里间温暖的互动。",
+    "options": [
+      {
+        "id": "A",
+        "text": "延长营业时间到深夜",
+        "effects": {
+          "desc": "多赚了不少钱，但身体感到疲惫不堪。",
+          "gold": 8,
+          "stress": 2
+        }
+      },
+      {
+        "id": "B",
+        "text": "准时打烊回家",
+        "effects": {
+          "desc": "虽然收入不多，但精神焕发，充满期待。",
+          "energy": 4,
+          "sanity": 1
+        }
+      }
+    ]
+  },
+  {
+    "id": "holiday_winter_e1a78f6ee6e14ab9b039a19d7b98024b",
+    "season": "winter",
+    "title": "阳台上的旧吉他",
+    "desc": "假期里，你翻出家中阳台上那把落灰的吉他，弹起许久没有唱过的民谣。家乡的街灯次第亮起，让你想起学园里熟悉的夜色。",
+    "options": [
+      {
+        "id": "A",
+        "text": "继续弹奏直到天明",
+        "effects": {
+          "desc": "音乐治愈了积压的情绪，但身体因熬夜而疲惫。",
+          "energy": -2,
+          "sanity": 3
+        }
+      },
+      {
+        "id": "B",
+        "text": "收拾乐器准备返校",
+        "effects": {
+          "desc": "回归日常节奏，虽然少了片刻宁静，却恢复了清爽状态。",
+          "stress": -1
+        }
+      }
+    ]
+  },
+  {
+    "id": "holiday_winter_a7d9da63fc65498eb0b2baf51c3be87d",
+    "season": "winter",
+    "title": "老巷口的热茶与回忆",
+    "desc": "回到紫金港的老巷口，你偶遇了许久未见的室友，两人捧着刚出锅的豆浆油条，聊着各自假期里的小确幸与烦恼。",
+    "options": [
+      {
+        "id": "A",
+        "text": "分享一段有趣的经历",
+        "effects": {
+          "desc": "笑声驱散了归途的疲惫，但话题过于热烈消耗了体力。",
+          "energy": -1,
+          "eq": 1
+        }
+      },
+      {
+        "id": "B",
+        "text": "安静地听对方诉说",
+        "effects": {
+          "desc": "在倾听中感受到温暖，压力悄然消散，却错过了分享欲。",
+          "stress": -2
+        }
+      }
+    ]
+  },
+  {
+    "id": "holiday_winter_74f679313f724ea5afda0df69085ee28",
+    "season": "winter",
+    "title": "图书馆前的雪景留影",
+    "desc": "寒假尾声，你独自来到图书馆前，看着满地积雪覆盖的浙大标志，拍下了这张充满冬日气息的照片作为纪念。",
+    "options": [
+      {
+        "id": "A",
+        "text": "修改照片滤镜再发朋友圈",
+        "effects": {
+          "desc": "精心修饰让画面更完美，但过程耗费了大量精力。",
+          "charm": 1,
+          "energy": -2
+        }
+      },
+      {
+        "id": "B",
+        "text": "原图直出并保存回忆",
+        "effects": {
+          "desc": "保留了最真实的瞬间，虽然略显粗糙却格外珍贵。",
+          "luck": 1
+        }
+      }
+    ]
+  },
+  {
+    "id": "holiday_summer_da75bc281fc74d6eb613ea4c1893bc9e",
+    "season": "summer",
+    "title": "图书馆的静谧午后",
+    "desc": "在基图角落整理旧书时，你发现一本夹着校历的笔记，仿佛听见了过去的回声。",
+    "options": [
+      {
+        "id": "A",
+        "text": "继续翻阅笔记",
+        "effects": {
+          "desc": "思绪沉淀，心情平复",
+          "stress": -2
+        }
+      },
+      {
+        "id": "B",
+        "text": "合上书本离开",
+        "effects": {
+          "desc": "享受独处时光，精神放松",
+          "energy": 3
+        }
+      }
+    ]
+  },
+  {
+    "id": "holiday_summer_fefcaa610c704d23b419de56bf936a4a",
+    "season": "summer",
+    "title": "滨江晚风的微醺",
+    "desc": "傍晚在江边小径漫步，手中那杯自制柠檬茶驱散了暑气与疲惫。",
+    "options": [
+      {
+        "id": "A",
+        "text": "继续前行",
+        "effects": {
+          "desc": "感受微风拂面，心情愉悦",
+          "charm": 1
+        }
+      },
+      {
+        "id": "B",
+        "text": "驻足拍照留念",
+        "effects": {
+          "desc": "记录美好瞬间，但略显匆忙",
+          "stress": 1
+        }
+      }
+    ]
+  },
+  {
+    "id": "holiday_summer_a03d15803c44444c8978ed0141a91bfb",
+    "season": "summer",
+    "title": "旧物市集的奇遇",
+    "desc": "在社区角落的临时摊位前，你淘到了一只造型奇特的复古收音机。",
+    "options": [
+      {
+        "id": "A",
+        "text": "买下它",
+        "effects": {
+          "desc": "获得新玩具，带来惊喜",
+          "gold": -5
+        }
+      },
+      {
+        "id": "B",
+        "text": "放弃购买",
+        "effects": {
+          "desc": "避免破费，保持理智",
+          "luck": 1
+        }
+      }
+    ]
+  },
+  {
+    "id": "holiday_winter_e7b41efaa2d8475c8ffe53dada5161c6",
+    "season": "winter",
+    "title": "主图旁的新年计划",
+    "desc": "返校前，你在主图旁翻开旧笔记，整理假期里想到的新目标。夕阳落在纸页上，密密麻麻的清单既让你期待，也让你有些犹豫。",
+    "options": [
+      {
+        "id": "A",
+        "text": "认真排完每一个目标的时间表",
+        "effects": {
+          "desc": "计划终于排好，但长时间梳理让你疲惫，也多了一点必须完成它的紧张。",
+          "energy": -3,
+          "stress": 1
+        }
+      },
+      {
+        "id": "B",
+        "text": "中途休息喝杯热茶",
+        "effects": {
+          "desc": "先合上笔记喝杯热茶，暂时放下清单，你找回了轻松的心情和精力。",
+          "energy": 2,
+          "sanity": 1
+        }
+      }
+    ]
+  },
+  {
+    "id": "holiday_winter_46375240cb424d17b6f387bb9abd53c1",
+    "season": "winter",
+    "title": "67656 分母",
+    "desc": "面对网络上关于奖学金评选的争议讨论，你选择暂时放下手机，去操场感受冬日寒风带来的清醒。",
+    "options": [
+      {
+        "id": "A",
+        "text": "在社交媒体上理性发声",
+        "effects": {
+          "desc": "引发了广泛思考，但内心有些疲惫",
+          "reputation": 1,
+          "stress": 2
+        }
+      },
+      {
+        "id": "B",
+        "text": "独自慢跑一圈释放情绪",
+        "effects": {
+          "desc": "身体被寒冷唤醒，烦恼暂时消散",
+          "energy": 3,
+          "sanity": 1
+        }
+      }
+    ]
+  },
+  {
+    "id": "holiday_winter_a3870966def743a49f0ab7317ed3aa24",
+    "season": "winter",
+    "title": "归途中的热茶与回忆",
+    "desc": "寒冬列车上，你捧着温热的陈皮茶，看着窗外模糊的校园轮廓，想起假期老巷口那碗治愈的热汤。",
+    "options": [
+      {
+        "id": "A",
+        "text": "与邻座同学分享茶叶",
+        "effects": {
+          "desc": "获得陌生人的善意，心情愉悦",
+          "charm": 1,
+          "eq": 2
+        }
+      },
+      {
+        "id": "B",
+        "text": "独自静享茶香，闭目养神",
+        "effects": {
+          "desc": "内心安宁，压力减轻",
+          "stress": -3
+        }
+      }
+    ]
+  },
+  {
+    "id": "holiday_summer_3cbc133c093e448594576f7f0af51947",
+    "season": "summer",
+    "title": "暑期笔记的最后一页",
+    "desc": "暑假里，你在基图整理自选阅读的笔记，发现最后一页遗漏了出处。闭馆提醒响起，你犹豫要不要先向管理员问清下次开放的时间。",
+    "options": [
+      {
+        "id": "A",
+        "text": "礼貌询问开放时间，明天再来",
+        "effects": {
+          "desc": "管理员耐心指了借阅服务的公告，事情有了安排，你也不再急着赶工。",
+          "energy": 2,
+          "reputation": 1
+        }
+      },
+      {
+        "id": "B",
+        "text": "带着没查清的疑问直接离开",
+        "effects": {
+          "desc": "回家的路上仍惦记着那条出处，未完成的小事让你有些烦躁。",
+          "stress": 1
+        }
+      }
+    ]
+  },
+  {
+    "id": "holiday_summer_c718c335a8214ababb98cae69f19e8d0",
+    "season": "summer",
+    "title": "暑期资料备份",
+    "desc": "假期尾声，你想把学在浙大里保存的学习资料整理到自己的文件夹，网络却忽然不太稳定。桌面上还有几份本地备份，你决定换个办法。",
+    "options": [
+      {
+        "id": "A",
+        "text": "手动逐份整理本地备份",
+        "effects": {
+          "desc": "资料终于分好类别，但重复操作让你疲惫，也有些烦躁。",
+          "energy": -2,
+          "stress": 1
+        }
+      },
+      {
+        "id": "B",
+        "text": "先请同学确认，再等网络恢复",
+        "effects": {
+          "desc": "同学耐心分享了备份办法，恰好恢复的网络也让整理顺利了许多。",
+          "eq": 1,
+          "luck": 1
+        }
+      }
+    ]
+  },
+  {
+    "id": "holiday_winter_30942ea26c704b6da5a43c9de13177aa",
+    "season": "winter",
+    "title": "村口粮仓的夕阳",
+    "desc": "寒假回到老家，你看见父母在院里整理存粮。冬日暖阳落在粮袋上，熟悉的家乡气息让你暂时忘了返校前的忙碌。",
+    "options": [
+      {
+        "id": "A",
+        "text": "帮忙整理粮袋",
+        "effects": {
+          "desc": "收好粮袋后喝了一碗热汤，短暂休息让你重新有了精神。",
+          "energy": 3
+        }
+      },
+      {
+        "id": "B",
+        "text": "坐在门槛吃块糖",
+        "effects": {
+          "desc": "坐在门槛和路过的邻居聊几句，真诚的笑容让人觉得亲切。",
+          "charm": 1
+        }
+      }
+    ]
+  },
+  {
+    "id": "holiday_winter_e35e08f0868545b096d38499febd9f2e",
+    "season": "winter",
+    "title": "老街巷的旧书摊",
+    "desc": "假期你在老城区闲逛，发现一家不起眼的小书店，店主正整理着泛黄的旧书。",
+    "options": [
+      {
+        "id": "A",
+        "text": "买一本冷门诗集",
+        "effects": {
+          "desc": "你用一点零花钱买下诗集，夹着落叶的书页成了这趟闲逛的小纪念。",
+          "gold": -5
+        }
+      },
+      {
+        "id": "B",
+        "text": "听店主讲本地传说",
+        "effects": {
+          "desc": "听店主慢慢讲完老街的往事，心里的急躁也跟着平复下来。",
+          "stress": -2
+        }
+      }
+    ]
+  },
+  {
+    "id": "holiday_winter_1980de1bb7e7431780975da7364ec26a",
+    "season": "winter",
+    "title": "外婆灶台的烟火气",
+    "desc": "除夕夜，外婆在厨房忙碌，蒸汽腾腾中传来熟悉的炖菜香，全家围坐等待年夜饭。",
+    "options": [
+      {
+        "id": "A",
+        "text": "主动帮忙洗菜",
+        "effects": {
+          "desc": "洗完菜，外婆让你先尝一碗热汤，暖意让你恢复了精神。",
+          "energy": 2
+        }
+      },
+      {
+        "id": "B",
+        "text": "安静地听长辈聊天",
+        "effects": {
+          "desc": "沉默太久让长辈误以为你不愿搭话，你才意识到偶尔回应也很重要。",
+          "charm": -1
+        }
+      }
+    ]
+  },
+  {
+    "id": "holiday_summer_caadfabbb1f34ea78f17c31dc70169e1",
+    "season": "summer",
+    "title": "东楼下的树荫小憩",
+    "desc": "你躲在东教学楼旁的梧桐树下，听着蝉鸣发呆，偶尔看到路过的同学匆匆走过。",
+    "options": [
+      {
+        "id": "A",
+        "text": "继续躺平看云",
+        "effects": {
+          "desc": "彻底放松，但错过了路边的特色小吃。",
+          "energy": 5,
+          "stress": -3
+        }
+      },
+      {
+        "id": "B",
+        "text": "起身买杯冰饮",
+        "effects": {
+          "desc": "喝到清凉的解暑饮料，稍微恢复了活力。",
+          "energy": 1,
+          "stress": -1
+        }
+      }
+    ]
+  },
+  {
+    "id": "holiday_summer_854d4318f5954c809f51378e3f8dc22c",
+    "season": "summer",
+    "title": "社区旧物换书趣",
+    "desc": "你参加了滨江边的旧物交换活动，用一本闲置小说换到了邻居带来的夏日特调食谱。",
+    "options": [
+      {
+        "id": "A",
+        "text": "用藏书抵价，再补一点差额",
+        "effects": {
+          "desc": "你补上了差额，也在愉快的讨价还价中给对方留下了好印象。",
+          "charm": 1,
+          "gold": -5
+        }
+      },
+      {
+        "id": "B",
+        "text": "保留现有物品",
+        "effects": {
+          "desc": "没有获得新东西，但可以安心回家整理思绪。",
+          "stress": -2
+        }
+      }
+    ]
+  },
+  {
+    "id": "holiday_summer_7ae8b3b0d9344e7c860947b6d2cffb4a",
+    "season": "summer",
+    "title": "深夜滨江的微风",
+    "desc": "假期最后几天，你独自坐在江边长椅上，看着波光粼粼的水面思考未来的方向。",
+    "options": [
+      {
+        "id": "A",
+        "text": "写下心路历程",
+        "effects": {
+          "desc": "文字记录带来内心的平静与清晰。",
+          "eq": 1,
+          "sanity": 2
+        }
+      },
+      {
+        "id": "B",
+        "text": "享受独处时光",
+        "effects": {
+          "desc": "沉浸在自然中，感到前所未有的轻松自在。",
+          "energy": 3,
+          "stress": -4
+        }
+      }
+    ]
+  },
+  {
+    "id": "holiday_winter_328c6d266455443287ff895053a130d9",
+    "season": "winter",
+    "title": "除夕夜的家宴",
+    "desc": "你回到紫金港的家中，桌上摆满了家乡菜。父母絮叨着近况，你感到久违的温暖与牵挂。",
+    "options": [
+      {
+        "id": "A",
+        "text": "主动分享大学趣事",
+        "effects": {
+          "desc": "气氛更加融洽，家人笑容满面。",
+          "energy": 2,
+          "eq": 1,
+          "reputation": 1
+        }
+      },
+      {
+        "id": "B",
+        "text": "安静陪伴吃年夜饭",
+        "effects": {
+          "desc": "享受难得的宁静时光，内心感到踏实。",
+          "stress": -2
+        }
+      }
+    ]
+  },
+  {
+    "id": "holiday_winter_8d64fe77bb2b4eb38da61006e095a570",
+    "season": "winter",
+    "title": "春节走亲访友",
+    "desc": "你提着礼物穿梭在浙大周边的老街巷，拜访几位许久未见的亲戚，感受人情冷暖。",
+    "options": [
+      {
+        "id": "A",
+        "text": "热情招待每一位客人",
+        "effects": {
+          "desc": "赢得邻里好感，但略显疲惫。",
+          "charm": 1,
+          "stress": 1
+        }
+      },
+      {
+        "id": "B",
+        "text": "礼貌寒暄后早点回家",
+        "effects": {
+          "desc": "保持得体距离，得以提前休息。",
+          "eq": 0,
+          "reputation": 0
+        }
+      }
+    ]
+  },
+  {
+    "id": "holiday_winter_005821adadc7423ba6452bb6923e10b4",
+    "season": "winter",
+    "title": "除夕前的最后一次通话",
+    "desc": "深夜，你拨通了在外地工作的同学电话，聊着各自的假期见闻，心中涌起一丝暖意。",
+    "options": [
+      {
+        "id": "A",
+        "text": "倾诉内心的孤独与思念",
+        "effects": {
+          "desc": "获得情感共鸣，心里暖暖的。",
+          "sanity": 2,
+          "stress": -1
+        }
+      },
+      {
+        "id": "B",
+        "text": "只交换近况并约定下次见面",
+        "effects": {
+          "desc": "保持轻松愉快的氛围，互不打扰。",
+          "luck": 0,
+          "reputation": 0
+        }
+      }
+    ]
+  },
+  {
+    "id": "holiday_summer_3568e932809f4c5d89086ec0f5242c6b",
+    "season": "summer",
+    "title": "代码里的夏日微光",
+    "desc": "你在滨江的开源项目里为社区修复了关键 Bug，虽然熬了几个通宵，但看着上线后的用户好评，心中满是成就感。",
+    "options": [
+      {
+        "id": "A",
+        "text": "分享代码心得",
+        "effects": {
+          "desc": "将经验整理成文发布在 CC98 论坛，获得技术圈认可。",
+          "energy": 2,
+          "reputation": 3,
+          "stress": -1
+        }
+      },
+      {
+        "id": "B",
+        "text": "独自复盘日志",
+        "effects": {
+          "desc": "深夜梳理逻辑漏洞，虽疲惫却理清了思路。",
+          "eq": 1,
+          "stress": 2
+        }
+      }
+    ]
+  },
+  {
+    "id": "holiday_summer_8b349f3eab7344b7acd7fb040a8dec10",
+    "season": "summer",
+    "title": "旧物市集的交换礼",
+    "desc": "周末你穿梭在热闹的旧物市集，用一本泛黄的《算法导论》换得了一瓶珍藏的桂花酿，意外收获了邻里间的笑声。",
+    "options": [
+      {
+        "id": "A",
+        "text": "继续淘换古董",
+        "effects": {
+          "desc": "又发现了一件稀有唱片，心情愉悦但钱包变空了。",
+          "gold": -5,
+          "luck": 2,
+          "stress": -1
+        }
+      },
+      {
+        "id": "B",
+        "text": "回家煮茶小憩",
+        "effects": {
+          "desc": "把换来的桂花酿收好，先煮一壶茶慢慢喝，身心渐渐放松。",
+          "energy": 3,
+          "sanity": 2
+        }
+      }
+    ]
+  },
+  {
+    "id": "holiday_winter_9d0e8c45b2674cb891840276f63425e1",
+    "season": "winter",
+    "title": "雪夜后的慢跑",
+    "desc": "在紫金港的操场上，你迎着微冷的风跑完五公里，肺部带着清冽的空气感。虽然身体疲惫，但看着落满积雪的樱花树，内心异常平静。",
+    "options": [
+      {
+        "id": "A",
+        "text": "回家泡个热水澡放松",
+        "effects": {
+          "desc": "身心彻底松弛，压力大幅降低。",
+          "energy": 4,
+          "stress": -3
+        }
+      },
+      {
+        "id": "B",
+        "text": "继续散步欣赏雪景",
+        "effects": {
+          "desc": "心情愉悦但体力消耗更多。",
+          "charm": 1,
+          "energy": -2,
+          "stress": -1
+        }
+      }
+    ]
+  },
+  {
+    "id": "holiday_winter_9f38a0e48dc44f819c8c5d0c4366fef2",
+    "season": "winter",
+    "title": "清晨的求是大道骑行",
+    "desc": "新修的求是大道上积雪初融，你骑着单车穿过从云峰到主图书馆的路径，阳光洒在车把上，感觉整个人都轻盈了起来。",
+    "options": [
+      {
+        "id": "A",
+        "text": "找个咖啡馆喝杯热拿铁",
+        "effects": {
+          "desc": "温暖驱散寒意，心情变得格外开朗。",
+          "charm": 2,
+          "stress": -2
+        }
+      },
+      {
+        "id": "B",
+        "text": "坚持骑完剩下的路程",
+        "effects": {
+          "desc": "挑战自我后成就感满满，但双腿有些酸痛。",
+          "eq": 1,
+          "reputation": 1,
+          "stress": 1
+        }
+      }
+    ]
+  },
+  {
+    "id": "holiday_winter_02020aa709234172b13d92f2a3a922e8",
+    "season": "winter",
+    "title": "社区公园的晨练打卡",
+    "desc": "寒假期间你常去的一个社区公园里，几位老人正在打太极。你加入其中一段动作，跟随他们的节奏呼吸，感受到邻里间难得的和谐氛围。",
+    "options": [
+      {
+        "id": "A",
+        "text": "认真练习并记录感悟",
+        "effects": {
+          "desc": "精神高度集中，内心充满宁静与满足。",
+          "sanity": 2,
+          "stress": -1
+        }
+      },
+      {
+        "id": "B",
+        "text": "中途休息喝口热水",
+        "effects": {
+          "desc": "避免了过度劳累，保持了良好的精神状态。",
+          "energy": 3,
+          "stress": -1
+        }
+      }
+    ]
+  },
+  {
+    "id": "holiday_summer_8e3a9b003f8a418db4eda5b0d208a348",
+    "season": "summer",
+    "title": "山阴街口的冰镇绿豆汤",
+    "desc": "你独自漫步在山阴路，被路边摊的冰镇绿豆汤吸引。买了一份坐在长椅上慢慢喝，看着夕阳染红天空，感到十分惬意。",
+    "options": [
+      {
+        "id": "A",
+        "text": "继续享受这份清凉",
+        "effects": {
+          "desc": "疲惫感消退，心情变得格外舒畅",
+          "energy": 4,
+          "sanity": 2
+        }
+      },
+      {
+        "id": "B",
+        "text": "起身去附近的书店买本书",
+        "effects": {
+          "desc": "短暂的阅读让思绪沉淀，压力减轻",
+          "stress": -3
+        }
+      }
+    ]
+  },
+  {
+    "id": "holiday_summer_2834391d84194ee1b5e46693d4de3694",
+    "season": "summer",
+    "title": "龙游老街的烟火气",
+    "desc": "假期最后一天，你走进龙游老街，被一家充满怀旧气息的老铺子吸引，买了几样小零食和一杯特调饮品，感受人间烟火的热闹。",
+    "options": [
+      {
+        "id": "A",
+        "text": "与摊主多聊几句家常",
+        "effects": {
+          "desc": "愉快的交谈让你感到温暖，心情愉悦",
+          "charm": 1,
+          "stress": -2
+        }
+      },
+      {
+        "id": "B",
+        "text": "帮摊主拍几张小食照片",
+        "effects": {
+          "desc": "摊主送你一点拍照酬谢，分享美食的快乐也让心情明亮起来。",
+          "gold": 2,
+          "sanity": 1
+        }
+      }
+    ]
+  },
+  {
+    "id": "holiday_summer_8e06028689dd4135aea733368f39ce81",
+    "season": "summer",
+    "title": "滨江公园的日落漫步",
+    "desc": "傍晚时分，你来到滨江公园散步，看着江面波光粼粼，听着远处隐约传来的歌声，心中涌起一股莫名的感动。",
+    "options": [
+      {
+        "id": "A",
+        "text": "在长椅上坐下静静发呆",
+        "effects": {
+          "desc": "内心的宁静让你感到放松，压力消散",
+          "stress": -4
+        }
+      },
+      {
+        "id": "B",
+        "text": "沿着江边慢跑几圈",
+        "effects": {
+          "desc": "运动后的微汗带来活力，精神焕发",
+          "energy": 3,
+          "luck": 1
+        }
+      }
+    ]
+  },
+  {
+    "id": "holiday_winter_08adb4559143422f8ff8eb96e2165f84",
+    "season": "winter",
+    "title": "雪后的求是大道",
+    "desc": "新修的求是大道被白雪覆盖，你骑着单车穿过从云峰到主图书馆的路段，路旁的樟树挂满银霜，寒风中却感到前所未有的宁静与自由。",
+    "options": [
+      {
+        "id": "A",
+        "text": "继续骑行直到主图书馆",
+        "effects": {
+          "desc": "车轮碾过积雪发出清脆声响，沿途的风景让你心情格外舒畅，压力大幅缓解。",
+          "stress": -3
+        }
+      },
+      {
+        "id": "B",
+        "text": "在路旁的咖啡店喝杯热饮",
+        "effects": {
+          "desc": "温暖的咖啡驱散了寒意，虽然没能骑完全程，但此刻的惬意让你感到无比放松。",
+          "charm": 1
+        }
+      }
+    ]
+  },
+  {
+    "id": "holiday_winter_e06ff98f5c4741c49354d8534e3c6151",
+    "season": "winter",
+    "title": "紫金港校史馆的旧时光",
+    "desc": "寒假里，你来到别称“蟹老板”的紫金港校区校史馆，在玻璃窗前驻足。入学时拍下的那张合照浮上心头，青涩的紧张如今已经有了不同的意味。",
+    "options": [
+      {
+        "id": "A",
+        "text": "在门口拍一张纪念照",
+        "effects": {
+          "desc": "定格了这段温暖的回忆，虽然只是简单的拍照，却让你感到内心充满力量。",
+          "eq": 1
+        }
+      },
+      {
+        "id": "B",
+        "text": "走进馆内翻阅历史资料",
+        "effects": {
+          "desc": "沉浸在历史的厚重感中，思绪万千，虽然有些疲惫，但精神世界得到了极大的滋养。",
+          "sanity": 2
+        }
+      }
+    ]
+  },
+  {
+    "id": "holiday_winter_029c7146c1b645e6b60d6a805dd801b3",
+    "season": "winter",
+    "title": "社区公园的冬日暖阳",
+    "desc": "假期最后一天，你独自来到附近的社区公园，看着枯枝在夕阳下拉出长长的影子，听着远处孩童的嬉闹声，心中涌起一股暖流。",
+    "options": [
+      {
+        "id": "A",
+        "text": "买束花送给远方的朋友",
+        "effects": {
+          "desc": "将这份心意寄出，虽然花费了一点零花钱，但想到对方的笑容就觉得值得。",
+          "gold": -2,
+          "reputation": 1
+        }
+      },
+      {
+        "id": "B",
+        "text": "坐在长椅上静静发呆",
+        "effects": {
+          "desc": "享受这片刻的独处时光，内心的纷乱逐渐平息，重新找回了生活的节奏与平静。",
+          "stress": -4
+        }
+      }
+    ]
+  },
+  {
+    "id": "holiday_summer_8f6095e33a9440f5bd736c49b7d1b7e4",
+    "season": "summer",
+    "title": "后厨的烟火气",
+    "desc": "你在家里帮妈妈整理旧食谱，看着灶台升起的蒸汽，突然理解了‘求是’背后的踏实与‘创新’所需的耐心。",
+    "options": [
+      {
+        "id": "A",
+        "text": "主动分担更多家务",
+        "effects": {
+          "desc": "体力耗尽但心情愉悦，压力显著降低",
+          "energy": -4,
+          "stress": -3
+        }
+      },
+      {
+        "id": "B",
+        "text": "休息片刻，再陪家人聊聊天",
+        "effects": {
+          "desc": "歇过片刻后，你更有精神地陪家人聊天，轻松的笑容拉近了彼此的距离。",
+          "charm": 1,
+          "energy": 2
+        }
+      }
+    ]
+  },
+  {
+    "id": "holiday_summer_58fc5c46927545bca1e7cc962ddf9352",
+    "season": "summer",
+    "title": "周末厨房实验",
+    "desc": "你尝试复刻一道传统家常菜，虽然味道略有偏差，但家人的笑声让你觉得一切值得。",
+    "options": [
+      {
+        "id": "A",
+        "text": "坚持完美主义重做",
+        "effects": {
+          "desc": "花费大量时间却收获成就感，魅力提升",
+          "charm": 2,
+          "energy": -3
+        }
+      },
+      {
+        "id": "B",
+        "text": "接受不完美上桌",
+        "effects": {
+          "desc": "家人夸赞你大方，压力消散",
+          "stress": -4
+        }
+      }
+    ]
+  },
+  {
+    "id": "holiday_summer_d50e134ddeda474680dd45427c801d84",
+    "season": "summer",
+    "title": "蝉鸣里的旧物交换",
+    "desc": "在图书馆角落的跳蚤市场淘到一本泛黄的《求是》手记，与陌生学长讨价还价时聊起了对优绩主义的看法。",
+    "options": [
+      {
+        "id": "A",
+        "text": "卖出闲置读物，再换取那本书",
+        "effects": {
+          "desc": "交换之后还剩下一点卖书所得，新手记的文字也让思绪安静下来。",
+          "gold": 5,
+          "stress": -2
+        }
+      },
+      {
+        "id": "B",
+        "text": "只帮对方整理书架",
+        "effects": {
+          "desc": "收获真诚友谊，内心充实",
+          "charm": 1,
+          "energy": 3
+        }
+      }
+    ]
+  },
+  {
+    "id": "holiday_summer_2bd9923e5e4a41f2aa2b908eb49b3a3f",
+    "season": "summer",
+    "title": "滨江晚风与星空对话",
+    "desc": "傍晚独自漫步至江边，看着城市灯火渐次亮起，思考着浙大校训在当下的意义。",
+    "options": [
+      {
+        "id": "A",
+        "text": "在小店喝杯茶，和店主聊聊",
+        "effects": {
+          "desc": "喝过茶后恢复了精神，店主的一段经历也让你更懂得体会不同的选择。",
+          "energy": 4,
+          "eq": 1
+        }
+      },
+      {
+        "id": "B",
+        "text": "只是静静吹风冥想",
+        "effects": {
+          "desc": "思绪清晰，压力消散",
+          "stress": -3
+        }
+      }
+    ]
+  },
+  {
+    "id": "holiday_winter_49a7dfacaaf5449b9ac55e52c102ae99",
+    "season": "winter",
+    "title": "返校前的资料整理",
+    "desc": "寒假尾声，你打开电脑准备整理新学期要用的资料，学在浙大却暂时无法登录。翻出旧笔记本后，你发现那些散落的文件还需要重新归档。",
+    "options": [
+      {
+        "id": "A",
+        "text": "熬夜整理散落的学习资料",
+        "effects": {
+          "desc": "资料终于归档，但熬夜让你疲惫，仍没查清的问题也添了些紧张。",
+          "energy": -5,
+          "stress": 3
+        }
+      },
+      {
+        "id": "B",
+        "text": "向同学询问资料存储办法",
+        "effects": {
+          "desc": "同学分享了自己的整理经验，你知道可以慢慢处理，心里的紧张缓和下来。",
+          "stress": -2
+        }
+      }
+    ]
+  },
+  {
+    "id": "holiday_winter_d027bafc837e4b6cb2469643001dd090",
+    "season": "winter",
+    "title": "图书馆闭馆前的最后阅读",
+    "desc": "寒假最后一天，紫金港的图书馆还亮着灯。你决定去借一本许久未读的哲学书，在静谧中度过这段空白时光，为返校积蓄精神力量。",
+    "options": [
+      {
+        "id": "A",
+        "text": "立刻冲进图书馆找座位",
+        "effects": {
+          "desc": "抢到靠窗位置，沉浸在书香中",
+          "energy": 2,
+          "eq": 1
+        }
+      },
+      {
+        "id": "B",
+        "text": "先在附近便利店买杯热饮",
+        "effects": {
+          "desc": "暖流驱散寒意，心情变得轻松",
+          "stress": -1
+        }
+      }
+    ]
+  },
+  {
+    "id": "holiday_summer_122358635857486bb13c12d9ccbc87d5",
+    "season": "summer",
+    "title": "雨后的滨江骑行",
+    "desc": "暑假尾声，你选择去熟悉的江边骑行。雨水洗过的空气格外清新，看着江面波光粼粼，紧绷的神经慢慢松弛下来，耳边是偶尔传来的汽笛声。",
+    "options": [
+      {
+        "id": "A",
+        "text": "继续骑行直到视野开阔处",
+        "effects": {
+          "desc": "雨后的凉意驱散了暑气，心情变得格外舒畅。",
+          "energy": 3,
+          "stress": -2
+        }
+      },
+      {
+        "id": "B",
+        "text": "在路边小店买杯热饮歇脚",
+        "effects": {
+          "desc": "温暖的饮品让身体回暖，但等待的时间消耗了些许体力。",
+          "energy": -1,
+          "sanity": 1
+        }
+      }
+    ]
+  }
+]

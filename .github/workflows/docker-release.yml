@@ -35,6 +35,7 @@ jobs:
           test -f zjus-backend/world/character_embeddings.csv
           test -f zjus-backend/world/event_library.json
           test -f zjus-backend/world/cc98_library.json
+          test -f zjus-backend/world/holiday_events.json
           echo "Prebuilt assets verified."
 
   backend:

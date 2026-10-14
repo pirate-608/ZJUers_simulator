@@ -71,6 +71,12 @@ async def startup():
 async def shutdown():
     """Close shared outbound clients during application shutdown."""
     try:
+        from app.services.save_service import SaveService
+
+        await SaveService.drain()
+    except Exception as e:
+        logger.warning("Pending save shutdown wait failed: %s", e)
+    try:
         from app.core.dingtalk_llm import close_m2her_client
         from app.core.llm import close_llm_clients
 

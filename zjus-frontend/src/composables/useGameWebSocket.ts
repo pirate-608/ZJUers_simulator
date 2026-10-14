@@ -90,7 +90,7 @@ export function useGameWebSocket() {
     const courseInfoJson = stats.course_info_json
     if (typeof courseInfoJson !== 'string') return
     const metadata = parseCourseMetadataArray(courseInfoJson)
-    if (metadata.length > 0) gameStore.setCourseMetadata(metadata)
+    gameStore.setCourseMetadata(metadata)
   }
 
   let reconnectAttempts = 0
@@ -101,6 +101,42 @@ export function useGameWebSocket() {
   let exitReloadTimer: ReturnType<typeof setTimeout> | null = null
   let shouldReconnect = true
   let receivedExitConfirmation = false
+  let transitionProbeTimer: ReturnType<typeof setTimeout> | null = null
+  let transitionDeadlineTimer: ReturnType<typeof setTimeout> | null = null
+
+  const clearTransitionTimers = () => {
+    if (transitionProbeTimer) clearTimeout(transitionProbeTimer)
+    if (transitionDeadlineTimer) clearTimeout(transitionDeadlineTimer)
+    transitionProbeTimer = null
+    transitionDeadlineTimer = null
+  }
+
+  /** Apply all authoritative snapshots through the same semester boundary. */
+  const applySnapshot = (stats: Record<string, unknown>, payload: Record<string, unknown>, init = false) => {
+    const oldIdx = Number(gameStore.currentStats.semester_idx)
+    const idx = Number(stats.semester_idx ?? oldIdx)
+    if (!init && (idx < oldIdx || gameStore.currentPhase === 'ended')) return false
+    if (init) {
+      clearTransitionTimers()
+      gameStore.resetRuntimeStateForInit()
+      gameStore.userInfo = stats
+    } else if (idx > oldIdx && idx <= 8) {
+      gameStore.resetForNewSemester(parseCourseMetadataArray(stats.course_info_json))
+      clearTransitionTimers()
+      gameStore.addLog('系统', `=== 欢迎来到 ${String(stats.semester ?? '新学期')} ===`, 'text-success fw-bold')
+    }
+    gameStore.setPhase('playing')
+    gameStore.updateStats(stats)
+    syncCourseMetadataFromStats(stats)
+    const courses = payload.courses ?? stats.courses
+    const states = payload.course_states ?? stats.course_states
+    if (isRecord(courses)) gameStore.updateCourseProgress(courses)
+    if (isRecord(states)) gameStore.updateCourseStatesRaw(states)
+    const timeLeft = payload.semester_time_left ?? stats.semester_time_left
+    if (typeof timeLeft === 'number') gameStore.semesterTimeLeft = timeLeft
+    gameStore.setRelaxCooldowns(readCooldowns(payload.relax_cooldowns ?? stats.relax_cooldowns))
+    return true
+  }
 
   /**
    * Remove per-game markers while keeping the long-lived student credential.
@@ -131,9 +167,24 @@ export function useGameWebSocket() {
    * Send a client action only when the socket is open.
    */
   const send = (data: WsClientAction) => {
-    if (ws.value && ws.value.readyState === WebSocket.OPEN) {
-      ws.value.send(JSON.stringify(data))
+    if (!ws.value || ws.value.readyState !== WebSocket.OPEN) {
+      if (data.action === 'next_semester') {
+        gameStore.finishSemesterTransition('连接尚未恢复，请稍后重试。')
+      }
+      return
     }
+    if (data.action === 'next_semester') {
+      if (gameStore.isPendingSemesterTransition) return
+      gameStore.beginSemesterTransition()
+      clearTransitionTimers()
+      transitionProbeTimer = setTimeout(() => send({ action: 'get_state' }), 5000)
+      transitionDeadlineTimer = setTimeout(() => {
+        clearTransitionTimers()
+        gameStore.finishSemesterTransition('暂未收到切换确认，可重新同步状态或重试。')
+      }, 15000)
+      data = { ...data, expected_semester_idx: data.expected_semester_idx ?? Number(gameStore.currentStats.semester_idx) }
+    }
+    ws.value.send(JSON.stringify(data))
   }
 
   const startHeartbeat = () => {
@@ -239,6 +290,8 @@ export function useGameWebSocket() {
         }
 
         case 'auth_error': {
+          clearTransitionTimers()
+          gameStore.finishSemesterTransition()
           shouldReconnect = false
           const message = typeof wsMsg.message === 'string' ? wsMsg.message : '认证失败'
           gameStore.addLog('系统', message, 'text-danger')
@@ -257,32 +310,7 @@ export function useGameWebSocket() {
 
         case 'init': {
           const data = isRecord(wsMsg.data) ? wsMsg.data : {}
-          gameStore.resetRuntimeStateForInit()
-          gameStore.setPhase('playing')
-          gameStore.userInfo = data
-
-          syncCourseMetadataFromStats(data)
-
-          gameStore.updateStats(data)
-
-          // Newer init messages put course maps at the top level; old ones nest them in data.
-          const courses = wsMsg.courses ?? (data as Record<string, unknown>).courses
-          if (isRecord(courses)) {
-            gameStore.updateCourseProgress(courses as Record<string, unknown>)
-          }
-          const c_states = wsMsg.course_states ?? (data as Record<string, unknown>).course_states
-          if (isRecord(c_states)) {
-            gameStore.updateCourseStatesRaw(c_states as Record<string, unknown>)
-          }
-
-          const stl = wsMsg.semester_time_left
-          if (typeof stl === 'number') {
-            gameStore.semesterTimeLeft = stl
-          }
-          gameStore.setRelaxCooldowns(
-            readCooldowns(wsMsg.relax_cooldowns) ||
-            (isRecord(data.relax_cooldowns) ? data.relax_cooldowns : null),
-          )
+          applySnapshot(data, wsMsg, true)
           if ('dingtalk_state' in wsMsg && isRecord(wsMsg.dingtalk_state)) {
             gameStore.setDingTalkState(wsMsg.dingtalk_state)
           }
@@ -294,46 +322,14 @@ export function useGameWebSocket() {
         }
 
         case 'tick': {
-          if (gameStore.currentPhase !== 'playing') {
-            gameStore.setPhase('playing')
-          }
-
           const stats = wsMsg.stats
-          if (isRecord(stats)) {
-            gameStore.updateStats(stats)
-            syncCourseMetadataFromStats(stats)
-          }
-
-          if (isRecord(wsMsg.courses)) gameStore.updateCourseProgress(wsMsg.courses as Record<string, unknown>)
-          if (isRecord(wsMsg.course_states)) gameStore.updateCourseStatesRaw(wsMsg.course_states as Record<string, unknown>)
-
-          if (wsMsg.semester_time_left !== undefined && typeof wsMsg.semester_time_left === 'number') {
-            gameStore.semesterTimeLeft = wsMsg.semester_time_left
-          }
-          gameStore.setRelaxCooldowns(readCooldowns(wsMsg.relax_cooldowns))
+          if (isRecord(stats)) applySnapshot(stats, wsMsg)
           break
         }
 
         case 'state': {
-          if (gameStore.currentPhase !== 'playing') {
-            gameStore.setPhase('playing')
-          }
-
           const data = wsMsg.data
-          if (isRecord(data)) {
-            gameStore.updateStats(data)
-            syncCourseMetadataFromStats(data)
-            if (isRecord(data.courses)) {
-              gameStore.updateCourseProgress(data.courses as Record<string, unknown>)
-            }
-            if (isRecord(data.course_states)) {
-              gameStore.updateCourseStatesRaw(data.course_states as Record<string, unknown>)
-            }
-            gameStore.setRelaxCooldowns(
-              readCooldowns(wsMsg.relax_cooldowns) ||
-              (isRecord(data.relax_cooldowns) ? data.relax_cooldowns : null),
-            )
-          }
+          if (isRecord(data)) applySnapshot(data, wsMsg)
           break
         }
 
@@ -385,6 +381,7 @@ export function useGameWebSocket() {
         }
 
         case 'game_over': {
+          clearTransitionTimers()
           const reason =
             (typeof wsMsg.data?.reason === 'string' && wsMsg.data.reason) ||
             (typeof wsMsg.reason === 'string' ? wsMsg.reason : undefined) ||
@@ -394,12 +391,19 @@ export function useGameWebSocket() {
         }
 
         case 'semester_summary': {
-          gameStore.showModal('transcript', isRecord(wsMsg.data) ? wsMsg.data : wsMsg)
+          const data: Record<string, unknown> = isRecord(wsMsg.data) ? wsMsg.data : wsMsg
+          if (gameStore.currentPhase !== 'ended' && Number(data.semester_idx ?? gameStore.currentStats.semester_idx) >= Number(gameStore.currentStats.semester_idx)) {
+            gameStore.showModal('transcript', data)
+          }
           break
         }
 
         case 'random_event': {
-          gameStore.showModal('random_event', isRecord(wsMsg.data) ? wsMsg.data : wsMsg)
+          const data: Record<string, unknown> = isRecord(wsMsg.data) ? wsMsg.data : wsMsg
+          if (gameStore.currentPhase !== 'ended' && Number(data.semester_idx ?? gameStore.currentStats.semester_idx) === Number(gameStore.currentStats.semester_idx)
+            && !gameStore.isPendingSemesterTransition && !gameStore.currentStats.exam_completed) {
+            gameStore.showModal('random_event', data)
+          }
           break
         }
 
@@ -460,6 +464,7 @@ export function useGameWebSocket() {
         }
 
         case 'graduation': {
+          clearTransitionTimers()
           const { finalStats, llmSummary: llmSummaryExtracted } = extractGraduationFinalStats(wsMsg)
 
           const gpaRaw = finalStats.gpa
@@ -493,30 +498,9 @@ export function useGameWebSocket() {
         }
 
         case 'new_semester': {
-          gameStore.closeModal()
-          if (gameStore.currentPhase !== 'playing') gameStore.setPhase('playing')
           const nsData = isRecord(wsMsg.data) ? wsMsg.data : wsMsg as Record<string, unknown>
           const stats = isRecord(nsData.stats) ? nsData.stats : {}
-          const newCourseJson = typeof nsData.course_info_json === 'string'
-            ? nsData.course_info_json as string
-            : typeof stats.course_info_json === 'string'
-              ? stats.course_info_json
-              : '[]'
-          const courses = parseCourseMetadataArray(newCourseJson)
-          gameStore.resetForNewSemester(courses)
-          gameStore.updateStats(stats)
-          if (isRecord(nsData.courses)) {
-            gameStore.updateCourseProgress(nsData.courses as Record<string, unknown>)
-          }
-          if (isRecord(nsData.course_states)) {
-            gameStore.updateCourseStatesRaw(nsData.course_states as Record<string, unknown>)
-          }
-          if (typeof nsData.semester_time_left === 'number') {
-            gameStore.semesterTimeLeft = nsData.semester_time_left
-          }
-          gameStore.clearEventLogs()
-          const semesterName = extractNewSemesterName(wsMsg)
-          gameStore.addLog('系统', `=== 欢迎来到 ${semesterName} ===`, 'text-success fw-bold')
+          applySnapshot({ ...stats, semester: stats.semester ?? extractNewSemesterName(wsMsg), course_info_json: stats.course_info_json ?? nsData.course_info_json }, nsData)
           break
         }
 
@@ -554,6 +538,10 @@ export function useGameWebSocket() {
               ? data.level
             : 'info'
           gameStore.showToast(message, level as 'success' | 'danger' | 'warning' | 'info')
+          if ((wsMsg.action ?? data.action) === 'next_semester' && level !== 'info') {
+            clearTransitionTimers()
+            gameStore.finishSemesterTransition(message)
+          }
           break
         }
 
@@ -585,6 +573,8 @@ export function useGameWebSocket() {
     }
 
     ws.value.onclose = (event: CloseEvent) => {
+      clearTransitionTimers()
+      if (gameStore.isPendingSemesterTransition) gameStore.finishSemesterTransition('连接已断开，恢复后请重新同步状态。')
       isConnected.value = false
       stopHeartbeat()
 
@@ -614,6 +604,7 @@ export function useGameWebSocket() {
   }
 
   onUnmounted(() => {
+    clearTransitionTimers()
     shouldReconnect = false
     clearReconnectTimer()
     if (ws.value) ws.value.close()
@@ -624,6 +615,8 @@ export function useGameWebSocket() {
    * Close the socket intentionally and disable reconnect.
    */
   const disconnect = () => {
+    clearTransitionTimers()
+    gameStore.finishSemesterTransition()
     shouldReconnect = false
     clearReconnectTimer()
     stopHeartbeat()

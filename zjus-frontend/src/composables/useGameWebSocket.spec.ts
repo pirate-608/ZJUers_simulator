@@ -61,6 +61,119 @@ describe('useGameWebSocket', () => {
     vi.useRealTimers()
   })
 
+  it('keeps the transcript pending, deduplicates clicks and probes state before timeout', () => {
+    const store = useGameStore()
+    const { connect, send } = useGameWebSocket()
+    connect('token', 'ws://game.test')
+    const socket = MockWebSocket.instances[0]
+    store.showModal('transcript', { semester_idx: 1 })
+    send({ action: 'next_semester' })
+    send({ action: 'next_semester' })
+    expect(socket.sent.map((frame) => JSON.parse(frame))).toEqual([{ action: 'next_semester', expected_semester_idx: 1 }])
+    expect(store.activeModal).toBe('transcript')
+    expect(store.isPendingSemesterTransition).toBe(true)
+    vi.advanceTimersByTime(5000)
+    expect(JSON.parse(socket.sent.at(-1)!)).toEqual({ action: 'get_state' })
+    vi.advanceTimersByTime(10000)
+    expect(store.isPendingSemesterTransition).toBe(false)
+    expect(store.semesterTransitionError).not.toBe('')
+    expect(store.activeModal).toBe('transcript')
+  })
+
+  it.each(['new_semester', 'tick', 'state'])('recovers a complete new term from %s, not just its title', (type) => {
+    const store = useGameStore()
+    const { connect, send } = useGameWebSocket()
+    connect('token', 'ws://game.test')
+    store.currentStats.exam_completed = 1
+    store.updateCourseProgress({ old: 91 })
+    store.updateCourseStatesRaw({ old: 2 })
+    store.setPaused(true)
+    store.setConsoleTheme('yunfeng')
+    store.setGameSpeed(2)
+    store.ownedItems = ['planner']
+    store.showModal('transcript', {})
+    send({ action: 'next_semester' })
+    const stats = { semester_idx: 2, semester: '大一春夏', exam_completed: 0, course_info_json: '[{"id":"new","name":"新课程","credits":4}]' }
+    const payload = { stats, courses: { new: 0 }, course_states: { new: 1 }, semester_time_left: 360 }
+    const socket = MockWebSocket.instances[0]
+    socket.emitMessage(type === 'tick' ? { type, ...payload }
+      : type === 'new_semester' ? { type, data: payload }
+        : { type, data: { ...stats, courses: payload.courses, course_states: payload.course_states, semester_time_left: 360 } })
+    expect(store.currentStats.semester_idx).toBe(2)
+    expect(Object.keys(store.currentStats.courses)).toEqual(['new'])
+    expect(Object.keys(store.currentCourseStates)).toEqual(['new'])
+    expect(store.courseMetadata[0].credit).toBe(4)
+    expect(store.activeModal).toBe(null)
+    expect(store.isPaused).toBe(false)
+    expect(store.isPendingSemesterTransition).toBe(false)
+    expect(store.semesterTimeLeft).toBe(360)
+    expect(store.consoleTheme).toBe('yunfeng')
+    expect(store.gameSpeed).toBe(2)
+    expect(store.ownedItems).toEqual(['planner'])
+    const count = socket.sent.length
+    vi.advanceTimersByTime(15000)
+    expect(socket.sent.length).toBe(count)
+  })
+
+  it('ignores old-term ticks, events and transcripts after a confirmed transition', () => {
+    const store = useGameStore()
+    const { connect } = useGameWebSocket()
+    connect('token', 'ws://game.test')
+    store.currentStats.semester_idx = 2
+    store.semesterTimeLeft = 300
+    const socket = MockWebSocket.instances[0]
+    socket.emitMessage({ type: 'tick', stats: { semester_idx: 1, semester: '旧学期' }, courses: { old: 90 }, semester_time_left: 0 })
+    socket.emitMessage({ type: 'semester_summary', data: { semester_idx: 1 } })
+    socket.emitMessage({ type: 'random_event', data: { semester_idx: 1, title: '过期事件' } })
+    expect(store.currentStats.semester_idx).toBe(2)
+    expect(store.semesterTimeLeft).toBe(300)
+    expect(store.activeModal).toBe(null)
+    expect(store.currentStats.courses.old).toBeUndefined()
+  })
+
+  it('keeps autosave warnings separate from transition and exit confirmations', () => {
+    const store = useGameStore()
+    const { connect, send } = useGameWebSocket()
+    connect('token', 'ws://game.test')
+    send({ action: 'next_semester' })
+    store.isPendingExit = true
+    const socket = MockWebSocket.instances[0]
+    socket.emitMessage({ type: 'toast', action: 'semester_autosave', level: 'warning', message: '自动保存失败' })
+    expect(store.isPendingSemesterTransition).toBe(true)
+    expect(store.isPendingExit).toBe(true)
+    socket.emitMessage({ type: 'toast', action: 'next_semester', level: 'warning', message: '请重试' })
+    expect(store.isPendingSemesterTransition).toBe(false)
+    expect(store.semesterTransitionError).toBe('请重试')
+  })
+
+  it('does not leave the transcript waiting when disconnected or intentionally closed', () => {
+    const store = useGameStore()
+    const { connect, send, disconnect } = useGameWebSocket()
+    store.showModal('transcript', {})
+    send({ action: 'next_semester' })
+    expect(store.isPendingSemesterTransition).toBe(false)
+    expect(store.semesterTransitionError).not.toBe('')
+    connect('token', 'ws://game.test')
+    send({ action: 'next_semester' })
+    disconnect()
+    vi.advanceTimersByTime(15000)
+    expect(store.isPendingSemesterTransition).toBe(false)
+  })
+
+  it('shows a holiday in the new term but does not let a late tick reopen an end screen', () => {
+    const store = useGameStore()
+    const { connect } = useGameWebSocket()
+    connect('token', 'ws://game.test')
+    store.setPhase('playing')
+    const socket = MockWebSocket.instances[0]
+    socket.emitMessage({ type: 'random_event', data: { kind: 'holiday', id: 'holiday_1', semester_idx: 1, title: '假期' } })
+    expect(store.activeModal).toBe('random_event')
+    store.triggerEndGame('game_over', {})
+    socket.emitMessage({ type: 'tick', stats: { semester_idx: 1 } })
+    expect(store.currentPhase).toBe('ended')
+    expect(store.activeModal).toBe(null)
+  })
+
   it('keeps a connected status log after init resets runtime state', () => {
     const store = useGameStore()
     const { connect } = useGameWebSocket()

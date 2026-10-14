@@ -23,7 +23,7 @@
               当期 GPA
             </div>
             <div class="fs-2 fw-bold text-primary">
-              {{ data.term_gpa?.toFixed(2) ?? '0.00' }}
+              {{ data.term_gpa?.toFixed(2) ?? '未记录' }}
             </div>
           </div>
           <div class="col-4 border-start border-end">
@@ -116,12 +116,14 @@
       <div class="card-footer bg-white border-0 py-3 text-center">
         <button 
           class="btn btn-primary btn-lg px-5 rounded-pill shadow-sm fw-bold pulse-btn"
+          :disabled="store.isPendingSemesterTransition"
           @click="startNextSemester"
         >
-          {{ (store.currentStats.semester_idx ?? 1) >= 8 ? '🎓 参加毕业典礼 ➔' : '🚀 开启新学期 ➔' }}
+          {{ store.isPendingSemesterTransition ? '正在同步，请稍候…' : (store.currentStats.semester_idx ?? 1) >= 8 ? '🎓 参加毕业典礼 ➔' : '🚀 开启新学期 ➔' }}
         </button>
-        <div class="refresh-hint small text-muted mt-2">
-          如果开启后学期状态没有刷新，请手动刷新浏览器。
+        <div v-if="store.semesterTransitionError" class="refresh-hint small text-danger mt-2" role="alert">
+          {{ store.semesterTransitionError }}
+          <button class="btn btn-sm btn-outline-secondary ms-2" @click="emit('send-action', { action: 'get_state' })">重新同步</button>
         </div>
       </div>
     </div>
@@ -160,9 +162,9 @@ const courseCredit = (course: TranscriptModalCourseRow): string => {
 }
 
 const startNextSemester = () => {
-  store.closeModal()
+  if (store.isPendingSemesterTransition) return
   // The backend decides whether the next step is another semester or graduation.
-  emit('send-action', { action: 'next_semester' }) 
+  emit('send-action', { action: 'next_semester', expected_semester_idx: Number(store.currentStats.semester_idx) })
 }
 </script>
 
@@ -196,6 +198,11 @@ const startNextSemester = () => {
 
 .pulse-btn {
   animation: pulse 2s infinite;
+}
+
+.pulse-btn:disabled {
+  animation: none;
+  transition: none;
 }
 
 .achievement-summary {

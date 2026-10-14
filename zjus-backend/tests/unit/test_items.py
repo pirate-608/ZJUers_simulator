@@ -212,6 +212,9 @@ async def test_save_service_loads_items_state_into_redis():
     repo = Mock()
     repo.set_game_data = AsyncMock()
     repo.set_dingtalk_state = AsyncMock()
+    repo.set_holiday_state = AsyncMock()
+    repo.set_active_save_slot = AsyncMock()
+    repo.set_semester_summary = AsyncMock()
 
     loaded = await SaveService.load_from_db("1", repo, db)
 

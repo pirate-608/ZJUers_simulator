@@ -124,10 +124,10 @@ cd zjus-frontend
 
 当前内容链路为“离线预构建 + 运行时检索”。更新世界设定时，需要维护两类资产：
 
-1. 事件库/CC98 JSON 库。
+1. 事件、CC98 和假期 JSON 库。
 2. 角色向量 CSV + 查询向量 JSON。
 
-### 生成事件库与 CC98 库
+### 生成事件、CC98 与假期库
 
 `zjus-backend/scripts/generate_content_library.py` 使用 OpenAI SDK 的兼容 `chat/completions` 接口。文本模型可以是云端兼容端点，也可以是本地 Ollama 的 OpenAI 兼容端点；角色向量仍由下一节的本地 Ollama `bge-m3` 单独生成。
 
@@ -159,6 +159,17 @@ CC98 帖子生成会按 `positive / neutral / negative` 三类尽量均衡产出
 
 - `world/event_library.json`
 - `world/cc98_library.json`
+
+假期库也通过同一脚本生成。以下命令只追加假期事件，不修改事件库或 CC98 库：
+
+```bash
+python scripts/generate_content_library.py --holidays 40 --append \
+  --api-base http://127.0.0.1:11434/v1 --api-key ollama --model qwen3.5:4b \
+  --reasoning-effort none --max-tokens 3072
+python scripts/validate_world_data.py
+```
+
+输出为 `world/holiday_events.json`，默认新增寒假/暑假各 20 条，带选项和效果校验、标题去重、原子检查点与有限失败重试。可用 `--holiday-season winter|summer` 单季追加；更多参数及失败恢复说明见[游戏设定维护](/dev/world-data#用本地-ai-批量补充)。不需要为假期事件生成 embedding。
 
 ### 导出角色向量
 

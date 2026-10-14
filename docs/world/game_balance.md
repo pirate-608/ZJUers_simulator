@@ -63,6 +63,8 @@
 | random_event | 12               | 0.5      | - |
 | dingtalk     | 12               | 0.5      | `max_contacts=12`；`reuse_closed_contact_probability=0.7` |
 
+假期回顾不使用上述 tick 概率：第 2-8 学期返校时各创建一次，冬/夏内容由 `world/holiday_events.json` 维护，详见[游戏设定维护](/dev/world-data)。生成和自动保存不会阻塞新学期，暂停期间延迟展示。
+
 ## 考试
 - 不及格阈值：60
 - 每门挂科心态：-10

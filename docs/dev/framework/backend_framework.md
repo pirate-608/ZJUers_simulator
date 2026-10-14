@@ -132,6 +132,7 @@ graph TD
 | 方法 | 说明 |
 |---|---|
 | `persist_to_db(repo, db, save_slot=1)` | 将 Redis 快照 upsert 到 PostgreSQL |
+| `schedule_save(repo, db_factory, save_slot=1)` | 捕获不可变快照并按用户/槽位 FIFO 排队，返回后台写入 Task |
 | `load_from_db(user_id, repo, db, save_slot=1)` | 从 DB 指定槽位恢复到 Redis |
 | `list_saves(user_id, db)` | 返回存档摘要给前端选择 |
 
@@ -145,7 +146,7 @@ graph TD
 {"token": "<JWT>", "load_save_slot": 1}
 ```
 
-则 `GameService.prepare_game_context(..., force_load_save=True)` 会强制从 DB 指定槽位加载。若存档不存在，返回 `auth_error`。
+则 `GameService.prepare_game_context(..., force_load_save=True)` 优先复用标记为同槽位的 Redis 活跃状态，避免刷新倒退；否则等后台队列完成后从 DB 指定槽位加载。若存档不存在，返回 `auth_error`。
 
 不带 `load_save_slot` 时，优先使用 Redis 当前状态；Redis 不存在再尝试默认槽位 DB 存档。
 
@@ -155,7 +156,7 @@ graph TD
 
 ### Redis Key
 
-每个玩家 10 个核心 Key，均带 TTL：
+每个玩家的核心 Key 均带 TTL：
 
 - `player:{id}:stats`
 - `player:{id}:courses`
@@ -167,6 +168,9 @@ graph TD
 - `player:{id}:current_event`
 - `player:{id}:dingtalk_state`
 - `player:{id}:items_state`
+- `player:{id}:save_slot`
+- `player:{id}:holiday_state`
+- `player:{id}:semester_summary`
 
 `RedisRepository` 负责字段归一化、批量写入、TTL 刷新、安全数值更新、钉钉私聊状态和道具背包状态读写。可归一化的数值属性来自 `stat_definitions.redis_int_fields`；`update_stat_safe()` 默认使用对应属性的 `min/max` 做 clamp，而不是统一写死 0-200。
 
@@ -211,6 +215,18 @@ graph TD
 WebSocket 出站消息必须通过 `ConnectionManager.send_personal_message()`，同一用户的发送会被锁串行化，避免 `event_forwarder`、ping、保存结果等并发 `send_text`。`save_and_exit` 成功路径为 `save_result -> exit_confirmed -> 清 Redis -> close(1000)`。
 
 暂停态只使用 `GameEngine.is_running`。当它为 `false` 时，后端会拒绝休闲、考试、事件选择、钉钉回复、道具买卖和课程策略变更；`next_semester` 仅在 Redis 中 `exam_completed=1` 后允许。
+
+### 学期提交与假期回顾
+
+`process_semester_transition()` 先准备课表，再调用 `RedisRepository.commit_semester_transition()`：Lua CAS 检查旧学期与考试标记，一次提交新编号、课程/策略、时间、恢复精力、考试标记和假期 token。毕业保持最后课表，不做普通学期 reset。
+
+引擎用单个后台 transition task 防重复，确认新状态后排队保存并启动新循环。保存快照在排队时捕获；同用户/槽位写入串行，独立 session 的执行期限为 12 秒。后台任务不阻塞 WS 接收，也不发 `save_result`；socket 断开只取消观察者，不取消队列写入。
+
+第 2-8 学期创建一次假期回顾。`library` / `hybrid` 读取 `world/holiday_events.json`；AI 模式请求的整体期限为 20 秒，失败回退到本地库。冬/夏缓存分别使用 `game:events_pool:holiday_winter` 与 `game:events_pool:holiday_summer`，custom LLM 不进入共享池。
+
+Redis 假期状态为 `pending -> ready -> resolved`，存档私有 `_holiday_state` 保留同一 token。生成完成必须核对 token、学期和考试状态；暂停时暂不推送，恢复/重连后重送未选择事件。选择时以事件 ID 校验，并原子应用属性范围约束和 resolved 标记，重复请求不再奖励。假期未完成时普通随机事件不会覆盖它。旧存档缺少假期状态不会补发历史回顾。
+
+成绩单保存在 Redis `semester_summary` 和存档私有 `_semester_summary`；重连显示已完成的结果，不重复考试。学期 CAS 会同时清掉旧成绩单与当前事件。
 
 `game_balance.json` 的 `tick.interval_seconds` 是真实 tick 间隔，主循环 sleep 和 `elapsed_game_time` 增量都读取该值。
 
@@ -351,9 +367,13 @@ sequenceDiagram
         G->>R: 写入新游戏状态
     else 加载旧存档
         C->>W: 首条消息 {token, load_save_slot}
-        W->>G: 强制加载指定存档
-        G->>D: 读取 game_saves
-        G->>R: 恢复到 Redis
+        W->>G: 选择指定槽位
+        alt 同槽位活跃状态存在
+            G->>R: 复用活跃状态
+        else 需要恢复
+            G->>D: 等待保存队列并读取 game_saves
+            G->>R: 恢复到 Redis
+        end
     end
     C->>W: WebSocket 连接
     W->>E: 启动引擎

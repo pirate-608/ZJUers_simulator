@@ -227,7 +227,8 @@ const updateFrame = () => {
   const deltaMs = now - lastTick
   lastTick = now
 
-  if (!store.isPaused && !store.isGuideActive && store.currentPhase === 'playing') {
+  if (!store.isPaused && !store.isGuideActive && !store.isPendingSemesterTransition
+    && !store.currentStats.exam_completed && store.currentPhase === 'playing') {
     internalTime.value -= (deltaMs / 1000) * store.gameSpeed
     if (internalTime.value < 0) internalTime.value = 0
   }

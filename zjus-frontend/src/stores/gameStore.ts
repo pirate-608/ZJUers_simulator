@@ -160,6 +160,8 @@ export const useGameStore = defineStore('game', () => {
   const consoleTheme = ref<ConsoleTheme>(readStoredConsoleTheme())
 
   const isPendingExit = ref<boolean>(false)
+  const isPendingSemesterTransition = ref(false)
+  const semesterTransitionError = ref('')
 
   /**
    * Set the current high-level route phase.
@@ -210,6 +212,24 @@ export const useGameStore = defineStore('game', () => {
     for (const key in currentCourseStates) {
       delete currentCourseStates[key]
     }
+    semesterTimeLeft.value = 0
+    isPaused.value = false
+    currentStats.exam_completed = 0
+    closeModal()
+    closeFeedback()
+    clearEventLogs()
+    finishSemesterTransition()
+  }
+
+  /** Keep the transcript visible until a canonical new-term snapshot arrives. */
+  function beginSemesterTransition() {
+    isPendingSemesterTransition.value = true
+    semesterTransitionError.value = ''
+  }
+
+  function finishSemesterTransition(error = '') {
+    isPendingSemesterTransition.value = false
+    semesterTransitionError.value = error
   }
 
   /**
@@ -546,6 +566,8 @@ export const useGameStore = defineStore('game', () => {
    * Move the app into an end-state screen.
    */
   function triggerEndGame(type: EndType, data: EndData | Record<string, unknown> = {}) {
+    finishSemesterTransition()
+    closeModal()
     endType.value = type
     endData.value = data as EndData
     setPaused(true)
@@ -587,6 +609,7 @@ export const useGameStore = defineStore('game', () => {
     closeModal()
     closeFeedback()
     isPendingExit.value = false
+    finishSemesterTransition()
   }
 
   return {
@@ -650,6 +673,10 @@ export const useGameStore = defineStore('game', () => {
     consoleTheme,
     setConsoleTheme,
     isPendingExit,
+    isPendingSemesterTransition,
+    semesterTransitionError,
+    beginSemesterTransition,
+    finishSemesterTransition,
   }
 })
 
